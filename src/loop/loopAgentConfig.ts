@@ -1,4 +1,3 @@
-import type { RepoContext } from '../context/repoContext.js'
 import type { LoopConfig } from '../loop/loopConfig.js'
 
 export const LOOP_RUNTIME_CURSOR = 'cursor' as const

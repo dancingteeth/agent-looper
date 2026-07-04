@@ -7,13 +7,14 @@ import { loadLoopBundle, mergeLoopConfig, type LoopConfig } from './loopConfig.j
 import {
   createHitlCheckTask,
   hitlCheckDescriptionSchema,
+  taskwarriorProjectSchema,
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
 
 export const loopBatchConfigSchema = z.object({
   loops: z.array(z.string().min(1)).min(1),
   hitlCheck: hitlCheckDescriptionSchema.optional(),
-  taskwarriorProject: z.string().trim().min(1).optional(),
+  taskwarriorProject: taskwarriorProjectSchema.optional(),
   syncOnSuccess: z.boolean().default(true),
 })
 

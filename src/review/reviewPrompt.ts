@@ -3,6 +3,7 @@ import path from 'node:path'
 import type { RepoContext } from '../context/repoContext.js'
 import type { RepoProfile } from '../context/repoProfile.js'
 
+/** Default reviews filename label in prompts — actual path is `profile.reviewsFile`. */
 export const REVIEWS_MD = 'REVIEWS.md'
 
 export function buildRiskTriagePreamble(): string {

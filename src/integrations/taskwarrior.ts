@@ -4,6 +4,13 @@ import { z } from 'zod'
 /** Stable Taskwarrior key — numeric IDs are recycled; always use UUID in loop.json. */
 export const taskwarriorUuidSchema = z.string().uuid()
 
+/** Taskwarrior `project:` tag — no spaces (matches `task add project:foo` syntax). */
+export const taskwarriorProjectSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[a-zA-Z0-9_.-]+$/, 'taskwarriorProject must not contain spaces')
+
 /** Short label for manual validation after one loop or a batch of related loops. */
 export const hitlCheckDescriptionSchema = z.string().trim().min(1).max(500)
 

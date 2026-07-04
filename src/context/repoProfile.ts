@@ -1,12 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
+import { taskwarriorProjectSchema } from '../integrations/taskwarrior.js'
 
 export const REPO_PROFILE_RELATIVE_PATH = path.join('.cursor', 'agent-loop.repo.json')
 
 export const repoProfileSchema = z.object({
   /** Taskwarrior project for HITL checkpoints (e.g. dxp, zwook). */
-  taskwarriorProject: z.string().trim().min(1).default('dxp'),
+  taskwarriorProject: taskwarriorProjectSchema.default('dxp'),
   /** Shell command to mirror TW after success; null = skip. */
   syncCommand: z.string().trim().min(1).nullable().default(null),
   /** Base branch for post-loop diff stat. */

@@ -6,7 +6,11 @@ import {
   LOOP_RUNTIME_CURSOR,
   validateLoopAgentConfig,
 } from './loopAgentConfig.js'
-import { hitlCheckDescriptionSchema, taskwarriorUuidSchema } from '../integrations/taskwarrior.js'
+import {
+  hitlCheckDescriptionSchema,
+  taskwarriorProjectSchema,
+  taskwarriorUuidSchema,
+} from '../integrations/taskwarrior.js'
 import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.js'
 
 export const loopRuntimeSchema = z.enum([LOOP_RUNTIME_CURSOR, LOOP_RUNTIME_CLINE_PASS])
@@ -22,7 +26,7 @@ export const loopConfigSchema = z
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
     taskwarriorUuid: taskwarriorUuidSchema.optional(),
     /** Override repo profile taskwarriorProject for HITL tasks. */
-    taskwarriorProject: z.string().trim().min(1).optional(),
+    taskwarriorProject: taskwarriorProjectSchema.optional(),
     delayMs: z.number().int().min(0).max(60_000).default(1500),
     postQualityReview: z.union([z.boolean(), z.literal('auto')]).default('auto'),
     /** Run repo profile syncCommand after success. Legacy alias: syncPostgres. */
@@ -126,9 +130,4 @@ export function mergeLoopConfig(
     ...base,
     ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)),
   })
-}
-
-/** @deprecated Use syncOnSuccess — kept for callers migrating from Maxin harness. */
-export function syncPostgresFromConfig(config: LoopConfig): boolean {
-  return config.syncOnSuccess
 }

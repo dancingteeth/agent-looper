@@ -12,6 +12,12 @@ describe('repoProfileSchema', () => {
       'zwook',
     )
   })
+
+  it('rejects taskwarriorProject with spaces', () => {
+    expect(() => repoProfileSchema.parse({ taskwarriorProject: 'my project' })).toThrow(
+      /spaces/i,
+    )
+  })
 })
 
 describe('resolveRepoContext', () => {
