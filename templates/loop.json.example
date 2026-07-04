@@ -1,0 +1,8 @@
+{
+  "runtime": "cline-pass",
+  "model": "cline-pass/deepseek-v4-flash",
+  "maxIterations": 8,
+  "verify": "echo 'replace with your test command'",
+  "syncOnSuccess": false,
+  "stagnationThreshold": 3
+}

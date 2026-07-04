@@ -1,0 +1,9 @@
+{
+  "taskwarriorProject": "dxp",
+  "syncCommand": null,
+  "defaultBranch": "main",
+  "agentsFile": "AGENTS.md",
+  "reviewsFile": "REVIEWS.md",
+  "skillsGlob": "packages/skills/*/SKILL.md",
+  "clientName": "@dancingteeth/agent-loop"
+}

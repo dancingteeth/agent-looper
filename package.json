@@ -1,0 +1,62 @@
+{
+  "name": "@dancingteeth/agent-loop",
+  "version": "0.1.0",
+  "description": "Repo-agnostic fix-until-green agent loop (Cursor SDK + ClinePass)",
+  "license": "MIT",
+  "type": "module",
+  "author": "Paul Zgordan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dancingteeth/agent-loop.git"
+  },
+  "bin": {
+    "agent-loop": "./dist/cli/run.js",
+    "agent-loop-batch": "./dist/cli/run-batch.js",
+    "agent-check": "./dist/cli/check.js",
+    "agent-loop-init": "./dist/cli/init.js",
+    "agent-loop-review-run": "./dist/cli/review-run.js",
+    "agent-loop-review-preview": "./dist/cli/review-preview.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "zod": "^4.3.4"
+  },
+  "peerDependencies": {
+    "@cline/sdk": ">=0.0.55",
+    "@cursor/sdk": ">=1.0.18"
+  },
+  "peerDependenciesMeta": {
+    "@cline/sdk": {
+      "optional": true
+    },
+    "@cursor/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@cline/sdk": "^0.0.55",
+    "@cursor/sdk": "^1.0.18",
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.16"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
