@@ -54,6 +54,7 @@
     "@cline/sdk": "^0.0.55",
     "@cursor/sdk": "^1.0.18",
     "@types/node": "^22.15.0",
+    "@vitest/coverage-v8": "^4.1.9",
     "typescript": "^5.8.3",
     "vitest": "^4.0.16"
   },
