@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildHitlCheckTaskArgs,
   formatHitlCheckTaskDescription,
+  taskwarriorProjectSchema,
   taskwarriorUuidSchema,
 } from './taskwarrior.js'
 
@@ -30,5 +31,11 @@ describe('buildHitlCheckTaskArgs', () => {
       '+manual',
       'HITL Check: affiliate checkout flow',
     ])
+  })
+})
+
+describe('taskwarriorProjectSchema', () => {
+  it('rejects project names with spaces', () => {
+    expect(() => taskwarriorProjectSchema.parse('my project')).toThrow(/spaces/i)
   })
 })
