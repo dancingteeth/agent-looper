@@ -15,7 +15,8 @@
     "agent-check": "./dist/cli/check.js",
     "agent-loop-init": "./dist/cli/init.js",
     "agent-loop-review-run": "./dist/cli/review-run.js",
-    "agent-loop-review-preview": "./dist/cli/review-preview.js"
+    "agent-loop-review-preview": "./dist/cli/review-preview.js",
+    "agent-loop-doctor": "./dist/cli/doctor.js"
   },
   "exports": {
     ".": {
@@ -25,11 +26,15 @@
   },
   "files": [
     "dist",
-    "templates"
+    "templates",
+    "scripts/dist-manifest.json",
+    "scripts/prepare-package.mjs"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "postbuild": "chmod +x dist/cli/*.js",
+    "prepare": "node scripts/prepare-package.mjs",
+    "ensure-link": "bash scripts/ensure-file-dep-link.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",

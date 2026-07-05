@@ -19,6 +19,32 @@ cd ~/Projects/agent-loop && pnpm link --global
 cd ~/Projects/zwook && pnpm link -g @dancingteeth/agent-loop
 ```
 
+### `file:` consumers (Maxin, Zwook, …)
+
+Loop repos pin the harness with a **relative `file:` path** (e.g. `file:../../agent-loop` or `file:../agent-loop`). That path must exist on disk when you `pnpm install` — usually as a **sibling checkout** or symlink to `~/Projects/agent-loop`.
+
+**Adding a new consumer?** See **[`CONSUMERS.md`](./CONSUMERS.md)** — full checklist (dependency, postinstall, integration test, Docker stub).
+
+**One-time setup** (from agent-loop):
+
+```bash
+chmod +x scripts/ensure-file-dep-link.sh
+./scripts/ensure-file-dep-link.sh ~/Projects/multi-store/payload-ecommerce
+./scripts/ensure-file-dep-link.sh ~/Projects/zwook
+cd ~/Projects/agent-loop && pnpm install && pnpm build
+cd <consumer> && pnpm install
+```
+
+**Guards:**
+
+| When | What |
+|------|------|
+| `pnpm install` in agent-loop | `prepare` builds `dist/` if incomplete |
+| `pnpm install` in consumer | `postinstall` runs `agent-loop-doctor --install-check` |
+| Anytime | `pnpm exec agent-loop-doctor` — dist + `file:` path diagnostics |
+
+If install fails with a stale partial `dist/` in the pnpm store, rebuild agent-loop and reinstall the consumer (doctor prints exact paths).
+
 Requires **Node.js 22+** for ClinePass.
 
 ## Quick start
@@ -122,6 +148,7 @@ See `templates/loop-batch.meta.example.json`.
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop runs |
 | `agent-check cursor\|cline` | SDK + API key smoke |
 | `agent-loop-init` | Scaffold templates |
+| `agent-loop-doctor` | Validate `dist/` + `file:` checkout path (consumer postinstall) |
 
 ## Consumer `package.json` scripts
 

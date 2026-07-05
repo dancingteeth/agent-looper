@@ -1,0 +1,19 @@
+{
+  "required": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "dist/cli/run.js",
+    "dist/cli/run-batch.js",
+    "dist/cli/check.js",
+    "dist/cli/init.js",
+    "dist/cli/review-run.js",
+    "dist/cli/review-preview.js",
+    "dist/cli/doctor.js",
+    "dist/integrations/telegramNotify.js",
+    "dist/loop/loopReport.js",
+    "dist/loop/agentLoop.js",
+    "dist/loop/loopConfig.js",
+    "dist/context/repoContext.js",
+    "templates/agent-loop.repo.json"
+  ]
+}
