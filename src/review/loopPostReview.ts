@@ -3,7 +3,10 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import type { RepoContext } from '../context/repoContext.js'
 import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
+import { CURSOR_LOOP_MODEL } from '../loop/loopAgentConfig.js'
 import { buildQualityReviewPrompt } from './reviewPrompt.js'
+import { parseReviewMarkdown, type ParsedReview } from './reviewVerdict.js'
+import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
 function gitDiffSinceBranchBase(ctx: RepoContext): string {
   const baseBranch = ctx.profile.defaultBranch
@@ -37,6 +40,20 @@ export function buildPostLoopQualityReviewPrompt(ctx: RepoContext, goal: string)
 
 export type PostLoopReviewOptions = {
   verbose?: boolean
+  /** 1-based review cycle; cycle 1 writes review.md, cycle 2+ writes review.N.md */
+  reviewCycle?: number
+}
+
+export type PostLoopReviewResult = {
+  text: string
+  parsed: ParsedReview
+  outPath: string
+  usage?: LoopUsageRecord
+}
+
+export function resolveReviewOutputPath(loopDir: string, reviewCycle = 1): string {
+  const filename = reviewCycle <= 1 ? 'review.md' : `review.${reviewCycle}.md`
+  return path.join(loopDir, filename)
 }
 
 export async function runPostLoopQualityReview(
@@ -44,18 +61,25 @@ export async function runPostLoopQualityReview(
   goal: string,
   ctx: RepoContext,
   options: PostLoopReviewOptions = {},
-): Promise<string> {
+): Promise<PostLoopReviewResult> {
+  const reviewCycle = options.reviewCycle ?? 1
   const prompt = buildPostLoopQualityReviewPrompt(ctx, goal)
-  const text = await runCursorAgentPrompt(ctx, prompt, {
+  const run = await runCursorAgentPrompt(ctx, prompt, {
     verbose: options.verbose,
     assistantOutput: 'none',
+    modelId: CURSOR_LOOP_MODEL,
   })
-  const outPath = path.join(loopDir, 'review.md')
+  const text = run.text
+  const outPath = resolveReviewOutputPath(loopDir, reviewCycle)
   fs.writeFileSync(
     outPath,
     `# Post-loop quality review\n\n_Generated ${new Date().toISOString()}_\n\n${text.trim()}\n`,
     'utf8',
   )
+  const parsed = parseReviewMarkdown(text)
   console.error(`[agent-loop] quality review written: ${path.relative(ctx.repoRoot, outPath)}`)
-  return text
+  console.error(
+    `[agent-loop] quality review verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length}`,
+  )
+  return { text, parsed, outPath, usage: run.usage }
 }

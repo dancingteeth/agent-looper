@@ -2,6 +2,7 @@
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { runLoopBatch, resolveBatchDir } from '../loop/loopBatch.js'
+import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
 
 type CliOptions = {
@@ -75,6 +76,7 @@ try {
     `[agent-loop-batch] finished complete=${result.complete} loopsRun=${result.loopsRun}`,
   )
   console.error(`[agent-loop-batch] reason: ${result.completionReason}`)
+  console.error(`[agent-loop-batch] ${formatUsageSummaryLine(result.usage)}`)
 
   if (!result.complete) {
     process.exit(2)

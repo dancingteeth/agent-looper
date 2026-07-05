@@ -3,6 +3,7 @@ import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { runAgentLoop } from '../loop/agentLoop.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
+import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
 
 type CliOptions = {
@@ -13,10 +14,13 @@ type CliOptions = {
   verify?: string
   finalVerify?: string
   qualityReview?: boolean | 'off'
+  reviewGate?: boolean
   skipSync?: boolean
   runtime?: 'cursor' | 'cline-pass'
   model?: string
   escalateModel?: string
+  mode?: 'forward' | 'reverse'
+  pauseAfterIteration?: boolean
 }
 
 function usage(): string {
@@ -32,10 +36,14 @@ ${printRepoRootHelp()}
   --final-verify <cmd>            Override loop.json finalVerify
   --quality-review                Force advisory post-success review
   --no-quality-review             Skip post-success review
+  --review-gate                   Require review verdict != BLOCKERS to complete
+  --no-review-gate                Disable review gate (default from loop.json)
   --skip-sync                     Do not run repo profile syncCommand
   --runtime <cursor|cline-pass>   Override loop.json runtime
   --model <id>                    Override loop.json model
   --escalate-model <id>           Override loop.json escalateModel
+  --mode <forward|reverse>        Loop mode (default from loop.json)
+  --pause-after-iteration         Wait for Enter between iterations (TTY only)
 
 Each iteration: fresh agent → shell verifier → append log.ndjson`
 }
@@ -49,10 +57,13 @@ function parseArgs(argv: string[]): CliOptions {
   let verify: string | undefined
   let finalVerify: string | undefined
   let qualityReview: boolean | 'off' | undefined
+  let reviewGate: boolean | undefined
   let skipSync = false
   let runtime: CliOptions['runtime']
   let model: string | undefined
   let escalateModel: string | undefined
+  let mode: CliOptions['mode']
+  let pauseAfterIteration: boolean | undefined
 
   for (let i = 0; i < remaining.length; i++) {
     const arg = remaining[i]
@@ -91,6 +102,14 @@ function parseArgs(argv: string[]): CliOptions {
       qualityReview = 'off'
       continue
     }
+    if (arg === '--review-gate') {
+      reviewGate = true
+      continue
+    }
+    if (arg === '--no-review-gate') {
+      reviewGate = false
+      continue
+    }
     if (arg === '--skip-sync') {
       skipSync = true
       continue
@@ -110,6 +129,19 @@ function parseArgs(argv: string[]): CliOptions {
     }
     if (arg === '--escalate-model') {
       escalateModel = remaining[++i]
+      continue
+    }
+    if (arg === '--mode') {
+      const value = remaining[++i]
+      if (value !== 'forward' && value !== 'reverse') {
+        console.error('--mode must be forward or reverse')
+        process.exit(1)
+      }
+      mode = value
+      continue
+    }
+    if (arg === '--pause-after-iteration') {
+      pauseAfterIteration = true
       continue
     }
     if (arg === '--help' || arg === '-h') {
@@ -133,10 +165,13 @@ function parseArgs(argv: string[]): CliOptions {
     verify,
     finalVerify,
     qualityReview,
+    reviewGate,
     skipSync,
     runtime,
     model,
     escalateModel,
+    mode,
+    pauseAfterIteration,
   }
 }
 
@@ -153,10 +188,13 @@ bundle = {
     finalVerify: cli.finalVerify,
     postQualityReview:
       cli.qualityReview === true ? true : cli.qualityReview === 'off' ? false : undefined,
+    reviewGate: cli.reviewGate,
     syncOnSuccess: cli.skipSync ? false : undefined,
     runtime: cli.runtime,
     model: cli.model,
     escalateModel: cli.escalateModel,
+    mode: cli.mode,
+    pauseAfterIteration: cli.pauseAfterIteration,
   }),
 }
 
@@ -166,10 +204,21 @@ console.error(`[agent-loop] verify=${bundle.config.verify}`)
 if (bundle.config.finalVerify) {
   console.error(`[agent-loop] finalVerify=${bundle.config.finalVerify}`)
 }
+if (bundle.config.reviewGate) {
+  console.error(
+    `[agent-loop] reviewGate=true maxReviewCycles=${bundle.config.maxReviewCycles}`,
+  )
+}
 console.error(
   `[agent-loop] runtime=${bundle.config.runtime} model=${bundle.config.model ?? '(default)'}`,
 )
 console.error(`[agent-loop] maxIterations=${bundle.config.maxIterations}`)
+if (bundle.config.mode !== 'forward') {
+  console.error(`[agent-loop] mode=${bundle.config.mode}`)
+}
+if (bundle.config.pauseAfterIteration) {
+  console.error('[agent-loop] pauseAfterIteration=true')
+}
 console.error(`[agent-loop] log=${path.relative(ctx.repoRoot, bundle.logPath)}`)
 
 try {
@@ -177,6 +226,7 @@ try {
 
   console.error(`[agent-loop] finished complete=${result.complete} iterations=${result.iterations}`)
   console.error(`[agent-loop] reason: ${result.completionReason}`)
+  console.error(`[agent-loop] ${formatUsageSummaryLine(result.usage)}`)
 
   if (!result.complete) {
     process.exit(2)

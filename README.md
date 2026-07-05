@@ -61,19 +61,65 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 
 ```
 .cursor/loops/my-task/
-  GOAL.md      # frozen spec
-  loop.json    # verify command, runtime, model, TW uuid
-  log.ndjson   # append-only iteration log
+  GOAL.md                  # frozen spec
+  loop.json                # verify command, runtime, model, TW uuid
+  log.ndjson               # append-only iteration log
+  failure-domains.ndjson   # optional — logged on stagnation / max iterations
+  failure-context.md       # optional — written by meta-loop probe for fix loop
 ```
 
 `loop.json` legacy field `syncPostgres` maps to `syncOnSuccess`.
+
+### loop.json fields (Ralph extensions)
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `mode` | `forward` | `reverse` = clean-room rebuild (see `templates/GOAL.reverse.template.md`) |
+| `pauseAfterIteration` | `false` | Wait for Enter after each iteration (verifier failure or review-gate fix round; TTY only) |
+| `injectFailureContext` | `false` | Read `failure-context.md` into the prompt (meta-loop fix rounds) |
+| `finalVerify` | — | Stricter outer check after inner `verify` passes (e.g. deploy + smoke) |
+
+CLI overrides: `--mode reverse`, `--pause-after-iteration`.
+
+## Ralph loop alignment
+
+This tool implements the [Ralph loop](https://ghuntley.com/loop/) pattern Geoffrey Huntley describes:
+
+- **Monolithic** — one repo, one process, one task per loop (no multi-agent mesh)
+- **Fresh context** each iteration; progress lives in **files and git**, not the context window
+- **Shell backpressure** (`verify` / `finalVerify`) as the deterministic judge
+- **Watch the loop** — `log.ndjson`, stagnation detection, optional `--pause-after-iteration`
+- **Failure domains** — `failure-domains.ndjson` on stagnation, max iterations, or review-gate exhaustion
+- **Meta-loop** — probe → write `failure-context.md` → fix → re-probe (see below)
+
+Forward mode (`mode: forward`) is incremental fix-until-green. Reverse mode (`mode: reverse`) adds clean-room prompt guidance — agents can still read the repo; enforce scope via `verify` and GOAL.md.
+
+## Meta-loop (probe → fix → re-probe)
+
+For system-level verification with automatic fix spawning, use `metaLoop` in `loop-batch.json` instead of a plain `loops` array:
+
+```json
+{
+  "metaLoop": {
+    "probe": "system-smoke",
+    "fix": "fix-from-smoke",
+    "maxCycles": 3
+  },
+  "hitlCheck": "Manual QA after meta-loop",
+  "taskwarriorProject": "loops"
+}
+```
+
+Cycle: run **probe** loop → on failure, write `failure-context.md` to the **fix** bundle → run **fix** with `injectFailureContext` → re-run probe. Stops when probe passes or `maxCycles` is exhausted.
+
+See `templates/loop-batch.meta.example.json`.
 
 ## CLIs
 
 | Command | Description |
 |---------|-------------|
 | `agent-loop run <dir>` | Single loop |
-| `agent-loop-batch <dir>` | `loop-batch.json` sequential runs |
+| `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop runs |
 | `agent-check cursor\|cline` | SDK + API key smoke |
 | `agent-loop-init` | Scaffold templates |
 
@@ -107,10 +153,18 @@ Profile: `"taskwarriorProject": "zwook"`, `"syncCommand": null`.
 ## Architecture
 
 ```
-GOAL.md + loop.json → fresh agent → shell verify (exit 0?) → log.ndjson → repeat
+GOAL.md + loop.json → fresh agent → shell verify (exit 0?) → optional review gate → log.ndjson → repeat
 ```
 
-Post-success (optional): Cursor quality review → `task uuid:… done` → HITL task → `syncCommand`.
+Post-success (optional): Cursor quality review (`composer-2.5` only — **not** Composer Fast) → `review.md`. With **`reviewGate: true`**, verdict **BLOCKERS** injects blockers into the next iteration (up to `maxReviewCycles`); loop completes only on PASS/ADVISORY/UNKNOWN. Without the gate, review is advisory only. Then: `task uuid:… done` → HITL task → `syncCommand`.
+
+On finish, stderr prints token totals and estimated USD (`usage: …`) from ClinePass `getAccumulatedUsage` (official rates for DeepSeek v4 Flash; Composer 2.5 when token data is available).
+
+| Layer | Role | Blocks loop? |
+|-------|------|--------------|
+| Shell `verify` / `finalVerify` | Judge — deterministic | Yes |
+| `postQualityReview` (no gate) | Sensor — advisory LLM | No |
+| `reviewGate: true` | Sensor + gate on BLOCKERS verdict | Yes |
 
 ## License
 

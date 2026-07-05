@@ -8,6 +8,15 @@ const mockClineCreate = vi.fn().mockResolvedValue({
   delete: vi.fn().mockResolvedValue(undefined),
   dispose: mockDispose,
   subscribe: vi.fn(),
+  getAccumulatedUsage: vi.fn().mockResolvedValue({
+    aggregateUsage: {
+      inputTokens: 1000,
+      outputTokens: 200,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      totalCost: 0.0002,
+    },
+  }),
 })
 
 vi.mock('@cline/sdk', () => ({
@@ -56,11 +65,14 @@ describe('clineAgent', () => {
     const { createClineLoopSession } = await import('./clineAgent.js')
     const session = await createClineLoopSession(ctx)
 
-    const text = await session.runPrompt('do work', {
+    const result = await session.runPrompt('do work', {
       modelId: 'cline-pass/deepseek-v4-flash',
       assistantOutput: 'none',
     })
 
-    expect(text).toBe('inline result')
+    expect(result.text).toBe('inline result')
+    expect(result.usage?.inputTokens).toBe(1000)
+    expect(result.usage?.costUsd).toBe(0.0002)
+    expect(result.usage?.costSource).toBe('provider')
   })
 })

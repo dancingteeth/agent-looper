@@ -42,3 +42,15 @@ export function resolvePostQualityReview(
   if (setting === false) return false
   return inferLoopReviewRisk(goal, verify) !== 'low'
 }
+
+export function resolveShouldRunQualityReview(
+  config: {
+    postQualityReview: PostQualityReviewSetting
+    reviewGate: boolean
+  },
+  goal: string,
+  verify: string,
+): boolean {
+  if (config.reviewGate) return true
+  return resolvePostQualityReview(config.postQualityReview, goal, verify)
+}

@@ -1,11 +1,15 @@
 import path from 'node:path'
 import { Agent, CursorAgentError, JsonlLocalAgentStore } from '@cursor/sdk'
 import type { RepoContext } from '../context/repoContext.js'
+import type { AgentRunResult } from './agentRunResult.js'
+import { CURSOR_LOOP_MODEL } from '../loop/loopAgentConfig.js'
 import { printRunStream } from '../stream/streamRun.js'
+import { assertLoopModelAllowed } from '../usage/modelPolicy.js'
 
 export type CursorAgentRunOptions = {
   verbose?: boolean
-  modelId?: 'composer-2.5'
+  /** Loops use composer-2.5 only — never Composer Fast. */
+  modelId?: typeof CURSOR_LOOP_MODEL
   assistantOutput?: 'stdout' | 'none'
 }
 
@@ -21,7 +25,10 @@ export async function runCursorAgentPrompt(
   ctx: RepoContext,
   prompt: string,
   options: CursorAgentRunOptions = {},
-): Promise<string> {
+): Promise<AgentRunResult> {
+  const modelId = options.modelId ?? CURSOR_LOOP_MODEL
+  assertLoopModelAllowed('cursor', modelId)
+
   const apiKey = requireApiKey()
   const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
   const storeDir = path.join(ctx.repoRoot, '.cursor', 'sdk-runs')
@@ -29,7 +36,7 @@ export async function runCursorAgentPrompt(
 
   const agentOptions = {
     apiKey,
-    model: { id: options.modelId ?? ('composer-2.5' as const) },
+    model: { id: modelId },
     local: {
       cwd: ctx.repoRoot,
       autoReview: true,
@@ -40,7 +47,7 @@ export async function runCursorAgentPrompt(
   try {
     await using agent = await Agent.create(agentOptions)
     const run = await agent.send(prompt)
-    console.error(`[agent-loop:cursor] run_id=${run.id} agent_id=${run.agentId}`)
+    console.error(`[agent-loop:cursor] run_id=${run.id} agent_id=${run.agentId} model=${modelId}`)
     await printRunStream(run.stream(), {
       verbose,
       assistantOutput: options.assistantOutput ?? 'stdout',
@@ -58,7 +65,9 @@ export async function runCursorAgentPrompt(
     if (!text) {
       throw new Error('Cursor agent returned empty result')
     }
-    return text
+
+    // Cursor SDK does not expose per-run token usage on RunResult yet.
+    return { text, usage: undefined }
   } catch (err) {
     if (err instanceof CursorAgentError) {
       throw new Error(`Cursor SDK error: ${err.message}`)

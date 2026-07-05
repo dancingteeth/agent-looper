@@ -10,13 +10,39 @@ import {
   taskwarriorProjectSchema,
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
+import { logUsageSummary, mergeUsageSummaries } from '../usage/loopUsage.js'
+import { resolveBatchDir, resolveBatchLoopDir } from './loopBatchPaths.js'
+import { batchLoopConfig } from './loopBatchConfig.js'
+import { metaLoopConfigSchema, runMetaLoop } from './loopMeta.js'
 
-export const loopBatchConfigSchema = z.object({
-  loops: z.array(z.string().min(1)).min(1),
-  hitlCheck: hitlCheckDescriptionSchema.optional(),
-  taskwarriorProject: taskwarriorProjectSchema.optional(),
-  syncOnSuccess: z.boolean().default(true),
-})
+export { metaLoopConfigSchema } from './loopMeta.js'
+export type { MetaLoopConfig } from './loopMeta.js'
+
+export const loopBatchConfigSchema = z
+  .object({
+    loops: z.array(z.string().min(1)).optional(),
+    metaLoop: metaLoopConfigSchema.optional(),
+    hitlCheck: hitlCheckDescriptionSchema.optional(),
+    taskwarriorProject: taskwarriorProjectSchema.optional(),
+    syncOnSuccess: z.boolean().default(true),
+  })
+  .superRefine((config, ctx) => {
+    const hasLoops = (config.loops?.length ?? 0) > 0
+    if (!hasLoops && !config.metaLoop) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'loop-batch.json requires either loops[] or metaLoop',
+        path: ['loops'],
+      })
+    }
+    if (hasLoops && config.metaLoop) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'loop-batch.json: use either loops[] or metaLoop, not both',
+        path: ['metaLoop'],
+      })
+    }
+  })
 
 export type LoopBatchConfig = z.infer<typeof loopBatchConfigSchema>
 
@@ -41,11 +67,7 @@ export type LoopBatchResult = {
   loopsRun: number
   iterations: LoopBatchIteration[]
   completionReason: string
-}
-
-export function resolveBatchDir(batchDirArg: string, repoRoot: string): string {
-  const resolved = path.isAbsolute(batchDirArg) ? batchDirArg : path.join(repoRoot, batchDirArg)
-  return path.resolve(resolved)
+  usage: ReturnType<typeof mergeUsageSummaries>
 }
 
 export function loadLoopBatchConfig(batchDir: string): LoopBatchConfig {
@@ -57,16 +79,7 @@ export function loadLoopBatchConfig(batchDir: string): LoopBatchConfig {
   return parseLoopBatchConfig(raw)
 }
 
-export function resolveBatchLoopDir(loopEntry: string, batchDir: string, repoRoot: string): string {
-  if (path.isAbsolute(loopEntry)) {
-    return path.resolve(loopEntry)
-  }
-  if (loopEntry.startsWith('.cursor/') || loopEntry.startsWith('src/')) {
-    return path.resolve(repoRoot, loopEntry)
-  }
-  const loopsRoot = path.resolve(batchDir, '..')
-  return path.resolve(loopsRoot, loopEntry)
-}
+export { resolveBatchDir, resolveBatchLoopDir } from './loopBatchPaths.js'
 
 export type RunLoopBatchOptions = {
   ctx: RepoContext
@@ -76,23 +89,63 @@ export type RunLoopBatchOptions = {
   onLoopStart?: (loopDir: string, index: number, total: number) => void
 }
 
-function batchLoopConfig(base: LoopConfig): LoopConfig {
-  const { hitlCheck: _omit, ...rest } = base
-  return mergeLoopConfig(rest, { syncOnSuccess: false })
-}
-
 export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBatchResult> {
   const { ctx } = options
   const repoRoot = ctx.repoRoot
   const batchDir = resolveBatchDir(options.batchDir, repoRoot)
   const batchConfig = loadLoopBatchConfig(batchDir)
   const twProject = resolveTaskwarriorProject(batchConfig.taskwarriorProject, ctx.profile)
+
+  if (batchConfig.metaLoop) {
+    const metaResult = await runMetaLoop({
+      ctx,
+      batchDir,
+      meta: batchConfig.metaLoop,
+      verbose: options.verbose ?? false,
+      batchLoopConfig,
+    })
+
+    if (metaResult.complete) {
+      if (batchConfig.hitlCheck) {
+        createHitlCheckTask(batchConfig.hitlCheck, twProject)
+      }
+      const shouldSync = batchConfig.syncOnSuccess && !options.skipSync
+      if (shouldSync && ctx.profile.syncCommand) {
+        runTaskwarriorSync(ctx.profile.syncCommand, repoRoot)
+      } else if (shouldSync) {
+        console.error('[agent-loop] batch sync skipped — no syncCommand in repo profile')
+      }
+    }
+
+    logUsageSummary('agent-loop-batch', metaResult.usage)
+
+    const probeDir = resolveBatchLoopDir(batchConfig.metaLoop.probe, batchDir, repoRoot)
+    const fixDir = resolveBatchLoopDir(batchConfig.metaLoop.fix, batchDir, repoRoot)
+    const iterations: LoopBatchIteration[] = []
+    const lastCycle = metaResult.cycles[metaResult.cycles.length - 1]
+    if (lastCycle) {
+      iterations.push({ loopDir: probeDir, result: lastCycle.probe })
+      if (lastCycle.fix) {
+        iterations.push({ loopDir: fixDir, result: lastCycle.fix })
+      }
+    }
+
+    return {
+      complete: metaResult.complete,
+      loopsRun: metaResult.cyclesRun,
+      iterations,
+      completionReason: metaResult.completionReason,
+      usage: metaResult.usage,
+    }
+  }
+
+  const loops = batchConfig.loops ?? []
   const iterations: LoopBatchIteration[] = []
 
-  for (let i = 0; i < batchConfig.loops.length; i++) {
-    const loopEntry = batchConfig.loops[i]!
+  for (let i = 0; i < loops.length; i++) {
+    const loopEntry = loops[i]!
     const loopDir = resolveBatchLoopDir(loopEntry, batchDir, repoRoot)
-    options.onLoopStart?.(loopDir, i + 1, batchConfig.loops.length)
+    options.onLoopStart?.(loopDir, i + 1, loops.length)
 
     const bundle = loadLoopBundle(loopDir)
     const result = await runAgentLoop({
@@ -104,11 +157,14 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
     iterations.push({ loopDir, result })
 
     if (!result.complete) {
+      const usage = mergeUsageSummaries(...iterations.map((entry) => entry.result.usage))
+      logUsageSummary('agent-loop-batch', usage)
       return {
         complete: false,
         loopsRun: i + 1,
         iterations,
-        completionReason: `Loop ${i + 1}/${batchConfig.loops.length} failed: ${result.completionReason}`,
+        completionReason: `Loop ${i + 1}/${loops.length} failed: ${result.completionReason}`,
+        usage,
       }
     }
   }
@@ -124,10 +180,14 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
     console.error('[agent-loop] batch sync skipped — no syncCommand in repo profile')
   }
 
+  const usage = mergeUsageSummaries(...iterations.map((entry) => entry.result.usage))
+  logUsageSummary('agent-loop-batch', usage)
+
   return {
     complete: true,
-    loopsRun: batchConfig.loops.length,
+    loopsRun: loops.length,
     iterations,
-    completionReason: `All ${batchConfig.loops.length} loops passed.`,
+    completionReason: `All ${loops.length} loops passed.`,
+    usage,
   }
 }

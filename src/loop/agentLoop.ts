@@ -6,15 +6,27 @@ import type { LoadedLoopBundle } from '../loop/loopConfig.js'
 import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
 import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
 import { runPostLoopQualityReview } from '../review/loopPostReview.js'
-import { resolvePostQualityReview } from '../loop/loopRisk.js'
+import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
+import type { ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
 import { detectStagnation } from '../loop/loopStagnation.js'
 import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
+import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
+import { readFailureContext } from '../loop/loopFailureContext.js'
+import { pauseForContinue } from '../loop/loopPause.js'
 import {
   createHitlCheckTask,
   markTaskwarriorDoneByUuid,
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
 import { runVerifyCommand, type VerifyResult } from '../loop/loopVerify.js'
+import type { AgentRunResult } from '../agents/agentRunResult.js'
+import {
+  addUsageRecord,
+  emptyUsageSummary,
+  logUsageSummary,
+  type LoopUsageRecord,
+  type LoopUsageSummary,
+} from '../usage/loopUsage.js'
 
 export type LoopIterationLog = {
   at: string
@@ -24,6 +36,13 @@ export type LoopIterationLog = {
   verify: VerifyResult
   finalVerify?: VerifyResult
   assistantPreview: string
+  review?: {
+    verdict: ReviewVerdict
+    risk: ReviewRisk
+    blockersCount: number
+    reviewCycle?: number
+  }
+  usage?: LoopUsageRecord
 }
 
 export type AgentLoopResult = {
@@ -32,6 +51,7 @@ export type AgentLoopResult = {
   completionReason: string
   lastVerify: VerifyResult | null
   logPath: string
+  usage: LoopUsageSummary
 }
 
 export type AgentLoopOptions = {
@@ -56,7 +76,7 @@ async function runIterationWithRetry(
   prompt: string,
   iterationAgent: ResolvedLoopAgent,
   options: { verbose?: boolean; assistantOutput?: 'stdout' | 'none' },
-): Promise<string> {
+): Promise<AgentRunResult> {
   let lastError: unknown
   for (let attempt = 0; attempt <= SDK_RETRY_DELAYS_MS.length; attempt++) {
     try {
@@ -101,6 +121,26 @@ function maybeRunSync(ctx: RepoContext, enabled: boolean): void {
   runTaskwarriorSync(syncCommand, ctx.repoRoot)
 }
 
+async function maybePauseAfterIteration(
+  config: LoadedLoopBundle['config'],
+  iteration: number,
+): Promise<void> {
+  if (config.pauseAfterIteration && iteration < config.maxIterations) {
+    await pauseForContinue(iteration, config.maxIterations)
+  }
+}
+
+function readInjectedFailureContext(loopDir: string, enabled: boolean): string | undefined {
+  if (!enabled) return undefined
+  const context = readFailureContext(loopDir)
+  if (!context) {
+    console.error(
+      '[agent-loop] injectFailureContext=true but failure-context.md is missing or empty',
+    )
+  }
+  return context
+}
+
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopResult> {
   const { ctx, bundle, verbose = false } = options
   const { repoRoot } = ctx
@@ -116,7 +156,18 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const priorFailures: VerifyResult[] = []
   let lastVerify: VerifyResult | null = null
   let iterations = 0
+  let reviewBlockers: string[] | undefined
+  let reviewCyclesUsed = 0
+  let usageSummary = emptyUsageSummary()
   const stagnationThreshold = config.stagnationThreshold
+
+  const finish = (
+    result: Omit<AgentLoopResult, 'usage'> & { usage?: LoopUsageSummary },
+  ): AgentLoopResult => {
+    const usage = result.usage ?? usageSummary
+    logUsageSummary('agent-loop', usage)
+    return { ...result, usage }
+  }
 
   try {
     for (let i = 1; i <= config.maxIterations; i++) {
@@ -128,6 +179,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       const iterationAgent = resolveIterationAgent(config, stagnation.escalationRepeatCount)
 
       const git = captureGitWorkspaceSnapshot(repoRoot)
+      const failureContext = readInjectedFailureContext(
+        bundle.loopDir,
+        config.injectFailureContext,
+      )
       const prompt = buildAgentLoopPrompt({
         goal,
         iteration: i,
@@ -137,12 +192,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         priorFailures: priorFailures.slice(-3),
         stagnationRepeatCount: stagnation.promptRepeatCount,
         agentsFile: ctx.profile.agentsFile,
+        reviewBlockers,
+        mode: config.mode,
+        failureContext,
       })
 
       console.error(
         `[agent-loop] iteration ${i}/${config.maxIterations} — ${iterationAgent.runtime} ${iterationAgent.model} (fresh context)`,
       )
-      const assistantText = await runIterationWithRetry(
+      const assistantRun = await runIterationWithRetry(
         agentSession,
         prompt,
         iterationAgent,
@@ -151,6 +209,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           assistantOutput: 'none',
         },
       )
+      usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+      const assistantText = assistantRun.text
 
       if (config.delayMs > 0) {
         await sleep(config.delayMs)
@@ -169,6 +229,127 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       const passed = finalVerify ? finalVerify.complete : verify.complete
 
+      let reviewLog: LoopIterationLog['review'] | undefined
+
+      if (passed) {
+        const shouldRunReview = resolveShouldRunQualityReview(config, goal, config.verify)
+        if (shouldRunReview) {
+          const reviewCycle = reviewCyclesUsed + 1
+          const reviewLabel = config.reviewGate
+            ? 'post-success quality review (gated, Cursor SDK)'
+            : 'post-success quality review (advisory, Cursor SDK)'
+          console.error(`[agent-loop] ${reviewLabel}`)
+          try {
+            const reviewResult = await runPostLoopQualityReview(bundle.loopDir, goal, ctx, {
+              verbose,
+              reviewCycle,
+            })
+            usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
+            const { parsed } = reviewResult
+            reviewLog = {
+              verdict: parsed.verdict,
+              risk: parsed.risk,
+              blockersCount: parsed.blockers.length,
+              reviewCycle,
+            }
+
+            if (config.reviewGate && parsed.verdict === 'BLOCKERS') {
+              reviewCyclesUsed++
+              if (reviewCyclesUsed >= config.maxReviewCycles) {
+                appendLog(logPath, {
+                  at: new Date().toISOString(),
+                  iteration: i,
+                  branch: git.branch,
+                  shortSha: git.shortSha,
+                  verify,
+                  ...(finalVerify ? { finalVerify } : {}),
+                  assistantPreview: previewAssistant(assistantText),
+                  review: reviewLog,
+                  ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
+                })
+                console.error(
+                  `[agent-loop] review gate: BLOCKERS after ${reviewCyclesUsed} review cycle(s) — stopping`,
+                )
+                logFailureDomainFromVerify(bundle.loopDir, {
+                  iteration: i,
+                  reason: 'review_gate',
+                  verify: finalVerify ?? verify,
+                })
+                return finish({
+                  complete: false,
+                  iterations: i,
+                  completionReason: `Review gate: BLOCKERS after ${reviewCyclesUsed} review cycle(s). See review.md and fix blockers manually or increase maxReviewCycles.`,
+                  lastVerify,
+                  logPath,
+                })
+              }
+              reviewBlockers = parsed.blockers
+              appendLog(logPath, {
+                at: new Date().toISOString(),
+                iteration: i,
+                branch: git.branch,
+                shortSha: git.shortSha,
+                verify,
+                ...(finalVerify ? { finalVerify } : {}),
+                assistantPreview: previewAssistant(assistantText),
+                review: reviewLog,
+                ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
+              })
+              console.error(
+                `[agent-loop] review gate: BLOCKERS (${parsed.blockers.length} items) — continuing for fix round ${reviewCyclesUsed}/${config.maxReviewCycles}`,
+              )
+              await maybePauseAfterIteration(config, i)
+              continue
+            }
+
+            if (config.reviewGate && parsed.verdict === 'UNKNOWN') {
+              console.error(
+                '[agent-loop] review gate: could not parse verdict — treating as non-blocking (check review.md)',
+              )
+            }
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            if (config.reviewGate) {
+              console.error(`[agent-loop] review gate: quality review failed — stopping: ${message}`)
+              return finish({
+                complete: false,
+                iterations: i,
+                completionReason: `Review gate: quality review failed: ${message}`,
+                lastVerify,
+                logPath,
+              })
+            }
+            console.error(`[agent-loop] quality review failed (non-blocking): ${message}`)
+          }
+        }
+
+        appendLog(logPath, {
+          at: new Date().toISOString(),
+          iteration: i,
+          branch: git.branch,
+          shortSha: git.shortSha,
+          verify,
+          ...(finalVerify ? { finalVerify } : {}),
+          assistantPreview: previewAssistant(assistantText),
+          ...(reviewLog ? { review: reviewLog } : {}),
+          ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
+        })
+        if (config.taskwarriorUuid) {
+          markTaskwarriorDoneByUuid(config.taskwarriorUuid)
+        }
+        if (config.hitlCheck) {
+          createHitlCheckTask(config.hitlCheck, twProject)
+        }
+        maybeRunSync(ctx, config.syncOnSuccess)
+        return finish({
+          complete: true,
+          iterations: i,
+          completionReason: lastVerify!.reason,
+          lastVerify,
+          logPath,
+        })
+      }
+
       appendLog(logPath, {
         at: new Date().toISOString(),
         iteration: i,
@@ -177,64 +358,50 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         verify,
         ...(finalVerify ? { finalVerify } : {}),
         assistantPreview: previewAssistant(assistantText),
+        ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
       })
-
-      if (passed) {
-        const runQualityReview = resolvePostQualityReview(
-          config.postQualityReview,
-          goal,
-          config.verify,
-        )
-        if (runQualityReview) {
-          console.error('[agent-loop] post-success quality review (advisory, Cursor SDK)')
-          try {
-            await runPostLoopQualityReview(bundle.loopDir, goal, ctx, { verbose })
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
-            console.error(`[agent-loop] quality review failed (non-blocking): ${message}`)
-          }
-        }
-        if (config.taskwarriorUuid) {
-          markTaskwarriorDoneByUuid(config.taskwarriorUuid)
-        }
-        if (config.hitlCheck) {
-          createHitlCheckTask(config.hitlCheck, twProject)
-        }
-        maybeRunSync(ctx, config.syncOnSuccess)
-        return {
-          complete: true,
-          iterations: i,
-          completionReason: lastVerify.reason,
-          lastVerify,
-          logPath,
-        }
-      }
 
       priorFailures.push(lastVerify!)
       console.error(`[agent-loop] iteration ${i} failed — ${lastVerify!.reason}`)
+
+      await maybePauseAfterIteration(config, i)
 
       const afterFailure = detectStagnation(priorFailures, stagnationThreshold)
       if (afterFailure.stagnant) {
         console.error(
           `[agent-loop] stagnation: same verifier failure ${afterFailure.repeatCount} times — stopping early`,
         )
-        return {
+        logFailureDomainFromVerify(bundle.loopDir, {
+          iteration: i,
+          reason: 'stagnation',
+          verify: lastVerify!,
+          repeatCount: afterFailure.repeatCount,
+        })
+        return finish({
           complete: false,
           iterations: i,
           completionReason: `Stagnation: verifier failed ${afterFailure.repeatCount} times with the same output. Update GOAL.md/verify, fix manually, or set stagnationThreshold: 0 to disable.`,
           lastVerify,
           logPath,
-        }
+        })
       }
     }
 
-    return {
+    if (lastVerify) {
+      logFailureDomainFromVerify(bundle.loopDir, {
+        iteration: iterations,
+        reason: 'max_iterations',
+        verify: lastVerify,
+      })
+    }
+
+    return finish({
       complete: false,
       iterations,
       completionReason: `Max iterations (${config.maxIterations}) reached without passing verifier.`,
       lastVerify,
       logPath,
-    }
+    })
   } finally {
     await agentSession.dispose()
   }

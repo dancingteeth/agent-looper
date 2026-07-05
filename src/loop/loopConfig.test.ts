@@ -58,6 +58,56 @@ describe('loopConfigSchema', () => {
     expect(parsed.stagnationThreshold).toBe(3)
   })
 
+  it('defaults reviewGate to false and maxReviewCycles to 2', () => {
+    const parsed = loopConfigSchema.parse({ verify: 'true' })
+    expect(parsed.reviewGate).toBe(false)
+    expect(parsed.maxReviewCycles).toBe(2)
+  })
+
+  it('defaults mode to forward and pauseAfterIteration to false', () => {
+    const parsed = loopConfigSchema.parse({ verify: 'true' })
+    expect(parsed.mode).toBe('forward')
+    expect(parsed.pauseAfterIteration).toBe(false)
+    expect(parsed.injectFailureContext).toBe(false)
+  })
+
+  it('accepts reverse mode and injectFailureContext', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      mode: 'reverse',
+      injectFailureContext: true,
+      pauseAfterIteration: true,
+    })
+    expect(parsed.mode).toBe('reverse')
+    expect(parsed.injectFailureContext).toBe(true)
+    expect(parsed.pauseAfterIteration).toBe(true)
+  })
+
+  it('accepts reviewGate and maxReviewCycles overrides', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      reviewGate: true,
+      maxReviewCycles: 3,
+    })
+    expect(parsed.reviewGate).toBe(true)
+    expect(parsed.maxReviewCycles).toBe(3)
+  })
+
+  it('rejects maxReviewCycles outside 1..5', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        maxReviewCycles: 0,
+      }),
+    ).toThrow()
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        maxReviewCycles: 6,
+      }),
+    ).toThrow()
+  })
+
   it('rejects numeric taskwarriorUuid', () => {
     expect(() =>
       loopConfigSchema.parse({
@@ -74,6 +124,16 @@ describe('loopConfigSchema', () => {
         taskwarriorProject: 'my project',
       }),
     ).toThrow(/spaces/i)
+  })
+
+  it('rejects Composer Fast models for cursor runtime', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        runtime: 'cursor',
+        model: 'composer-2.5-fast',
+      }),
+    ).toThrow(/banned/i)
   })
 })
 

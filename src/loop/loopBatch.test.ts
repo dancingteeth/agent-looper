@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   loopBatchConfigSchema,
   parseLoopBatchConfig,
-  resolveBatchLoopDir,
 } from './loopBatch.js'
+import { resolveBatchLoopDir } from './loopBatchPaths.js'
 
 describe('loopBatchConfigSchema', () => {
   it('requires at least one loop', () => {
@@ -36,6 +36,27 @@ describe('loopBatchConfigSchema', () => {
         taskwarriorProject: 'my project',
       }),
     ).toThrow(/spaces/i)
+  })
+
+  it('accepts metaLoop instead of loops', () => {
+    const parsed = loopBatchConfigSchema.parse({
+      metaLoop: { probe: 'system-smoke', fix: 'fix-smoke', maxCycles: 2 },
+    })
+    expect(parsed.metaLoop?.probe).toBe('system-smoke')
+    expect(parsed.metaLoop?.maxCycles).toBe(2)
+  })
+
+  it('requires loops or metaLoop', () => {
+    expect(() => loopBatchConfigSchema.parse({})).toThrow(/loops|metaLoop/i)
+  })
+
+  it('rejects both loops and metaLoop', () => {
+    expect(() =>
+      loopBatchConfigSchema.parse({
+        loops: ['affiliate-vitest'],
+        metaLoop: { probe: 'smoke', fix: 'fix-smoke' },
+      }),
+    ).toThrow(/not both/i)
   })
 })
 

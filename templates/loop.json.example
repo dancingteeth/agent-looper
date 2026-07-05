@@ -3,6 +3,12 @@
   "model": "cline-pass/deepseek-v4-flash",
   "maxIterations": 8,
   "verify": "echo 'replace with your test command'",
+  "postQualityReview": "auto",
+  "reviewGate": false,
+  "maxReviewCycles": 2,
   "syncOnSuccess": false,
-  "stagnationThreshold": 3
+  "stagnationThreshold": 3,
+  "mode": "forward",
+  "pauseAfterIteration": false,
+  "injectFailureContext": false
 }

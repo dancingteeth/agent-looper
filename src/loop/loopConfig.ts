@@ -12,6 +12,7 @@ import {
   taskwarriorUuidSchema,
 } from '../integrations/taskwarrior.js'
 import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.js'
+import { loopModeSchema } from './loopMode.js'
 
 export const loopRuntimeSchema = z.enum([LOOP_RUNTIME_CURSOR, LOOP_RUNTIME_CLINE_PASS])
 
@@ -29,10 +30,20 @@ export const loopConfigSchema = z
     taskwarriorProject: taskwarriorProjectSchema.optional(),
     delayMs: z.number().int().min(0).max(60_000).default(1500),
     postQualityReview: z.union([z.boolean(), z.literal('auto')]).default('auto'),
+    /** When true, post-success review must not return BLOCKERS to complete the loop. */
+    reviewGate: z.boolean().default(false),
+    /** Max review-triggered fix rounds when reviewGate is on (each cycle re-runs review). */
+    maxReviewCycles: z.number().int().min(1).max(5).default(2),
     /** Run repo profile syncCommand after success. Legacy alias: syncPostgres. */
     syncOnSuccess: z.boolean().default(true),
     hitlCheck: hitlCheckDescriptionSchema.optional(),
     stagnationThreshold: z.number().int().min(0).max(10).default(3),
+    /** forward = incremental fix; reverse = clean-room rebuild toward goal. */
+    mode: loopModeSchema,
+    /** Wait for Enter between iterations (watch-the-loop tuning). Skipped when stdin is not a TTY. */
+    pauseAfterIteration: z.boolean().default(false),
+    /** Read failure-context.md written by a meta-loop probe into the prompt. */
+    injectFailureContext: z.boolean().default(false),
   })
   .superRefine((config, ctx) => {
     try {
@@ -118,11 +129,16 @@ export function mergeLoopConfig(
       | 'verify'
       | 'finalVerify'
       | 'postQualityReview'
+      | 'reviewGate'
+      | 'maxReviewCycles'
       | 'syncOnSuccess'
       | 'runtime'
       | 'model'
       | 'escalateModel'
       | 'taskwarriorProject'
+      | 'mode'
+      | 'pauseAfterIteration'
+      | 'injectFailureContext'
     >
   >,
 ): LoopConfig {

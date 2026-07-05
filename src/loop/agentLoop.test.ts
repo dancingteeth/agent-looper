@@ -14,6 +14,7 @@ import { runAgentLoop } from './agentLoop.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
 import { runPostLoopQualityReview } from '../review/loopPostReview.js'
+import type { PostLoopReviewResult } from '../review/loopPostReview.js'
 
 vi.mock('../agents/agentRunner.js', () => ({
   createLoopAgentSession: vi.fn(),
@@ -100,7 +101,22 @@ function makeBundle(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function mockSession(runIterationPrompt = vi.fn().mockResolvedValue('assistant ok')) {
+function reviewResult(
+  verdict: 'PASS' | 'ADVISORY' | 'BLOCKERS' | 'UNKNOWN',
+  blockers: string[] = [],
+): PostLoopReviewResult {
+  return {
+    text: `### Verdict\n**${verdict}**\n\n### Blockers\n${blockers.map((b) => `- ${b}`).join('\n')}`,
+    parsed: {
+      verdict,
+      risk: 'medium',
+      blockers,
+    },
+    outPath: path.join(tmpLoopDir, 'review.md'),
+  }
+}
+
+function mockSession(runIterationPrompt = vi.fn().mockResolvedValue({ text: 'assistant ok' })) {
   const dispose = vi.fn().mockResolvedValue(undefined)
   mockedCreateSession.mockResolvedValue({
     runIterationPrompt,
@@ -200,7 +216,7 @@ describe('runAgentLoop', () => {
     const runIterationPrompt = vi
       .fn()
       .mockRejectedValueOnce(new Error('rate limit exceeded'))
-      .mockResolvedValueOnce('recovered')
+      .mockResolvedValueOnce({ text: 'recovered' })
     mockSession(runIterationPrompt)
     mockedRunVerify.mockReturnValue(passVerify())
 
@@ -261,5 +277,77 @@ describe('runAgentLoop', () => {
       }),
     ).rejects.toThrow(/shell exploded/)
     expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it('continues loop when review gate returns BLOCKERS then completes on PASS', async () => {
+    const { runIterationPrompt } = mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview)
+      .mockResolvedValueOnce({
+        ...reviewResult('BLOCKERS', ['[must-fix] **Docs missing** — README still template']),
+        outPath: path.join(tmpLoopDir, 'review.md'),
+      })
+      .mockResolvedValueOnce({
+        ...reviewResult('PASS'),
+        outPath: path.join(tmpLoopDir, 'review.2.md'),
+      })
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        maxReviewCycles: 2,
+        maxIterations: 4,
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(result.iterations).toBe(2)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
+    const secondPrompt = runIterationPrompt.mock.calls[1]?.[0] as string
+    expect(secondPrompt).toContain('Review blockers (must fix)')
+    expect(secondPrompt).toContain('Docs missing')
+    expect(result.usage.records.length).toBeGreaterThanOrEqual(0)
+    expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
+  })
+
+  it('exits incomplete when review gate exhausts maxReviewCycles on BLOCKERS', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Unit guard** — verify doc.unit']),
+    )
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        maxReviewCycles: 2,
+        maxIterations: 5,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/Review gate: BLOCKERS/)
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
+  })
+
+  it('exits incomplete when review gate is on and quality review throws', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockRejectedValue(new Error('Cursor SDK unavailable'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        maxReviewCycles: 2,
+        maxIterations: 3,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/Review gate: quality review failed/)
+    expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
   })
 })

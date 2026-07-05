@@ -1,4 +1,5 @@
 import type { LoopConfig } from '../loop/loopConfig.js'
+import { assertLoopModelAllowed } from '../usage/modelPolicy.js'
 
 export const LOOP_RUNTIME_CURSOR = 'cursor' as const
 export const LOOP_RUNTIME_CLINE_PASS = 'cline-pass' as const
@@ -50,13 +51,9 @@ function assertClinePassModel(model: string, field: 'model' | 'escalateModel'): 
 export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
   const runtime = config.runtime ?? LOOP_RUNTIME_CURSOR
   const model = config.model ?? defaultModelForRuntime(runtime)
+  assertLoopModelAllowed(runtime, model)
 
   if (runtime === LOOP_RUNTIME_CURSOR) {
-    if (model !== CURSOR_LOOP_MODEL) {
-      throw new Error(
-        `loop.json model must be "${CURSOR_LOOP_MODEL}" for runtime "cursor" (got "${model}")`,
-      )
-    }
     return { runtime, model: CURSOR_LOOP_MODEL }
   }
 
@@ -96,6 +93,7 @@ export function resolveIterationAgent(
     escalationRepeatCount !== undefined &&
     escalationRepeatCount >= threshold
   ) {
+    assertLoopModelAllowed(base.runtime, escalateModel)
     return { runtime: base.runtime, model: assertClinePassModel(escalateModel, 'escalateModel') }
   }
 

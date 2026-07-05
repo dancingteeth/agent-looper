@@ -1,9 +1,11 @@
 import { ClineCore, type CoreSessionEvent, type ClineCore as ClineCoreType } from '@cline/sdk'
 import type { RepoContext } from '../context/repoContext.js'
+import type { AgentRunResult } from './agentRunResult.js'
 import { handleClineSessionEvent } from '../stream/streamClineSession.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { CLINE_LOOP_TOOL_POLICIES } from './loopToolPolicy.js'
 import { assertPosixShell } from './shellPreflight.js'
+import { createUsageRecord } from '../usage/loopUsage.js'
 
 const CLINE_INNER_MAX_ITERATIONS = 25
 const SESSION_TIMEOUT_MS = 45 * 60 * 1000
@@ -12,6 +14,7 @@ export type ClineAgentRunOptions = {
   verbose?: boolean
   modelId: string
   assistantOutput?: 'stdout' | 'none'
+  phase?: 'implement' | 'review'
 }
 
 function requireClineApiKey(): string {
@@ -20,6 +23,32 @@ function requireClineApiKey(): string {
     throw new Error('CLINE_API_KEY is not set. Run via doppler or agent-check cline')
   }
   return apiKey
+}
+
+async function readSessionUsage(
+  cline: ClineCoreType,
+  sessionId: string,
+  modelId: string,
+  phase: 'implement' | 'review',
+): Promise<AgentRunResult['usage']> {
+  try {
+    const summary = await cline.getAccumulatedUsage(sessionId)
+    const usage = summary?.aggregateUsage ?? summary?.usage
+    if (!usage) return undefined
+
+    return createUsageRecord({
+      phase,
+      runtime: 'cline-pass',
+      model: modelId,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheWriteTokens: usage.cacheWriteTokens,
+      providerCostUsd: usage.totalCost,
+    })
+  } catch {
+    return undefined
+  }
 }
 
 function waitForClineSession(
@@ -92,7 +121,7 @@ function extractTextFromMessageContent(content: unknown): string {
 }
 
 export type ClineLoopSession = {
-  runPrompt(prompt: string, options: ClineAgentRunOptions): Promise<string>
+  runPrompt(prompt: string, options: ClineAgentRunOptions): Promise<AgentRunResult>
   dispose(): Promise<void>
 }
 
@@ -111,6 +140,7 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
     async runPrompt(prompt, options) {
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const assistantOutput = options.assistantOutput ?? 'stdout'
+      const phase = options.phase ?? 'implement'
 
       const started = await cline.start({
         prompt,
@@ -134,12 +164,22 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
 
       console.error(`[agent-loop:cline] session_id=${started.sessionId} model=${options.modelId}`)
 
-      if (started.result?.text?.trim()) {
-        return started.result.text.trim()
-      }
-
       try {
-        return await waitForClineSession(cline, started.sessionId, { verbose, assistantOutput })
+        let text: string
+        if (started.result?.text?.trim()) {
+          text = started.result.text.trim()
+        } else {
+          text = await waitForClineSession(cline, started.sessionId, { verbose, assistantOutput })
+        }
+
+        const usage = await readSessionUsage(cline, started.sessionId, options.modelId, phase)
+        if (usage) {
+          console.error(
+            `[agent-loop:cline] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
+          )
+        }
+
+        return { text, usage }
       } finally {
         await cline.stop(started.sessionId).catch(() => undefined)
         await cline.delete(started.sessionId).catch(() => undefined)
@@ -155,7 +195,7 @@ export async function runClineAgentPrompt(
   ctx: RepoContext,
   prompt: string,
   options: ClineAgentRunOptions,
-): Promise<string> {
+): Promise<AgentRunResult> {
   const session = await createClineLoopSession(ctx)
   try {
     return await session.runPrompt(prompt, options)

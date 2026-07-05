@@ -1,6 +1,7 @@
 import type { RepoContext } from '../context/repoContext.js'
 import { createClineLoopSession, type ClineLoopSession } from './clineAgent.js'
 import { runCursorAgentPrompt } from './cursorAgent.js'
+import type { AgentRunResult } from './agentRunResult.js'
 import {
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
@@ -13,20 +14,21 @@ import type { LoopConfig } from '../loop/loopConfig.js'
 export type AgentPromptOptions = {
   verbose?: boolean
   assistantOutput?: 'stdout' | 'none'
+  phase?: 'implement' | 'review'
 }
 
 type PromptRunner = (
   prompt: string,
   agent: ResolvedLoopAgent,
   options: AgentPromptOptions,
-) => Promise<string>
+) => Promise<AgentRunResult>
 
 export type LoopAgentSession = {
   runIterationPrompt(
     prompt: string,
     agent: ResolvedLoopAgent,
     options: AgentPromptOptions,
-  ): Promise<string>
+  ): Promise<AgentRunResult>
   dispose(): Promise<void>
 }
 
@@ -49,6 +51,7 @@ function createClineRunner(cline: ClineLoopSession): PromptRunner {
       verbose: options.verbose,
       modelId: agent.model,
       assistantOutput: options.assistantOutput,
+      phase: options.phase ?? 'implement',
     })
 }
 

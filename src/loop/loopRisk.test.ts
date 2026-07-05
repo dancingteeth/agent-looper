@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { inferLoopReviewRisk, resolvePostQualityReview } from './loopRisk.js'
+import { inferLoopReviewRisk, resolvePostQualityReview, resolveShouldRunQualityReview } from './loopRisk.js'
 
 describe('loopRisk', () => {
   it('classifies checkout/affiliate loops as medium or high', () => {
@@ -21,5 +21,17 @@ describe('loopRisk', () => {
     const verify = 'pnpm exec vitest run src/loop/'
     expect(resolvePostQualityReview(false, goal, verify)).toBe(false)
     expect(resolvePostQualityReview(true, goal, verify)).toBe(true)
+  })
+
+  it('runs review when reviewGate is on regardless of risk', () => {
+    const goal = 'docs only'
+    const verify = 'pnpm exec vitest run src/loop/'
+    expect(
+      resolveShouldRunQualityReview(
+        { postQualityReview: 'auto', reviewGate: true },
+        goal,
+        verify,
+      ),
+    ).toBe(true)
   })
 })

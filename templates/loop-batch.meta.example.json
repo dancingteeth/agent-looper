@@ -1,0 +1,10 @@
+{
+  "metaLoop": {
+    "probe": "system-smoke",
+    "fix": "fix-from-smoke",
+    "maxCycles": 3
+  },
+  "hitlCheck": "Manual QA after meta-loop system verification",
+  "taskwarriorProject": "loops",
+  "syncOnSuccess": true
+}

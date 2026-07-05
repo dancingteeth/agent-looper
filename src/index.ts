@@ -10,8 +10,32 @@ export {
 export { runAgentLoop } from './loop/agentLoop.js'
 export type { AgentLoopResult, AgentLoopOptions, LoopIterationLog } from './loop/agentLoop.js'
 
-export { runLoopBatch } from './loop/loopBatch.js'
-export type { LoopBatchResult, RunLoopBatchOptions } from './loop/loopBatch.js'
+export { runLoopBatch, loadLoopBatchConfig, parseLoopBatchConfig, loopBatchConfigSchema } from './loop/loopBatch.js'
+export type { LoopBatchResult, RunLoopBatchOptions, LoopBatchConfig } from './loop/loopBatch.js'
+
+export { runMetaLoop, metaLoopConfigSchema } from './loop/loopMeta.js'
+export { batchLoopConfig, batchLoopConfig as metaBatchLoopConfig } from './loop/loopBatchConfig.js'
+export type { MetaLoopConfig, MetaLoopResult } from './loop/loopMeta.js'
+
+export { LOOP_MODE_FORWARD, LOOP_MODE_REVERSE, loopModeSchema } from './loop/loopMode.js'
+export type { LoopMode } from './loop/loopMode.js'
+
+export {
+  appendFailureDomain,
+  failureDomainsPath,
+  logFailureDomainFromVerify,
+  FAILURE_DOMAINS_FILENAME,
+} from './loop/loopFailureDomain.js'
+export type { FailureDomainEntry, FailureDomainReason } from './loop/loopFailureDomain.js'
+
+export {
+  writeFailureContext,
+  readFailureContext,
+  failureContextPath,
+  FAILURE_CONTEXT_FILENAME,
+} from './loop/loopFailureContext.js'
+
+export { pauseForContinue } from './loop/loopPause.js'
 
 export {
   loadLoopBundle,
@@ -35,7 +59,7 @@ export type { VerifyResult } from './loop/loopVerify.js'
 export { buildAgentLoopPrompt } from './loop/loopPrompt.js'
 export { detectStagnation } from './loop/loopStagnation.js'
 export { validateGoalPreflight } from './loop/loopPreflight.js'
-export { inferLoopReviewRisk, resolvePostQualityReview } from './loop/loopRisk.js'
+export { inferLoopReviewRisk, resolvePostQualityReview, resolveShouldRunQualityReview } from './loop/loopRisk.js'
 export type { LoopReviewRisk, PostQualityReviewSetting } from './loop/loopRisk.js'
 
 export { runCursorAgentPrompt } from './agents/cursorAgent.js'
@@ -53,4 +77,27 @@ export {
 export {
   buildPostLoopQualityReviewPrompt,
   runPostLoopQualityReview,
+  resolveReviewOutputPath,
 } from './review/loopPostReview.js'
+export type { PostLoopReviewOptions, PostLoopReviewResult } from './review/loopPostReview.js'
+
+export {
+  parseReviewMarkdown,
+  reviewVerdictAllowsCompletion,
+} from './review/reviewVerdict.js'
+export type { ParsedReview, ReviewRisk, ReviewVerdict } from './review/reviewVerdict.js'
+
+export {
+  addUsageRecord,
+  createUsageRecord,
+  emptyUsageSummary,
+  estimateCostUsd,
+  formatUsageSummaryLine,
+  logUsageSummary,
+  mergeUsageSummaries,
+  MODEL_PRICING_PER_MILLION,
+  summarizeUsageRecords,
+} from './usage/loopUsage.js'
+export type { AgentRunPhase, LoopUsageRecord, LoopUsageSummary } from './usage/loopUsage.js'
+
+export { assertLoopModelAllowed, isBannedCursorLoopModel } from './usage/modelPolicy.js'

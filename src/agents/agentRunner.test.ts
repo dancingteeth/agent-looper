@@ -21,9 +21,9 @@ const testCtx = {
 describe('createLoopAgentSession', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    runCursorAgentPrompt.mockResolvedValue('cursor-ok')
+    runCursorAgentPrompt.mockResolvedValue({ text: 'cursor-ok' })
     createClineLoopSession.mockResolvedValue({
-      runPrompt: vi.fn().mockResolvedValue('cline-ok'),
+      runPrompt: vi.fn().mockResolvedValue({ text: 'cline-ok' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     })
   })
@@ -33,13 +33,13 @@ describe('createLoopAgentSession', () => {
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
     const session = await createLoopAgentSession(config, testCtx)
 
-    const text = await session.runIterationPrompt(
+    const result = await session.runIterationPrompt(
       'prompt',
       { runtime: 'cursor', model: 'composer-2.5' },
       { assistantOutput: 'none' },
     )
 
-    expect(text).toBe('cursor-ok')
+    expect(result.text).toBe('cursor-ok')
     expect(runCursorAgentPrompt).toHaveBeenCalledOnce()
     expect(createClineLoopSession).not.toHaveBeenCalled()
     await session.dispose()
@@ -49,19 +49,19 @@ describe('createLoopAgentSession', () => {
     const { createLoopAgentSession } = await import('./agentRunner.js')
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline-pass' })
     const clineSession = {
-      runPrompt: vi.fn().mockResolvedValue('cline-ok'),
+      runPrompt: vi.fn().mockResolvedValue({ text: 'cline-ok' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     }
     createClineLoopSession.mockResolvedValue(clineSession)
 
     const session = await createLoopAgentSession(config, testCtx)
-    const text = await session.runIterationPrompt(
+    const result = await session.runIterationPrompt(
       'prompt',
       { runtime: 'cline-pass', model: 'cline-pass/deepseek-v4-flash' },
       { assistantOutput: 'none' },
     )
 
-    expect(text).toBe('cline-ok')
+    expect(result.text).toBe('cline-ok')
     expect(createClineLoopSession).toHaveBeenCalledOnce()
     expect(runCursorAgentPrompt).not.toHaveBeenCalled()
     expect(clineSession.runPrompt).toHaveBeenCalledWith(

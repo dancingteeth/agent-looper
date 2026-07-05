@@ -1,3 +1,6 @@
+import type { LoopMode } from './loopMode.js'
+import { buildReverseModePromptSection } from './loopMode.js'
+import { buildFailureContextPromptSection } from './loopFailureContext.js'
 import type { GitWorkspaceSnapshot } from './loopGit.js'
 import type { VerifyResult } from './loopVerify.js'
 
@@ -10,6 +13,9 @@ export type LoopPromptInput = {
   priorFailures: VerifyResult[]
   stagnationRepeatCount?: number
   agentsFile?: string
+  reviewBlockers?: string[]
+  mode?: LoopMode
+  failureContext?: string
 }
 
 export function buildAgentLoopPrompt(input: LoopPromptInput): string {
@@ -37,6 +43,25 @@ The verifier failed **${input.stagnationRepeatCount}** times with the same outpu
 `
       : ''
 
+  const reviewBlockersSection =
+    input.reviewBlockers && input.reviewBlockers.length > 0
+      ? `## Review blockers (must fix)
+
+The verifier passed, but the post-loop quality review returned **BLOCKERS**. Fix the items below that are achievable **in-repo** (code, docs, tests). Do **not** expand scope beyond the goal.
+
+Out-of-repo blockers (task traceability UUIDs, merge policy for unrelated branch diffs, human-only deploy steps) cannot be fixed by you — ignore those if listed.
+
+${input.reviewBlockers.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+
+`
+      : ''
+
+  const modeSection = input.mode === 'reverse' ? buildReverseModePromptSection() : ''
+  const failureContextSection =
+    input.failureContext && input.failureContext.trim()
+      ? buildFailureContextPromptSection(input.failureContext.trim())
+      : ''
+
   return `You are a coding agent in a **fresh context** (iteration ${input.iteration} of ${input.maxIterations}).
 An external shell verifier decides success — do not claim the task is finished.
 
@@ -44,7 +69,7 @@ An external shell verifier decides success — do not claim the task is finished
 
 ${input.goal}
 
-${stagnationSection}## Workspace (git)
+${modeSection}${failureContextSection}${reviewBlockersSection}${stagnationSection}## Workspace (git)
 
 - Branch: ${input.git.branch}
 - HEAD: ${input.git.shortSha}

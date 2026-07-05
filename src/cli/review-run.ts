@@ -23,5 +23,6 @@ console.error(`[agent-loop-review-run] loop=${path.relative(ctx.repoRoot, loopDi
 
 const text = await runPostLoopQualityReview(bundle.loopDir, bundle.goal, ctx, { verbose: false })
 
-console.log(`\nReview written: ${path.join(path.relative(ctx.repoRoot, loopDir), 'review.md')}`)
-console.log(`\n--- preview (first 1200 chars) ---\n${text.trim().slice(0, 1200)}…`)
+console.log(`\nReview written: ${path.join(path.relative(ctx.repoRoot, loopDir), path.basename(text.outPath))}`)
+console.log(`\nVerdict: ${text.parsed.verdict} | Risk: ${text.parsed.risk} | Blockers: ${text.parsed.blockers.length}`)
+console.log(`\n--- preview (first 1200 chars) ---\n${text.text.trim().slice(0, 1200)}…`)
