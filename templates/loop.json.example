@@ -10,5 +10,6 @@
   "stagnationThreshold": 3,
   "mode": "forward",
   "pauseAfterIteration": false,
-  "injectFailureContext": false
+  "injectFailureContext": false,
+  "notifyTelegram": true
 }

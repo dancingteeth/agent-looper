@@ -101,3 +101,18 @@ export {
 export type { AgentRunPhase, LoopUsageRecord, LoopUsageSummary } from './usage/loopUsage.js'
 
 export { assertLoopModelAllowed, isBannedCursorLoopModel } from './usage/modelPolicy.js'
+
+export {
+  sendLoopTelegramReport,
+  sendTelegramMessage,
+  resolveTelegramCredentials,
+  shouldSendTelegramNotify,
+  TELEGRAM_BOT_TOKEN_ENV,
+  TELEGRAM_BOT_TOKEN_FALLBACK_ENV,
+  TELEGRAM_CHAT_ID_ENV,
+} from './integrations/telegramNotify.js'
+
+export {
+  formatLoopCompletionReport,
+  formatBatchCompletionReport,
+} from './loop/loopReport.js'

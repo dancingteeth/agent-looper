@@ -25,6 +25,8 @@ export const loopBatchConfigSchema = z
     hitlCheck: hitlCheckDescriptionSchema.optional(),
     taskwarriorProject: taskwarriorProjectSchema.optional(),
     syncOnSuccess: z.boolean().default(true),
+    /** Send completion report to Telegram when repo profile + env are configured. */
+    notifyTelegram: z.boolean().default(true),
   })
   .superRefine((config, ctx) => {
     const hasLoops = (config.loops?.length ?? 0) > 0

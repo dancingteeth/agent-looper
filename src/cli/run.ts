@@ -4,6 +4,8 @@ import { resolveRepoContext } from '../context/repoContext.js'
 import { runAgentLoop } from '../loop/agentLoop.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
+import { sendLoopTelegramReport } from '../integrations/telegramNotify.js'
+import { formatLoopCompletionReport } from '../loop/loopReport.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
 
 type CliOptions = {
@@ -21,6 +23,7 @@ type CliOptions = {
   escalateModel?: string
   mode?: 'forward' | 'reverse'
   pauseAfterIteration?: boolean
+  notifyTelegram?: boolean
 }
 
 function usage(): string {
@@ -44,6 +47,7 @@ ${printRepoRootHelp()}
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
   --pause-after-iteration         Wait for Enter between iterations (TTY only)
+  --no-telegram                   Skip Telegram completion report
 
 Each iteration: fresh agent → shell verifier → append log.ndjson`
 }
@@ -64,6 +68,7 @@ function parseArgs(argv: string[]): CliOptions {
   let escalateModel: string | undefined
   let mode: CliOptions['mode']
   let pauseAfterIteration: boolean | undefined
+  let notifyTelegram: boolean | undefined
 
   for (let i = 0; i < remaining.length; i++) {
     const arg = remaining[i]
@@ -144,6 +149,10 @@ function parseArgs(argv: string[]): CliOptions {
       pauseAfterIteration = true
       continue
     }
+    if (arg === '--no-telegram') {
+      notifyTelegram = false
+      continue
+    }
     if (arg === '--help' || arg === '-h') {
       console.log(usage())
       process.exit(0)
@@ -172,6 +181,7 @@ function parseArgs(argv: string[]): CliOptions {
     escalateModel,
     mode,
     pauseAfterIteration,
+    notifyTelegram,
   }
 }
 
@@ -195,6 +205,7 @@ bundle = {
     escalateModel: cli.escalateModel,
     mode: cli.mode,
     pauseAfterIteration: cli.pauseAfterIteration,
+    notifyTelegram: cli.notifyTelegram,
   }),
 }
 
@@ -227,6 +238,18 @@ try {
   console.error(`[agent-loop] finished complete=${result.complete} iterations=${result.iterations}`)
   console.error(`[agent-loop] reason: ${result.completionReason}`)
   console.error(`[agent-loop] ${formatUsageSummaryLine(result.usage)}`)
+
+  await sendLoopTelegramReport({
+    profile: ctx.profile,
+    notifyTelegram: bundle.config.notifyTelegram,
+    complete: result.complete,
+    report: formatLoopCompletionReport({
+      repoRoot: ctx.repoRoot,
+      bundleLabel: path.relative(ctx.repoRoot, loopDir),
+      loopDir,
+      result,
+    }),
+  })
 
   if (!result.complete) {
     process.exit(2)

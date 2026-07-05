@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
-import { runLoopBatch, resolveBatchDir } from '../loop/loopBatch.js'
+import { runLoopBatch, resolveBatchDir, loadLoopBatchConfig } from '../loop/loopBatch.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
+import { sendLoopTelegramReport } from '../integrations/telegramNotify.js'
+import { formatBatchCompletionReport } from '../loop/loopReport.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
 
 type CliOptions = {
@@ -10,6 +12,7 @@ type CliOptions = {
   repoRoot?: string
   verbose: boolean
   skipSync: boolean
+  notifyTelegram?: boolean
 }
 
 function usage(): string {
@@ -20,7 +23,8 @@ function usage(): string {
 Options:
   --verbose, -v     Tool args/results on stderr
 ${printRepoRootHelp()}
-  --skip-sync       Do not run repo profile syncCommand after batch`
+  --skip-sync       Do not run repo profile syncCommand after batch
+  --no-telegram     Skip Telegram completion report`
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -29,11 +33,16 @@ function parseArgs(argv: string[]): CliOptions {
 
   const positional: string[] = []
   let skipSync = false
+  let notifyTelegram: boolean | undefined
 
   for (const arg of remaining) {
     if (arg === '--') continue
     if (arg === '--skip-sync') {
       skipSync = true
+      continue
+    }
+    if (arg === '--no-telegram') {
+      notifyTelegram = false
       continue
     }
     if (arg === '--help' || arg === '-h') {
@@ -49,12 +58,13 @@ function parseArgs(argv: string[]): CliOptions {
     process.exit(1)
   }
 
-  return { batchDir, repoRoot, verbose, skipSync }
+  return { batchDir, repoRoot, verbose, skipSync, notifyTelegram }
 }
 
 const cli = parseArgs(process.argv.slice(2))
 const ctx = resolveRepoContext({ repoRoot: cli.repoRoot })
 const batchDir = resolveBatchDir(cli.batchDir, ctx.repoRoot)
+const batchConfig = loadLoopBatchConfig(batchDir)
 
 console.error(`[agent-loop-batch] repo=${ctx.repoRoot}`)
 console.error(`[agent-loop-batch] batch=${path.relative(ctx.repoRoot, batchDir)}`)
@@ -77,6 +87,20 @@ try {
   )
   console.error(`[agent-loop-batch] reason: ${result.completionReason}`)
   console.error(`[agent-loop-batch] ${formatUsageSummaryLine(result.usage)}`)
+
+  const notifyTelegram =
+    cli.notifyTelegram === false ? false : batchConfig.notifyTelegram
+
+  await sendLoopTelegramReport({
+    profile: ctx.profile,
+    notifyTelegram,
+    complete: result.complete,
+    report: formatBatchCompletionReport({
+      repoRoot: ctx.repoRoot,
+      batchLabel: path.relative(ctx.repoRoot, batchDir),
+      result,
+    }),
+  })
 
   if (!result.complete) {
     process.exit(2)

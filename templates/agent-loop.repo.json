@@ -5,5 +5,9 @@
   "agentsFile": "AGENTS.md",
   "reviewsFile": "REVIEWS.md",
   "skillsGlob": "packages/skills/*/SKILL.md",
-  "clientName": "@dancingteeth/agent-loop"
+  "clientName": "@dancingteeth/agent-loop",
+  "telegramNotify": {
+    "onSuccess": true,
+    "onFailure": true
+  }
 }

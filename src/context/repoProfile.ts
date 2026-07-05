@@ -17,6 +17,15 @@ export const repoProfileSchema = z.object({
   skillsGlob: z.string().trim().min(1).default('packages/skills/*/SKILL.md'),
   /** Cline clientName / dispose reason label. */
   clientName: z.string().trim().min(1).default('@dancingteeth/agent-loop'),
+  /** Optional Telegram completion reports (bot token via env). */
+  telegramNotify: z
+    .object({
+      /** Target chat id — override with AGENT_LOOP_TELEGRAM_CHAT_ID. */
+      chatId: z.string().trim().min(1).optional(),
+      onSuccess: z.boolean().default(true),
+      onFailure: z.boolean().default(true),
+    })
+    .optional(),
 })
 
 export type RepoProfile = z.infer<typeof repoProfileSchema>

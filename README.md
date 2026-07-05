@@ -166,6 +166,37 @@ On finish, stderr prints token totals and estimated USD (`usage: …`) from Clin
 | `postQualityReview` (no gate) | Sensor — advisory LLM | No |
 | `reviewGate: true` | Sensor + gate on BLOCKERS verdict | Yes |
 
+## Telegram completion reports
+
+When a loop or batch finishes (success **or** failure), the CLI can send a short report to your Telegram:
+
+- Status, repo, bundle/batch path, iterations, completion reason
+- Token/cost usage line (same as stderr)
+- Review verdict when `review.md` exists
+- Last verifier output snippet on failure
+
+**Setup (per consumer repo):**
+
+1. Create a bot via [@BotFather](https://t.me/BotFather); store the token in Doppler (never commit):
+   - `AGENT_LOOP_TELEGRAM_BOT_TOKEN` (preferred) or `TELEGRAM_BOT_TOKEN`
+2. Your chat id — either env `AGENT_LOOP_TELEGRAM_CHAT_ID` or in `.cursor/agent-loop.repo.json`:
+
+```json
+{
+  "telegramNotify": {
+    "chatId": "YOUR_CHAT_ID",
+    "onSuccess": true,
+    "onFailure": true
+  }
+}
+```
+
+3. Maxin/Zwook already wrap loops in `doppler run …` — add those secrets to the same Doppler project/config the loop scripts use.
+
+**Opt out:** `"notifyTelegram": false` in `loop.json` / `loop-batch.json`, or CLI `--no-telegram`.
+
+Notify is **non-blocking** — API errors log to stderr and do not change the loop exit code.
+
 ## License
 
 MIT
