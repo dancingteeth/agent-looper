@@ -1,3 +1,8 @@
+---
+tags:
+  - documentation
+  - agents
+---
 # @dancingteeth/agent-loop
 
 Repo-agnostic **fix-until-green** agent loop: fresh agent context per iteration, shell verifier, `log.ndjson`, optional Taskwarrior hooks.
@@ -74,7 +79,7 @@ agent-loop run /path/to/zwook/.cursor/loops/fix-foo --repo-root /path/to/zwook
 
 | Field | Purpose |
 |-------|---------|
-| `taskwarriorProject` | HITL tasks land here (`dxp`, `zwook`, …) |
+| `taskwarriorProject` | HITL tasks land here (`dxp`, `zwook`, …) — **required** when using `hitlCheck` |
 | `syncCommand` | Shell command after success (`pnpm tasks:sync` or `null`) |
 | `defaultBranch` | Post-loop diff base (`main`) |
 | `agentsFile` / `reviewsFile` | Prompt + review paths |
@@ -183,7 +188,7 @@ Profile: `"taskwarriorProject": "zwook"`, `"syncCommand": null`.
 GOAL.md + loop.json → fresh agent → shell verify (exit 0?) → optional review gate → log.ndjson → repeat
 ```
 
-Post-success (optional): Cursor quality review (`composer-2.5` only — **not** Composer Fast) → `review.md`. With **`reviewGate: true`**, verdict **BLOCKERS** injects blockers into the next iteration (up to `maxReviewCycles`); loop completes only on PASS/ADVISORY/UNKNOWN. Without the gate, review is advisory only. Then: `task uuid:… done` → HITL task → `syncCommand`.
+Post-success (optional): Cursor quality review (`composer-2.5` only — **not** Composer Fast) → `review.md`. With **`reviewGate: true`**, verdict **BLOCKERS** or an **unparseable verdict** injects blockers into the next iteration (up to `maxReviewCycles`); loop completes only on **PASS** or **ADVISORY**. Without the gate, review is advisory only and UNKNOWN is non-blocking. Then: `task uuid:… done` → HITL task → `syncCommand`.
 
 On finish, stderr prints token totals and estimated USD (`usage: …`) from ClinePass `getAccumulatedUsage` (official rates for DeepSeek v4 Flash; Composer 2.5 when token data is available).
 
@@ -191,7 +196,17 @@ On finish, stderr prints token totals and estimated USD (`usage: …`) from Clin
 |-------|------|--------------|
 | Shell `verify` / `finalVerify` | Judge — deterministic | Yes |
 | `postQualityReview` (no gate) | Sensor — advisory LLM | No |
-| `reviewGate: true` | Sensor + gate on BLOCKERS verdict | Yes |
+| `reviewGate: true` | Sensor + gate on BLOCKERS / unparseable verdict | Yes |
+
+## Threat model
+
+The harness is designed for **trusted checkouts** you control:
+
+- **`loop.json` `verify` / `finalVerify`** and the repo profile **`syncCommand`** run via `shell: true` in the target repo. A malicious or compromised config can execute arbitrary shell.
+- **Verifier stdout/stderr** is injected verbatim into the next agent prompt (with soft guardrails only). Untrusted verifier output can attempt prompt injection.
+- On start, the CLI prints configured shell commands to stderr and flags obvious exfil patterns (`curl`, `wget`, `| sh`, backticks, `$()`).
+
+Only run `agent-loop` in repos and loop bundles you trust. Review `loop.json` and `.cursor/agent-loop.repo.json` before the first run on an unfamiliar checkout.
 
 ## Telegram completion reports
 

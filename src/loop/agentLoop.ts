@@ -8,6 +8,7 @@ import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
 import { runPostLoopQualityReview } from '../review/loopPostReview.js'
 import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
 import type { ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
+import { reviewGateBlockers, reviewGateBlocksCompletion } from '../review/reviewVerdict.js'
 import { detectStagnation } from '../loop/loopStagnation.js'
 import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
 import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
@@ -111,6 +112,28 @@ function previewAssistant(text: string): string {
   return `${trimmed.slice(0, PREVIEW_MAX)}…`
 }
 
+function buildIterationLog(input: {
+  iteration: number
+  git: ReturnType<typeof captureGitWorkspaceSnapshot>
+  verify: VerifyResult
+  finalVerify?: VerifyResult
+  assistantText: string
+  review?: LoopIterationLog['review']
+  usage?: LoopUsageRecord
+}): LoopIterationLog {
+  return {
+    at: new Date().toISOString(),
+    iteration: input.iteration,
+    branch: input.git.branch,
+    shortSha: input.git.shortSha,
+    verify: input.verify,
+    ...(input.finalVerify ? { finalVerify: input.finalVerify } : {}),
+    assistantPreview: previewAssistant(input.assistantText),
+    ...(input.review ? { review: input.review } : {}),
+    ...(input.usage ? { usage: input.usage } : {}),
+  }
+}
+
 function maybeRunSync(ctx: RepoContext, enabled: boolean): void {
   if (!enabled) return
   const syncCommand = ctx.profile.syncCommand
@@ -147,7 +170,6 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const { config, goal, logPath } = bundle
   const agentSession = await createLoopAgentSession(config, ctx)
   const baseAgent = resolveLoopAgent(config)
-  const twProject = resolveTaskwarriorProject(config.taskwarriorProject, ctx.profile)
 
   console.error(
     `[agent-loop] repo=${repoRoot} runtime=${loopRuntimeLabel(baseAgent.runtime)} model=${baseAgent.model}`,
@@ -253,22 +275,26 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               reviewCycle,
             }
 
-            if (config.reviewGate && parsed.verdict === 'BLOCKERS') {
+            if (config.reviewGate && reviewGateBlocksCompletion(parsed)) {
+              const gateBlockers = reviewGateBlockers(parsed)
               reviewCyclesUsed++
               if (reviewCyclesUsed >= config.maxReviewCycles) {
-                appendLog(logPath, {
-                  at: new Date().toISOString(),
-                  iteration: i,
-                  branch: git.branch,
-                  shortSha: git.shortSha,
-                  verify,
-                  ...(finalVerify ? { finalVerify } : {}),
-                  assistantPreview: previewAssistant(assistantText),
-                  review: reviewLog,
-                  ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
-                })
+                appendLog(
+                  logPath,
+                  buildIterationLog({
+                    iteration: i,
+                    git,
+                    verify,
+                    finalVerify,
+                    assistantText,
+                    review: reviewLog,
+                    usage: assistantRun.usage,
+                  }),
+                )
+                const gateLabel =
+                  parsed.verdict === 'UNKNOWN' ? 'unparseable verdict' : 'BLOCKERS'
                 console.error(
-                  `[agent-loop] review gate: BLOCKERS after ${reviewCyclesUsed} review cycle(s) — stopping`,
+                  `[agent-loop] review gate: ${gateLabel} after ${reviewCyclesUsed} review cycle(s) — stopping`,
                 )
                 logFailureDomainFromVerify(bundle.loopDir, {
                   iteration: i,
@@ -278,34 +304,33 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                 return finish({
                   complete: false,
                   iterations: i,
-                  completionReason: `Review gate: BLOCKERS after ${reviewCyclesUsed} review cycle(s). See review.md and fix blockers manually or increase maxReviewCycles.`,
+                  completionReason: `Review gate: ${gateLabel} after ${reviewCyclesUsed} review cycle(s). See review.md and fix blockers manually or increase maxReviewCycles.`,
                   lastVerify,
                   logPath,
                 })
               }
-              reviewBlockers = parsed.blockers
-              appendLog(logPath, {
-                at: new Date().toISOString(),
-                iteration: i,
-                branch: git.branch,
-                shortSha: git.shortSha,
-                verify,
-                ...(finalVerify ? { finalVerify } : {}),
-                assistantPreview: previewAssistant(assistantText),
-                review: reviewLog,
-                ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
-              })
+              reviewBlockers = gateBlockers
+              appendLog(
+                logPath,
+                buildIterationLog({
+                  iteration: i,
+                  git,
+                  verify,
+                  finalVerify,
+                  assistantText,
+                  review: reviewLog,
+                  usage: assistantRun.usage,
+                }),
+              )
+              const gateLabel =
+                parsed.verdict === 'UNKNOWN'
+                  ? 'unparseable verdict'
+                  : `BLOCKERS (${gateBlockers.length} items)`
               console.error(
-                `[agent-loop] review gate: BLOCKERS (${parsed.blockers.length} items) — continuing for fix round ${reviewCyclesUsed}/${config.maxReviewCycles}`,
+                `[agent-loop] review gate: ${gateLabel} — continuing for fix round ${reviewCyclesUsed}/${config.maxReviewCycles}`,
               )
               await maybePauseAfterIteration(config, i)
               continue
-            }
-
-            if (config.reviewGate && parsed.verdict === 'UNKNOWN') {
-              console.error(
-                '[agent-loop] review gate: could not parse verdict — treating as non-blocking (check review.md)',
-              )
             }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
@@ -323,22 +348,26 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           }
         }
 
-        appendLog(logPath, {
-          at: new Date().toISOString(),
-          iteration: i,
-          branch: git.branch,
-          shortSha: git.shortSha,
-          verify,
-          ...(finalVerify ? { finalVerify } : {}),
-          assistantPreview: previewAssistant(assistantText),
-          ...(reviewLog ? { review: reviewLog } : {}),
-          ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
-        })
+        appendLog(
+          logPath,
+          buildIterationLog({
+            iteration: i,
+            git,
+            verify,
+            finalVerify,
+            assistantText,
+            review: reviewLog,
+            usage: assistantRun.usage,
+          }),
+        )
         if (config.taskwarriorUuid) {
           markTaskwarriorDoneByUuid(config.taskwarriorUuid)
         }
         if (config.hitlCheck) {
-          createHitlCheckTask(config.hitlCheck, twProject)
+          createHitlCheckTask(
+            config.hitlCheck,
+            resolveTaskwarriorProject(config.taskwarriorProject, ctx.profile),
+          )
         }
         maybeRunSync(ctx, config.syncOnSuccess)
         return finish({
@@ -350,16 +379,17 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         })
       }
 
-      appendLog(logPath, {
-        at: new Date().toISOString(),
-        iteration: i,
-        branch: git.branch,
-        shortSha: git.shortSha,
-        verify,
-        ...(finalVerify ? { finalVerify } : {}),
-        assistantPreview: previewAssistant(assistantText),
-        ...(assistantRun.usage ? { usage: assistantRun.usage } : {}),
-      })
+      appendLog(
+        logPath,
+        buildIterationLog({
+          iteration: i,
+          git,
+          verify,
+          finalVerify,
+          assistantText,
+          usage: assistantRun.usage,
+        }),
+      )
 
       priorFailures.push(lastVerify!)
       console.error(`[agent-loop] iteration ${i} failed — ${lastVerify!.reason}`)

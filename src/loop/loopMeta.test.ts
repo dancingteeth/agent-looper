@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { metaLoopConfigSchema } from './loopMeta.js'
+import { repoProfileSchema } from '../context/repoProfile.js'
 
 vi.mock('./agentLoop.js', () => ({
   runAgentLoop: vi.fn(),
@@ -104,7 +105,10 @@ describe('runMetaLoop', () => {
     mockedRunAgentLoop.mockResolvedValueOnce(passResult())
 
     const result = await runMetaLoop({
-      ctx: { repoRoot: process.cwd(), profile: { syncCommand: null } },
+      ctx: {
+        repoRoot: process.cwd(),
+        profile: repoProfileSchema.parse({ syncCommand: null }),
+      },
       batchDir,
       meta: { probe: 'probe-loop', fix: 'fix-loop', maxCycles: 3 },
       batchLoopConfig,
@@ -122,7 +126,10 @@ describe('runMetaLoop', () => {
       .mockResolvedValueOnce(passResult())
 
     const result = await runMetaLoop({
-      ctx: { repoRoot: process.cwd(), profile: { syncCommand: null } },
+      ctx: {
+        repoRoot: process.cwd(),
+        profile: repoProfileSchema.parse({ syncCommand: null }),
+      },
       batchDir,
       meta: { probe: 'probe-loop', fix: 'fix-loop', maxCycles: 3 },
       batchLoopConfig,

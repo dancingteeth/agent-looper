@@ -6,6 +6,37 @@ import { CURSOR_LOOP_MODEL } from '../loop/loopAgentConfig.js'
 import { printRunStream } from '../stream/streamRun.js'
 import { assertLoopModelAllowed } from '../usage/modelPolicy.js'
 
+const DEFAULT_CURSOR_SESSION_TIMEOUT_MS = 45 * 60 * 1000
+
+function resolveCursorSessionTimeoutMs(): number {
+  const raw = process.env.AGENT_LOOP_CURSOR_TIMEOUT_MS?.trim()
+  if (!raw) return DEFAULT_CURSOR_SESSION_TIMEOUT_MS
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('AGENT_LOOP_CURSOR_TIMEOUT_MS must be a positive number of milliseconds')
+  }
+  return parsed
+}
+
+async function waitForCursorRun<T>(
+  waitPromise: Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      waitPromise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`Cursor agent run timed out after ${timeoutMs}ms`))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId)
+  }
+}
+
 export type CursorAgentRunOptions = {
   verbose?: boolean
   /** Loops use composer-2.5 only — never Composer Fast. */
@@ -52,7 +83,7 @@ export async function runCursorAgentPrompt(
       verbose,
       assistantOutput: options.assistantOutput ?? 'stdout',
     })
-    const result = await run.wait()
+    const result = await waitForCursorRun(run.wait(), resolveCursorSessionTimeoutMs())
 
     if (result.status === 'error') {
       throw new Error('Cursor agent run failed (status=error)')

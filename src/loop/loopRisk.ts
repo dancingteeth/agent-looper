@@ -1,10 +1,10 @@
 export type LoopReviewRisk = 'high' | 'medium' | 'low'
 
 const HIGH_RISK_PATTERN =
-  /\b(auth|session|login|oauth|payment|stripe|tbc|bog|flitt|bank|crypto|camel|migration|doppler|secret|privacy|pii|webhook|deploy|run-sql|telegram-bot|access.?control|permission)\b/i
+  /\b(auth|session|login|oauth|payment|stripe|bank|crypto|migration|secret|privacy|pii|webhook|deploy|run-sql|telegram-bot|access.?control|permission)\b/i
 
 const MEDIUM_RISK_PATTERN =
-  /\b(checkout|order|affiliate|commission|integration|etsy|ebay|marketplace|mastra|transformer|dispatch|webhook|payload\.config|ecommerce|payment)\b/i
+  /\b(checkout|order|affiliate|commission|integration|marketplace|transformer|dispatch|webhook|payload\.config|ecommerce|payment)\b/i
 
 const LOW_RISK_PATTERN =
   /\b(docs?|readme|validator|scorer|formatting|typo|comment-only|loop harness|agent loop|cursor-sdk|harness)\b/i

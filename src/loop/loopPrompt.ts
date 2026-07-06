@@ -3,6 +3,7 @@ import { buildReverseModePromptSection } from './loopMode.js'
 import { buildFailureContextPromptSection } from './loopFailureContext.js'
 import type { GitWorkspaceSnapshot } from './loopGit.js'
 import type { VerifyResult } from './loopVerify.js'
+import { renderLoopPromptRulesSection } from './loopSafetyRules.js'
 
 export type LoopPromptInput = {
   goal: string
@@ -90,14 +91,7 @@ ${lastSection}
 
 ${failureSection}
 
-## Rules
-
-1. Make **small, incremental** edits toward the goal.
-2. Follow \`${agentsFile}\` and existing repo conventions.
-3. Do **not** run destructive git commands (\`reset --hard\`, force push, etc.).
-4. Do **not** expand scope beyond the goal.
-5. Prefer fixing root causes shown in verifier output over disabling tests.
-6. Do **not** edit \`GOAL.md\` — the spec is frozen for this loop run.`
+${renderLoopPromptRulesSection(agentsFile)}`
 }
 
 function formatVerifyOutput(verify: VerifyResult): string {

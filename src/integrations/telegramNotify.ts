@@ -17,9 +17,15 @@ export type ResolvedTelegramCredentials = {
   onFailure: boolean
 }
 
+export type TelegramNotifyConfig = {
+  chatId?: string
+  onSuccess: boolean
+  onFailure: boolean
+}
+
 export function resolveTelegramNotifySettings(
   profile: RepoProfile,
-): Omit<TelegramNotifySettings, 'chatId'> & { chatId?: string } | undefined {
+): TelegramNotifyConfig | undefined {
   const config = profile.telegramNotify
   if (!config) return undefined
   return {

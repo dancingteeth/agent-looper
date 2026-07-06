@@ -33,7 +33,7 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       process.exit(1)
     }
     console.log('[agent-check] @cursor/sdk OK — Agent.create:', typeof Agent.create)
-    console.log('[agent-check] CURSOR_API_KEY present (prefix):', `${key.slice(0, 8)}…`)
+    console.log('[agent-check] CURSOR_API_KEY present (prefix):', `${key.slice(0, 4)}…`)
     return
   }
 
@@ -51,6 +51,6 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
 
   await assertPosixShell()
   console.log('[agent-check] @cline/sdk OK — ClineCore.create:', typeof ClineCore.create)
-  console.log('[agent-check] CLINE_API_KEY present (prefix):', `${key.slice(0, 8)}…`)
+  console.log('[agent-check] CLINE_API_KEY present (prefix):', `${key.slice(0, 4)}…`)
   console.log('[agent-check] shell preflight OK')
 }

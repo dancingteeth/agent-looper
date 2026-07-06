@@ -84,6 +84,9 @@ export type { PostLoopReviewOptions, PostLoopReviewResult } from './review/loopP
 export {
   parseReviewMarkdown,
   reviewVerdictAllowsCompletion,
+  reviewGateBlockers,
+  reviewGateBlocksCompletion,
+  UNPARSEABLE_VERDICT_BLOCKER,
 } from './review/reviewVerdict.js'
 export type { ParsedReview, ReviewRisk, ReviewVerdict } from './review/reviewVerdict.js'
 

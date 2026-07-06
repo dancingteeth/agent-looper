@@ -12,6 +12,7 @@ import {
   taskwarriorUuidSchema,
 } from '../integrations/taskwarrior.js'
 import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.js'
+import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
 import { loopModeSchema } from './loopMode.js'
 
 export const loopRuntimeSchema = z.enum([LOOP_RUNTIME_CURSOR, LOOP_RUNTIME_CLINE_PASS])
@@ -68,14 +69,7 @@ export type LoadedLoopBundle = {
 
 /** Accept legacy loop.json field `syncPostgres` as alias for syncOnSuccess. */
 export function parseLoopConfig(raw: unknown): LoopConfig {
-  if (typeof raw === 'object' && raw !== null && 'syncPostgres' in raw) {
-    const record = raw as Record<string, unknown>
-    const { syncPostgres, ...rest } = record
-    if (typeof syncPostgres === 'boolean' && !('syncOnSuccess' in rest)) {
-      return loopConfigSchema.parse({ ...rest, syncOnSuccess: syncPostgres })
-    }
-  }
-  return loopConfigSchema.parse(raw)
+  return loopConfigSchema.parse(migrateLegacySyncPostgres(raw))
 }
 
 export function resolveLoopDir(loopDirArg: string, repoRoot: string): string {

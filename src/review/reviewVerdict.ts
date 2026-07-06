@@ -8,6 +8,9 @@ export type ParsedReview = {
   blockers: string[]
 }
 
+export const UNPARSEABLE_VERDICT_BLOCKER =
+  'Could not parse review verdict — review.md must include `### Verdict` with PASS, ADVISORY, or BLOCKERS'
+
 const SECTION_HEADING = /^###\s+(.+)\s*$/
 
 function extractSection(text: string, heading: string): string | null {
@@ -36,17 +39,51 @@ function extractSection(text: string, heading: string): string | null {
   return body.join('\n').trim()
 }
 
+function normalizeVerdictLine(line: string): string {
+  return line
+    .replace(/^>\s*/, '')
+    .replace(/\*\*/g, '')
+    .trim()
+}
+
+function tokenToVerdict(token: string): ReviewVerdict | null {
+  if (token === 'BLOCKERS' || token.startsWith('BLOCKERS ') || token === 'BLOCKER') {
+    return 'BLOCKERS'
+  }
+  if (token === 'ADVISORY' || token.startsWith('ADVISORY ')) return 'ADVISORY'
+  if (token === 'PASS' || token.startsWith('PASS ')) return 'PASS'
+  return null
+}
+
+function linesFromVerdictSection(section: string): string[] {
+  const lines: string[] = []
+
+  for (const block of section.matchAll(/```(?:[^\n]*)\n?([\s\S]*?)```/g)) {
+    for (const line of block[1]!.split('\n')) {
+      const normalized = normalizeVerdictLine(line)
+      if (normalized) lines.push(normalized)
+    }
+  }
+
+  const withoutFences = section.replace(/```[\s\S]*?```/g, '')
+  for (const line of withoutFences.split('\n')) {
+    const normalized = normalizeVerdictLine(line)
+    if (normalized) lines.push(normalized)
+  }
+
+  return lines
+}
+
 function parseVerdictHeadline(section: string): string {
-  return section.split('\n').map((l) => l.trim()).find((l) => l.length > 0) ?? ''
+  return linesFromVerdictSection(section)[0] ?? ''
 }
 
 function parseVerdict(section: string | null): ReviewVerdict {
   if (!section) return 'UNKNOWN'
-  const headline = parseVerdictHeadline(section)
-  const token = headline.replace(/\*\*/g, '').trim().toUpperCase()
-  if (token === 'BLOCKERS' || token.startsWith('BLOCKERS ')) return 'BLOCKERS'
-  if (token === 'ADVISORY' || token.startsWith('ADVISORY ')) return 'ADVISORY'
-  if (token === 'PASS' || token.startsWith('PASS ')) return 'PASS'
+  for (const line of linesFromVerdictSection(section)) {
+    const verdict = tokenToVerdict(line.toUpperCase())
+    if (verdict) return verdict
+  }
   return 'UNKNOWN'
 }
 
@@ -95,6 +132,27 @@ export function parseReviewMarkdown(text: string): ParsedReview {
   }
 }
 
-export function reviewVerdictAllowsCompletion(verdict: ReviewVerdict): boolean {
+export type ReviewVerdictCompletionOptions = {
+  /** When true, UNKNOWN verdicts block loop completion (fail-closed). */
+  reviewGate?: boolean
+}
+
+export function reviewVerdictAllowsCompletion(
+  verdict: ReviewVerdict,
+  options: ReviewVerdictCompletionOptions = {},
+): boolean {
+  if (options.reviewGate) {
+    return verdict === 'PASS' || verdict === 'ADVISORY'
+  }
   return verdict === 'PASS' || verdict === 'ADVISORY' || verdict === 'UNKNOWN'
+}
+
+export function reviewGateBlockers(parsed: ParsedReview): string[] {
+  if (parsed.verdict === 'BLOCKERS') return parsed.blockers
+  if (parsed.verdict === 'UNKNOWN') return [UNPARSEABLE_VERDICT_BLOCKER]
+  return []
+}
+
+export function reviewGateBlocksCompletion(parsed: ParsedReview): boolean {
+  return parsed.verdict === 'BLOCKERS' || parsed.verdict === 'UNKNOWN'
 }

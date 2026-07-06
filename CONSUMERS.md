@@ -1,3 +1,8 @@
+---
+tags:
+  - documentation
+  - agents
+---
 # Wiring a new consumer repo
 
 Checklist for agents and humans adding **`@dancingteeth/agent-loop`** to another repository (Maxin, Zwook, or a greenfield project).

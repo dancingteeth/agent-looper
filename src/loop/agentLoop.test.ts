@@ -350,4 +350,52 @@ describe('runAgentLoop', () => {
     expect(result.completionReason).toMatch(/Review gate: quality review failed/)
     expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
   })
+
+  it('blocks completion when review gate cannot parse the verdict', async () => {
+    const { runIterationPrompt } = mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview)
+      .mockResolvedValueOnce({
+        ...reviewResult('UNKNOWN'),
+        outPath: path.join(tmpLoopDir, 'review.md'),
+      })
+      .mockResolvedValueOnce({
+        ...reviewResult('PASS'),
+        outPath: path.join(tmpLoopDir, 'review.2.md'),
+      })
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        maxReviewCycles: 2,
+        maxIterations: 4,
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(result.iterations).toBe(2)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
+    const secondPrompt = runIterationPrompt.mock.calls[1]?.[0] as string
+    expect(secondPrompt).toContain('Could not parse review verdict')
+  })
+
+  it('stops when review gate exhausts maxReviewCycles on unparseable verdict', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('UNKNOWN'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        maxReviewCycles: 2,
+        maxIterations: 5,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/unparseable verdict/)
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
+  })
 })

@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { AgentLoopResult } from './agentLoop.js'
 import type { LoopBatchResult } from './loopBatch.js'
 import { parseReviewMarkdown } from '../review/reviewVerdict.js'
-import { formatUsageSummaryLine, type LoopUsageSummary } from '../usage/loopUsage.js'
+import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 
 const TELEGRAM_MAX_MESSAGE = 4096
 const VERIFY_SNIPPET_MAX = 600
@@ -113,22 +113,5 @@ export function formatBatchCompletionReport(input: {
     }
   }
 
-  return truncate(lines.join('\n'), TELEGRAM_MAX_MESSAGE)
-}
-
-export function formatTelegramReportForUsageOnly(input: {
-  title: string
-  repoRoot: string
-  targetLabel: string
-  usage: LoopUsageSummary
-  reason: string
-}): string {
-  const lines = [
-    input.title,
-    `Repo: ${repoLabel(input.repoRoot)}`,
-    `Target: ${input.targetLabel}`,
-    `Reason: ${input.reason}`,
-    formatUsageSummaryLine(input.usage),
-  ]
   return truncate(lines.join('\n'), TELEGRAM_MAX_MESSAGE)
 }

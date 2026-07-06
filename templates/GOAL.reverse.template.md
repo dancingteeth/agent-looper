@@ -1,3 +1,8 @@
+---
+tags:
+  - documentation
+  - agents
+---
 # Goal (reverse / clean-room mode)
 
 Rebuild **<feature>** from tests and public API only — do not copy the existing implementation.

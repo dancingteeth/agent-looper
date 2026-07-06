@@ -6,6 +6,7 @@ import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopCon
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { sendLoopTelegramReport } from '../integrations/telegramNotify.js'
 import { formatLoopCompletionReport } from '../loop/loopReport.js'
+import { warnShellCommandsFromConfig } from '../loop/loopShellTrust.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
 
 type CliOptions = {
@@ -231,6 +232,14 @@ if (bundle.config.pauseAfterIteration) {
   console.error('[agent-loop] pauseAfterIteration=true')
 }
 console.error(`[agent-loop] log=${path.relative(ctx.repoRoot, bundle.logPath)}`)
+
+warnShellCommandsFromConfig({
+  cwd: ctx.repoRoot,
+  verify: bundle.config.verify,
+  finalVerify: bundle.config.finalVerify,
+  syncCommand: ctx.profile.syncCommand,
+  skipSync: cli.skipSync,
+})
 
 try {
   const result = await runAgentLoop({ ctx, bundle, verbose: cli.verbose })

@@ -1,18 +1,11 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   parseReviewMarkdown,
+  reviewGateBlockers,
+  reviewGateBlocksCompletion,
   reviewVerdictAllowsCompletion,
+  UNPARSEABLE_VERDICT_BLOCKER,
 } from './reviewVerdict.js'
-
-const KINOLAB_REVIEW_PATH = path.resolve(
-  '/Users/paulzgordan/Projects/multi-store/payload-ecommerce/.cursor/loops/kinolab-skybridge-admin/review.md',
-)
-
-const KINOLAB_WRITE_GUARDS_REVIEW_PATH = path.resolve(
-  '/Users/paulzgordan/Projects/multi-store/payload-ecommerce/.cursor/loops/kinolab-skybridge-write-guards/review.2.md',
-)
 
 describe('parseReviewMarkdown', () => {
   it('parses PASS verdict with low risk', () => {
@@ -28,6 +21,7 @@ describe('parseReviewMarkdown', () => {
     expect(parsed.risk).toBe('low')
     expect(parsed.blockers).toEqual([])
     expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(true)
   })
 
   it('parses ADVISORY verdict', () => {
@@ -40,7 +34,7 @@ describe('parseReviewMarkdown', () => {
 ### Blockers
 `)
     expect(parsed.verdict).toBe('ADVISORY')
-    expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(true)
   })
 
   it('parses BLOCKERS with blocker list items', () => {
@@ -61,15 +55,19 @@ describe('parseReviewMarkdown', () => {
     expect(parsed.risk).toBe('high')
     expect(parsed.blockers).toHaveLength(2)
     expect(parsed.blockers[0]).toContain('Unit guard')
-    expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(false)
+    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(false)
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
   })
 
-  it('returns UNKNOWN for malformed review', () => {
+  it('returns UNKNOWN for malformed review and blocks when reviewGate is on', () => {
     const parsed = parseReviewMarkdown('No structured sections here.')
     expect(parsed.verdict).toBe('UNKNOWN')
     expect(parsed.risk).toBe('unknown')
     expect(parsed.blockers).toEqual([])
     expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(false)
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+    expect(reviewGateBlockers(parsed)).toEqual([UNPARSEABLE_VERDICT_BLOCKER])
   })
 
   it('parses ADVISORY when verdict prose mentions blockers (unified-code-review shape)', () => {
@@ -86,26 +84,79 @@ Loop-scoped implementation satisfies the write-guard blockers from the prior rev
 `)
     expect(parsed.verdict).toBe('ADVISORY')
     expect(parsed.blockers).toEqual([])
-    expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(true)
   })
 
-  it('parses unified-code-review ADVISORY with prose mentioning blockers (write-guards)', () => {
-    if (!fs.existsSync(KINOLAB_WRITE_GUARDS_REVIEW_PATH)) {
-      return
-    }
-    const text = fs.readFileSync(KINOLAB_WRITE_GUARDS_REVIEW_PATH, 'utf8')
-    const parsed = parseReviewMarkdown(text)
-    expect(parsed.verdict).toBe('ADVISORY')
-    expect(parsed.blockers).toEqual([])
-    expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(true)
+  it('parses BLOCKERS inside a fenced verdict section', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+\`\`\`
+BLOCKERS
+\`\`\`
+
+### Blockers
+- [must-fix] fenced verdict
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
   })
 
-  it('parses the real Kinolab Skybridge admin review fixture', () => {
-    if (!fs.existsSync(KINOLAB_REVIEW_PATH)) {
-      return
-    }
-    const text = fs.readFileSync(KINOLAB_REVIEW_PATH, 'utf8')
-    const parsed = parseReviewMarkdown(text)
+  it('parses BLOCKERS from a blockquoted verdict line', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+> BLOCKERS
+
+### Blockers
+- [must-fix] quoted verdict
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+  })
+
+  it('parses singular BLOCKER headline as BLOCKERS', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+**BLOCKER**
+
+### Blockers
+- [must-fix] singular label
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+  })
+
+  it('parses BLOCKERS after a blank line under the verdict heading', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+
+BLOCKERS
+
+### Blockers
+- [must-fix] blank line before verdict token
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+  })
+
+  it('parses a high-risk BLOCKERS fixture with multiple blocker bullets', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH** — admin write guards
+
+### Verdict
+**BLOCKERS**
+
+### Blockers
+- [must-fix] **§2.4 task traceability** — GOAL UUID missing from commits
+- [must-fix] **App-layer unit guard** — verify doc.unit before PATCH
+- [must-fix] **Docs missing** — README still template
+- [must-fix] **Route coverage** — add regression test for PATCH handler
+- [must-fix] **Error shape** — align API errors with existing payload pattern
+`)
     expect(parsed.verdict).toBe('BLOCKERS')
     expect(parsed.risk).toBe('high')
     expect(parsed.blockers.length).toBeGreaterThanOrEqual(5)

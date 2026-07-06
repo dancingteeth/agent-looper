@@ -94,9 +94,9 @@ describe('shouldSendTelegramNotify', () => {
 describe('sendTelegramMessage', () => {
   it('posts JSON to Telegram Bot API', async () => {
     let captured: { url: string; body: unknown } | undefined
-    const fetchImpl = async (url: string, init?: RequestInit) => {
+    const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
       captured = {
-        url,
+        url: String(input),
         body: JSON.parse(String(init?.body)),
       }
       return new Response('{"ok":true}', { status: 200 })

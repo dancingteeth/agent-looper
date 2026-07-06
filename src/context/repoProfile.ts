@@ -6,8 +6,8 @@ import { taskwarriorProjectSchema } from '../integrations/taskwarrior.js'
 export const REPO_PROFILE_RELATIVE_PATH = path.join('.cursor', 'agent-loop.repo.json')
 
 export const repoProfileSchema = z.object({
-  /** Taskwarrior project for HITL checkpoints (e.g. dxp, zwook). */
-  taskwarriorProject: taskwarriorProjectSchema.default('dxp'),
+  /** Taskwarrior project for HITL checkpoints (e.g. dxp, zwook). Required when using hitlCheck. */
+  taskwarriorProject: taskwarriorProjectSchema.optional(),
   /** Shell command to mirror TW after success; null = skip. */
   syncCommand: z.string().trim().min(1).nullable().default(null),
   /** Base branch for post-loop diff stat. */

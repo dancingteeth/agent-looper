@@ -13,6 +13,7 @@ import {
 import { logUsageSummary, mergeUsageSummaries } from '../usage/loopUsage.js'
 import { resolveBatchDir, resolveBatchLoopDir } from './loopBatchPaths.js'
 import { batchLoopConfig } from './loopBatchConfig.js'
+import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
 import { metaLoopConfigSchema, runMetaLoop } from './loopMeta.js'
 
 export { metaLoopConfigSchema } from './loopMeta.js'
@@ -49,14 +50,7 @@ export const loopBatchConfigSchema = z
 export type LoopBatchConfig = z.infer<typeof loopBatchConfigSchema>
 
 export function parseLoopBatchConfig(raw: unknown): LoopBatchConfig {
-  if (typeof raw === 'object' && raw !== null && 'syncPostgres' in raw) {
-    const record = raw as Record<string, unknown>
-    const { syncPostgres, ...rest } = record
-    if (typeof syncPostgres === 'boolean' && !('syncOnSuccess' in rest)) {
-      return loopBatchConfigSchema.parse({ ...rest, syncOnSuccess: syncPostgres })
-    }
-  }
-  return loopBatchConfigSchema.parse(raw)
+  return loopBatchConfigSchema.parse(migrateLegacySyncPostgres(raw))
 }
 
 export type LoopBatchIteration = {
@@ -96,7 +90,6 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
   const repoRoot = ctx.repoRoot
   const batchDir = resolveBatchDir(options.batchDir, repoRoot)
   const batchConfig = loadLoopBatchConfig(batchDir)
-  const twProject = resolveTaskwarriorProject(batchConfig.taskwarriorProject, ctx.profile)
 
   if (batchConfig.metaLoop) {
     const metaResult = await runMetaLoop({
@@ -109,7 +102,10 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
 
     if (metaResult.complete) {
       if (batchConfig.hitlCheck) {
-        createHitlCheckTask(batchConfig.hitlCheck, twProject)
+        createHitlCheckTask(
+          batchConfig.hitlCheck,
+          resolveTaskwarriorProject(batchConfig.taskwarriorProject, ctx.profile),
+        )
       }
       const shouldSync = batchConfig.syncOnSuccess && !options.skipSync
       if (shouldSync && ctx.profile.syncCommand) {
@@ -172,7 +168,10 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
   }
 
   if (batchConfig.hitlCheck) {
-    createHitlCheckTask(batchConfig.hitlCheck, twProject)
+    createHitlCheckTask(
+      batchConfig.hitlCheck,
+      resolveTaskwarriorProject(batchConfig.taskwarriorProject, ctx.profile),
+    )
   }
 
   const shouldSync = batchConfig.syncOnSuccess && !options.skipSync

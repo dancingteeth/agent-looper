@@ -109,7 +109,7 @@ export function formatPackageDistHelp(
 
   if (report.fileDep && !report.fileDep.exists) {
     const parent = path.dirname(report.fileDep.resolvedPath)
-    const target = path.join(process.env.HOME ?? '~', 'Projects/agent-loop')
+    const target = report.packageRoot
     lines.push('')
     lines.push('The file: dependency expects a checkout on disk. Typical fix:')
     lines.push(`  mkdir -p ${parent}`)
@@ -128,24 +128,4 @@ export function formatPackageDistHelp(
   lines.push('')
   lines.push('Diagnose anytime: pnpm exec agent-loop-doctor')
   return lines.join('\n')
-}
-
-export function assertPackageDist(
-  packageRoot: string,
-  options?: { exit?: boolean; consumerRoot?: string },
-): PackageDistReportWithHint {
-  const report: PackageDistReportWithHint = {
-    ...inspectPackageInstall({
-      packageRoot,
-      consumerRoot: options?.consumerRoot,
-    }),
-    consumerRootHint: options?.consumerRoot,
-  }
-
-  if (!report.ok && options?.exit !== false) {
-    console.error(formatPackageDistHelp(report))
-    process.exit(1)
-  }
-
-  return report
 }

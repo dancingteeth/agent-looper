@@ -3,8 +3,8 @@ import { resolveRepoContext, resolveTaskwarriorProject } from './repoContext.js'
 import { repoProfileSchema } from './repoProfile.js'
 
 describe('repoProfileSchema', () => {
-  it('defaults taskwarriorProject to dxp', () => {
-    expect(repoProfileSchema.parse({}).taskwarriorProject).toBe('dxp')
+  it('does not default taskwarriorProject', () => {
+    expect(repoProfileSchema.parse({}).taskwarriorProject).toBeUndefined()
   })
 
   it('accepts zwook project', () => {
@@ -24,7 +24,7 @@ describe('resolveRepoContext', () => {
   it('uses cwd when repo root omitted', () => {
     const ctx = resolveRepoContext()
     expect(ctx.repoRoot).toBe(process.cwd())
-    expect(ctx.profile.taskwarriorProject).toBe('dxp')
+    expect(ctx.profile.taskwarriorProject).toBeUndefined()
   })
 })
 
@@ -32,5 +32,10 @@ describe('resolveTaskwarriorProject', () => {
   it('prefers loop override over profile', () => {
     const profile = repoProfileSchema.parse({ taskwarriorProject: 'dxp' })
     expect(resolveTaskwarriorProject('zwook', profile)).toBe('zwook')
+  })
+
+  it('throws when no project is configured', () => {
+    const profile = repoProfileSchema.parse({})
+    expect(() => resolveTaskwarriorProject(undefined, profile)).toThrow(/taskwarriorProject/)
   })
 })

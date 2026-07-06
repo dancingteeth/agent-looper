@@ -21,6 +21,11 @@ export function resolveTaskwarriorProject(
   loopProject: string | undefined,
   profile: RepoProfile,
 ): string {
-  const project = loopProject?.trim() || profile.taskwarriorProject
+  const project = loopProject?.trim() || profile.taskwarriorProject?.trim()
+  if (!project) {
+    throw new Error(
+      'taskwarriorProject is required in .cursor/agent-loop.repo.json (or loop.json / batch override) when creating HITL tasks',
+    )
+  }
   return project
 }

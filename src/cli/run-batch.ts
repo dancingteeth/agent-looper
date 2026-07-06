@@ -5,6 +5,7 @@ import { runLoopBatch, resolveBatchDir, loadLoopBatchConfig } from '../loop/loop
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { sendLoopTelegramReport } from '../integrations/telegramNotify.js'
 import { formatBatchCompletionReport } from '../loop/loopReport.js'
+import { warnShellCommandsFromConfig } from '../loop/loopShellTrust.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
 
 type CliOptions = {
@@ -68,6 +69,12 @@ const batchConfig = loadLoopBatchConfig(batchDir)
 
 console.error(`[agent-loop-batch] repo=${ctx.repoRoot}`)
 console.error(`[agent-loop-batch] batch=${path.relative(ctx.repoRoot, batchDir)}`)
+
+warnShellCommandsFromConfig({
+  cwd: ctx.repoRoot,
+  syncCommand: ctx.profile.syncCommand,
+  skipSync: cli.skipSync,
+})
 
 try {
   const result = await runLoopBatch({

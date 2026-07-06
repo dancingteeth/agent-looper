@@ -1,3 +1,8 @@
+---
+tags:
+  - documentation
+  - agents
+---
 # Example loop — replace with your task
 
 Describe what the agent should fix or implement.
