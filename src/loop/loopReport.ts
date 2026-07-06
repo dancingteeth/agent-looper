@@ -36,9 +36,34 @@ function formatVerifySnippet(result: AgentLoopResult): string | undefined {
   return truncate(output, VERIFY_SNIPPET_MAX)
 }
 
+export function resolveLatestReviewPath(loopDir: string): string | undefined {
+  let latest: { path: string; cycle: number } | undefined
+
+  try {
+    for (const entry of fs.readdirSync(loopDir)) {
+      let cycle: number | undefined
+      if (entry === 'review.md') {
+        cycle = 1
+      } else {
+        const match = entry.match(/^review\.(\d+)\.md$/)
+        if (!match) continue
+        cycle = Number(match[1])
+      }
+
+      if (!latest || cycle > latest.cycle) {
+        latest = { path: path.join(loopDir, entry), cycle }
+      }
+    }
+  } catch {
+    return undefined
+  }
+
+  return latest?.path
+}
+
 export function readLatestLoopReview(loopDir: string): LoopReportReview | undefined {
-  const reviewPath = path.join(loopDir, 'review.md')
-  if (!fs.existsSync(reviewPath)) return undefined
+  const reviewPath = resolveLatestReviewPath(loopDir)
+  if (!reviewPath) return undefined
   try {
     const parsed = parseReviewMarkdown(fs.readFileSync(reviewPath, 'utf8'))
     return {

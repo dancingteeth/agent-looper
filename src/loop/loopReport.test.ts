@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   formatBatchCompletionReport,
   formatLoopCompletionReport,
+  readLatestLoopReview,
+  resolveLatestReviewPath,
 } from './loopReport.js'
 import { emptyUsageSummary } from '../usage/loopUsage.js'
 import type { AgentLoopResult } from './agentLoop.js'
@@ -25,6 +30,58 @@ function loopResult(overrides: Partial<AgentLoopResult> = {}): AgentLoopResult {
     ...overrides,
   }
 }
+
+describe('resolveLatestReviewPath', () => {
+  let tmpDir: string
+
+  afterEach(() => {
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns review.md when it is the only review file', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-report-review-'))
+    const reviewPath = path.join(tmpDir, 'review.md')
+    fs.writeFileSync(reviewPath, '### Verdict\n**PASS**\n')
+
+    expect(resolveLatestReviewPath(tmpDir)).toBe(reviewPath)
+  })
+
+  it('prefers the highest review cycle when review.md and review.N.md coexist', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-report-review-'))
+    fs.writeFileSync(
+      path.join(tmpDir, 'review.md'),
+      `### Risk
+**HIGH**
+
+### Verdict
+**BLOCKERS**
+
+### Blockers
+- stale first review
+`,
+    )
+    fs.writeFileSync(
+      path.join(tmpDir, 'review.2.md'),
+      `### Risk
+**LOW**
+
+### Verdict
+**PASS**
+
+### Blockers
+`,
+    )
+
+    expect(resolveLatestReviewPath(tmpDir)).toBe(path.join(tmpDir, 'review.2.md'))
+    expect(readLatestLoopReview(tmpDir)?.verdict).toBe('PASS')
+  })
+
+  it('returns undefined when the loop directory is missing', () => {
+    expect(resolveLatestReviewPath('/tmp/does-not-exist-loop-report-review')).toBeUndefined()
+  })
+})
 
 describe('formatLoopCompletionReport', () => {
   it('includes status, bundle, iterations, and usage', () => {

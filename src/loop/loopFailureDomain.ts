@@ -10,6 +10,7 @@ export type FailureDomainReason =
   | 'max_iterations'
   | 'review_gate'
   | 'meta_probe_failed'
+  | 'agent_error'
 
 export type FailureDomainEntry = {
   at: string
@@ -38,6 +39,8 @@ function suggestionForReason(reason: FailureDomainReason, repeatCount?: number):
       return 'Review BLOCKERS persisted — fix blockers in-repo or adjust review expectations.'
     case 'meta_probe_failed':
       return 'Meta-loop probe still failing after fix cycle — inspect failure-context.md and failure-domains.ndjson.'
+    case 'agent_error':
+      return 'Agent SDK threw during an iteration — see stderr. Re-run or inspect the agent session/API key.'
     default: {
       const _exhaustive: never = reason
       return String(_exhaustive)
@@ -77,5 +80,21 @@ export function logFailureDomainFromVerify(
       reason: options.verify.reason,
     },
     repeatCount: options.repeatCount,
+  })
+}
+
+export function logFailureDomainFromAgentError(
+  loopDir: string,
+  options: { iteration: number; message: string },
+): void {
+  appendFailureDomain(loopDir, {
+    iteration: options.iteration,
+    reason: 'agent_error',
+    fingerprint: `agent_error|${options.message.slice(0, 300)}`,
+    verify: {
+      command: '(agent SDK)',
+      exitCode: null,
+      reason: options.message.slice(0, 500),
+    },
   })
 }

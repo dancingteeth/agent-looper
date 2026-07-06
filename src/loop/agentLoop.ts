@@ -11,7 +11,10 @@ import type { ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
 import { reviewGateBlockers, reviewGateBlocksCompletion } from '../review/reviewVerdict.js'
 import { detectStagnation } from '../loop/loopStagnation.js'
 import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
-import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
+import {
+  logFailureDomainFromVerify,
+  logFailureDomainFromAgentError,
+} from '../loop/loopFailureDomain.js'
 import { readFailureContext } from '../loop/loopFailureContext.js'
 import { pauseForContinue } from '../loop/loopPause.js'
 import {
@@ -429,6 +432,17 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       complete: false,
       iterations,
       completionReason: `Max iterations (${config.maxIterations}) reached without passing verifier.`,
+      lastVerify,
+      logPath,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[agent-loop] agent SDK error during iteration ${iterations}: ${message}`)
+    logFailureDomainFromAgentError(bundle.loopDir, { iteration: iterations, message })
+    return finish({
+      complete: false,
+      iterations,
+      completionReason: `Agent SDK error during iteration ${iterations}: ${message}`,
       lastVerify,
       logPath,
     })

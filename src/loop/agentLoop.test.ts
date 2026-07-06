@@ -264,19 +264,26 @@ describe('runAgentLoop', () => {
     expect(onIterationStart).toHaveBeenNthCalledWith(2, 2)
   })
 
-  it('disposes the agent session when the verifier throws', async () => {
+  it('disposes the agent session and logs a failure domain when the verifier throws', async () => {
     const { dispose } = mockSession()
     mockedRunVerify.mockImplementation(() => {
       throw new Error('shell exploded')
     })
 
-    await expect(
-      runAgentLoop({
-        ctx: makeCtx(),
-        bundle: makeBundle({ maxIterations: 1 }),
-      }),
-    ).rejects.toThrow(/shell exploded/)
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 1 }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/shell exploded/)
     expect(dispose).toHaveBeenCalledOnce()
+    const domains = fs
+      .readFileSync(path.join(tmpLoopDir, 'failure-domains.ndjson'), 'utf8')
+      .trim()
+      .split('\n')
+    expect(domains).toHaveLength(1)
+    expect(JSON.parse(domains[0]!).reason).toBe('agent_error')
   })
 
   it('continues loop when review gate returns BLOCKERS then completes on PASS', async () => {
