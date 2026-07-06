@@ -15,12 +15,14 @@ Checklist for agents and humans adding **`@dancingteeth/agent-loop`** to another
 
 ## 1. Add the dependency
 
-In the consumer `package.json` `devDependencies`:
+In the consumer `package.json` `optionalDependencies` (dev harness — not required on CI/Docker):
 
 ```json
 {
+  "optionalDependencies": {
+    "@dancingteeth/agent-loop": "file:../agent-loop"
+  },
   "devDependencies": {
-    "@dancingteeth/agent-loop": "file:../agent-loop",
     "@cline/sdk": "^0.0.55",
     "@cursor/sdk": "^1.0.18"
   }
@@ -29,10 +31,10 @@ In the consumer `package.json` `devDependencies`:
 
 Adjust the path for your layout:
 
-| Consumer location | Typical specifier |
-|-------------------|-----------------|
-| `~/Projects/zwook` | `file:../agent-loop` |
-| `~/Projects/multi-store/payload-ecommerce` | `file:../../agent-loop` |
+| Consumer location | Typical specifier | Install kind |
+|-------------------|-------------------|--------------|
+| `~/Projects/zwook` | `file:../agent-loop` | `optionalDependencies` |
+| `~/Projects/multi-store/payload-ecommerce` | `file:../../agent-loop` | `optionalDependencies` |
 
 The resolved path **must exist on disk** before `pnpm install` (sibling checkout or symlink).
 
@@ -54,39 +56,11 @@ ln -sf ~/Projects/agent-loop <expected-sibling-path>
 
 `pnpm ensure-link` reads the consumer's `file:` specifier and creates the symlink when missing.
 
-## 3. Postinstall guard (copy from an existing consumer)
+## 3. Optional import helper (copy from an existing consumer)
 
-Add `scripts/agent-loop/postinstall-check.sh`:
+Add `lib/loadAgentLoop.mjs` (Zwook) or `src/lib/tasks/loadAgentLoop.ts` (Maxin) — dynamic import + `isAgentLoopInstalled()` so CI passes without the sibling checkout.
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-if [[ "${SKIP_AGENT_LOOP_DOCTOR:-}" == "1" ]]; then
-  exit 0
-fi
-
-if ! pnpm exec node -e "import('@dancingteeth/agent-loop')" >/dev/null 2>&1; then
-  exit 0
-fi
-
-pnpm exec agent-loop-doctor --install-check
-```
-
-In consumer `package.json` scripts:
-
-```json
-{
-  "scripts": {
-    "postinstall": "bash scripts/agent-loop/postinstall-check.sh",
-    "agent:doctor": "pnpm exec agent-loop-doctor",
-    "agent:loop": "doppler run --project <doppler-project> --config dev -- pnpm exec agent-loop run",
-    "agent:init": "pnpm exec agent-loop-init"
-  }
-}
-```
-
-Set `SKIP_AGENT_LOOP_DOCTOR=1` in Docker/prod builds that stub agent-loop (see Maxin `scripts/docker/stub-agent-loop-for-install.sh`).
+Consumer integration tests use `describe.skip` / `{ skip: !isAgentLoopInstalled() }` when the package is absent.
 
 ## 4. Scaffold repo profile and example loop
 
@@ -119,8 +93,8 @@ Add a **Repo layout** section to the consumer's loop runbook (e.g. `docs/CURSOR_
 | When | What |
 |------|------|
 | `pnpm install` in agent-loop | `prepare` builds `dist/` if incomplete |
-| `pnpm install` in consumer | `postinstall` → `agent-loop-doctor --install-check` |
-| Anytime | `pnpm agent:doctor` or `pnpm exec agent-loop-doctor` |
+| `pnpm install` in consumer (local dev) | Optional `file:` link when sibling exists |
+| Anytime (dev) | `pnpm agent:doctor` or `pnpm exec agent-loop-doctor` |
 
 If install fails with a missing `file:` path or incomplete `dist/`, doctor prints exact `ln -sf` and rebuild commands.
 
@@ -133,4 +107,4 @@ If install fails with a missing `file:` path or incomplete `dist/`, doctor print
 
 ## Docker / production images
 
-If the consumer builds Docker images and `file:../../agent-loop` is outside the build context, stub the package before `pnpm install` (Maxin: `scripts/docker/stub-agent-loop-for-install.sh`). The stub must include a no-op `dist/cli/doctor.js` so `postinstall` succeeds.
+Consumers use `optionalDependencies` for the `file:` sibling so `pnpm install` succeeds when the harness checkout is outside the build context. Loop CLIs are dev-only; production images do not need agent-loop.
