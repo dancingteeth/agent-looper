@@ -5,9 +5,13 @@ import { handleClineSessionEvent } from '../stream/streamClineSession.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { CLINE_LOOP_TOOL_POLICIES } from './loopToolPolicy.js'
 import { assertPosixShell } from './shellPreflight.js'
+import {
+  CLINE_INNER_MAX_ITERATIONS,
+  resolveInnerAgentStatus,
+} from './innerAgentStatus.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 
-const CLINE_INNER_MAX_ITERATIONS = 25
+export { CLINE_INNER_MAX_ITERATIONS }
 const SESSION_TIMEOUT_MS = 45 * 60 * 1000
 
 export type ClineAgentRunOptions = {
@@ -179,7 +183,7 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
           )
         }
 
-        return { text, usage }
+        return { text, usage, innerAgent: resolveInnerAgentStatus(text, 'cline') }
       } finally {
         await cline.stop(started.sessionId).catch(() => undefined)
         await cline.delete(started.sessionId).catch(() => undefined)

@@ -7,6 +7,7 @@ describe('loopConfigSchema', () => {
     const parsed = loopConfigSchema.parse({ verify: 'true' })
     expect(parsed.maxIterations).toBe(8)
     expect(parsed.delayMs).toBe(1500)
+    expect(parsed.verifyLogMode).toBe('inline')
   })
 
   it('defaults syncOnSuccess to true', () => {

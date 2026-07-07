@@ -6,10 +6,11 @@
   "postQualityReview": "auto",
   "reviewGate": false,
   "maxReviewCycles": 2,
-  "syncOnSuccess": false,
+  "syncOnSuccess": true,
   "stagnationThreshold": 3,
   "mode": "forward",
   "pauseAfterIteration": false,
   "injectFailureContext": false,
-  "notifyTelegram": true
+  "notifyTelegram": true,
+  "verifyLogMode": "inline"
 }

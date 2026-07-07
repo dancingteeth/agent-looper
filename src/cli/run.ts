@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
+import {
+  formatRepoProfileCheck,
+  validateRepoProfile,
+} from '../context/repoProfileDoctor.js'
+import {
+  formatLoopExtensionPreflight,
+  validateLoopExtensionPreflight,
+} from '../loop/loopExtensions.js'
 import { runAgentLoop } from '../loop/agentLoop.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
@@ -233,6 +241,28 @@ if (bundle.config.pauseAfterIteration) {
 }
 console.error(`[agent-loop] log=${path.relative(ctx.repoRoot, bundle.logPath)}`)
 
+const profileCheck = validateRepoProfile(ctx)
+if (!profileCheck.ok) {
+  console.error('[agent-loop] repo profile errors:')
+  console.error(formatRepoProfileCheck({ ...profileCheck, warnings: [] }))
+  process.exit(1)
+}
+for (const warning of profileCheck.warnings) {
+  console.error(`[agent-loop] warn: ${warning}`)
+}
+
+const extensionPreflight = validateLoopExtensionPreflight(ctx, bundle.config)
+if (extensionPreflight.warnings.length > 0 || extensionPreflight.pendingFeatures.length > 0) {
+  console.error('[agent-loop] loop extension preflight:')
+  console.error(formatLoopExtensionPreflight(extensionPreflight))
+}
+
+if (bundle.config.taskwarriorUuid && bundle.config.syncOnSuccess === false && !cli.skipSync) {
+  console.error(
+    '[agent-loop] warn: taskwarriorUuid is set but syncOnSuccess=false — TW task will not be marked done automatically',
+  )
+}
+
 warnShellCommandsFromConfig({
   cwd: ctx.repoRoot,
   verify: bundle.config.verify,
@@ -246,6 +276,15 @@ try {
 
   console.error(`[agent-loop] finished complete=${result.complete} iterations=${result.iterations}`)
   console.error(`[agent-loop] reason: ${result.completionReason}`)
+  if (result.reviewAdvisoryBlockers) {
+    console.error('[agent-loop] advisory review had BLOCKERS (reviewGate=false)')
+  }
+  if (result.innerAgentIncomplete) {
+    console.error('[agent-loop] inner agent did not complete cleanly (see log innerAgent)')
+  }
+  if (result.hitlCheckTaskUuid) {
+    console.error(`[agent-loop] HITL manual check: task uuid:${result.hitlCheckTaskUuid}`)
+  }
   console.error(`[agent-loop] ${formatUsageSummaryLine(result.usage)}`)
 
   await sendLoopTelegramReport({

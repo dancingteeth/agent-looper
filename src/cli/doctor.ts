@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { resolveRepoContext } from '../context/repoContext.js'
+import {
+  formatRepoProfileCheck,
+  validateRepoProfile,
+} from '../context/repoProfileDoctor.js'
 import {
   formatPackageDistHelp,
   inspectPackageInstall,
@@ -14,7 +19,8 @@ function resolvePackageRoot(fromModuleUrl: string): string {
 function usage(): string {
   return `Usage: agent-loop-doctor [options]
 
-Validates @dancingteeth/agent-loop install integrity for file: consumers.
+Validates @dancingteeth/agent-loop install integrity for file: consumers
+and checks consumer repo profile / loop.json pitfalls.
 
 Options:
   --repo-root <path>   Consumer repo (default: process.cwd())
@@ -54,9 +60,16 @@ for (let i = 0; i < argv.length; i++) {
 }
 
 const packageRoot = resolvePackageRoot(import.meta.url)
-const report = {
+const installReport = {
   ...inspectPackageInstall({ packageRoot, consumerRoot }),
   consumerRootHint: consumerRoot,
+}
+
+const profileCheck = validateRepoProfile(resolveRepoContext({ repoRoot: consumerRoot }))
+const report = {
+  ...installReport,
+  profile: profileCheck,
+  ok: installReport.ok && profileCheck.ok,
 }
 
 if (json) {
@@ -71,9 +84,24 @@ if (report.ok) {
       console.log(`  file: ${report.fileDep.specifier} → ${report.fileDep.resolvedPath}`)
     }
     console.log(`  dist artifacts: ${validatePackageDist(packageRoot).length === 0 ? 'complete' : 'incomplete'}`)
+    for (const warning of profileCheck.warnings) {
+      console.log(`  warn: ${warning}`)
+    }
   }
   process.exit(0)
 }
 
-console.error(formatPackageDistHelp(report))
+if (!installReport.ok) {
+  console.error(formatPackageDistHelp(installReport))
+}
+
+if (!profileCheck.ok) {
+  console.error('[agent-loop-doctor] repo profile issues:')
+  console.error(formatRepoProfileCheck(profileCheck))
+}
+
+for (const warning of profileCheck.warnings) {
+  console.error(`[agent-loop-doctor] warn: ${warning}`)
+}
+
 process.exit(1)

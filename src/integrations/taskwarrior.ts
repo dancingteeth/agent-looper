@@ -28,18 +28,51 @@ export function buildHitlCheckTaskArgs(
   return ['add', `project:${taskwarriorProject}`, '+hitl', '+manual', text]
 }
 
+function escapeTaskDescriptionFilter(text: string): string {
+  return `/${text.replace(/[\\/]/g, '\\$&')}/`
+}
+
+function lookupHitlTaskUuid(description: string, taskwarriorProject: string): string | undefined {
+  const text = formatHitlCheckTaskDescription(description)
+  try {
+    const uuid = execFileSync(
+      'task',
+      [
+        `project:${taskwarriorProject}`,
+        '+hitl',
+        '+manual',
+        'status:pending',
+        escapeTaskDescriptionFilter(text),
+        '_uuid',
+        'limit:1',
+      ],
+      { encoding: 'utf8', stdio: 'pipe' },
+    ).trim()
+    return uuid || undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Create a human-validation checkpoint in Taskwarrior. Non-blocking on failure. */
-export function createHitlCheckTask(description: string, taskwarriorProject: string): void {
+export function createHitlCheckTask(description: string, taskwarriorProject: string): string | undefined {
   const text = formatHitlCheckTaskDescription(description)
   try {
     execFileSync('task', buildHitlCheckTaskArgs(description, taskwarriorProject), {
       encoding: 'utf8',
       stdio: 'pipe',
     })
+    const uuid = lookupHitlTaskUuid(description, taskwarriorProject)
+    if (uuid) {
+      console.error(`[agent-loop] created HITL check task uuid:${uuid}: ${text}`)
+      return uuid
+    }
     console.error(`[agent-loop] created HITL check task: ${text}`)
+    return undefined
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[agent-loop] warn: could not create HITL check task: ${message}`)
+    return undefined
   }
 }
 

@@ -12,13 +12,14 @@ import {
   taskwarriorUuidSchema,
 } from '../integrations/taskwarrior.js'
 import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.js'
+import { loopExtensionFieldsSchema } from './loopExtensions.js'
 import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
 import { loopModeSchema } from './loopMode.js'
 
 export const loopRuntimeSchema = z.enum([LOOP_RUNTIME_CURSOR, LOOP_RUNTIME_CLINE_PASS])
 
-export const loopConfigSchema = z
-  .object({
+export const loopConfigSchema = loopExtensionFieldsSchema
+  .extend({
     maxIterations: z.number().int().min(1).max(50).default(8),
     verify: z.string().min(1),
     finalVerify: z.string().optional(),

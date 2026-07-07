@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { AgentLoopResult } from './agentLoop.js'
 import type { LoopBatchResult } from './loopBatch.js'
+import { captureGitWorkspaceSnapshot } from './loopGit.js'
 import { parseReviewMarkdown } from '../review/reviewVerdict.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 
@@ -76,11 +77,33 @@ export function readLatestLoopReview(loopDir: string): LoopReportReview | undefi
   }
 }
 
-function formatReviewLine(review: LoopReportReview | undefined): string | undefined {
+function formatReviewLine(
+  review: LoopReportReview | undefined,
+  advisoryBlockers: boolean,
+): string | undefined {
   if (!review) return undefined
   const blockers =
     review.blockersCount > 0 ? `, ${review.blockersCount} blocker(s)` : ''
-  return `Review: ${review.verdict} (risk ${review.risk}${blockers})`
+  const advisory =
+    advisoryBlockers && review.verdict === 'BLOCKERS' ? ' [advisory — reviewGate=false]' : ''
+  return `Review: ${review.verdict} (risk ${review.risk}${blockers})${advisory}`
+}
+
+function formatGitStatusLine(repoRoot: string): string | undefined {
+  const git = captureGitWorkspaceSnapshot(repoRoot)
+  if (git.statusPorcelain === '(clean)' || git.statusPorcelain === '(git unavailable)') {
+    return undefined
+  }
+  return `Uncommitted changes:\n${truncate(git.statusPorcelain, 1200)}`
+}
+
+function formatSuccessNextSteps(repoRoot: string): string[] {
+  const lines = ['', 'Suggested next steps:', '  git status', '  git add -p && git commit', '  git push']
+  const git = captureGitWorkspaceSnapshot(repoRoot)
+  if (git.statusPorcelain !== '(clean)' && git.statusPorcelain !== '(git unavailable)') {
+    lines.push('', 'Working tree (short):', truncate(git.statusPorcelain, 800))
+  }
+  return lines
 }
 
 export function formatLoopCompletionReport(input: {
@@ -100,8 +123,30 @@ export function formatLoopCompletionReport(input: {
     formatUsageSummaryLine(result.usage),
   ]
 
-  const reviewLine = formatReviewLine(readLatestLoopReview(loopDir))
+  const reviewLine = formatReviewLine(
+    readLatestLoopReview(loopDir),
+    result.reviewAdvisoryBlockers === true,
+  )
   if (reviewLine) lines.push(reviewLine)
+
+  if (result.reviewAdvisoryBlockers) {
+    lines.push('Note: review BLOCKERS are advisory only — enable reviewGate=true to enforce.')
+  }
+
+  if (result.innerAgentIncomplete) {
+    lines.push('Note: inner agent hit clineMaxIterations; outer verifier still passed.')
+  }
+
+  if (result.hitlCheckTaskUuid) {
+    lines.push(`HITL: manual check task uuid:${result.hitlCheckTaskUuid}`)
+  }
+
+  if (result.complete) {
+    lines.push(...formatSuccessNextSteps(repoRoot))
+  } else {
+    const gitStatus = formatGitStatusLine(repoRoot)
+    if (gitStatus) lines.push('', gitStatus)
+  }
 
   const verifySnippet = formatVerifySnippet(result)
   if (verifySnippet) {

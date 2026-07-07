@@ -1,5 +1,11 @@
-export type { RepoContext, ResolveRepoContextOptions } from './context/repoContext.js'
+export { detectDefaultBranch, defaultBranchRefExists } from './context/defaultBranch.js'
+export { validateRepoProfile, formatRepoProfileCheck } from './context/repoProfileDoctor.js'
+export type { RepoProfileCheck } from './context/repoProfileDoctor.js'
+export type { InnerAgentStatus } from './agents/innerAgentStatus.js'
+export { CLINE_INNER_MAX_ITERATIONS } from './agents/innerAgentStatus.js'
+
 export { resolveRepoContext, resolveTaskwarriorProject } from './context/repoContext.js'
+export type { RepoContext, ResolveRepoContextOptions } from './context/repoContext.js'
 export type { RepoProfile } from './context/repoProfile.js'
 export {
   loadRepoProfile,
@@ -110,10 +116,28 @@ export {
   sendTelegramMessage,
   resolveTelegramCredentials,
   shouldSendTelegramNotify,
+  describeTelegramSkipReason,
   TELEGRAM_BOT_TOKEN_ENV,
   TELEGRAM_BOT_TOKEN_FALLBACK_ENV,
   TELEGRAM_CHAT_ID_ENV,
 } from './integrations/telegramNotify.js'
+
+export {
+  loopExtensionFieldsSchema,
+  siblingRepoSchema,
+  verifyLogModeSchema,
+  detectExternalVerifierPaths,
+  validateLoopExtensionPreflight,
+  formatLoopExtensionPreflight,
+  persistVerifyOutput,
+  runPostVerifierExtensionHooks,
+} from './loop/loopExtensions.js'
+export type {
+  SiblingRepoRef,
+  VerifyLogMode,
+  VerifyLogRefs,
+  LoopExtensionPreflightResult,
+} from './loop/loopExtensions.js'
 
 export {
   formatLoopCompletionReport,

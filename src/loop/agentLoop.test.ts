@@ -405,4 +405,23 @@ describe('runAgentLoop', () => {
     expect(result.completionReason).toMatch(/unparseable verdict/)
     expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
   })
+
+  it('completes with reviewAdvisoryBlockers when BLOCKERS are advisory only', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Docs** — missing README section']),
+    )
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        postQualityReview: true,
+        reviewGate: false,
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(result.reviewAdvisoryBlockers).toBe(true)
+  })
 })

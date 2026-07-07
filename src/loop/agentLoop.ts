@@ -24,6 +24,15 @@ import {
 } from '../integrations/taskwarrior.js'
 import { runVerifyCommand, type VerifyResult } from '../loop/loopVerify.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
+import type { InnerAgentStatus } from '../agents/innerAgentStatus.js'
+import { previewAssistantText } from '../agents/innerAgentStatus.js'
+import {
+  persistVerifyOutput,
+  runPostVerifierExtensionHooks,
+  siblingReposForIterationLog,
+  type SiblingRepoRef,
+  type VerifyLogRefs,
+} from './loopExtensions.js'
 import {
   addUsageRecord,
   emptyUsageSummary,
@@ -39,7 +48,10 @@ export type LoopIterationLog = {
   shortSha: string
   verify: VerifyResult
   finalVerify?: VerifyResult
+  verifyLog?: VerifyLogRefs
+  siblingRepos?: SiblingRepoRef[]
   assistantPreview: string
+  innerAgent?: InnerAgentStatus
   review?: {
     verdict: ReviewVerdict
     risk: ReviewRisk
@@ -56,6 +68,12 @@ export type AgentLoopResult = {
   lastVerify: VerifyResult | null
   logPath: string
   usage: LoopUsageSummary
+  /** True when review returned BLOCKERS but reviewGate was off (advisory only). */
+  reviewAdvisoryBlockers?: boolean
+  /** True when the last iteration's inner agent (e.g. Cline) did not complete cleanly. */
+  innerAgentIncomplete?: boolean
+  /** Taskwarrior UUID when hitlCheck created a manual validation task. */
+  hitlCheckTaskUuid?: string
 }
 
 export type AgentLoopOptions = {
@@ -65,7 +83,6 @@ export type AgentLoopOptions = {
   onIterationStart?: (iteration: number) => void
 }
 
-const PREVIEW_MAX = 500
 const SDK_RETRY_DELAYS_MS = [5000, 15_000] as const
 
 function isTransientAgentError(err: unknown): boolean {
@@ -109,18 +126,15 @@ function appendLog(logPath: string, entry: LoopIterationLog): void {
   fs.appendFileSync(logPath, `${JSON.stringify(entry)}\n`, 'utf8')
 }
 
-function previewAssistant(text: string): string {
-  const trimmed = text.trim()
-  if (trimmed.length <= PREVIEW_MAX) return trimmed
-  return `${trimmed.slice(0, PREVIEW_MAX)}…`
-}
-
 function buildIterationLog(input: {
   iteration: number
   git: ReturnType<typeof captureGitWorkspaceSnapshot>
   verify: VerifyResult
   finalVerify?: VerifyResult
+  verifyLog?: VerifyLogRefs
+  siblingRepos?: SiblingRepoRef[]
   assistantText: string
+  innerAgent?: InnerAgentStatus
   review?: LoopIterationLog['review']
   usage?: LoopUsageRecord
 }): LoopIterationLog {
@@ -131,10 +145,22 @@ function buildIterationLog(input: {
     shortSha: input.git.shortSha,
     verify: input.verify,
     ...(input.finalVerify ? { finalVerify: input.finalVerify } : {}),
-    assistantPreview: previewAssistant(input.assistantText),
+    ...(input.verifyLog ? { verifyLog: input.verifyLog } : {}),
+    ...(input.siblingRepos ? { siblingRepos: input.siblingRepos } : {}),
+    assistantPreview: previewAssistantText(input.assistantText, input.innerAgent),
+    ...(input.innerAgent ? { innerAgent: input.innerAgent } : {}),
     ...(input.review ? { review: input.review } : {}),
     ...(input.usage ? { usage: input.usage } : {}),
   }
+}
+
+function prepareVerifyForLog(
+  loopDir: string,
+  iteration: number,
+  verify: VerifyResult,
+  verifyLogMode: LoadedLoopBundle['config']['verifyLogMode'],
+): { verify: VerifyResult; verifyLog?: VerifyLogRefs } {
+  return persistVerifyOutput(loopDir, iteration, verify, verifyLogMode)
 }
 
 function maybeRunSync(ctx: RepoContext, enabled: boolean): void {
@@ -183,6 +209,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let iterations = 0
   let reviewBlockers: string[] | undefined
   let reviewCyclesUsed = 0
+  let reviewAdvisoryBlockers = false
   let usageSummary = emptyUsageSummary()
   const stagnationThreshold = config.stagnationThreshold
 
@@ -236,6 +263,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       )
       usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
       const assistantText = assistantRun.text
+      const innerAgent = assistantRun.innerAgent
+
+      if (innerAgent && !innerAgent.complete) {
+        console.error(
+          `[agent-loop] warn: ${innerAgent.reason ?? 'inner agent incomplete'} (outer verifier may still pass)`,
+        )
+      }
 
       if (config.delayMs > 0) {
         await sleep(config.delayMs)
@@ -253,6 +287,24 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       const passed = finalVerify ? finalVerify.complete : verify.complete
+      const siblingRepos = siblingReposForIterationLog(config)
+      const verifyPersisted = prepareVerifyForLog(bundle.loopDir, i, verify, config.verifyLogMode)
+      const verifyForLog = verifyPersisted.verify
+      const verifyLog = verifyPersisted.verifyLog
+      let finalVerifyForLog: VerifyResult | undefined
+      if (finalVerify) {
+        const finalPersisted = prepareVerifyForLog(
+          bundle.loopDir,
+          i,
+          finalVerify,
+          config.verifyLogMode,
+        )
+        finalVerifyForLog = finalPersisted.verify
+      }
+
+      if (passed) {
+        runPostVerifierExtensionHooks(config, repoRoot)
+      }
 
       let reviewLog: LoopIterationLog['review'] | undefined
 
@@ -287,9 +339,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                   buildIterationLog({
                     iteration: i,
                     git,
-                    verify,
-                    finalVerify,
+                    verify: verifyForLog,
+                    finalVerify: finalVerifyForLog,
+                    verifyLog,
+                    siblingRepos,
                     assistantText,
+                    innerAgent,
                     review: reviewLog,
                     usage: assistantRun.usage,
                   }),
@@ -318,9 +373,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                 buildIterationLog({
                   iteration: i,
                   git,
-                  verify,
-                  finalVerify,
+                  verify: verifyForLog,
+                  finalVerify: finalVerifyForLog,
+                  verifyLog,
+                  siblingRepos,
                   assistantText,
+                  innerAgent,
                   review: reviewLog,
                   usage: assistantRun.usage,
                 }),
@@ -334,6 +392,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               )
               await maybePauseAfterIteration(config, i)
               continue
+            }
+
+            if (!config.reviewGate && parsed.verdict === 'BLOCKERS') {
+              reviewAdvisoryBlockers = true
+              console.error(
+                `[agent-loop] advisory review: BLOCKERS (${parsed.blockers.length}) — loop still completes (reviewGate=false; set reviewGate=true to enforce)`,
+              )
             }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
@@ -356,9 +421,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           buildIterationLog({
             iteration: i,
             git,
-            verify,
-            finalVerify,
+            verify: verifyForLog,
+            finalVerify: finalVerifyForLog,
+            verifyLog,
+            siblingRepos,
             assistantText,
+            innerAgent,
             review: reviewLog,
             usage: assistantRun.usage,
           }),
@@ -366,8 +434,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         if (config.taskwarriorUuid) {
           markTaskwarriorDoneByUuid(config.taskwarriorUuid)
         }
+        let hitlCheckTaskUuid: string | undefined
         if (config.hitlCheck) {
-          createHitlCheckTask(
+          hitlCheckTaskUuid = createHitlCheckTask(
             config.hitlCheck,
             resolveTaskwarriorProject(config.taskwarriorProject, ctx.profile),
           )
@@ -379,6 +448,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           completionReason: lastVerify!.reason,
           lastVerify,
           logPath,
+          ...(reviewAdvisoryBlockers ? { reviewAdvisoryBlockers: true } : {}),
+          ...(innerAgent && !innerAgent.complete ? { innerAgentIncomplete: true } : {}),
+          ...(hitlCheckTaskUuid ? { hitlCheckTaskUuid } : {}),
         })
       }
 
@@ -387,9 +459,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         buildIterationLog({
           iteration: i,
           git,
-          verify,
-          finalVerify,
+          verify: verifyForLog,
+          finalVerify: finalVerifyForLog,
+          verifyLog,
+          siblingRepos,
           assistantText,
+          innerAgent,
           usage: assistantRun.usage,
         }),
       )

@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import type { RepoContext } from '../context/repoContext.js'
+import { defaultBranchRefExists } from '../context/defaultBranch.js'
 import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
 import { CURSOR_LOOP_MODEL } from '../loop/loopAgentConfig.js'
 import { buildQualityReviewPrompt } from './reviewPrompt.js'
@@ -10,23 +11,21 @@ import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
 function gitDiffSinceBranchBase(ctx: RepoContext): string {
   const baseBranch = ctx.profile.defaultBranch
-  try {
-    const base = execFileSync('git', ['merge-base', 'HEAD', baseBranch], {
-      cwd: ctx.repoRoot,
-      encoding: 'utf8',
-    }).trim()
-    return execFileSync('git', ['diff', '--stat', `${base}...HEAD`], {
-      cwd: ctx.repoRoot,
-      encoding: 'utf8',
-      maxBuffer: 512 * 1024,
-    }).trim()
-  } catch {
-    return execFileSync('git', ['diff', '--stat'], {
-      cwd: ctx.repoRoot,
-      encoding: 'utf8',
-      maxBuffer: 512 * 1024,
-    }).trim()
+  if (!defaultBranchRefExists(ctx.repoRoot, baseBranch)) {
+    throw new Error(
+      `defaultBranch "${baseBranch}" is not a valid git ref — fix .cursor/agent-loop.repo.json or run agent-loop-init`,
+    )
   }
+
+  const base = execFileSync('git', ['merge-base', 'HEAD', baseBranch], {
+    cwd: ctx.repoRoot,
+    encoding: 'utf8',
+  }).trim()
+  return execFileSync('git', ['diff', '--stat', `${base}...HEAD`], {
+    cwd: ctx.repoRoot,
+    encoding: 'utf8',
+    maxBuffer: 512 * 1024,
+  }).trim()
 }
 
 export function buildPostLoopQualityReviewPrompt(ctx: RepoContext, goal: string): string {

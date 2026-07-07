@@ -67,6 +67,42 @@ export function shouldSendTelegramNotify(input: {
   return input.complete ? credentials.onSuccess : credentials.onFailure
 }
 
+/** Human-readable reason when a loop completion report is not sent to Telegram. */
+export function describeTelegramSkipReason(input: {
+  profile: RepoProfile
+  notifyTelegram: boolean
+  complete: boolean
+}): string | null {
+  if (!input.notifyTelegram) return 'notifyTelegram=false'
+
+  const settings = resolveTelegramNotifySettings(input.profile)
+  const chatIdFromEnv = process.env[TELEGRAM_CHAT_ID_ENV]?.trim()
+  const chatId = chatIdFromEnv || settings?.chatId
+  const botToken =
+    process.env[TELEGRAM_BOT_TOKEN_ENV]?.trim() ||
+    process.env[TELEGRAM_BOT_TOKEN_FALLBACK_ENV]?.trim()
+
+  if (!botToken && !chatId) {
+    return `missing bot token (${TELEGRAM_BOT_TOKEN_ENV} or ${TELEGRAM_BOT_TOKEN_FALLBACK_ENV}) and chat id (${TELEGRAM_CHAT_ID_ENV} or telegramNotify.chatId)`
+  }
+  if (!botToken) {
+    return `missing bot token (${TELEGRAM_BOT_TOKEN_ENV} or ${TELEGRAM_BOT_TOKEN_FALLBACK_ENV})`
+  }
+  if (!chatId) {
+    return `missing chat id (${TELEGRAM_CHAT_ID_ENV} or telegramNotify.chatId in .cursor/agent-loop.repo.json)`
+  }
+
+  const credentials = resolveTelegramCredentials(input.profile)
+  if (!credentials) return 'telegram credentials could not be resolved'
+
+  const allowed = input.complete ? credentials.onSuccess : credentials.onFailure
+  if (!allowed) {
+    return input.complete ? 'telegramNotify.onSuccess=false' : 'telegramNotify.onFailure=false'
+  }
+
+  return null
+}
+
 export async function sendTelegramMessage(input: {
   botToken: string
   chatId: string
@@ -105,6 +141,14 @@ export async function sendLoopTelegramReport(input: {
       complete: input.complete,
     })
   ) {
+    const skipReason = describeTelegramSkipReason({
+      profile: input.profile,
+      notifyTelegram: input.notifyTelegram,
+      complete: input.complete,
+    })
+    if (skipReason) {
+      console.error(`[agent-loop] telegram skipped: ${skipReason}`)
+    }
     return false
   }
 

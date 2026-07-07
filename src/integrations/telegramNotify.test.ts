@@ -4,6 +4,7 @@ import {
   shouldSendTelegramNotify,
   sendTelegramMessage,
   sendLoopTelegramReport,
+  describeTelegramSkipReason,
   TELEGRAM_BOT_TOKEN_ENV,
   TELEGRAM_CHAT_ID_ENV,
 } from './telegramNotify.js'
@@ -115,6 +116,26 @@ describe('sendTelegramMessage', () => {
       text: 'hello',
       disable_web_page_preview: true,
     })
+  })
+})
+
+describe('describeTelegramSkipReason', () => {
+  it('explains missing chat id when token is present', () => {
+    const prevToken = process.env[TELEGRAM_BOT_TOKEN_ENV]
+    const prevChat = process.env[TELEGRAM_CHAT_ID_ENV]
+    process.env[TELEGRAM_BOT_TOKEN_ENV] = 'bot-token'
+    delete process.env[TELEGRAM_CHAT_ID_ENV]
+
+    const reason = describeTelegramSkipReason({
+      profile: { ...baseProfile, telegramNotify: { onSuccess: true, onFailure: true } },
+      notifyTelegram: true,
+      complete: true,
+    })
+    expect(reason).toMatch(/chat id/i)
+
+    if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
+    else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
+    if (prevChat) process.env[TELEGRAM_CHAT_ID_ENV] = prevChat
   })
 })
 

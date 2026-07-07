@@ -97,6 +97,24 @@ describe('formatLoopCompletionReport', () => {
     expect(report).toContain('Bundle: .cursor/loops/example-fix')
     expect(report).toContain('Iterations: 2')
     expect(report).toContain('usage:')
+    expect(report).toContain('Suggested next steps')
+  })
+
+  it('surfaces advisory blockers and inner-agent warnings', () => {
+    const report = formatLoopCompletionReport({
+      repoRoot: process.cwd(),
+      bundleLabel: 'loop-a',
+      loopDir: process.cwd(),
+      result: loopResult({
+        reviewAdvisoryBlockers: true,
+        innerAgentIncomplete: true,
+        hitlCheckTaskUuid: 'a74a94d1-2069-4e05-861e-de80143b0526',
+      }),
+    })
+
+    expect(report).toContain('advisory')
+    expect(report).toContain('clineMaxIterations')
+    expect(report).toContain('uuid:a74a94d1-2069-4e05-861e-de80143b0526')
   })
 
   it('includes verifier snippet on failure', () => {
