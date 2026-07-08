@@ -24,6 +24,7 @@ const baseProfile: RepoProfile = {
     chatId: '12345',
     onSuccess: true,
     onFailure: true,
+    attachReview: true,
   },
 }
 
@@ -82,7 +83,7 @@ describe('shouldSendTelegramNotify', () => {
       shouldSendTelegramNotify({
         profile: {
           ...baseProfile,
-          telegramNotify: { chatId: '12345', onSuccess: true, onFailure: false },
+          telegramNotify: { chatId: '12345', onSuccess: true, onFailure: false, attachReview: true },
         },
         notifyTelegram: true,
         complete: false,
@@ -129,7 +130,10 @@ describe('describeTelegramSkipReason', () => {
     delete process.env[TELEGRAM_CHAT_ID_ENV]
 
     const reason = describeTelegramSkipReason({
-      profile: { ...baseProfile, telegramNotify: { onSuccess: true, onFailure: true } },
+      profile: {
+        ...baseProfile,
+        telegramNotify: { onSuccess: true, onFailure: true, attachReview: true },
+      },
       notifyTelegram: true,
       complete: true,
     })
