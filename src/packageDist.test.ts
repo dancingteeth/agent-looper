@@ -7,6 +7,7 @@ import {
   formatPackageDistHelp,
   inspectPackageInstall,
   validatePackageDist,
+  validatePackageDistRuntime,
 } from './packageDist.js'
 
 const packageRoot = path.resolve(import.meta.dirname, '..')
@@ -14,6 +15,23 @@ const packageRoot = path.resolve(import.meta.dirname, '..')
 describe('validatePackageDist', () => {
   it('passes for a built checkout', () => {
     expect(validatePackageDist(packageRoot)).toEqual([])
+  })
+
+  it('resolves agentLoop import graph for a built checkout', () => {
+    expect(validatePackageDistRuntime(packageRoot)).toEqual([])
+  })
+
+  it('reports missing modules in the agentLoop import graph', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-dist-'))
+    const loopDir = path.join(dir, 'dist/loop')
+    fs.mkdirSync(loopDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(loopDir, 'agentLoop.js'),
+      "import { x } from './missing-module.js'\n",
+    )
+    const issues = validatePackageDistRuntime(dir)
+    expect(issues.some((i) => i.path.includes('missing-module.js'))).toBe(true)
+    fs.rmSync(dir, { recursive: true, force: true })
   })
 
   it('reports missing dist files', () => {

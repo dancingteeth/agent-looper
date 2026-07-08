@@ -98,6 +98,22 @@ Add a **Repo layout** section to the consumer's loop runbook (e.g. `docs/CURSOR_
 
 If install fails with a missing `file:` path or incomplete `dist/`, doctor prints exact `ln -sf` and rebuild commands.
 
+### `ERR_MODULE_NOT_FOUND` for `dist/loop/loopSkills.js` (or other dist files)
+
+Symptom: `pnpm agent:loop` fails in the consumer even though `agent-loop-doctor` previously reported OK.
+
+Cause: sibling `agent-loop` was rebuilt but the consumer's pnpm `file:` copy is stale, or `pnpm prepare` failed silently (TypeScript syntax in `prepare-package.mjs`).
+
+Fix:
+
+```bash
+cd ~/Projects/agent-loop && pnpm install && pnpm build
+cd ~/Projects/<consumer> && pnpm install
+pnpm exec agent-loop-doctor
+```
+
+Doctor now smoke-loads `dist/cli/run.js` so missing modules are caught before loops start.
+
 ## Reference consumers
 
 | Repo | `file:` specifier | Runbook |

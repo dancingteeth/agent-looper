@@ -11,10 +11,12 @@ import { fileURLToPath } from 'node:url'
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifest = JSON.parse(
   readFileSync(join(packageRoot, 'scripts/dist-manifest.json'), 'utf8'),
-) as { required: string[] }
+)
+/** @type {string[]} */
+const required = manifest.required
 
 function missingRequired(baseDir) {
-  return manifest.required.filter((rel) => !existsSync(join(baseDir, rel)))
+  return required.filter((rel) => !existsSync(join(baseDir, rel)))
 }
 
 function srcIsNewerThanDist() {

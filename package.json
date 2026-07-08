@@ -34,8 +34,9 @@
     "build": "tsc -p tsconfig.json",
     "postbuild": "chmod +x dist/cli/*.js",
     "prepare": "node scripts/prepare-package.mjs",
+    "test:prepare": "node --test scripts/prepare-package.test.mjs",
     "ensure-link": "bash scripts/ensure-file-dep-link.sh",
-    "test": "vitest run",
+    "test": "vitest run && node --test scripts/prepare-package.test.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"

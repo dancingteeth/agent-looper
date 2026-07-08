@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 const manifestUrl = new URL('../scripts/dist-manifest.json', import.meta.url)
 
 export type PackageDistIssue = {
-  kind: 'missing-file' | 'missing-file-dep-path'
+  kind: 'missing-file' | 'missing-file-dep-path' | 'runtime-import-failed'
   path: string
   message: string
 }
@@ -42,6 +42,66 @@ export function validatePackageDist(packageRoot: string): PackageDistIssue[] {
   return issues
 }
 
+function collectRelativeJsImports(filePath: string): string[] {
+  const source = fs.readFileSync(filePath, 'utf8')
+  const imports: string[] = []
+  const patterns = [
+    /from ['"](\.\/[^'"]+\.js)['"]/g,
+    /import\(['"](\.\/[^'"]+\.js)['"]\)/g,
+  ]
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      const rel = match[1]
+      if (rel) imports.push(rel)
+    }
+  }
+  return imports
+}
+
+/** Walk relative .js imports from agentLoop — catches dist files missing from the manifest. */
+export function validatePackageDistRuntime(packageRoot: string): PackageDistIssue[] {
+  const entry = path.join(packageRoot, 'dist/loop/agentLoop.js')
+  if (!fs.existsSync(entry)) {
+    return [
+      {
+        kind: 'missing-file',
+        path: 'dist/loop/agentLoop.js',
+        message: 'Missing dist/loop/agentLoop.js',
+      },
+    ]
+  }
+
+  const issues: PackageDistIssue[] = []
+  const queue = [entry]
+  const visited = new Set<string>()
+
+  while (queue.length > 0) {
+    const filePath = queue.shift()!
+    const normalized = path.normalize(filePath)
+    if (visited.has(normalized)) continue
+    visited.add(normalized)
+
+    for (const rel of collectRelativeJsImports(filePath)) {
+      const resolved = path.normalize(path.join(path.dirname(filePath), rel))
+      if (!resolved.startsWith(path.normalize(path.join(packageRoot, 'dist')))) {
+        continue
+      }
+      if (!fs.existsSync(resolved)) {
+        const relToDist = path.relative(packageRoot, resolved)
+        issues.push({
+          kind: 'runtime-import-failed',
+          path: relToDist,
+          message: `Missing ${relToDist} (imported by ${path.relative(packageRoot, filePath)})`,
+        })
+        continue
+      }
+      queue.push(resolved)
+    }
+  }
+
+  return issues
+}
+
 export function findFileDependency(
   consumerRoot: string,
 ): { specifier: string; resolvedPath: string; exists: boolean } | undefined {
@@ -73,7 +133,11 @@ export function inspectPackageInstall(options: {
   packageRoot: string
   consumerRoot?: string
 }): PackageDistReport {
-  const issues = validatePackageDist(options.packageRoot)
+  const staticIssues = validatePackageDist(options.packageRoot)
+  const issues = [
+    ...staticIssues,
+    ...(staticIssues.length === 0 ? validatePackageDistRuntime(options.packageRoot) : []),
+  ]
   const fileDep = options.consumerRoot
     ? findFileDependency(options.consumerRoot)
     : undefined
@@ -123,6 +187,14 @@ export function formatPackageDistHelp(
     lines.push('Rebuild the harness checkout, then reinstall the consumer:')
     lines.push(`  cd ${report.packageRoot} && pnpm install && pnpm build`)
     lines.push('  cd <consumer-repo> && pnpm install')
+    const runtimeFailed = report.issues.some((i) => i.kind === 'runtime-import-failed')
+    if (runtimeFailed) {
+      lines.push('')
+      lines.push(
+        'If the consumer still errors with ERR_MODULE_NOT_FOUND after rebuild, refresh the file: link:',
+      )
+      lines.push('  cd <consumer-repo> && pnpm install')
+    }
   }
 
   lines.push('')
