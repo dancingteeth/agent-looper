@@ -113,9 +113,12 @@ export { assertLoopModelAllowed, isBannedCursorLoopModel } from './usage/modelPo
 
 export {
   sendLoopTelegramReport,
+  sendLoopTelegramReviewAttachment,
   sendTelegramMessage,
+  sendTelegramDocument,
   resolveTelegramCredentials,
   shouldSendTelegramNotify,
+  shouldAttachTelegramReview,
   describeTelegramSkipReason,
   TELEGRAM_BOT_TOKEN_ENV,
   TELEGRAM_BOT_TOKEN_FALLBACK_ENV,

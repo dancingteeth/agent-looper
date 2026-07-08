@@ -12,7 +12,7 @@ import {
 import { runAgentLoop } from '../loop/agentLoop.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
-import { sendLoopTelegramReport } from '../integrations/telegramNotify.js'
+import { sendLoopTelegramReport, sendLoopTelegramReviewAttachment } from '../integrations/telegramNotify.js'
 import { formatLoopCompletionReport } from '../loop/loopReport.js'
 import { warnShellCommandsFromConfig } from '../loop/loopShellTrust.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
@@ -297,6 +297,15 @@ try {
       loopDir,
       result,
     }),
+  })
+
+  await sendLoopTelegramReviewAttachment({
+    profile: ctx.profile,
+    notifyTelegram: bundle.config.notifyTelegram,
+    telegramAttachReview: bundle.config.telegramAttachReview,
+    complete: result.complete,
+    loopDir,
+    bundleLabel: path.relative(ctx.repoRoot, loopDir),
   })
 
   if (!result.complete) {

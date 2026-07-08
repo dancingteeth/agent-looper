@@ -33,6 +33,7 @@ import {
   type SiblingRepoRef,
   type VerifyLogRefs,
 } from './loopExtensions.js'
+import { loadLoopSkillSection, resolveLoopSkillPaths } from './loopSkills.js'
 import {
   addUsageRecord,
   emptyUsageSummary,
@@ -197,6 +198,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const { ctx, bundle, verbose = false } = options
   const { repoRoot } = ctx
   const { config, goal, logPath } = bundle
+  const skillsSection = loadLoopSkillSection(
+    repoRoot,
+    resolveLoopSkillPaths(goal, config.skills),
+  )
+  if (skillsSection) {
+    const skillCount = resolveLoopSkillPaths(goal, config.skills).length
+    console.error(`[agent-loop] inlined ${skillCount} skill runbook(s) into iteration prompts`)
+  }
   const agentSession = await createLoopAgentSession(config, ctx)
   const baseAgent = resolveLoopAgent(config)
 
@@ -245,6 +254,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         stagnationRepeatCount: stagnation.promptRepeatCount,
         agentsFile: ctx.profile.agentsFile,
         reviewBlockers,
+        skillsSection,
         mode: config.mode,
         failureContext,
       })

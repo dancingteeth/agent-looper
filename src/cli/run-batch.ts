@@ -3,7 +3,7 @@ import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { runLoopBatch, resolveBatchDir, loadLoopBatchConfig } from '../loop/loopBatch.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
-import { sendLoopTelegramReport } from '../integrations/telegramNotify.js'
+import { sendLoopTelegramReport, sendLoopTelegramReviewAttachment } from '../integrations/telegramNotify.js'
 import { formatBatchCompletionReport } from '../loop/loopReport.js'
 import { warnShellCommandsFromConfig } from '../loop/loopShellTrust.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
@@ -108,6 +108,17 @@ try {
       result,
     }),
   })
+
+  for (const entry of result.iterations) {
+    await sendLoopTelegramReviewAttachment({
+      profile: ctx.profile,
+      notifyTelegram,
+      telegramAttachReview: batchConfig.telegramAttachReview,
+      complete: entry.result.complete,
+      loopDir: entry.loopDir,
+      bundleLabel: path.relative(ctx.repoRoot, entry.loopDir),
+    })
+  }
 
   if (!result.complete) {
     process.exit(2)

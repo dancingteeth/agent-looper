@@ -24,6 +24,8 @@ export const repoProfileSchema = z.object({
       chatId: z.string().trim().min(1).optional(),
       onSuccess: z.boolean().default(true),
       onFailure: z.boolean().default(true),
+      /** Send latest review.md as a Telegram document after the completion summary. */
+      attachReview: z.boolean().default(true),
     })
     .optional(),
 })

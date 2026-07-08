@@ -3,7 +3,9 @@ import {
   resolveTelegramCredentials,
   shouldSendTelegramNotify,
   sendTelegramMessage,
+  sendTelegramDocument,
   sendLoopTelegramReport,
+  sendLoopTelegramReviewAttachment,
   describeTelegramSkipReason,
   TELEGRAM_BOT_TOKEN_ENV,
   TELEGRAM_CHAT_ID_ENV,
@@ -136,6 +138,53 @@ describe('describeTelegramSkipReason', () => {
     if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
     else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
     if (prevChat) process.env[TELEGRAM_CHAT_ID_ENV] = prevChat
+  })
+})
+
+describe('sendTelegramDocument', () => {
+  it('posts multipart form to Telegram Bot API', async () => {
+    let captured: { url: string; form: FormData } | undefined
+    const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
+      captured = {
+        url: String(input),
+        form: init?.body as FormData,
+      }
+      return new Response('{"ok":true}', { status: 200 })
+    }
+
+    await sendTelegramDocument({
+      botToken: 'abc',
+      chatId: '999',
+      filename: 'review.md',
+      content: '### Verdict\n**PASS**',
+      caption: 'Review: loop-a',
+      fetchImpl,
+    })
+
+    expect(captured?.url).toBe('https://api.telegram.org/botabc/sendDocument')
+    expect(captured?.form.get('chat_id')).toBe('999')
+    expect(captured?.form.get('caption')).toBe('Review: loop-a')
+    const file = captured?.form.get('document')
+    expect(file).toBeInstanceOf(Blob)
+  })
+})
+
+describe('sendLoopTelegramReviewAttachment', () => {
+  it('skips when review file is missing', async () => {
+    const prevToken = process.env[TELEGRAM_BOT_TOKEN_ENV]
+    process.env[TELEGRAM_BOT_TOKEN_ENV] = 'bot-token'
+
+    const sent = await sendLoopTelegramReviewAttachment({
+      profile: baseProfile,
+      notifyTelegram: true,
+      complete: true,
+      loopDir: '/tmp/no-review-here-loop-telegram',
+    })
+
+    expect(sent).toBe(false)
+
+    if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
+    else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
   })
 })
 

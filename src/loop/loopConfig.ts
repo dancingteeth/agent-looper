@@ -48,6 +48,8 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     injectFailureContext: z.boolean().default(false),
     /** Send completion report to Telegram when repo profile + env are configured. */
     notifyTelegram: z.boolean().default(true),
+    /** Attach latest review.md to Telegram after the completion summary (when present). */
+    telegramAttachReview: z.boolean().default(true),
   })
   .superRefine((config, ctx) => {
     try {

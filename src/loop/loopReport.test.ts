@@ -6,7 +6,9 @@ import {
   formatBatchCompletionReport,
   formatLoopCompletionReport,
   readLatestLoopReview,
+  readLatestReviewContent,
   resolveLatestReviewPath,
+  reviewDocumentFilename,
 } from './loopReport.js'
 import { emptyUsageSummary } from '../usage/loopUsage.js'
 import type { AgentLoopResult } from './agentLoop.js'
@@ -80,6 +82,17 @@ describe('resolveLatestReviewPath', () => {
 
   it('returns undefined when the loop directory is missing', () => {
     expect(resolveLatestReviewPath('/tmp/does-not-exist-loop-report-review')).toBeUndefined()
+  })
+
+  it('reads latest review markdown from disk', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-report-review-content-'))
+    fs.writeFileSync(
+      path.join(tmpDir, 'review.md'),
+      '# Post-loop quality review\n\n### Verdict\n**PASS**',
+    )
+
+    expect(readLatestReviewContent(tmpDir)).toContain('**PASS**')
+    expect(reviewDocumentFilename(tmpDir)).toBe('review.md')
   })
 })
 

@@ -15,6 +15,8 @@ export type LoopPromptInput = {
   stagnationRepeatCount?: number
   agentsFile?: string
   reviewBlockers?: string[]
+  /** Inlined epic skill runbooks (from GOAL / loop.json). */
+  skillsSection?: string
   mode?: LoopMode
   failureContext?: string
 }
@@ -63,6 +65,11 @@ ${input.reviewBlockers.map((b, i) => `${i + 1}. ${b}`).join('\n')}
       ? buildFailureContextPromptSection(input.failureContext.trim())
       : ''
 
+  const skillsSection =
+    input.skillsSection && input.skillsSection.trim()
+      ? `${input.skillsSection.trim()}\n\n`
+      : ''
+
   return `You are a coding agent in a **fresh context** (iteration ${input.iteration} of ${input.maxIterations}).
 An external shell verifier decides success — do not claim the task is finished.
 
@@ -70,7 +77,7 @@ An external shell verifier decides success — do not claim the task is finished
 
 ${input.goal}
 
-${modeSection}${failureContextSection}${reviewBlockersSection}${stagnationSection}## Workspace (git)
+${skillsSection}${modeSection}${failureContextSection}${reviewBlockersSection}${stagnationSection}## Workspace (git)
 
 - Branch: ${input.git.branch}
 - HEAD: ${input.git.shortSha}

@@ -217,6 +217,8 @@ When a loop or batch finishes (success **or** failure), the CLI can send a short
 - Review verdict when `review.md` exists
 - Last verifier output snippet on failure
 
+When a post-loop review exists (`review.md` or `review.N.md`), a **second Telegram message** delivers the full markdown file as a document (caption = bundle path). Opt out with `"telegramAttachReview": false` in `loop.json` or `"attachReview": false` under `telegramNotify` in the repo profile.
+
 **Setup (per consumer repo):**
 
 1. Create a bot via [@BotFather](https://t.me/BotFather); store the token in Doppler (never commit):

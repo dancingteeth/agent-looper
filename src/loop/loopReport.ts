@@ -77,6 +77,23 @@ export function readLatestLoopReview(loopDir: string): LoopReportReview | undefi
   }
 }
 
+export function readLatestReviewContent(loopDir: string): string | undefined {
+  const reviewPath = resolveLatestReviewPath(loopDir)
+  if (!reviewPath) return undefined
+  try {
+    const content = fs.readFileSync(reviewPath, 'utf8').trim()
+    return content.length > 0 ? content : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function reviewDocumentFilename(loopDir: string): string {
+  const reviewPath = resolveLatestReviewPath(loopDir)
+  if (!reviewPath) return 'review.md'
+  return path.basename(reviewPath)
+}
+
 function formatReviewLine(
   review: LoopReportReview | undefined,
   advisoryBlockers: boolean,

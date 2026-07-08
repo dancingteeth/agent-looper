@@ -21,6 +21,8 @@ export const loopExtensionFieldsSchema = z.object({
   smokeScripts: z.array(z.string().trim().min(1)).optional(),
   siblingRepos: z.array(siblingRepoSchema).optional(),
   verifyPreflight: z.string().trim().min(1).optional(),
+  /** Skill runbooks inlined into each iteration prompt (merged with paths found in GOAL.md). */
+  skills: z.array(z.string().trim().min(1)).optional(),
   verifyLogMode: verifyLogModeSchema,
 })
 
