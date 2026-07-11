@@ -13,7 +13,7 @@ import { captureGitWorkspaceSnapshot } from './loopGit.js'
 import { runAgentLoop } from './agentLoop.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
-import { runPostLoopQualityReview } from '../review/loopPostReview.js'
+import { runPostLoopQualityReview, runPostLoopBlockerRecheck } from '../review/loopPostReview.js'
 import type { PostLoopReviewResult } from '../review/loopPostReview.js'
 
 vi.mock('../agents/agentRunner.js', () => ({
@@ -27,6 +27,7 @@ vi.mock('./loopVerify.js', () => ({
 
 vi.mock('../review/loopPostReview.js', () => ({
   runPostLoopQualityReview: vi.fn(),
+  runPostLoopBlockerRecheck: vi.fn(),
 }))
 
 vi.mock('../integrations/taskwarrior.js', async (importOriginal) => {
@@ -286,18 +287,17 @@ describe('runAgentLoop', () => {
     expect(JSON.parse(domains[0]!).reason).toBe('agent_error')
   })
 
-  it('continues loop when review gate returns BLOCKERS then completes on PASS', async () => {
+  it('continues loop when review gate returns BLOCKERS then completes on a re-check PASS', async () => {
     const { runIterationPrompt } = mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
-    vi.mocked(runPostLoopQualityReview)
-      .mockResolvedValueOnce({
-        ...reviewResult('BLOCKERS', ['[must-fix] **Docs missing** — README still template']),
-        outPath: path.join(tmpLoopDir, 'review.md'),
-      })
-      .mockResolvedValueOnce({
-        ...reviewResult('PASS'),
-        outPath: path.join(tmpLoopDir, 'review.2.md'),
-      })
+    vi.mocked(runPostLoopQualityReview).mockResolvedValueOnce({
+      ...reviewResult('BLOCKERS', ['[must-fix] **Docs missing** — README still template']),
+      outPath: path.join(tmpLoopDir, 'review.md'),
+    })
+    vi.mocked(runPostLoopBlockerRecheck).mockResolvedValueOnce({
+      ...reviewResult('PASS'),
+      outPath: path.join(tmpLoopDir, 'review.2.md'),
+    })
 
     const result = await runAgentLoop({
       ctx: makeCtx(),
@@ -314,7 +314,8 @@ describe('runAgentLoop', () => {
     const secondPrompt = runIterationPrompt.mock.calls[1]?.[0] as string
     expect(secondPrompt).toContain('Review blockers (must fix)')
     expect(secondPrompt).toContain('Docs missing')
-    expect(result.usage.records.length).toBeGreaterThanOrEqual(0)
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(1)
+    expect(runPostLoopBlockerRecheck).toHaveBeenCalledTimes(1)
     expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
   })
 
@@ -322,6 +323,9 @@ describe('runAgentLoop', () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Unit guard** — verify doc.unit']),
+    )
+    vi.mocked(runPostLoopBlockerRecheck).mockResolvedValue(
       reviewResult('BLOCKERS', ['[must-fix] **Unit guard** — verify doc.unit']),
     )
 
@@ -336,7 +340,8 @@ describe('runAgentLoop', () => {
 
     expect(result.complete).toBe(false)
     expect(result.completionReason).toMatch(/Review gate: BLOCKERS/)
-    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(1)
+    expect(runPostLoopBlockerRecheck).toHaveBeenCalledTimes(1)
   })
 
   it('exits incomplete when review gate is on and quality review throws', async () => {
@@ -358,7 +363,7 @@ describe('runAgentLoop', () => {
     expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
   })
 
-  it('blocks completion when review gate cannot parse the verdict', async () => {
+  it('retries the review on an unparseable verdict instead of re-running the agent', async () => {
     const { runIterationPrompt } = mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview)
@@ -380,11 +385,12 @@ describe('runAgentLoop', () => {
       }),
     })
 
+    // UNKNOWN is a transient parse glitch: the review retries in-place, the agent
+    // is not re-run, and the loop completes on the subsequent PASS.
     expect(result.complete).toBe(true)
-    expect(result.iterations).toBe(2)
-    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
-    const secondPrompt = runIterationPrompt.mock.calls[1]?.[0] as string
-    expect(secondPrompt).toContain('Could not parse review verdict')
+    expect(result.iterations).toBe(1)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
   })
 
   it('stops when review gate exhausts maxReviewCycles on unparseable verdict', async () => {
@@ -406,6 +412,35 @@ describe('runAgentLoop', () => {
     expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
   })
 
+  it('escalates reasoning effort on the BLOCKERS fix round (ClinePass)', async () => {
+    const { runIterationPrompt } = mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValueOnce(
+      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README missing']),
+    )
+    vi.mocked(runPostLoopBlockerRecheck).mockResolvedValueOnce(reviewResult('PASS'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        runtime: 'cline-pass',
+        reasoningEffort: 'low',
+        escalateReasoningEffort: 'xhigh',
+        reviewGate: true,
+        maxReviewCycles: 2,
+        maxIterations: 4,
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
+    const firstAgent = runIterationPrompt.mock.calls[0]?.[1] as { reasoningEffort?: string }
+    const fixRoundAgent = runIterationPrompt.mock.calls[1]?.[1] as { reasoningEffort?: string }
+    expect(firstAgent.reasoningEffort).toBe('low')
+    // BLOCKERS fix round escalates the reasoning tier (bounded by the ceiling).
+    expect(fixRoundAgent.reasoningEffort).toBe('high')
+  })
+
   it('completes with reviewAdvisoryBlockers when BLOCKERS are advisory only', async () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
@@ -423,5 +458,84 @@ describe('runAgentLoop', () => {
 
     expect(result.complete).toBe(true)
     expect(result.reviewAdvisoryBlockers).toBe(true)
+  })
+
+  it('escalates to HITL instead of hard-failing when reviewGate exhausts and reviewGateHitl is set', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(createHitlCheckTask).mockReturnValue('hitl-uuid-123')
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+    )
+    vi.mocked(runPostLoopBlockerRecheck).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+    )
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        reviewGateHitl: true,
+        taskwarriorProject: 'dxp',
+        maxReviewCycles: 2,
+        maxIterations: 5,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.reviewEscalatedToHitl).toBe(true)
+    expect(result.hitlCheckTaskUuid).toBeDefined()
+    expect(result.completionReason).toMatch(/escalated to human review/i)
+    expect(createHitlCheckTask).toHaveBeenCalledOnce()
+    expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
+  })
+
+  it('still hard-fails when reviewGate exhausts and reviewGateHitl is off', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+    )
+    vi.mocked(runPostLoopBlockerRecheck).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+    )
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        reviewGateHitl: false,
+        maxReviewCycles: 2,
+        maxIterations: 5,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.reviewEscalatedToHitl).toBeUndefined()
+    expect(createHitlCheckTask).not.toHaveBeenCalled()
+    expect(result.completionReason).toMatch(/Review gate: BLOCKERS/)
+  })
+
+  it('runs the full review on a fix round when reviewBlockerRecheck is disabled', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(
+      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+    )
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        reviewBlockerRecheck: false,
+        maxReviewCycles: 2,
+        maxIterations: 5,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/Review gate: BLOCKERS/)
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
+    expect(runPostLoopBlockerRecheck).not.toHaveBeenCalled()
   })
 })

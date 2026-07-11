@@ -78,3 +78,41 @@ Rethink structure so behavior stays the same but implementation becomes simpler 
     reviewKind: 'thermo-nuclear code quality audit',
   })
 }
+
+/**
+ * Lighter, scope-limited re-check used on a BLOCKERS fix round. It only judges
+ * whether the previously-flagged blockers are now resolved — it must NOT surface
+ * new blockers, so a model can't block completion on an irrelevant finding.
+ */
+export function buildBlockerRecheckPrompt(
+  ctx: RepoContext,
+  goal: string,
+  blockers: string[],
+): string {
+  const numbered = blockers.map((b, idx) => `${idx + 1}. ${b}`).join('\n')
+  return `You are performing a **read-only** blocker re-check after the agent attempted to resolve previously-flagged blockers. Do NOT introduce new blockers — only assess whether the items below are now resolved. Do NOT edit files.
+
+Apply the repository review standards below for context only.
+
+${buildRiskTriagePreamble()}
+
+Repo: ${ctx.repoRoot}
+
+## Loop goal
+${goal}
+
+## Blockers to verify (resolve each one)
+${numbered}
+
+## Task
+For each blocker above, decide RESOLVED or REMAINING, then give a verdict:
+### Verdict
+**PASS** — every listed blocker is resolved.
+**BLOCKERS** — at least one listed blocker remains unresolved.
+### Blockers
+- list only the REMAINING (unresolved) blockers; omit the section if none.
+
+## Repository review standards (${ctx.profile.reviewsFile})
+${loadReviewsMd(ctx.repoRoot, ctx.profile)}
+`
+}

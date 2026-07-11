@@ -5,7 +5,7 @@ import type { RepoContext } from '../context/repoContext.js'
 import { defaultBranchRefExists } from '../context/defaultBranch.js'
 import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
 import { CURSOR_LOOP_MODEL } from '../loop/loopAgentConfig.js'
-import { buildQualityReviewPrompt } from './reviewPrompt.js'
+import { buildQualityReviewPrompt, buildBlockerRecheckPrompt } from './reviewPrompt.js'
 import { parseReviewMarkdown, type ParsedReview } from './reviewVerdict.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
@@ -79,6 +79,40 @@ export async function runPostLoopQualityReview(
   console.error(`[agent-loop] quality review written: ${path.relative(ctx.repoRoot, outPath)}`)
   console.error(
     `[agent-loop] quality review verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length}`,
+  )
+  return { text, parsed, outPath, usage: run.usage }
+}
+
+/**
+ * Scope-limited re-check for a BLOCKERS fix round. Asks only whether the previously
+ * flagged blockers are resolved, so the model cannot block completion on new,
+ * possibly irrelevant findings. Parsed with the same verdict/blockers grammar.
+ */
+export async function runPostLoopBlockerRecheck(
+  loopDir: string,
+  goal: string,
+  ctx: RepoContext,
+  blockers: string[],
+  options: PostLoopReviewOptions = {},
+): Promise<PostLoopReviewResult> {
+  const reviewCycle = options.reviewCycle ?? 1
+  const prompt = buildBlockerRecheckPrompt(ctx, goal, blockers)
+  const run = await runCursorAgentPrompt(ctx, prompt, {
+    verbose: options.verbose,
+    assistantOutput: 'none',
+    modelId: CURSOR_LOOP_MODEL,
+  })
+  const text = run.text
+  const outPath = resolveReviewOutputPath(loopDir, reviewCycle)
+  fs.writeFileSync(
+    outPath,
+    `# Blocker re-check\n\n_Generated ${new Date().toISOString()}_\n\n${text.trim()}\n`,
+    'utf8',
+  )
+  const parsed = parseReviewMarkdown(text)
+  console.error(`[agent-loop] blocker re-check written: ${path.relative(ctx.repoRoot, outPath)}`)
+  console.error(
+    `[agent-loop] blocker re-check verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length}`,
   )
   return { text, parsed, outPath, usage: run.usage }
 }

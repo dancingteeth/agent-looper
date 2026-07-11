@@ -70,14 +70,22 @@ ${input.reviewBlockers.map((b, i) => `${i + 1}. ${b}`).join('\n')}
       ? `${input.skillsSection.trim()}\n\n`
       : ''
 
-  return `You are a coding agent in a **fresh context** (iteration ${input.iteration} of ${input.maxIterations}).
+  const rulesSection = renderLoopPromptRulesSection(agentsFile)
+
+  // Stable head first (intro + goal + skills + mode + rules) so the prompt prefix is
+  // byte-identical across iterations and the provider prefix cache is reused. Volatile
+  // content (git snapshot, verifier results, failures, stagnation, review blockers, failure
+  // context) and the iteration counter go last.
+  return `You are a coding agent in a fresh-context fix-until-green loop.
 An external shell verifier decides success — do not claim the task is finished.
 
 ## Goal
 
 ${input.goal}
 
-${skillsSection}${modeSection}${failureContextSection}${reviewBlockersSection}${stagnationSection}## Workspace (git)
+${skillsSection}${modeSection}${rulesSection}
+
+## Workspace (git)
 
 - Branch: ${input.git.branch}
 - HEAD: ${input.git.shortSha}
@@ -98,7 +106,10 @@ ${lastSection}
 
 ${failureSection}
 
-${renderLoopPromptRulesSection(agentsFile)}`
+${stagnationSection}${reviewBlockersSection}${failureContextSection}## This iteration
+
+Iteration ${input.iteration} of ${input.maxIterations}.
+`
 }
 
 function formatVerifyOutput(verify: VerifyResult): string {

@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoProfileSchema } from '../context/repoProfile.js'
 
 const mockDispose = vi.fn().mockResolvedValue(undefined)
+const mockStart = vi.fn().mockResolvedValue({
+  sessionId: 'sess-1',
+  result: { text: 'inline result' },
+})
 const mockClineCreate = vi.fn().mockResolvedValue({
-  start: vi.fn().mockResolvedValue({ sessionId: 'sess-1', result: { text: 'inline result' } }),
+  start: mockStart,
   stop: vi.fn().mockResolvedValue(undefined),
   delete: vi.fn().mockResolvedValue(undefined),
   dispose: mockDispose,
@@ -74,5 +78,35 @@ describe('clineAgent', () => {
     expect(result.usage?.inputTokens).toBe(1000)
     expect(result.usage?.costUsd).toBe(0.0002)
     expect(result.usage?.costSource).toBe('provider')
+  })
+
+  it('passes reasoningEffort and thinking into the Cline start config', async () => {
+    const { createClineLoopSession } = await import('./clineAgent.js')
+    const session = await createClineLoopSession(ctx)
+
+    await session.runPrompt('do work', {
+      modelId: 'cline-pass/deepseek-v4-flash',
+      assistantOutput: 'none',
+      reasoningEffort: 'high',
+    })
+
+    const config = mockStart.mock.calls[0]?.[0]?.config
+    expect(config.reasoningEffort).toBe('high')
+    expect(config.thinking).toBe(true)
+  })
+
+  it('omits reasoningEffort/thinking when set to none', async () => {
+    const { createClineLoopSession } = await import('./clineAgent.js')
+    const session = await createClineLoopSession(ctx)
+
+    await session.runPrompt('do work', {
+      modelId: 'cline-pass/deepseek-v4-flash',
+      assistantOutput: 'none',
+      reasoningEffort: 'none',
+    })
+
+    const config = mockStart.mock.calls[0]?.[0]?.config
+    expect(config.reasoningEffort).toBeUndefined()
+    expect(config.thinking).toBeUndefined()
   })
 })

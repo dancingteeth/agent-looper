@@ -54,6 +54,35 @@ describe('loopUsage', () => {
     expect(line).toContain('review')
   })
 
+  it('surfaces cache read/write tokens only when present', () => {
+    const noCache = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        inputTokens: 40_000,
+        outputTokens: 2_000,
+      }),
+    ])
+    expect(formatUsageSummaryLine(noCache)).not.toContain('cache R')
+
+    const withCache = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'cline-pass',
+        model: 'cline-pass/deepseek-v4-flash',
+        inputTokens: 120_000,
+        outputTokens: 8_000,
+        cacheReadTokens: 90_000,
+        cacheWriteTokens: 30_000,
+      }),
+    ])
+    const cachedLine = formatUsageSummaryLine(withCache)
+    expect(cachedLine).toContain('cache R')
+    expect(cachedLine).toContain('90.0k')
+    expect(cachedLine).toContain('W 30.0k')
+  })
+
   it('merges batch summaries', () => {
     const a = summarizeUsageRecords([
       createUsageRecord({

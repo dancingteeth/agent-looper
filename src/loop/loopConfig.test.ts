@@ -59,6 +59,23 @@ describe('loopConfigSchema', () => {
     expect(parsed.stagnationThreshold).toBe(3)
   })
 
+  it('accepts reasoningEffort and escalateReasoningEffort for cline-pass', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline-pass',
+      reasoningEffort: 'high',
+      escalateReasoningEffort: 'xhigh',
+    })
+    expect(parsed.reasoningEffort).toBe('high')
+    expect(parsed.escalateReasoningEffort).toBe('xhigh')
+  })
+
+  it('rejects unknown reasoningEffort value', () => {
+    expect(() =>
+      loopConfigSchema.parse({ verify: 'true', reasoningEffort: 'ultra' }),
+    ).toThrow()
+  })
+
   it('defaults reviewGate to false and maxReviewCycles to 2', () => {
     const parsed = loopConfigSchema.parse({ verify: 'true' })
     expect(parsed.reviewGate).toBe(false)
@@ -92,6 +109,24 @@ describe('loopConfigSchema', () => {
     })
     expect(parsed.reviewGate).toBe(true)
     expect(parsed.maxReviewCycles).toBe(3)
+  })
+
+  it('defaults reviewGateHitl to false and accepts it', () => {
+    expect(loopConfigSchema.parse({ verify: 'true' }).reviewGateHitl).toBe(false)
+    expect(
+      loopConfigSchema.parse({ verify: 'true', reviewGateHitl: true }).reviewGateHitl,
+    ).toBe(true)
+  })
+
+  it('defaults unparseableReviewRetries to 2 and reviewBlockerRecheck to true', () => {
+    const parsed = loopConfigSchema.parse({ verify: 'true' })
+    expect(parsed.unparseableReviewRetries).toBe(2)
+    expect(parsed.reviewBlockerRecheck).toBe(true)
+  })
+
+  it('rejects unparseableReviewRetries outside 1..5', () => {
+    expect(() => loopConfigSchema.parse({ verify: 'true', unparseableReviewRetries: 0 })).toThrow()
+    expect(() => loopConfigSchema.parse({ verify: 'true', unparseableReviewRetries: 6 })).toThrow()
   })
 
   it('rejects maxReviewCycles outside 1..5', () => {

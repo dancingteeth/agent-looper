@@ -52,6 +52,7 @@ function createClineRunner(cline: ClineLoopSession): PromptRunner {
       modelId: agent.model,
       assistantOutput: options.assistantOutput,
       phase: options.phase ?? 'implement',
+      reasoningEffort: agent.reasoningEffort,
     })
 }
 

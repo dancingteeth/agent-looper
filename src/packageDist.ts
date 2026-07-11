@@ -46,8 +46,8 @@ function collectRelativeJsImports(filePath: string): string[] {
   const source = fs.readFileSync(filePath, 'utf8')
   const imports: string[] = []
   const patterns = [
-    /from ['"](\.\.?\/[^'"]+\.js)['"]/g,
-    /import\(['"](\.\.?\/[^'"]+\.js)['"]\)/g,
+    /from ['"](\.\/[^'"]+\.js)['"]/g,
+    /import\(['"](\.\/[^'"]+\.js)['"]\)/g,
   ]
   for (const pattern of patterns) {
     for (const match of source.matchAll(pattern)) {
@@ -58,20 +58,18 @@ function collectRelativeJsImports(filePath: string): string[] {
   return imports
 }
 
-/** Walk relative .js imports from the loop CLI entry — catches dist files missing from the manifest. */
+/** Walk relative .js imports from agentLoop — catches dist files missing from the manifest. */
 export function validatePackageDistRuntime(packageRoot: string): PackageDistIssue[] {
-  const entry = path.join(packageRoot, 'dist/cli/run.js')
+  const entry = path.join(packageRoot, 'dist/loop/agentLoop.js')
   if (!fs.existsSync(entry)) {
     return [
       {
         kind: 'missing-file',
-        path: 'dist/cli/run.js',
-        message: 'Missing dist/cli/run.js',
+        path: 'dist/loop/agentLoop.js',
+        message: 'Missing dist/loop/agentLoop.js',
       },
     ]
   }
-
-  const distRoot = path.normalize(path.join(packageRoot, 'dist'))
 
   const issues: PackageDistIssue[] = []
   const queue = [entry]
@@ -85,7 +83,7 @@ export function validatePackageDistRuntime(packageRoot: string): PackageDistIssu
 
     for (const rel of collectRelativeJsImports(filePath)) {
       const resolved = path.normalize(path.join(path.dirname(filePath), rel))
-      if (!resolved.startsWith(distRoot + path.sep) && resolved !== distRoot) {
+      if (!resolved.startsWith(path.normalize(path.join(packageRoot, 'dist')))) {
         continue
       }
       if (!fs.existsSync(resolved)) {

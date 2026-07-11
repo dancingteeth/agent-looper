@@ -19,7 +19,31 @@ describe('buildAgentLoopPrompt', () => {
     expect(prompt).toContain('Ship feature X')
     expect(prompt).toContain('feat/x')
     expect(prompt).toContain('abc1234')
-    expect(prompt).toContain('iteration 2 of 5')
+    expect(prompt).toContain('Iteration 2 of 5')
+  })
+
+  it('keeps the prompt head stable across iterations (cache prefix)', () => {
+    const git = {
+      branch: 'feat/x',
+      shortSha: 'abc1234',
+      diffStat: ' src/foo.ts | 2 ++',
+      statusPorcelain: ' M src/foo.ts',
+    }
+    const build = (iteration: number) =>
+      buildAgentLoopPrompt({
+        goal: 'Ship feature X',
+        iteration,
+        maxIterations: 5,
+        git,
+        lastVerify: null,
+        priorFailures: [],
+      })
+    const headUpToRules = (prompt: string) =>
+      prompt.slice(0, prompt.indexOf('## Workspace (git)'))
+    expect(headUpToRules(build(1))).toBe(headUpToRules(build(4)))
+    expect(headUpToRules(build(1))).toContain('## Rules')
+    expect(headUpToRules(build(1))).not.toContain('Iteration 1 of 5')
+    expect(build(4)).toContain('Iteration 4 of 5')
   })
 
   it('includes prior verifier failures', () => {

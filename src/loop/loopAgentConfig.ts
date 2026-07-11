@@ -27,9 +27,21 @@ export type ClinePassLoopModel = (typeof CLINE_PASS_LOOP_MODELS)[number]
 export const DEFAULT_CLINE_PASS_LOOP_MODEL: ClinePassLoopModel = 'cline-pass/deepseek-v4-flash'
 export const DEFAULT_CLINE_PASS_ESCALATE_MODEL: ClinePassLoopModel = 'cline-pass/qwen3.7-plus'
 
+/** Reasoning-effort dial for ClinePass models (mirrors @cline/core ProviderConfig.reasoningEffort). */
+export const LOOP_REASONING_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'none'] as const
+export type LoopReasoningEffort = (typeof LOOP_REASONING_EFFORTS)[number]
+
 export type ResolvedLoopAgent =
-  | { runtime: typeof LOOP_RUNTIME_CURSOR; model: typeof CURSOR_LOOP_MODEL }
-  | { runtime: typeof LOOP_RUNTIME_CLINE_PASS; model: ClinePassLoopModel }
+  | {
+      runtime: typeof LOOP_RUNTIME_CURSOR
+      model: typeof CURSOR_LOOP_MODEL
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_CLINE_PASS
+      model: ClinePassLoopModel
+      reasoningEffort?: LoopReasoningEffort
+    }
 
 export function defaultModelForRuntime(runtime: LoopRuntime): string {
   return runtime === LOOP_RUNTIME_CLINE_PASS ? DEFAULT_CLINE_PASS_LOOP_MODEL : CURSOR_LOOP_MODEL
@@ -54,10 +66,14 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
   assertLoopModelAllowed(runtime, model)
 
   if (runtime === LOOP_RUNTIME_CURSOR) {
-    return { runtime, model: CURSOR_LOOP_MODEL }
+    return { runtime, model: CURSOR_LOOP_MODEL, reasoningEffort: config.reasoningEffort }
   }
 
-  return { runtime, model: assertClinePassModel(model, 'model') }
+  return {
+    runtime,
+    model: assertClinePassModel(model, 'model'),
+    reasoningEffort: config.reasoningEffort,
+  }
 }
 
 /** Parse-time validation for loop.json (model + escalateModel). */
@@ -79,23 +95,89 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
   }
 }
 
+/** Ordered reasoning tiers used for gradual escalation (excludes 'none'). */
+const REASONING_LADDER = ['low', 'medium', 'high', 'xhigh'] as const
+type ReasoningLadderTier = (typeof REASONING_LADDER)[number]
+
+function ladderIndex(effort: LoopReasoningEffort | undefined): number {
+  if (effort === undefined || effort === 'none') return -1
+  return (REASONING_LADDER as readonly string[]).indexOf(effort)
+}
+
+/**
+ * Resolve the reasoning tier for a given iteration by stepping up the ladder from the
+ * base tier toward the ceiling. Steps once per iteration (after iteration 1) by
+ * `step` tiers, capped at the ceiling. Driven by iteration count — not by identical
+ * failure signature — so it climbs reliably even when cranking effort changes the
+ * agent's approach (and thus the verifier output).
+ */
+function resolveReasoningTier(
+  base: LoopReasoningEffort | undefined,
+  ceiling: LoopReasoningEffort | undefined,
+  step: number,
+  iteration: number,
+  /**
+   * Extra reasoning-tier steps for BLOCKERS-driven fix rounds. Added on top of the
+   * iteration-climb below, so a fix round can jump up to `step` extra tiers at once
+   * (e.g. iteration 2 + 1 fix round = +2). Bounded by the ceiling.
+   */
+  reviewCycleEscalation = 0,
+): LoopReasoningEffort | undefined {
+  const baseIdx = ladderIndex(base)
+  if (baseIdx < 0) return base
+  const ceilIdx = ladderIndex(ceiling) < 0 ? baseIdx : ladderIndex(ceiling)
+  // Iteration climb + review-cycle fix-round steps compound; a fix round may jump
+  // multiple tiers at once, capped by the ceiling.
+  const ticks = Math.max(0, iteration - 1) + Math.max(0, reviewCycleEscalation)
+  const idx = Math.min(ceilIdx, baseIdx + step * ticks)
+  return REASONING_LADDER[idx] as ReasoningLadderTier
+}
+
 export function resolveIterationAgent(
   config: LoopConfig,
+  iteration: number,
   escalationRepeatCount: number | undefined,
+  reviewCycleEscalation = 0,
 ): ResolvedLoopAgent {
   const base = resolveLoopAgent(config)
+  if (base.runtime !== LOOP_RUNTIME_CLINE_PASS) {
+    return base
+  }
+
+  const step = config.reasoningEscalationStep ?? 1
+  const tier = resolveReasoningTier(
+    config.reasoningEffort,
+    config.escalateReasoningEffort,
+    step,
+    iteration,
+    reviewCycleEscalation,
+  )
+
+  let agent: ResolvedLoopAgent = { ...base, reasoningEffort: tier }
+
+  // Model switch (expensive lever) is sequenced AFTER the cheap lever is exhausted:
+  // only once reasoning has reached its ceiling AND hard stagnation (identical
+  // consecutive verifier failures) persists past the threshold. When no reasoning
+  // ladder is configured, model escalation keeps its prior stagnation-gated behavior.
+  const reasoningConfigured =
+    config.reasoningEffort !== undefined && config.reasoningEffort !== 'none'
+  const atCeiling =
+    !reasoningConfigured || tier === (config.escalateReasoningEffort ?? tier)
   const threshold = config.escalateAfterStagnation ?? 2
-  const escalateModel = config.escalateModel
 
   if (
-    base.runtime === LOOP_RUNTIME_CLINE_PASS &&
-    escalateModel &&
+    config.escalateModel &&
+    atCeiling &&
     escalationRepeatCount !== undefined &&
     escalationRepeatCount >= threshold
   ) {
-    assertLoopModelAllowed(base.runtime, escalateModel)
-    return { runtime: base.runtime, model: assertClinePassModel(escalateModel, 'escalateModel') }
+    assertLoopModelAllowed(base.runtime, config.escalateModel)
+    agent = {
+      ...agent,
+      model: assertClinePassModel(config.escalateModel, 'escalateModel'),
+      reasoningEffort: config.escalateModelReasoningEffort ?? tier,
+    }
   }
 
-  return base
+  return agent
 }

@@ -109,6 +109,11 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 | `pauseAfterIteration` | `false` | Wait for Enter after each iteration (verifier failure or review-gate fix round; TTY only) |
 | `injectFailureContext` | `false` | Read `failure-context.md` into the prompt (meta-loop fix rounds) |
 | `finalVerify` | — | Stricter outer check after inner `verify` passes (e.g. deploy + smoke) |
+| `reasoningEffort` | — | ClinePass only: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Starting reasoning tier (the orchestrator can set this per loop). `none` disables model-side thinking. Cursor ignores it. |
+| `escalateReasoningEffort` | — | ClinePass only: ceiling of the reasoning ladder. The harness steps `reasoningEffort` up by `reasoningEscalationStep` tiers each iteration (from iteration 2) until it reaches this tier. |
+| `reasoningEscalationStep` | `1` | Tiers to step reasoning up per iteration (`1` or `2`). |
+| `escalateModelReasoningEffort` | — | ClinePass only: reasoning tier to use on the escalated model (e.g. qwen). Defaults to the ladder ceiling. |
+| `escalateAfterStagnation` | `2` | Identical-failure stagnation count that triggers the **model** switch — only after reasoning has reached its ceiling (cheap lever first, expensive lever second). |
 
 CLI overrides: `--mode reverse`, `--pause-after-iteration`.
 
@@ -190,13 +195,15 @@ GOAL.md + loop.json → fresh agent → shell verify (exit 0?) → optional revi
 
 Post-success (optional): Cursor quality review (`composer-2.5` only — **not** Composer Fast) → `review.md`. With **`reviewGate: true`**, verdict **BLOCKERS** or an **unparseable verdict** injects blockers into the next iteration (up to `maxReviewCycles`); loop completes only on **PASS** or **ADVISORY**. Without the gate, review is advisory only and UNKNOWN is non-blocking. Then: `task uuid:… done` → HITL task → `syncCommand`.
 
-On finish, stderr prints token totals and estimated USD (`usage: …`) from ClinePass `getAccumulatedUsage` (official rates for DeepSeek v4 Flash; Composer 2.5 when token data is available).
+On finish, stderr prints token totals, estimated USD, and (for ClinePass) cached-input token counts (`usage: … in / … out | cache R … / W … | ~$…`) from ClinePass `getAccumulatedUsage` (official rates for DeepSeek v4 Flash; Composer 2.5 when token data is available). Cached-input tokens are billed at a discount by the provider; the shown cost already reflects that discount for ClinePass, while estimated costs (Cursor / missing provider cost) do not subtract cache savings.
 
 | Layer | Role | Blocks loop? |
 |-------|------|--------------|
 | Shell `verify` / `finalVerify` | Judge — deterministic | Yes |
 | `postQualityReview` (no gate) | Sensor — advisory LLM | No |
 | `reviewGate: true` | Sensor + gate on BLOCKERS / unparseable verdict | Yes |
+
+For a comprehensive technical deep-dive, see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
 ## Threat model
 

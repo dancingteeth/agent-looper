@@ -17,6 +17,8 @@ export type LoopUsageSummary = {
   records: LoopUsageRecord[]
   totalInputTokens: number
   totalOutputTokens: number
+  totalCacheReadTokens: number
+  totalCacheWriteTokens: number
   totalCostUsd: number
 }
 
@@ -91,6 +93,8 @@ export function emptyUsageSummary(): LoopUsageSummary {
     records: [],
     totalInputTokens: 0,
     totalOutputTokens: 0,
+    totalCacheReadTokens: 0,
+    totalCacheWriteTokens: 0,
     totalCostUsd: 0,
   }
 }
@@ -107,16 +111,23 @@ export function addUsageRecord(
 export function summarizeUsageRecords(records: LoopUsageRecord[]): LoopUsageSummary {
   let totalInputTokens = 0
   let totalOutputTokens = 0
+  let totalCacheReadTokens = 0
+  let totalCacheWriteTokens = 0
   let totalCostUsd = 0
   for (const record of records) {
     totalInputTokens += record.inputTokens
     totalOutputTokens += record.outputTokens
+    totalCacheReadTokens += record.cacheReadTokens
+    totalCacheWriteTokens += record.cacheWriteTokens
     totalCostUsd += record.costUsd
   }
+
   return {
     records,
     totalInputTokens,
     totalOutputTokens,
+    totalCacheReadTokens,
+    totalCacheWriteTokens,
     totalCostUsd: roundUsd(totalCostUsd),
   }
 }
@@ -155,6 +166,13 @@ export function formatUsageSummaryLine(summary: LoopUsageSummary): string {
   }
   if (review.records.length > 0) {
     parts.push(`~$${review.totalCostUsd.toFixed(4)} review`)
+  }
+
+  const hasCache = summary.records.some((r) => r.cacheReadTokens > 0 || r.cacheWriteTokens > 0)
+  if (hasCache) {
+    parts.push(
+      `cache R ${formatTokenCount(summary.totalCacheReadTokens)} / W ${formatTokenCount(summary.totalCacheWriteTokens)}`,
+    )
   }
 
   const hasEstimate = summary.records.some((r) => r.costSource === 'estimated')

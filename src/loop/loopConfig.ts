@@ -4,6 +4,7 @@ import { z } from 'zod'
 import {
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
+  LOOP_REASONING_EFFORTS,
   validateLoopAgentConfig,
 } from './loopAgentConfig.js'
 import {
@@ -27,6 +28,14 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     model: z.string().optional(),
     escalateModel: z.string().optional(),
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
+    /** Reasoning-effort dial for ClinePass models (low|medium|high|xhigh|none). Cursor ignores it. */
+    reasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
+    /** Reasoning effort to use once stagnation reaches escalateAfterStagnation (ClinePass only). */
+    escalateReasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
+    /** Tiers to step reasoning effort up per iteration once past iteration 1 (ClinePass only). */
+    reasoningEscalationStep: z.number().int().min(1).max(2).default(1),
+    /** Reasoning tier to use on the escalated model (e.g. qwen). Defaults to the ceiling tier. */
+    escalateModelReasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
     taskwarriorUuid: taskwarriorUuidSchema.optional(),
     /** Override repo profile taskwarriorProject for HITL tasks. */
     taskwarriorProject: taskwarriorProjectSchema.optional(),
@@ -36,6 +45,12 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     reviewGate: z.boolean().default(false),
     /** Max review-triggered fix rounds when reviewGate is on (each cycle re-runs review). */
     maxReviewCycles: z.number().int().min(1).max(5).default(2),
+    /** When reviewGate exhausts, escalate to a human (HITL task) instead of hard-failing. */
+    reviewGateHitl: z.boolean().default(false),
+    /** Max retries for a transient UNKNOWN (unparseable) review verdict, independent of maxReviewCycles. */
+    unparseableReviewRetries: z.number().int().min(1).max(5).default(2),
+    /** On a BLOCKERS fix round, run the lighter scope-limited blocker re-check instead of the full review. */
+    reviewBlockerRecheck: z.boolean().default(true),
     /** Run repo profile syncCommand after success. Legacy alias: syncPostgres. */
     syncOnSuccess: z.boolean().default(true),
     hitlCheck: hitlCheckDescriptionSchema.optional(),
@@ -130,10 +145,17 @@ export function mergeLoopConfig(
       | 'postQualityReview'
       | 'reviewGate'
       | 'maxReviewCycles'
+      | 'reviewGateHitl'
+      | 'unparseableReviewRetries'
+      | 'reviewBlockerRecheck'
       | 'syncOnSuccess'
       | 'runtime'
       | 'model'
       | 'escalateModel'
+      | 'reasoningEffort'
+      | 'escalateReasoningEffort'
+      | 'reasoningEscalationStep'
+      | 'escalateModelReasoningEffort'
       | 'taskwarriorProject'
       | 'mode'
       | 'pauseAfterIteration'

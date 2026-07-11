@@ -9,6 +9,7 @@ import {
   CLINE_INNER_MAX_ITERATIONS,
   resolveInnerAgentStatus,
 } from './innerAgentStatus.js'
+import type { LoopReasoningEffort } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 
 export { CLINE_INNER_MAX_ITERATIONS }
@@ -19,6 +20,7 @@ export type ClineAgentRunOptions = {
   modelId: string
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review'
+  reasoningEffort?: LoopReasoningEffort
 }
 
 function requireClineApiKey(): string {
@@ -162,6 +164,9 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
           yolo: true,
           maxIterations: CLINE_INNER_MAX_ITERATIONS,
           checkpoint: { enabled: false },
+          ...(options.reasoningEffort !== undefined && options.reasoningEffort !== 'none'
+            ? { reasoningEffort: options.reasoningEffort, thinking: true }
+            : {}),
         },
         toolPolicies: { ...CLINE_LOOP_TOOL_POLICIES },
       })

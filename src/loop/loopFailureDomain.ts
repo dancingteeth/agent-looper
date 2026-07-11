@@ -9,6 +9,7 @@ export type FailureDomainReason =
   | 'stagnation'
   | 'max_iterations'
   | 'review_gate'
+  | 'review_gate_hitl'
   | 'meta_probe_failed'
   | 'agent_error'
 
@@ -37,6 +38,8 @@ function suggestionForReason(reason: FailureDomainReason, repeatCount?: number):
       return 'Max iterations exhausted — narrow GOAL.md, strengthen verify backpressure, or split into smaller loops.'
     case 'review_gate':
       return 'Review BLOCKERS persisted — fix blockers in-repo or adjust review expectations.'
+    case 'review_gate_hitl':
+      return 'Review BLOCKERS / unparseable verdict persisted — a HITL task was created for human sign-off.'
     case 'meta_probe_failed':
       return 'Meta-loop probe still failing after fix cycle — inspect failure-context.md and failure-domains.ndjson.'
     case 'agent_error':
