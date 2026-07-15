@@ -2,10 +2,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import {
+  LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
   LOOP_REASONING_EFFORTS,
+  clearIncompatibleAgentFieldsOnRuntimeSwitch,
   validateLoopAgentConfig,
+  type LoopRuntime,
 } from './loopAgentConfig.js'
 import {
   hitlCheckDescriptionSchema,
@@ -17,7 +20,11 @@ import { loopExtensionFieldsSchema } from './loopExtensions.js'
 import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
 import { loopModeSchema } from './loopMode.js'
 
-export const loopRuntimeSchema = z.enum([LOOP_RUNTIME_CURSOR, LOOP_RUNTIME_CLINE_PASS])
+export const loopRuntimeSchema = z.enum([
+  LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CLINE,
+])
 
 export const loopConfigSchema = loopExtensionFieldsSchema
   .extend({
@@ -28,13 +35,13 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     model: z.string().optional(),
     escalateModel: z.string().optional(),
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
-    /** Reasoning-effort dial for ClinePass models (low|medium|high|xhigh|none). Cursor ignores it. */
+    /** Reasoning-effort dial for Cline SDK models (low|medium|high|xhigh|none). Cursor ignores it. */
     reasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
-    /** Reasoning effort to use once stagnation reaches escalateAfterStagnation (ClinePass only). */
+    /** Reasoning effort to use once stagnation reaches escalateAfterStagnation (Cline runtimes only). */
     escalateReasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
-    /** Tiers to step reasoning effort up per iteration once past iteration 1 (ClinePass only). */
+    /** Tiers to step reasoning effort up per iteration once past iteration 1 (Cline runtimes only). */
     reasoningEscalationStep: z.number().int().min(1).max(2).default(1),
-    /** Reasoning tier to use on the escalated model (e.g. qwen). Defaults to the ceiling tier. */
+    /** Reasoning tier to use on the escalated model. Defaults to the ceiling tier. */
     escalateModelReasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
     taskwarriorUuid: taskwarriorUuidSchema.optional(),
     /** Override repo profile taskwarriorProject for HITL tasks. */
@@ -164,8 +171,42 @@ export function mergeLoopConfig(
     >
   >,
 ): LoopConfig {
-  return loopConfigSchema.parse({
-    ...base,
-    ...Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined)),
+  const cleanedOverrides = Object.fromEntries(
+    Object.entries(overrides).filter(([, v]) => v !== undefined),
+  ) as typeof overrides
+
+  const nextRuntime = (cleanedOverrides.runtime ?? base.runtime) as LoopRuntime
+  const previousRuntime = base.runtime as LoopRuntime
+
+  const reconciled = clearIncompatibleAgentFieldsOnRuntimeSwitch({
+    previousRuntime,
+    nextRuntime,
+    model: (cleanedOverrides.model ?? base.model) as string | undefined,
+    escalateModel: (cleanedOverrides.escalateModel ?? base.escalateModel) as string | undefined,
+    modelOverridden: cleanedOverrides.model !== undefined,
+    escalateModelOverridden: cleanedOverrides.escalateModel !== undefined,
   })
+
+  for (const warning of reconciled.warnings) {
+    console.error(`[agent-loop] ${warning}`)
+  }
+
+  const merged: Record<string, unknown> = {
+    ...base,
+    ...cleanedOverrides,
+  }
+
+  if (reconciled.model === undefined) {
+    delete merged.model
+  } else {
+    merged.model = reconciled.model
+  }
+
+  if (reconciled.escalateModel === undefined) {
+    delete merged.escalateModel
+  } else {
+    merged.escalateModel = reconciled.escalateModel
+  }
+
+  return loopConfigSchema.parse(merged)
 }

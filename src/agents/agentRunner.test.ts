@@ -66,9 +66,39 @@ describe('createLoopAgentSession', () => {
     expect(runCursorAgentPrompt).not.toHaveBeenCalled()
     expect(clineSession.runPrompt).toHaveBeenCalledWith(
       'prompt',
-      expect.objectContaining({ modelId: 'cline-pass/deepseek-v4-flash' }),
+      expect.objectContaining({
+        modelId: 'cline-pass/deepseek-v4-flash',
+        providerId: 'cline-pass',
+      }),
     )
     await session.dispose()
     expect(clineSession.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches cline credits runtime with providerId cline', async () => {
+    const { createLoopAgentSession } = await import('./agentRunner.js')
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline' })
+    const clineSession = {
+      runPrompt: vi.fn().mockResolvedValue({ text: 'credits-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    }
+    createClineLoopSession.mockResolvedValue(clineSession)
+
+    const session = await createLoopAgentSession(config, testCtx)
+    const result = await session.runIterationPrompt(
+      'prompt',
+      { runtime: 'cline', model: 'deepseek/deepseek-chat' },
+      { assistantOutput: 'none' },
+    )
+
+    expect(result.text).toBe('credits-ok')
+    expect(clineSession.runPrompt).toHaveBeenCalledWith(
+      'prompt',
+      expect.objectContaining({
+        modelId: 'deepseek/deepseek-chat',
+        providerId: 'cline',
+      }),
+    )
+    await session.dispose()
   })
 })

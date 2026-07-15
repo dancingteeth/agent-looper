@@ -2,7 +2,7 @@ export type AgentRunPhase = 'implement' | 'review'
 
 export type LoopUsageRecord = {
   phase: AgentRunPhase
-  runtime: 'cline-pass' | 'cursor'
+  runtime: 'cline-pass' | 'cline' | 'cursor'
   model: string
   inputTokens: number
   outputTokens: number

@@ -37,6 +37,35 @@ describe('loopConfigSchema', () => {
     expect(resolveLoopAgent(parsed).model).toBe('cline-pass/deepseek-v4-flash')
   })
 
+  it('accepts cline (credits) runtime with default model', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline',
+    })
+    expect(parsed.runtime).toBe('cline')
+    expect(resolveLoopAgent(parsed).model).toBe('deepseek/deepseek-chat')
+  })
+
+  it('rejects ClinePass slugs for cline credits runtime', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        runtime: 'cline',
+        model: 'cline-pass/deepseek-v4-flash',
+      }),
+    ).toThrow(/credits/)
+  })
+
+  it('accepts OpenRouter-style model for cline credits runtime', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline',
+      model: 'minimax/minimax-m2.5',
+      escalateModel: 'google/gemini-2.5-pro',
+    })
+    expect(resolveLoopAgent(parsed).model).toBe('minimax/minimax-m2.5')
+  })
+
   it('accepts optional hitlCheck', () => {
     const parsed = loopConfigSchema.parse({
       verify: 'true',
@@ -179,5 +208,46 @@ describe('mergeLoopConfig', () => {
     const merged = mergeLoopConfig(base, { verify: 'echo b' })
     expect(merged.verify).toBe('echo b')
     expect(merged.maxIterations).toBe(3)
+  })
+
+  it('clears leftover ClinePass model when switching to credits runtime without --model', () => {
+    const base = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline-pass',
+      model: 'cline-pass/deepseek-v4-flash',
+      escalateModel: 'cline-pass/qwen3.7-plus',
+    })
+    const merged = mergeLoopConfig(base, { runtime: 'cline' })
+    expect(merged.runtime).toBe('cline')
+    expect(merged.model).toBeUndefined()
+    expect(merged.escalateModel).toBeUndefined()
+    expect(resolveLoopAgent(merged).model).toBe('deepseek/deepseek-chat')
+  })
+
+  it('keeps an explicit --model when switching runtime', () => {
+    const base = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline-pass',
+      model: 'cline-pass/deepseek-v4-flash',
+    })
+    const merged = mergeLoopConfig(base, {
+      runtime: 'cline',
+      model: 'minimax/minimax-m2.5',
+    })
+    expect(merged.model).toBe('minimax/minimax-m2.5')
+  })
+
+  it('still rejects an explicit incompatible --model on runtime switch', () => {
+    const base = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline-pass',
+      model: 'cline-pass/deepseek-v4-flash',
+    })
+    expect(() =>
+      mergeLoopConfig(base, {
+        runtime: 'cline',
+        model: 'cline-pass/qwen3.7-plus',
+      }),
+    ).toThrow(/credits/)
   })
 })

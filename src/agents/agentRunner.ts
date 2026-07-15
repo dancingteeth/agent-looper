@@ -3,6 +3,8 @@ import { createClineLoopSession, type ClineLoopSession } from './clineAgent.js'
 import { runCursorAgentPrompt } from './cursorAgent.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import {
+  isClineSdkRuntime,
+  LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
   resolveLoopAgent,
@@ -46,14 +48,19 @@ function createCursorRunner(ctx: RepoContext): PromptRunner {
 }
 
 function createClineRunner(cline: ClineLoopSession): PromptRunner {
-  return (prompt, agent, options) =>
-    cline.runPrompt(prompt, {
+  return (prompt, agent, options) => {
+    if (!isClineSdkRuntime(agent.runtime)) {
+      throw new Error('Cline runner invoked for non-Cline agent')
+    }
+    return cline.runPrompt(prompt, {
       verbose: options.verbose,
       modelId: agent.model,
+      providerId: agent.runtime,
       assistantOutput: options.assistantOutput,
       phase: options.phase ?? 'implement',
       reasoningEffort: agent.reasoningEffort,
     })
+  }
 }
 
 export async function createLoopAgentSession(
@@ -79,5 +86,16 @@ export async function createLoopAgentSession(
 }
 
 export function loopRuntimeLabel(runtime: LoopRuntime): string {
-  return runtime === LOOP_RUNTIME_CLINE_PASS ? 'cline-pass' : 'cursor'
+  switch (runtime) {
+    case LOOP_RUNTIME_CURSOR:
+      return 'cursor'
+    case LOOP_RUNTIME_CLINE_PASS:
+      return 'cline-pass'
+    case LOOP_RUNTIME_CLINE:
+      return 'cline'
+    default: {
+      const _exhaustive: never = runtime
+      return _exhaustive
+    }
+  }
 }

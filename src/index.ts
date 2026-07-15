@@ -55,8 +55,12 @@ export type { LoopConfig, LoadedLoopBundle } from './loop/loopConfig.js'
 export {
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CLINE,
   resolveLoopAgent,
+  isClineSdkRuntime,
   CLINE_PASS_LOOP_MODELS,
+  DEFAULT_CLINE_CREDITS_LOOP_MODEL,
+  DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
 } from './loop/loopAgentConfig.js'
 
 export { runVerifyCommand } from './loop/loopVerify.js'

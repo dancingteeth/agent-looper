@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { resolveIterationAgent, resolveLoopAgent } from './loopAgentConfig.js'
+import {
+  clearIncompatibleAgentFieldsOnRuntimeSwitch,
+  resolveIterationAgent,
+  resolveLoopAgent,
+} from './loopAgentConfig.js'
 import { loopConfigSchema } from './loopConfig.js'
 
 function clinePassConfig(overrides: Record<string, unknown> = {}) {
@@ -92,6 +96,19 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(agent.reasoningEffort).toBe('high')
   })
 
+  it('escalates model on stagnation for cline credits runtime', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline',
+      model: 'deepseek/deepseek-chat',
+      escalateModel: 'google/gemini-2.5-pro',
+      escalateAfterStagnation: 2,
+    })
+    const agent = resolveIterationAgent(config, 1, 2)
+    expect(agent.runtime).toBe('cline')
+    expect(agent.model).toBe('google/gemini-2.5-pro')
+  })
+
   it('escalates reasoning one tier per BLOCKERS fix round', () => {
     const config = clinePassConfig({
       reasoningEffort: 'medium',
@@ -119,5 +136,33 @@ describe('resolveIterationAgent reasoning effort', () => {
     // ...and is capped at the ceiling
     expect(resolveIterationAgent(config, 3, undefined, 0).reasoningEffort).toBe('high')
     expect(resolveIterationAgent(config, 3, undefined, 2).reasoningEffort).toBe('xhigh')
+  })
+})
+
+describe('clearIncompatibleAgentFieldsOnRuntimeSwitch', () => {
+  it('clears Pass slugs when moving to credits without overrides', () => {
+    const result = clearIncompatibleAgentFieldsOnRuntimeSwitch({
+      previousRuntime: 'cline-pass',
+      nextRuntime: 'cline',
+      model: 'cline-pass/deepseek-v4-flash',
+      escalateModel: 'cline-pass/qwen3.7-plus',
+      modelOverridden: false,
+      escalateModelOverridden: false,
+    })
+    expect(result.model).toBeUndefined()
+    expect(result.escalateModel).toBeUndefined()
+    expect(result.warnings).toHaveLength(2)
+  })
+
+  it('preserves explicit model override even when incompatible (caller validates)', () => {
+    const result = clearIncompatibleAgentFieldsOnRuntimeSwitch({
+      previousRuntime: 'cline-pass',
+      nextRuntime: 'cline',
+      model: 'cline-pass/deepseek-v4-flash',
+      modelOverridden: true,
+      escalateModelOverridden: false,
+    })
+    expect(result.model).toBe('cline-pass/deepseek-v4-flash')
+    expect(result.warnings).toHaveLength(0)
   })
 })

@@ -9,15 +9,23 @@ import {
   CLINE_INNER_MAX_ITERATIONS,
   resolveInnerAgentStatus,
 } from './innerAgentStatus.js'
-import type { LoopReasoningEffort } from '../loop/loopAgentConfig.js'
+import {
+  LOOP_RUNTIME_CLINE,
+  LOOP_RUNTIME_CLINE_PASS,
+  type LoopReasoningEffort,
+} from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 
 export { CLINE_INNER_MAX_ITERATIONS }
 const SESSION_TIMEOUT_MS = 45 * 60 * 1000
 
+export type ClineProviderId = typeof LOOP_RUNTIME_CLINE_PASS | typeof LOOP_RUNTIME_CLINE
+
 export type ClineAgentRunOptions = {
   verbose?: boolean
   modelId: string
+  /** ClinePass subscription vs usage-billing credits. Defaults to cline-pass. */
+  providerId?: ClineProviderId
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review'
   reasoningEffort?: LoopReasoningEffort
@@ -31,11 +39,16 @@ function requireClineApiKey(): string {
   return apiKey
 }
 
+function resolveClineProviderId(providerId: ClineProviderId | undefined): ClineProviderId {
+  return providerId ?? LOOP_RUNTIME_CLINE_PASS
+}
+
 async function readSessionUsage(
   cline: ClineCoreType,
   sessionId: string,
   modelId: string,
   phase: 'implement' | 'review',
+  providerId: ClineProviderId,
 ): Promise<AgentRunResult['usage']> {
   try {
     const summary = await cline.getAccumulatedUsage(sessionId)
@@ -44,7 +57,7 @@ async function readSessionUsage(
 
     return createUsageRecord({
       phase,
-      runtime: 'cline-pass',
+      runtime: providerId,
       model: modelId,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
@@ -147,12 +160,13 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const assistantOutput = options.assistantOutput ?? 'stdout'
       const phase = options.phase ?? 'implement'
+      const providerId = resolveClineProviderId(options.providerId)
 
       const started = await cline.start({
         prompt,
         interactive: false,
         config: {
-          providerId: 'cline-pass',
+          providerId,
           modelId: options.modelId,
           apiKey,
           systemPrompt,
@@ -171,7 +185,9 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
         toolPolicies: { ...CLINE_LOOP_TOOL_POLICIES },
       })
 
-      console.error(`[agent-loop:cline] session_id=${started.sessionId} model=${options.modelId}`)
+      console.error(
+        `[agent-loop:cline] provider=${providerId} session_id=${started.sessionId} model=${options.modelId}`,
+      )
 
       try {
         let text: string
@@ -181,7 +197,13 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
           text = await waitForClineSession(cline, started.sessionId, { verbose, assistantOutput })
         }
 
-        const usage = await readSessionUsage(cline, started.sessionId, options.modelId, phase)
+        const usage = await readSessionUsage(
+          cline,
+          started.sessionId,
+          options.modelId,
+          phase,
+          providerId,
+        )
         if (usage) {
           console.error(
             `[agent-loop:cline] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,

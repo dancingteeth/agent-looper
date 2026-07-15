@@ -3,8 +3,13 @@ import { assertLoopModelAllowed } from '../usage/modelPolicy.js'
 
 export const LOOP_RUNTIME_CURSOR = 'cursor' as const
 export const LOOP_RUNTIME_CLINE_PASS = 'cline-pass' as const
+/** Cline usage-billing (pay-as-you-go credits). Same SDK/API key as ClinePass. */
+export const LOOP_RUNTIME_CLINE = 'cline' as const
 
-export type LoopRuntime = typeof LOOP_RUNTIME_CURSOR | typeof LOOP_RUNTIME_CLINE_PASS
+export type LoopRuntime =
+  | typeof LOOP_RUNTIME_CURSOR
+  | typeof LOOP_RUNTIME_CLINE_PASS
+  | typeof LOOP_RUNTIME_CLINE
 
 export const CURSOR_LOOP_MODEL = 'composer-2.5' as const
 
@@ -27,7 +32,15 @@ export type ClinePassLoopModel = (typeof CLINE_PASS_LOOP_MODELS)[number]
 export const DEFAULT_CLINE_PASS_LOOP_MODEL: ClinePassLoopModel = 'cline-pass/deepseek-v4-flash'
 export const DEFAULT_CLINE_PASS_ESCALATE_MODEL: ClinePassLoopModel = 'cline-pass/qwen3.7-plus'
 
-/** Reasoning-effort dial for ClinePass models (mirrors @cline/core ProviderConfig.reasoningEffort). */
+/** Default OpenRouter-style id for Cline credits (usage-billing). https://docs.cline.bot/api/models */
+export const DEFAULT_CLINE_CREDITS_LOOP_MODEL = 'deepseek/deepseek-chat'
+/** Mid-tier escalate recommendation for credits (cheaper than Sonnet for loop cost discipline). */
+export const DEFAULT_CLINE_CREDITS_ESCALATE_MODEL = 'google/gemini-2.5-pro'
+
+/** OpenRouter-style `provider/model` (Cline usage-billing / API). */
+const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
+
+/** Reasoning-effort dial for Cline SDK models (mirrors @cline/core ProviderConfig.reasoningEffort). */
 export const LOOP_REASONING_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'none'] as const
 export type LoopReasoningEffort = (typeof LOOP_REASONING_EFFORTS)[number]
 
@@ -42,19 +55,134 @@ export type ResolvedLoopAgent =
       model: ClinePassLoopModel
       reasoningEffort?: LoopReasoningEffort
     }
+  | {
+      runtime: typeof LOOP_RUNTIME_CLINE
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+
+export function isClineSdkRuntime(
+  runtime: LoopRuntime,
+): runtime is typeof LOOP_RUNTIME_CLINE_PASS | typeof LOOP_RUNTIME_CLINE {
+  return runtime === LOOP_RUNTIME_CLINE_PASS || runtime === LOOP_RUNTIME_CLINE
+}
 
 export function defaultModelForRuntime(runtime: LoopRuntime): string {
-  return runtime === LOOP_RUNTIME_CLINE_PASS ? DEFAULT_CLINE_PASS_LOOP_MODEL : CURSOR_LOOP_MODEL
+  switch (runtime) {
+    case LOOP_RUNTIME_CLINE_PASS:
+      return DEFAULT_CLINE_PASS_LOOP_MODEL
+    case LOOP_RUNTIME_CLINE:
+      return DEFAULT_CLINE_CREDITS_LOOP_MODEL
+    case LOOP_RUNTIME_CURSOR:
+      return CURSOR_LOOP_MODEL
+    default: {
+      const _exhaustive: never = runtime
+      return _exhaustive
+    }
+  }
 }
 
 export function isClinePassModel(model: string): model is ClinePassLoopModel {
   return (CLINE_PASS_LOOP_MODELS as readonly string[]).includes(model)
 }
 
+export function isClineCreditsModelShape(model: string): boolean {
+  return CLINE_CREDITS_MODEL_RE.test(model) && !model.startsWith('cline-pass/')
+}
+
+export function modelCompatibleWithRuntime(
+  runtime: LoopRuntime,
+  model: string | undefined,
+): boolean {
+  if (model === undefined) return true
+  switch (runtime) {
+    case LOOP_RUNTIME_CURSOR:
+      return model === CURSOR_LOOP_MODEL
+    case LOOP_RUNTIME_CLINE_PASS:
+      return isClinePassModel(model)
+    case LOOP_RUNTIME_CLINE:
+      return isClineCreditsModelShape(model)
+    default: {
+      const _exhaustive: never = runtime
+      return _exhaustive
+    }
+  }
+}
+
+/**
+ * When `runtime` changes without an explicit model/escalateModel override, drop
+ * leftover ids from the previous provider so parse uses the new runtime defaults
+ * instead of throwing. Returns stderr-ready warning lines.
+ */
+export function clearIncompatibleAgentFieldsOnRuntimeSwitch(input: {
+  previousRuntime: LoopRuntime
+  nextRuntime: LoopRuntime
+  model?: string
+  escalateModel?: string
+  modelOverridden: boolean
+  escalateModelOverridden: boolean
+}): {
+  model?: string
+  escalateModel?: string
+  warnings: string[]
+} {
+  const { previousRuntime, nextRuntime } = input
+  if (previousRuntime === nextRuntime) {
+    return {
+      model: input.model,
+      escalateModel: input.escalateModel,
+      warnings: [],
+    }
+  }
+
+  const warnings: string[] = []
+  let model = input.model
+  let escalateModel = input.escalateModel
+
+  if (!input.modelOverridden && model !== undefined && !modelCompatibleWithRuntime(nextRuntime, model)) {
+    warnings.push(
+      `cleared model "${model}" after switching runtime ${previousRuntime} → ${nextRuntime}; ` +
+        `using default "${defaultModelForRuntime(nextRuntime)}". Pass --model to set an explicit id.`,
+    )
+    model = undefined
+  }
+
+  if (
+    !input.escalateModelOverridden &&
+    escalateModel !== undefined &&
+    !modelCompatibleWithRuntime(nextRuntime, escalateModel)
+  ) {
+    warnings.push(
+      `cleared escalateModel "${escalateModel}" after switching runtime ${previousRuntime} → ${nextRuntime}. ` +
+        `Pass --escalate-model if you still want escalation on ${nextRuntime}.`,
+    )
+    escalateModel = undefined
+  }
+
+  return { model, escalateModel, warnings }
+}
+
 function assertClinePassModel(model: string, field: 'model' | 'escalateModel'): ClinePassLoopModel {
   if (!isClinePassModel(model)) {
     throw new Error(
       `Unknown ClinePass ${field} "${model}". Use a slug from CLINE_PASS_LOOP_MODELS`,
+    )
+  }
+  return model
+}
+
+function assertClineCreditsModel(model: string, field: 'model' | 'escalateModel'): string {
+  if (model.startsWith('cline-pass/')) {
+    throw new Error(
+      `ClinePass slug "${model}" is not valid for runtime "cline" (credits). ` +
+        `Use an OpenRouter-style id such as "${DEFAULT_CLINE_CREDITS_LOOP_MODEL}" ` +
+        `(see https://docs.cline.bot/api/models).`,
+    )
+  }
+  if (!isClineCreditsModelShape(model)) {
+    throw new Error(
+      `Invalid Cline credits ${field} "${model}". Expected provider/model ` +
+        `(e.g. "${DEFAULT_CLINE_CREDITS_LOOP_MODEL}").`,
     )
   }
   return model
@@ -67,6 +195,14 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
 
   if (runtime === LOOP_RUNTIME_CURSOR) {
     return { runtime, model: CURSOR_LOOP_MODEL, reasoningEffort: config.reasoningEffort }
+  }
+
+  if (runtime === LOOP_RUNTIME_CLINE) {
+    return {
+      runtime,
+      model: assertClineCreditsModel(model, 'model'),
+      reasoningEffort: config.reasoningEffort,
+    }
   }
 
   return {
@@ -88,9 +224,15 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
     return
   }
 
+  if (runtime === LOOP_RUNTIME_CLINE) {
+    assertClineCreditsModel(config.escalateModel, 'escalateModel')
+    return
+  }
+
   if (config.escalateModel !== CURSOR_LOOP_MODEL) {
     throw new Error(
-      `escalateModel is only used with runtime "cline-pass" (got runtime "cursor" and escalateModel "${config.escalateModel}")`,
+      `escalateModel is only used with runtime "cline-pass" or "cline" ` +
+        `(got runtime "cursor" and escalateModel "${config.escalateModel}")`,
     )
   }
 }
@@ -140,7 +282,7 @@ export function resolveIterationAgent(
   reviewCycleEscalation = 0,
 ): ResolvedLoopAgent {
   const base = resolveLoopAgent(config)
-  if (base.runtime !== LOOP_RUNTIME_CLINE_PASS) {
+  if (!isClineSdkRuntime(base.runtime)) {
     return base
   }
 
@@ -172,10 +314,19 @@ export function resolveIterationAgent(
     escalationRepeatCount >= threshold
   ) {
     assertLoopModelAllowed(base.runtime, config.escalateModel)
-    agent = {
-      ...agent,
-      model: assertClinePassModel(config.escalateModel, 'escalateModel'),
-      reasoningEffort: config.escalateModelReasoningEffort ?? tier,
+    const reasoningEffort = config.escalateModelReasoningEffort ?? tier
+    if (base.runtime === LOOP_RUNTIME_CLINE) {
+      agent = {
+        runtime: LOOP_RUNTIME_CLINE,
+        model: assertClineCreditsModel(config.escalateModel, 'escalateModel'),
+        reasoningEffort,
+      }
+    } else {
+      agent = {
+        runtime: LOOP_RUNTIME_CLINE_PASS,
+        model: assertClinePassModel(config.escalateModel, 'escalateModel'),
+        reasoningEffort,
+      }
     }
   }
 

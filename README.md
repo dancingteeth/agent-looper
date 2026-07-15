@@ -7,7 +7,7 @@ tags:
 
 Repo-agnostic **fix-until-green** agent loop: fresh agent context per iteration, shell verifier, `log.ndjson`, optional Taskwarrior hooks.
 
-Supports **Cursor SDK** (`composer-2.5`) and **ClinePass** (`cline-pass/deepseek-v4-flash`, etc.).
+Supports **Cursor SDK** (`composer-2.5`), **ClinePass** (`cline-pass/deepseek-v4-flash`, etc.), and **Cline credits** (usage-billing: `deepseek/deepseek-chat`, etc.).
 
 ## Install
 
@@ -65,6 +65,10 @@ agent-loop-init
 
 doppler run -- agent-check cline
 doppler run -- agent-loop run .cursor/loops/my-task --runtime cline-pass
+# ClinePass weekly/5h quota exhausted? pay-as-you-go credits:
+doppler run -- agent-loop run .cursor/loops/my-task --runtime cline
+# (clears leftover cline-pass/* model ids; default deepseek/deepseek-chat)
+# optional: --model minimax/minimax-m2.5 --escalate-model google/gemini-2.5-pro
 ```
 
 Run against another checkout:
@@ -109,11 +113,12 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 | `pauseAfterIteration` | `false` | Wait for Enter after each iteration (verifier failure or review-gate fix round; TTY only) |
 | `injectFailureContext` | `false` | Read `failure-context.md` into the prompt (meta-loop fix rounds) |
 | `finalVerify` | — | Stricter outer check after inner `verify` passes (e.g. deploy + smoke) |
-| `reasoningEffort` | — | ClinePass only: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Starting reasoning tier (the orchestrator can set this per loop). `none` disables model-side thinking. Cursor ignores it. |
-| `escalateReasoningEffort` | — | ClinePass only: ceiling of the reasoning ladder. The harness steps `reasoningEffort` up by `reasoningEscalationStep` tiers each iteration (from iteration 2) until it reaches this tier. |
+| `reasoningEffort` | — | Cline runtimes (`cline-pass` / `cline`): `low` \| `medium` \| `high` \| `xhigh` \| `none`. Starting reasoning tier. `none` disables model-side thinking. Cursor ignores it. |
+| `escalateReasoningEffort` | — | Cline runtimes: ceiling of the reasoning ladder. The harness steps `reasoningEffort` up by `reasoningEscalationStep` tiers each iteration (from iteration 2) until it reaches this tier. |
 | `reasoningEscalationStep` | `1` | Tiers to step reasoning up per iteration (`1` or `2`). |
-| `escalateModelReasoningEffort` | — | ClinePass only: reasoning tier to use on the escalated model (e.g. qwen). Defaults to the ladder ceiling. |
+| `escalateModelReasoningEffort` | — | Cline runtimes: reasoning tier to use on the escalated model. Defaults to the ladder ceiling. |
 | `escalateAfterStagnation` | `2` | Identical-failure stagnation count that triggers the **model** switch — only after reasoning has reached its ceiling (cheap lever first, expensive lever second). |
+| `runtime` | `cursor` | `cursor` \| `cline-pass` (subscription quota) \| `cline` (usage-billing credits). Same `CLINE_API_KEY` for both Cline providers; credits use OpenRouter-style model ids (default `deepseek/deepseek-chat`, escalate tip `google/gemini-2.5-pro`). Switching runtime via CLI clears leftover model ids from the other provider unless you pass `--model` / `--escalate-model`. |
 
 CLI overrides: `--mode reverse`, `--pause-after-iteration`.
 

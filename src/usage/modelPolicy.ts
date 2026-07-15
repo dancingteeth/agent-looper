@@ -1,6 +1,6 @@
 import {
   CURSOR_LOOP_MODEL,
-  LOOP_RUNTIME_CLINE_PASS,
+  isClineSdkRuntime,
   LOOP_RUNTIME_CURSOR,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
@@ -31,7 +31,7 @@ export function assertLoopModelAllowed(runtime: LoopRuntime, model: string): voi
     return
   }
 
-  if (runtime === LOOP_RUNTIME_CLINE_PASS && isBannedCursorLoopModel(model)) {
+  if (isClineSdkRuntime(runtime) && isBannedCursorLoopModel(model)) {
     throw new Error(
       `Model "${model}" looks like Composer Fast — not allowed in loops.`,
     )

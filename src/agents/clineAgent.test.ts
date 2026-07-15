@@ -78,6 +78,26 @@ describe('clineAgent', () => {
     expect(result.usage?.inputTokens).toBe(1000)
     expect(result.usage?.costUsd).toBe(0.0002)
     expect(result.usage?.costSource).toBe('provider')
+    expect(result.usage?.runtime).toBe('cline-pass')
+
+    const config = mockStart.mock.calls[0]?.[0]?.config
+    expect(config.providerId).toBe('cline-pass')
+  })
+
+  it('uses providerId cline for usage-billing credits', async () => {
+    const { createClineLoopSession } = await import('./clineAgent.js')
+    const session = await createClineLoopSession(ctx)
+
+    const result = await session.runPrompt('do work', {
+      modelId: 'deepseek/deepseek-chat',
+      providerId: 'cline',
+      assistantOutput: 'none',
+    })
+
+    expect(result.usage?.runtime).toBe('cline')
+    const config = mockStart.mock.calls[0]?.[0]?.config
+    expect(config.providerId).toBe('cline')
+    expect(config.modelId).toBe('deepseek/deepseek-chat')
   })
 
   it('passes reasoningEffort and thinking into the Cline start config', async () => {

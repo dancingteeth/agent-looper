@@ -27,7 +27,7 @@ type CliOptions = {
   qualityReview?: boolean | 'off'
   reviewGate?: boolean
   skipSync?: boolean
-  runtime?: 'cursor' | 'cline-pass'
+  runtime?: 'cursor' | 'cline-pass' | 'cline'
   model?: string
   escalateModel?: string
   mode?: 'forward' | 'reverse'
@@ -51,7 +51,7 @@ ${printRepoRootHelp()}
   --review-gate                   Require review verdict != BLOCKERS to complete
   --no-review-gate                Disable review gate (default from loop.json)
   --skip-sync                     Do not run repo profile syncCommand
-  --runtime <cursor|cline-pass>   Override loop.json runtime
+  --runtime <cursor|cline-pass|cline>  Override loop.json runtime (cline = usage-billing credits)
   --model <id>                    Override loop.json model
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
@@ -130,8 +130,8 @@ function parseArgs(argv: string[]): CliOptions {
     }
     if (arg === '--runtime') {
       const value = remaining[++i]
-      if (value !== 'cursor' && value !== 'cline-pass') {
-        console.error('--runtime must be cursor or cline-pass')
+      if (value !== 'cursor' && value !== 'cline-pass' && value !== 'cline') {
+        console.error('--runtime must be cursor, cline-pass, or cline')
         process.exit(1)
       }
       runtime = value
