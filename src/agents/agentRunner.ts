@@ -1,5 +1,4 @@
 import type { RepoContext } from '../context/repoContext.js'
-import { createClineLoopSession, type ClineLoopSession } from './clineAgent.js'
 import { runCursorAgentPrompt } from './cursorAgent.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import {
@@ -12,6 +11,8 @@ import {
   type ResolvedLoopAgent,
 } from '../loop/loopAgentConfig.js'
 import type { LoopConfig } from '../loop/loopConfig.js'
+// Type-only — erased at emit; keeps Cursor-only installs free of @cline/sdk.
+import type { ClineLoopSession } from './clineAgent.js'
 
 export type AgentPromptOptions = {
   verbose?: boolean
@@ -42,7 +43,9 @@ function createCursorRunner(ctx: RepoContext): PromptRunner {
     return runCursorAgentPrompt(ctx, prompt, {
       verbose: options.verbose,
       modelId: agent.model,
+      role: 'worker',
       assistantOutput: options.assistantOutput,
+      phase: options.phase ?? 'implement',
     })
   }
 }
@@ -77,6 +80,9 @@ export async function createLoopAgentSession(
     }
   }
 
+  // Dynamic import: @cline/sdk is an optional peer. Cursor-only consumers must not
+  // load clineAgent (and thus @cline/sdk) at module evaluation time.
+  const { createClineLoopSession } = await import('./clineAgent.js')
   const cline = await createClineLoopSession(ctx)
   const runner = createClineRunner(cline)
   return {

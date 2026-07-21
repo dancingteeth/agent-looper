@@ -1,11 +1,40 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { repoProfileSchema } from '../context/repoProfile.js'
 import { resolveRepoContext } from '../context/repoContext.js'
-import { buildPostLoopQualityReviewPrompt, resolveReviewOutputPath } from './loopPostReview.js'
+import {
+  buildPostLoopQualityReviewPrompt,
+  resolveReviewOutputPath,
+  runPostLoopQualityReview,
+} from './loopPostReview.js'
 import { buildBlockerRecheckPrompt } from './reviewPrompt.js'
 
+const { runCursorAgentPrompt } = vi.hoisted(() => ({
+  runCursorAgentPrompt: vi.fn(),
+}))
+
+vi.mock('../agents/cursorAgent.js', () => ({
+  runCursorAgentPrompt,
+}))
+
+vi.mock('../context/defaultBranch.js', () => ({
+  defaultBranchRefExists: () => true,
+}))
+
+vi.mock('node:child_process', () => ({
+  execFileSync: vi.fn(() => 'abc123'),
+}))
+
 describe('loopPostReview', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    runCursorAgentPrompt.mockResolvedValue({
+      text: '### Verdict\n**PASS**\n\n### Blockers\n- none',
+    })
+  })
+
   it('includes risk triage and loop goal in prompt', () => {
     const ctx = resolveRepoContext()
     const prompt = buildPostLoopQualityReviewPrompt(ctx, 'Add Etsy PEC opener')
@@ -13,6 +42,48 @@ describe('loopPostReview', () => {
     expect(prompt).toContain('blast radius')
     expect(prompt).toContain('Add Etsy PEC opener')
     expect(prompt).toContain('post-loop quality review')
+  })
+
+  it('defaults review role to composer-2.5 when reviewModel omitted', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+
+    await runPostLoopQualityReview(loopDir, 'goal', ctx, { verbose: false })
+
+    expect(runCursorAgentPrompt).toHaveBeenCalledWith(
+      ctx,
+      expect.any(String),
+      expect.objectContaining({
+        modelId: 'composer-2.5',
+        role: 'review',
+        phase: 'review',
+      }),
+    )
+  })
+
+  it('uses explicit reviewModel (grok-4.5) when provided', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+
+    await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      verbose: false,
+      reviewModel: 'grok-4.5',
+    })
+
+    expect(runCursorAgentPrompt).toHaveBeenCalledWith(
+      ctx,
+      expect.any(String),
+      expect.objectContaining({
+        modelId: 'grok-4.5',
+        role: 'review',
+      }),
+    )
   })
 
   it('embeds REVIEWS.md when present in consumer repo', () => {

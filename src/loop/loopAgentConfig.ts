@@ -12,6 +12,17 @@ export type LoopRuntime =
   | typeof LOOP_RUNTIME_CLINE
 
 export const CURSOR_LOOP_MODEL = 'composer-2.5' as const
+/** Alias — Cursor SDK worker for implement iterations (never Composer Fast). */
+export const CURSOR_WORKER_MODEL = CURSOR_LOOP_MODEL
+/**
+ * Cursor SDK judge for post-loop / review-gate runs.
+ * Confirm via `Cursor.models.list()` if your account uses a different id.
+ */
+export const CURSOR_REVIEW_MODEL = 'grok-4.5' as const
+
+export const CURSOR_REVIEW_MODELS = [CURSOR_REVIEW_MODEL, CURSOR_WORKER_MODEL] as const
+export type CursorReviewModel = (typeof CURSOR_REVIEW_MODELS)[number]
+export type CursorSdkModel = typeof CURSOR_WORKER_MODEL | CursorReviewModel
 
 /** Canonical slugs — https://docs.cline.bot/getting-started/clinepass */
 export const CLINE_PASS_LOOP_MODELS = [
@@ -80,6 +91,36 @@ export function defaultModelForRuntime(runtime: LoopRuntime): string {
       return _exhaustive
     }
   }
+}
+
+export function isCursorReviewModel(model: string): model is CursorReviewModel {
+  return (CURSOR_REVIEW_MODELS as readonly string[]).includes(model)
+}
+
+export function isCursorSdkModel(model: string): model is CursorSdkModel {
+  return model === CURSOR_WORKER_MODEL || isCursorReviewModel(model)
+}
+
+/**
+ * Resolve the Cursor SDK model used for quality review / review-gate.
+ * Cursor-only loops default to Grok 4.5 as judge; Cline workers keep Composer
+ * as the review fallback unless `reviewModel` is set explicitly.
+ */
+export function resolveReviewModel(config: Pick<LoopConfig, 'runtime' | 'reviewModel'>): CursorSdkModel {
+  if (config.reviewModel) {
+    if (!isCursorSdkModel(config.reviewModel)) {
+      throw new Error(
+        `Unknown reviewModel "${config.reviewModel}". Allowed: ${CURSOR_REVIEW_MODELS.join(', ')}`,
+      )
+    }
+    if (config.reviewModel.toLowerCase().includes('fast')) {
+      throw new Error(`reviewModel "${config.reviewModel}" is banned — do not use Composer Fast for reviews.`)
+    }
+    return config.reviewModel
+  }
+
+  const runtime = config.runtime ?? LOOP_RUNTIME_CURSOR
+  return runtime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL
 }
 
 export function isClinePassModel(model: string): model is ClinePassLoopModel {
@@ -212,9 +253,10 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
   }
 }
 
-/** Parse-time validation for loop.json (model + escalateModel). */
+/** Parse-time validation for loop.json (model + escalateModel + reviewModel). */
 export function validateLoopAgentConfig(config: LoopConfig): void {
   resolveLoopAgent(config)
+  resolveReviewModel(config)
 
   if (!config.escalateModel) return
 

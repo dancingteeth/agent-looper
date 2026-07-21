@@ -73,6 +73,8 @@ copyTemplate('GOAL.example.md', path.join(exampleDir, 'GOAL.md'), force)
 
 console.error(`[agent-loop-init] done — repo=${ctx.repoRoot}`)
 console.error(`[agent-loop-init] next: edit .cursor/agent-loop.repo.json and run:`)
+console.error(`  agent-loop run .cursor/loops/example-fix --runtime cursor --review-gate`)
+console.error(`  # Cursor-only: composer-2.5 worker + grok-4.5 judge`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cline-pass`)
 console.error(`  # when ClinePass weekly quota is exhausted:`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cline`)

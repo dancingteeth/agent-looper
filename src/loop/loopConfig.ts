@@ -33,6 +33,8 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     finalVerify: z.string().optional(),
     runtime: loopRuntimeSchema.default(LOOP_RUNTIME_CURSOR),
     model: z.string().optional(),
+    /** Cursor SDK model for quality review / review-gate. Unset → resolveReviewModel(). */
+    reviewModel: z.string().optional(),
     escalateModel: z.string().optional(),
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
     /** Reasoning-effort dial for Cline SDK models (low|medium|high|xhigh|none). Cursor ignores it. */
@@ -78,7 +80,11 @@ export const loopConfigSchema = loopExtensionFieldsSchema
       validateLoopAgentConfig(config)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      const issuePath = message.includes('escalateModel') ? ['escalateModel'] : ['model']
+      const issuePath = message.includes('escalateModel')
+        ? ['escalateModel']
+        : message.includes('reviewModel')
+          ? ['reviewModel']
+          : ['model']
       ctx.addIssue({ code: 'custom', message, path: issuePath })
     }
   })
@@ -158,6 +164,7 @@ export function mergeLoopConfig(
       | 'syncOnSuccess'
       | 'runtime'
       | 'model'
+      | 'reviewModel'
       | 'escalateModel'
       | 'reasoningEffort'
       | 'escalateReasoningEffort'

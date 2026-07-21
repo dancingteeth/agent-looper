@@ -3,6 +3,7 @@ import {
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
   resolveIterationAgent,
   resolveLoopAgent,
+  resolveReviewModel,
 } from './loopAgentConfig.js'
 import { loopConfigSchema } from './loopConfig.js'
 
@@ -94,6 +95,35 @@ describe('resolveIterationAgent reasoning effort', () => {
     })
     const agent = resolveIterationAgent(config, 5, undefined)
     expect(agent.reasoningEffort).toBe('high')
+  })
+
+  it('defaults reviewModel to grok-4.5 for cursor runtime', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
+    expect(resolveReviewModel(config)).toBe('grok-4.5')
+  })
+
+  it('defaults reviewModel to composer-2.5 for cline-pass runtime', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline-pass' })
+    expect(resolveReviewModel(config)).toBe('composer-2.5')
+  })
+
+  it('accepts explicit reviewModel override', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cursor',
+      reviewModel: 'composer-2.5',
+    })
+    expect(resolveReviewModel(config)).toBe('composer-2.5')
+  })
+
+  it('rejects unknown reviewModel', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        runtime: 'cursor',
+        reviewModel: 'gpt-5',
+      }),
+    ).toThrow(/reviewModel/)
   })
 
   it('escalates model on stagnation for cline credits runtime', () => {

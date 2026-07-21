@@ -57,8 +57,12 @@ export {
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CLINE,
   resolveLoopAgent,
+  resolveReviewModel,
   isClineSdkRuntime,
   CLINE_PASS_LOOP_MODELS,
+  CURSOR_WORKER_MODEL,
+  CURSOR_REVIEW_MODEL,
+  CURSOR_LOOP_MODEL,
   DEFAULT_CLINE_CREDITS_LOOP_MODEL,
   DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
 } from './loop/loopAgentConfig.js'
@@ -113,7 +117,7 @@ export {
 } from './usage/loopUsage.js'
 export type { AgentRunPhase, LoopUsageRecord, LoopUsageSummary } from './usage/loopUsage.js'
 
-export { assertLoopModelAllowed, isBannedCursorLoopModel } from './usage/modelPolicy.js'
+export { assertLoopModelAllowed, assertCursorSdkModelAllowed, isBannedCursorLoopModel } from './usage/modelPolicy.js'
 
 export {
   sendLoopTelegramReport,

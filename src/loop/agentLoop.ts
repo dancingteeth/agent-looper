@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
 import { createLoopAgentSession, loopRuntimeLabel, type LoopAgentSession } from '../agents/agentRunner.js'
-import { resolveIterationAgent, resolveLoopAgent, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
+import { resolveIterationAgent, resolveLoopAgent, resolveReviewModel, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
 import type { LoadedLoopBundle } from '../loop/loopConfig.js'
 import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
 import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
@@ -228,9 +228,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   }
   const agentSession = await createLoopAgentSession(config, ctx)
   const baseAgent = resolveLoopAgent(config)
+  const reviewModel = resolveReviewModel(config)
 
   console.error(
-    `[agent-loop] repo=${repoRoot} runtime=${loopRuntimeLabel(baseAgent.runtime)} model=${baseAgent.model}`,
+    `[agent-loop] repo=${repoRoot} runtime=${loopRuntimeLabel(baseAgent.runtime)} ` +
+      `worker=${baseAgent.model} review=${reviewModel}`,
   )
 
   const priorFailures: VerifyResult[] = []
@@ -369,10 +371,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                 ? await runPostLoopBlockerRecheck(bundle.loopDir, goal, ctx, reviewBlockers!, {
                     verbose,
                     reviewCycle,
+                    reviewModel,
                   })
                 : await runPostLoopQualityReview(bundle.loopDir, goal, ctx, {
                     verbose,
                     reviewCycle,
+                    reviewModel,
                   })
               usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
               parsedReview = reviewResult.parsed

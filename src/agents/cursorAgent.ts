@@ -2,9 +2,13 @@ import path from 'node:path'
 import { Agent, CursorAgentError, JsonlLocalAgentStore } from '@cursor/sdk'
 import type { RepoContext } from '../context/repoContext.js'
 import type { AgentRunResult } from './agentRunResult.js'
-import { CURSOR_LOOP_MODEL } from '../loop/loopAgentConfig.js'
+import {
+  CURSOR_WORKER_MODEL,
+  type CursorSdkModel,
+} from '../loop/loopAgentConfig.js'
 import { printRunStream } from '../stream/streamRun.js'
-import { assertLoopModelAllowed } from '../usage/modelPolicy.js'
+import { assertCursorSdkModelAllowed } from '../usage/modelPolicy.js'
+import { createUsageRecord } from '../usage/loopUsage.js'
 
 const DEFAULT_CURSOR_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 
@@ -39,9 +43,15 @@ async function waitForCursorRun<T>(
 
 export type CursorAgentRunOptions = {
   verbose?: boolean
-  /** Loops use composer-2.5 only — never Composer Fast. */
-  modelId?: typeof CURSOR_LOOP_MODEL
+  /**
+   * Worker defaults to composer-2.5; review/judge may use grok-4.5.
+   * Never Composer Fast / Grok Fast.
+   */
+  modelId?: CursorSdkModel
+  /** Validates against worker vs review allowlists. Defaults to worker. */
+  role?: 'worker' | 'review'
   assistantOutput?: 'stdout' | 'none'
+  phase?: 'implement' | 'review'
 }
 
 function requireApiKey(): string {
@@ -57,11 +67,13 @@ export async function runCursorAgentPrompt(
   prompt: string,
   options: CursorAgentRunOptions = {},
 ): Promise<AgentRunResult> {
-  const modelId = options.modelId ?? CURSOR_LOOP_MODEL
-  assertLoopModelAllowed('cursor', modelId)
+  const role = options.role ?? 'worker'
+  const modelId = options.modelId ?? CURSOR_WORKER_MODEL
+  assertCursorSdkModelAllowed(modelId, role)
 
   const apiKey = requireApiKey()
   const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
+  const phase = options.phase ?? (role === 'review' ? 'review' : 'implement')
   const storeDir = path.join(ctx.repoRoot, '.cursor', 'sdk-runs')
   const store = new JsonlLocalAgentStore(storeDir)
 
@@ -78,7 +90,9 @@ export async function runCursorAgentPrompt(
   try {
     await using agent = await Agent.create(agentOptions)
     const run = await agent.send(prompt)
-    console.error(`[agent-loop:cursor] run_id=${run.id} agent_id=${run.agentId} model=${modelId}`)
+    console.error(
+      `[agent-loop:cursor] role=${role} run_id=${run.id} agent_id=${run.agentId} model=${modelId}`,
+    )
     await printRunStream(run.stream(), {
       verbose,
       assistantOutput: options.assistantOutput ?? 'stdout',
@@ -97,8 +111,20 @@ export async function runCursorAgentPrompt(
       throw new Error('Cursor agent returned empty result')
     }
 
-    // Cursor SDK does not expose per-run token usage on RunResult yet.
-    return { text, usage: undefined }
+    // RunResult.usage is TokenUsage when the runtime reported it (no USD field).
+    const usage = result.usage
+      ? createUsageRecord({
+          phase,
+          runtime: 'cursor',
+          model: modelId,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          cacheReadTokens: result.usage.cacheReadTokens,
+          cacheWriteTokens: result.usage.cacheWriteTokens,
+        })
+      : undefined
+
+    return { text, usage }
   } catch (err) {
     if (err instanceof CursorAgentError) {
       throw new Error(`Cursor SDK error: ${err.message}`)

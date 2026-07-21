@@ -56,6 +56,17 @@ describe('loopConfigSchema', () => {
     ).toThrow(/credits/)
   })
 
+  it('puts invalid reviewModel on Zod path reviewModel', () => {
+    const result = loopConfigSchema.safeParse({
+      verify: 'true',
+      runtime: 'cursor',
+      reviewModel: 'gpt-5',
+    })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error.issues.some((i) => i.path.join('.') === 'reviewModel')).toBe(true)
+  })
+
   it('accepts OpenRouter-style model for cline credits runtime', () => {
     const parsed = loopConfigSchema.parse({
       verify: 'true',

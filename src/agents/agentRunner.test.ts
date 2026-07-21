@@ -41,8 +41,24 @@ describe('createLoopAgentSession', () => {
 
     expect(result.text).toBe('cursor-ok')
     expect(runCursorAgentPrompt).toHaveBeenCalledOnce()
+    expect(runCursorAgentPrompt).toHaveBeenCalledWith(
+      testCtx,
+      'prompt',
+      expect.objectContaining({
+        modelId: 'composer-2.5',
+        role: 'worker',
+        phase: 'implement',
+      }),
+    )
     expect(createClineLoopSession).not.toHaveBeenCalled()
     await session.dispose()
+  })
+
+  it('does not load Cline session factory for cursor runtime', async () => {
+    const { createLoopAgentSession } = await import('./agentRunner.js')
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
+    await createLoopAgentSession(config, testCtx)
+    expect(createClineLoopSession).not.toHaveBeenCalled()
   })
 
   it('dispatches cline-pass runtime to Cline session', async () => {

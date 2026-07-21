@@ -538,4 +538,40 @@ describe('runAgentLoop', () => {
     expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
     expect(runPostLoopBlockerRecheck).not.toHaveBeenCalled()
   })
+
+  it('forwards resolveReviewModel (grok-4.5) for cursor review-gate', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
+
+    await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ runtime: 'cursor', reviewGate: true, maxReviewCycles: 1 }),
+    })
+
+    expect(runPostLoopQualityReview).toHaveBeenCalledWith(
+      tmpLoopDir,
+      expect.any(String),
+      expect.anything(),
+      expect.objectContaining({ reviewModel: 'grok-4.5' }),
+    )
+  })
+
+  it('forwards composer-2.5 reviewModel for cline-pass review-gate', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
+
+    await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ runtime: 'cline-pass', reviewGate: true, maxReviewCycles: 1 }),
+    })
+
+    expect(runPostLoopQualityReview).toHaveBeenCalledWith(
+      tmpLoopDir,
+      expect.any(String),
+      expect.anything(),
+      expect.objectContaining({ reviewModel: 'composer-2.5' }),
+    )
+  })
 })

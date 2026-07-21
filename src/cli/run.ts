@@ -29,6 +29,7 @@ type CliOptions = {
   skipSync?: boolean
   runtime?: 'cursor' | 'cline-pass' | 'cline'
   model?: string
+  reviewModel?: string
   escalateModel?: string
   mode?: 'forward' | 'reverse'
   pauseAfterIteration?: boolean
@@ -52,11 +53,16 @@ ${printRepoRootHelp()}
   --no-review-gate                Disable review gate (default from loop.json)
   --skip-sync                     Do not run repo profile syncCommand
   --runtime <cursor|cline-pass|cline>  Override loop.json runtime (cline = usage-billing credits)
-  --model <id>                    Override loop.json model
+  --model <id>                    Override loop.json worker model
+  --review-model <id>             Override loop.json reviewModel (Cursor judge; default grok-4.5 on cursor)
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
   --pause-after-iteration         Wait for Enter between iterations (TTY only)
   --no-telegram                   Skip Telegram completion report
+
+Cursor-only hackathon tip:
+  --runtime cursor --review-gate
+  # worker = composer-2.5, judge = grok-4.5 (no Cline / 3rd-party)
 
 Each iteration: fresh agent → shell verifier → append log.ndjson`
 }
@@ -74,6 +80,7 @@ function parseArgs(argv: string[]): CliOptions {
   let skipSync = false
   let runtime: CliOptions['runtime']
   let model: string | undefined
+  let reviewModel: string | undefined
   let escalateModel: string | undefined
   let mode: CliOptions['mode']
   let pauseAfterIteration: boolean | undefined
@@ -141,6 +148,10 @@ function parseArgs(argv: string[]): CliOptions {
       model = remaining[++i]
       continue
     }
+    if (arg === '--review-model') {
+      reviewModel = remaining[++i]
+      continue
+    }
     if (arg === '--escalate-model') {
       escalateModel = remaining[++i]
       continue
@@ -187,6 +198,7 @@ function parseArgs(argv: string[]): CliOptions {
     skipSync,
     runtime,
     model,
+    reviewModel,
     escalateModel,
     mode,
     pauseAfterIteration,
@@ -211,6 +223,7 @@ bundle = {
     syncOnSuccess: cli.skipSync ? false : undefined,
     runtime: cli.runtime,
     model: cli.model,
+    reviewModel: cli.reviewModel,
     escalateModel: cli.escalateModel,
     mode: cli.mode,
     pauseAfterIteration: cli.pauseAfterIteration,

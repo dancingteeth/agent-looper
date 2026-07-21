@@ -25,6 +25,7 @@ export type LoopUsageSummary = {
 /** Official API rates (USD per 1M tokens). */
 export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: number }> = {
   'composer-2.5': { input: 0.5, output: 2.5 },
+  'grok-4.5': { input: 2.0, output: 6.0 },
   'cline-pass/deepseek-v4-flash': { input: 0.14, output: 0.28 },
 }
 

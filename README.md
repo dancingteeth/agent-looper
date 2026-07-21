@@ -7,14 +7,16 @@ tags:
 
 Repo-agnostic **fix-until-green** agent loop: fresh agent context per iteration, shell verifier, `log.ndjson`, optional Taskwarrior hooks.
 
-Supports **Cursor SDK** (`composer-2.5`), **ClinePass** (`cline-pass/deepseek-v4-flash`, etc.), and **Cline credits** (usage-billing: `deepseek/deepseek-chat`, etc.).
+Supports **Cursor SDK** (`composer-2.5` worker + `grok-4.5` judge), **ClinePass**, and **Cline credits**.
 
 ## Install
 
 ```bash
-pnpm add -D @dancingteeth/agent-loop @cline/sdk
-# optional, for post-loop review:
-pnpm add -D @cursor/sdk
+# Cursor-only (hackathon / no 3rd-party SDKs)
+pnpm add -D @dancingteeth/agent-loop @cursor/sdk
+
+# Optional ClinePass / credits worker
+pnpm add -D @cline/sdk
 ```
 
 Or link during development:
@@ -64,6 +66,11 @@ agent-loop-init
 # edit .cursor/loops/my-task/GOAL.md + loop.json
 
 doppler run -- agent-check cline
+doppler run -- agent-check cursor
+
+# Cursor-only (hackathon / no 3rd-party): Composer 2.5 worker + Grok 4.5 judge
+doppler run -- agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
+
 doppler run -- agent-loop run .cursor/loops/my-task --runtime cline-pass
 # ClinePass weekly/5h quota exhausted? pay-as-you-go credits:
 doppler run -- agent-loop run .cursor/loops/my-task --runtime cline
@@ -118,7 +125,8 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 | `reasoningEscalationStep` | `1` | Tiers to step reasoning up per iteration (`1` or `2`). |
 | `escalateModelReasoningEffort` | — | Cline runtimes: reasoning tier to use on the escalated model. Defaults to the ladder ceiling. |
 | `escalateAfterStagnation` | `2` | Identical-failure stagnation count that triggers the **model** switch — only after reasoning has reached its ceiling (cheap lever first, expensive lever second). |
-| `runtime` | `cursor` | `cursor` \| `cline-pass` (subscription quota) \| `cline` (usage-billing credits). Same `CLINE_API_KEY` for both Cline providers; credits use OpenRouter-style model ids (default `deepseek/deepseek-chat`, escalate tip `google/gemini-2.5-pro`). Switching runtime via CLI clears leftover model ids from the other provider unless you pass `--model` / `--escalate-model`. |
+| `runtime` | `cursor` | `cursor` \| `cline-pass` (subscription quota) \| `cline` (usage-billing credits). **Cursor-only:** worker=`composer-2.5`, judge=`grok-4.5` via `reviewModel`. |
+| `reviewModel` | (see note) | Cursor SDK judge for quality review / review-gate. Default `grok-4.5` when `runtime` is `cursor`, else `composer-2.5`. Allowed: `grok-4.5`, `composer-2.5` (never Fast). |
 
 CLI overrides: `--mode reverse`, `--pause-after-iteration`.
 
