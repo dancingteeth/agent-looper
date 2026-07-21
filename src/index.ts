@@ -94,6 +94,7 @@ export {
   runPostLoopQualityReview,
   resolveReviewOutputPath,
   listChangedPathsSinceBranchBase,
+  gitDiffStatSinceBranchBase,
 } from './review/loopPostReview.js'
 export type { PostLoopReviewOptions, PostLoopReviewResult } from './review/loopPostReview.js'
 
@@ -132,6 +133,26 @@ export type {
   BlockerImpact,
   BlockerImpactTag,
 } from './review/reviewVerdict.js'
+
+export {
+  discoverLoopBundles,
+  collectLoopArtifacts,
+  isLoopBundleDir,
+  runMetaReview,
+  resolveMetaReviewOutputPath,
+  extractHitlFollowUpBullets,
+  parseTaskAddDescription,
+  createHitlTasksFromFollowUps,
+  extractMarkdownSection,
+} from './review/metaReview.js'
+export type { MetaReviewOptions, MetaReviewResult } from './review/metaReview.js'
+
+export {
+  buildMetaReviewPrompt,
+  loadMetaReviewPromptBrief,
+  resolveMetaReviewPromptPath,
+  META_REVIEW_PROMPT_RELATIVE,
+} from './review/metaReviewPrompt.js'
 
 export {
   addUsageRecord,

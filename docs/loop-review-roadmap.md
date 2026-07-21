@@ -314,9 +314,9 @@ adversarial judge (patterns doc §8). Consumer spike already tracked as
 
 ### Acceptance criteria
 
-- [ ] Reads N completed loop artifacts without re-running implement workers.
-- [ ] Emits a single report + optional Taskwarrior tasks.
-- [ ] Explicitly does not flip per-loop `complete` flags.
+- [x] Reads N completed loop artifacts without re-running implement workers.
+- [x] Emits a single report + optional Taskwarrior tasks.
+- [x] Explicitly does not flip per-loop `complete` flags.
 
 ### Depends on
 Richer blocker schema (#1) and failure-domain hygiene make the meta-prompt

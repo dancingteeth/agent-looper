@@ -42,7 +42,8 @@ function requireMergeBase(ctx: RepoContext): string {
   }).trim()
 }
 
-function gitDiffSinceBranchBase(ctx: RepoContext): string {
+/** Diff stat vs profile defaultBranch merge-base (shared by per-loop and meta-review). */
+export function gitDiffStatSinceBranchBase(ctx: RepoContext): string {
   const base = requireMergeBase(ctx)
   return execFileSync('git', ['diff', '--stat', `${base}...HEAD`], {
     cwd: ctx.repoRoot,
@@ -85,7 +86,7 @@ export function buildPostLoopQualityReviewPrompt(ctx: RepoContext, goal: string)
   return buildQualityReviewPrompt({
     ctx,
     context: `## Loop goal\n${goal}`,
-    diffStat: gitDiffSinceBranchBase(ctx),
+    diffStat: gitDiffStatSinceBranchBase(ctx),
     reviewKind: 'post-loop quality review',
   })
 }

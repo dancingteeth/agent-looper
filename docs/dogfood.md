@@ -31,7 +31,8 @@ Publish to npm only when you want install without a sibling checkout.
 | --- | --- | --- |
 | `reproduce-before-report` | `b2185d70-…` (2a done; UUID now 2b) | M2a path filter |
 | `reproduce-agent` | `b2185d70-2889-4eed-94c2-d99949954211` | M2b fresh-context reproduce agent (done) |
-| `secondary-judge` | `adf66bf8-d52a-43e2-8009-756649cc32b2` | M3 multi-family secondary judge |
+| `secondary-judge` | `adf66bf8-d52a-43e2-8009-756649cc32b2` | M3 multi-family secondary judge (done) |
+| `meta-review` | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | M5 cross-loop meta-review CLI |
 | `example-fix` | — | Scaffold template only |
 
 ## Review overlays

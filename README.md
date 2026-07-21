@@ -188,6 +188,19 @@ Cycle: run **probe** loop → on failure, write `failure-context.md` to the **fi
 
 See `templates/loop-batch.meta.example.json`.
 
+### Cross-loop meta-review (M5)
+
+After several loops complete, aggregate their artifacts into one factory-scale report (does **not** re-run implement workers or flip per-loop `complete` flags):
+
+```bash
+pnpm build
+agent-loop-meta-review .cursor/loops --out-dir .cursor/loops/meta-review
+# optional HITL tasks from ### HITL follow-ups bullets:
+agent-loop-meta-review .cursor/loops/reproduce-agent .cursor/loops/secondary-judge --hitl --project agent-loop
+```
+
+Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff stat vs `defaultBranch`. Prompt brief: [`docs/meta-review-prompt.md`](./docs/meta-review-prompt.md).
+
 ## CLIs
 
 
@@ -198,6 +211,9 @@ See `templates/loop-batch.meta.example.json`.
 | `agent-check cursor|cline` | SDK + API key smoke                                             |
 | `agent-loop-init`          | Scaffold templates                                              |
 | `agent-loop-doctor`        | Validate `dist/` + `file:` checkout path (consumer postinstall) |
+| `agent-loop-meta-review`   | Cross-loop meta-review over N loop bundles (read-only aggregator) |
+| `agent-loop-review-run`    | Run post-loop quality review for one bundle (Cursor SDK)        |
+| `agent-loop-review-preview`| Preview review risk / prompt for one bundle                     |
 
 
 
