@@ -375,12 +375,18 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                     reviewCycle,
                     reviewModel,
                     reviewReproduce: config.reviewReproduce,
+                    reviewReproduceAgent: config.reviewReproduceAgent,
+                    reviewSecondaryRuntime: config.reviewSecondaryRuntime,
+                    reviewSecondaryModel: config.reviewSecondaryModel,
                   })
                 : await runPostLoopQualityReview(bundle.loopDir, goal, ctx, {
                     verbose,
                     reviewCycle,
                     reviewModel,
                     reviewReproduce: config.reviewReproduce,
+                    reviewReproduceAgent: config.reviewReproduceAgent,
+                    reviewSecondaryRuntime: config.reviewSecondaryRuntime,
+                    reviewSecondaryModel: config.reviewSecondaryModel,
                   })
               usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
               parsedReview = reviewResult.parsed

@@ -9,14 +9,24 @@ import {
   resolveReviewOutputPath,
   runPostLoopQualityReview,
 } from './loopPostReview.js'
-import { buildBlockerRecheckPrompt } from './reviewPrompt.js'
+import { buildBlockerRecheckPrompt, buildReproduceCandidatesPrompt } from './reviewPrompt.js'
+import { blockingBlockers } from './reviewVerdict.js'
 
 const { runCursorAgentPrompt } = vi.hoisted(() => ({
   runCursorAgentPrompt: vi.fn(),
 }))
 
+const { createClineLoopSession, clineRunPrompt } = vi.hoisted(() => ({
+  createClineLoopSession: vi.fn(),
+  clineRunPrompt: vi.fn(),
+}))
+
 vi.mock('../agents/cursorAgent.js', () => ({
   runCursorAgentPrompt,
+}))
+
+vi.mock('../agents/clineAgent.js', () => ({
+  createClineLoopSession,
 }))
 
 vi.mock('../context/defaultBranch.js', () => ({
@@ -24,13 +34,29 @@ vi.mock('../context/defaultBranch.js', () => ({
 }))
 
 vi.mock('node:child_process', () => ({
-  execFileSync: vi.fn(() => 'abc123'),
+  execFileSync: vi.fn((cmd: string, args?: string[]) => {
+    if (args?.[0] === 'merge-base') return 'abc123'
+    if (args?.[0] === 'diff' && args.includes('--name-only')) {
+      return 'src/cli/init.ts\nsrc/review/reviewVerdict.ts'
+    }
+    if (args?.[0] === 'diff' && args.includes('--stat')) {
+      return ' src/cli/init.ts | 1 +\n'
+    }
+    return 'abc123'
+  }),
 }))
 
 describe('loopPostReview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     runCursorAgentPrompt.mockResolvedValue({
+      text: '### Verdict\n**PASS**\n\n### Blockers\n- none',
+    })
+    createClineLoopSession.mockResolvedValue({
+      runPrompt: clineRunPrompt,
+      dispose: vi.fn().mockResolvedValue(undefined),
+    })
+    clineRunPrompt.mockResolvedValue({
       text: '### Verdict\n**PASS**\n\n### Blockers\n- none',
     })
   })
@@ -113,5 +139,191 @@ describe('loopPostReview', () => {
     expect(prompt).toContain('[must-fix] **Docs missing** — README')
     expect(prompt).toContain('[must-fix] **Unit guard** — verify doc.unit')
     expect(prompt).toContain('Fix harness')
+  })
+
+  it('asks the reproduce agent to KEEP or DROP each candidate in a fresh context', () => {
+    const ctx = resolveRepoContext()
+    const prompt = buildReproduceCandidatesPrompt(ctx, 'Ship M2b', [
+      'severity: error impact: false-closure [must-fix] **Docs** — src/cli/init.ts:10',
+    ])
+    expect(prompt).toContain('fresh')
+    expect(prompt).toContain('NOT seen the original review transcript')
+    expect(prompt).toContain('KEEP')
+    expect(prompt).toContain('DROP')
+    expect(prompt).toContain('src/cli/init.ts:10')
+  })
+
+  it('skips reproduce agent when reviewReproduce is off', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    runCursorAgentPrompt.mockResolvedValueOnce({
+      text: [
+        '### Verdict',
+        '**BLOCKERS**',
+        '',
+        '### Blockers',
+        '- severity: error impact: false-closure [must-fix] **Docs** — src/cli/init.ts:10',
+      ].join('\n'),
+    })
+
+    await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      reviewReproduceAgent: true,
+      reviewReproduce: false,
+    })
+
+    expect(runCursorAgentPrompt).toHaveBeenCalledTimes(1)
+  })
+
+  it('runs reproduce agent after 2a filter and drops unevidenced blockers', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    const keptBlocker =
+      'severity: error impact: false-closure [must-fix] **Docs** — src/cli/init.ts:10 still missing'
+    const ghostBlocker =
+      'severity: error impact: verify-bypass [must-fix] **Ghost** — src/review/reviewVerdict.ts:1 imaginary'
+    runCursorAgentPrompt
+      .mockResolvedValueOnce({
+        text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', `- ${keptBlocker}`, `- ${ghostBlocker}`].join(
+          '\n',
+        ),
+      })
+      .mockResolvedValueOnce({
+        text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', `- ${keptBlocker}`].join('\n'),
+      })
+
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      reviewReproduce: true,
+      reviewReproduceAgent: true,
+    })
+
+    expect(runCursorAgentPrompt).toHaveBeenCalledTimes(2)
+    expect(runCursorAgentPrompt.mock.calls[1]![2]).toMatchObject({
+      role: 'review',
+      phase: 'review',
+    })
+    expect(String(runCursorAgentPrompt.mock.calls[1]![1])).toContain('reproduce-before-report')
+
+    expect(result.reproduceAgentDroppedCount).toBe(1)
+    expect(blockingBlockers(result.parsed)).toHaveLength(1)
+    expect(blockingBlockers(result.parsed)[0]!.title).toContain('Docs')
+
+    const reviewMd = fs.readFileSync(path.join(loopDir, 'review.md'), 'utf8')
+    expect(reviewMd).toContain('### Reproduce agent (fresh context)')
+    expect(reviewMd).toContain('Dropped 1 gating blocker(s)')
+
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('reproduce agent: verifying'))).toBe(
+      true,
+    )
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('reproduce agent: dropped 1'))).toBe(
+      true,
+    )
+
+    stderrSpy.mockRestore()
+  })
+
+  it('skips secondary review when reviewSecondaryRuntime is unset', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    runCursorAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', '- severity: error impact: false-closure [must-fix] **Docs** — src/cli/init.ts:10'].join(
+        '\n',
+      ),
+    })
+
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await runPostLoopQualityReview(loopDir, 'goal', ctx, { verbose: false })
+
+    expect(createClineLoopSession).not.toHaveBeenCalled()
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('secondary review: skipped (disabled)'))).toBe(
+      false,
+    )
+
+    stderrSpy.mockRestore()
+  })
+
+  it('skips secondary review on primary PASS with no gating blockers', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      reviewSecondaryRuntime: 'cline-pass',
+    })
+
+    expect(createClineLoopSession).not.toHaveBeenCalled()
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('secondary review: skipped (primary PASS with no gating blockers)'))).toBe(
+      true,
+    )
+
+    stderrSpy.mockRestore()
+  })
+
+  it('runs secondary review and merges secondary-only gating blockers', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    const primaryBlocker =
+      'severity: error impact: false-closure [must-fix] **Docs** — src/cli/init.ts:10 still missing'
+    const secondaryOnlyBlocker =
+      'severity: error impact: verify-bypass [must-fix] **Verify gap** — src/review/reviewVerdict.ts:1'
+    runCursorAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', `- ${primaryBlocker}`].join('\n'),
+    })
+    clineRunPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', `- ${secondaryOnlyBlocker}`].join('\n'),
+    })
+
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      reviewSecondaryRuntime: 'cline-pass',
+      reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+    })
+
+    expect(createClineLoopSession).toHaveBeenCalledTimes(1)
+    expect(clineRunPrompt).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        modelId: 'cline-pass/deepseek-v4-flash',
+        providerId: 'cline-pass',
+        phase: 'review',
+        assistantOutput: 'none',
+      }),
+    )
+    expect(blockingBlockers(result.parsed)).toHaveLength(2)
+    expect(result.secondaryOnlyBlockersCount).toBe(1)
+    expect(result.parsed.verdict).toBe('BLOCKERS')
+
+    const reviewMd = fs.readFileSync(path.join(loopDir, 'review.md'), 'utf8')
+    expect(reviewMd).toContain('Primary model:')
+    expect(reviewMd).toContain('Secondary model: cline-pass/deepseek-v4-flash')
+    expect(reviewMd).toContain('### Secondary review (cline-pass/deepseek-v4-flash)')
+    expect(reviewMd).toContain('### Secondary merge')
+    expect(reviewMd).toContain('Verify gap')
+
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('secondary review: running'))).toBe(true)
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('merged 1 secondary-only gating blocker'))).toBe(
+      true,
+    )
+
+    stderrSpy.mockRestore()
   })
 })

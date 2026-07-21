@@ -125,3 +125,41 @@ For each blocker above, decide RESOLVED or REMAINING, then give a verdict:
 ${loadReviewsMd(ctx.repoRoot, ctx.profile)}
 `
 }
+
+/**
+ * Fresh-context reproduce pass (roadmap M2 phase 2b). Independent session — only
+ * KEEP candidates that can still be evidenced; omit DROPs from ### Blockers.
+ */
+export function buildReproduceCandidatesPrompt(
+  ctx: RepoContext,
+  goal: string,
+  blockers: string[],
+): string {
+  const numbered = blockers.map((b, idx) => `${idx + 1}. ${b}`).join('\n')
+  return `You are performing a **read-only** reproduce-before-report check in a **fresh** context.
+You have NOT seen the original review transcript. Do NOT edit files. Do NOT invent new blockers.
+
+Repo: ${ctx.repoRoot}
+
+## Loop goal
+${goal}
+
+## Candidate blockers (error+impact only)
+${numbered}
+
+## Task
+For each candidate, try to **reproduce** the finding from the repo and the branch diff:
+- **KEEP** — you can cite concrete evidence (prefer \`file:line\` in the changed set).
+- **DROP** — you cannot reproduce it; omit it entirely.
+
+### Verdict
+**PASS** — every candidate was DROP (none remain).
+**BLOCKERS** — at least one KEEP remains.
+### Blockers
+- list **only KEEP** items; preserve \`severity:\` / \`impact:\` prefixes; cite \`path:line\` in the detail.
+- If none remain, write \`- none\` or omit the section.
+
+## Repository review standards (${ctx.profile.reviewsFile})
+${loadReviewsMd(ctx.repoRoot, ctx.profile)}
+`
+}

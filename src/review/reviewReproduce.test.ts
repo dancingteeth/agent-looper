@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   applyReproduceBeforeReportFilter,
   extractFileCitations,
+  gatingBlockerMergeKey,
+  mergePrimarySecondaryReviews,
   pathIsInChangedSet,
 } from './reviewReproduce.js'
-import { parseBlockerItem, type ParsedReview } from './reviewVerdict.js'
+import { blockingBlockers, parseBlockerItem, type ParsedReview } from './reviewVerdict.js'
 
 describe('extractFileCitations', () => {
   it('extracts file:line citations', () => {
@@ -99,5 +101,41 @@ describe('applyReproduceBeforeReportFilter', () => {
     )
     expect(result.dropped).toHaveLength(0)
     expect(result.parsed.blockers[0]!.severity).toBe('error')
+  })
+})
+
+describe('mergePrimarySecondaryReviews', () => {
+  function review(blockers: string[], verdict: ParsedReview['verdict'] = 'BLOCKERS'): ParsedReview {
+    return {
+      verdict,
+      risk: 'high',
+      blockers: blockers.map(parseBlockerItem),
+    }
+  }
+
+  it('unions secondary-only gating blockers by impact+title', () => {
+    const primary = review([
+      'severity: error impact: false-closure [must-fix] **Docs** — src/a.ts:1',
+    ])
+    const secondary = review([
+      'severity: error impact: false-closure [must-fix] **Docs** — src/a.ts:1',
+      'severity: error impact: verify-bypass [must-fix] **Verify gap** — src/b.ts:2',
+    ])
+    const merged = mergePrimarySecondaryReviews(primary, secondary)
+    expect(gatingBlockerMergeKey(primary.blockers[0]!)).toContain('false-closure')
+    expect(blockingBlockers(merged.parsed)).toHaveLength(2)
+    expect(merged.secondaryOnly).toHaveLength(1)
+    expect(merged.parsed.verdict).toBe('BLOCKERS')
+  })
+
+  it('keeps primary PASS when no gating blockers remain after merge', () => {
+    const primary = review([], 'PASS')
+    const secondary = review([
+      'severity: warning impact: none [should-fix] **Nit** — style only',
+    ], 'ADVISORY')
+    const merged = mergePrimarySecondaryReviews(primary, secondary)
+    expect(blockingBlockers(merged.parsed)).toHaveLength(0)
+    expect(merged.parsed.verdict).toBe('PASS')
+    expect(merged.secondaryOnly).toHaveLength(0)
   })
 })

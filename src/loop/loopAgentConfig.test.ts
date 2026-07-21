@@ -4,6 +4,7 @@ import {
   resolveIterationAgent,
   resolveLoopAgent,
   resolveReviewModel,
+  resolveSecondaryReviewAgent,
 } from './loopAgentConfig.js'
 import { loopConfigSchema } from './loopConfig.js'
 
@@ -194,5 +195,27 @@ describe('clearIncompatibleAgentFieldsOnRuntimeSwitch', () => {
     })
     expect(result.model).toBe('cline-pass/deepseek-v4-flash')
     expect(result.warnings).toHaveLength(0)
+  })
+})
+
+describe('resolveSecondaryReviewAgent', () => {
+  it('returns undefined when reviewSecondaryRuntime is unset', () => {
+    expect(resolveSecondaryReviewAgent({})).toBeUndefined()
+  })
+
+  it('defaults model per cline-pass runtime', () => {
+    expect(
+      resolveSecondaryReviewAgent({ reviewSecondaryRuntime: 'cline-pass' }),
+    ).toEqual({
+      runtime: 'cline-pass',
+      model: 'cline-pass/deepseek-v4-flash',
+    })
+  })
+
+  it('defaults model per cline credits runtime', () => {
+    expect(resolveSecondaryReviewAgent({ reviewSecondaryRuntime: 'cline' })).toEqual({
+      runtime: 'cline',
+      model: 'deepseek/deepseek-chat',
+    })
   })
 })

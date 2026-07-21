@@ -8,13 +8,26 @@ import {
   CURSOR_WORKER_MODEL,
   type CursorSdkModel,
 } from '../loop/loopAgentConfig.js'
-import { buildQualityReviewPrompt, buildBlockerRecheckPrompt } from './reviewPrompt.js'
-import { parseReviewMarkdown, blockingBlockers, type ParsedReview } from './reviewVerdict.js'
+import { buildQualityReviewPrompt, buildBlockerRecheckPrompt, buildReproduceCandidatesPrompt } from './reviewPrompt.js'
+import {
+  parseReviewMarkdown,
+  blockingBlockers,
+  formatBlockerLine,
+  type ParsedReview,
+} from './reviewVerdict.js'
 import {
   applyReproduceBeforeReportFilter,
+  applyAgentReproduceKeepList,
   formatReproduceFilterFooter,
+  formatAgentReproduceFooter,
+  formatSecondaryMergeFooter,
+  mergePrimarySecondaryReviews,
 } from './reviewReproduce.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
+import {
+  defaultModelForRuntime,
+  type SecondaryReviewRuntime,
+} from '../loop/loopAgentConfig.js'
 
 function requireMergeBase(ctx: RepoContext): string {
   const baseBranch = ctx.profile.defaultBranch
@@ -92,6 +105,15 @@ export type PostLoopReviewOptions = {
    * Skipped when the changed-files set is empty (fail-closed toward keeping blockers).
    */
   reviewReproduce?: boolean
+  /**
+   * When true (typically with reviewReproduce), run a fresh Cursor session on remaining
+   * gating blockers; DROP unevidenced candidates (roadmap M2 phase 2b).
+   */
+  reviewReproduceAgent?: boolean
+  /** Optional second-family review runtime. Unset = disabled (M3). */
+  reviewSecondaryRuntime?: SecondaryReviewRuntime
+  /** Cline model for secondary review. Defaults per reviewSecondaryRuntime. */
+  reviewSecondaryModel?: string
 }
 
 export type PostLoopReviewResult = {
@@ -101,6 +123,12 @@ export type PostLoopReviewResult = {
   usage?: LoopUsageRecord
   /** Blockers downgraded by deterministic reproduce filter (when enabled). */
   reproduceDroppedCount?: number
+  /** Blockers dropped by the fresh reproduce agent (when enabled). */
+  reproduceAgentDroppedCount?: number
+  /** Gating blockers added only by the secondary judge (when enabled). */
+  secondaryOnlyBlockersCount?: number
+  /** Why secondary review was skipped (when configured but not run). */
+  secondaryReviewSkippedReason?: string
 }
 
 export function resolveReviewOutputPath(loopDir: string, reviewCycle = 1): string {
@@ -136,6 +164,197 @@ function maybeApplyReproduceFilter(
   }
 }
 
+async function maybeApplyReproduceAgent(
+  parsed: ParsedReview,
+  text: string,
+  goal: string,
+  ctx: RepoContext,
+  options: PostLoopReviewOptions,
+): Promise<{
+  parsed: ParsedReview
+  text: string
+  droppedCount: number
+  usage?: LoopUsageRecord
+}> {
+  if (options.reviewReproduceAgent !== true || options.reviewReproduce !== true) {
+    return { parsed, text, droppedCount: 0 }
+  }
+  const gating = blockingBlockers(parsed)
+  if (gating.length === 0) {
+    return { parsed, text, droppedCount: 0 }
+  }
+
+  const reviewModel = options.reviewModel ?? CURSOR_WORKER_MODEL
+  const prompt = buildReproduceCandidatesPrompt(
+    ctx,
+    goal,
+    gating.map(formatBlockerLine),
+  )
+  console.error(
+    `[agent-loop] reproduce agent: verifying ${gating.length} gating blocker(s) (model=${reviewModel})`,
+  )
+  const run = await runCursorAgentPrompt(ctx, prompt, {
+    verbose: options.verbose,
+    assistantOutput: 'none',
+    modelId: reviewModel,
+    role: 'review',
+    phase: 'review',
+  })
+  const agentParsed = parseReviewMarkdown(run.text)
+  const kept = blockingBlockers(agentParsed)
+  const filtered = applyAgentReproduceKeepList(parsed, kept)
+  const footer = formatAgentReproduceFooter(filtered.dropped)
+  if (filtered.dropped.length > 0) {
+    console.error(
+      `[agent-loop] reproduce agent: dropped ${filtered.dropped.length} gating blocker(s) (kept=${kept.length})`,
+    )
+  } else {
+    console.error(`[agent-loop] reproduce agent: kept all ${gating.length} gating blocker(s)`)
+  }
+  return {
+    parsed: filtered.parsed,
+    text: `${text.trim()}${footer}`,
+    droppedCount: filtered.dropped.length,
+    usage: run.usage,
+  }
+}
+
+function shouldSkipSecondaryReview(
+  parsed: ParsedReview,
+  options: PostLoopReviewOptions,
+): { skip: true; reason: string } | { skip: false } {
+  if (!options.reviewSecondaryRuntime) {
+    return { skip: true, reason: 'disabled' }
+  }
+  const gating = blockingBlockers(parsed)
+  if ((parsed.verdict === 'PASS' || parsed.verdict === 'ADVISORY') && gating.length === 0) {
+    return { skip: true, reason: `primary ${parsed.verdict} with no gating blockers` }
+  }
+  return { skip: false }
+}
+
+async function runSecondaryReviewPrompt(
+  ctx: RepoContext,
+  prompt: string,
+  runtime: SecondaryReviewRuntime,
+  model: string,
+  options: Pick<PostLoopReviewOptions, 'verbose'>,
+): Promise<{ text: string; usage?: LoopUsageRecord }> {
+  // Dynamic import: @cline/sdk is optional — Cursor-only installs must not load it unless enabled.
+  const { createClineLoopSession } = await import('../agents/clineAgent.js')
+  const cline = await createClineLoopSession(ctx)
+  try {
+    const run = await cline.runPrompt(prompt, {
+      verbose: options.verbose,
+      modelId: model,
+      providerId: runtime,
+      assistantOutput: 'none',
+      phase: 'review',
+    })
+    return { text: run.text, usage: run.usage }
+  } finally {
+    await cline.dispose()
+  }
+}
+
+async function maybeRunSecondaryReview(
+  parsed: ParsedReview,
+  text: string,
+  goal: string,
+  ctx: RepoContext,
+  options: PostLoopReviewOptions,
+): Promise<{
+  parsed: ParsedReview
+  text: string
+  secondaryOnlyCount: number
+  skippedReason?: string
+  secondaryModel?: string
+  usage?: LoopUsageRecord
+}> {
+  const skip = shouldSkipSecondaryReview(parsed, options)
+  if (skip.skip) {
+    if (options.reviewSecondaryRuntime) {
+      console.error(`[agent-loop] secondary review: skipped (${skip.reason})`)
+    }
+    return { parsed, text, secondaryOnlyCount: 0, skippedReason: skip.reason }
+  }
+
+  const runtime = options.reviewSecondaryRuntime!
+  const model = options.reviewSecondaryModel ?? defaultModelForRuntime(runtime)
+  const prompt = buildPostLoopQualityReviewPrompt(ctx, goal)
+  console.error(
+    `[agent-loop] secondary review: running (${runtime}, model=${model}, gating=${blockingBlockers(parsed).length})`,
+  )
+  const run = await runSecondaryReviewPrompt(ctx, prompt, runtime, model, options)
+  const secondaryParsed = parseReviewMarkdown(run.text)
+  const merged = mergePrimarySecondaryReviews(parsed, secondaryParsed)
+  const mergeFooter = formatSecondaryMergeFooter(merged.secondaryOnly)
+  const secondarySection = `\n\n### Secondary review (${model})\n${run.text.trim()}\n`
+  const mergedText = `${text.trim()}${secondarySection}${mergeFooter}`
+  if (merged.secondaryOnly.length > 0) {
+    console.error(
+      `[agent-loop] secondary review: merged ${merged.secondaryOnly.length} secondary-only gating blocker(s)`,
+    )
+  } else {
+    console.error('[agent-loop] secondary review: no new gating blockers from secondary judge')
+  }
+  return {
+    parsed: merged.parsed,
+    text: mergedText,
+    secondaryOnlyCount: merged.secondaryOnly.length,
+    secondaryModel: model,
+    usage: run.usage,
+  }
+}
+
+async function applyPostPrimaryReviewPipeline(
+  primaryParsed: ParsedReview,
+  primaryText: string,
+  goal: string,
+  ctx: RepoContext,
+  options: PostLoopReviewOptions,
+): Promise<{
+  parsed: ParsedReview
+  text: string
+  reproduceDroppedCount: number
+  reproduceAgentDroppedCount: number
+  secondaryOnlyCount: number
+  secondaryReviewSkippedReason?: string
+  secondaryModel?: string
+  usage?: LoopUsageRecord
+}> {
+  const filtered = maybeApplyReproduceFilter(
+    primaryParsed,
+    primaryText,
+    ctx,
+    options.reviewReproduce === true,
+  )
+  const agented = await maybeApplyReproduceAgent(
+    filtered.parsed,
+    filtered.text,
+    goal,
+    ctx,
+    options,
+  )
+  const secondary = await maybeRunSecondaryReview(
+    agented.parsed,
+    agented.text,
+    goal,
+    ctx,
+    options,
+  )
+  return {
+    parsed: secondary.parsed,
+    text: secondary.text,
+    reproduceDroppedCount: filtered.droppedCount,
+    reproduceAgentDroppedCount: agented.droppedCount,
+    secondaryOnlyCount: secondary.secondaryOnlyCount,
+    secondaryReviewSkippedReason: secondary.skippedReason,
+    secondaryModel: secondary.secondaryModel,
+    usage: secondary.usage ?? agented.usage,
+  }
+}
+
 export async function runPostLoopQualityReview(
   loopDir: string,
   goal: string,
@@ -152,30 +371,39 @@ export async function runPostLoopQualityReview(
     role: 'review',
     phase: 'review',
   })
-  const applied = maybeApplyReproduceFilter(
+  const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
     run.text,
+    goal,
     ctx,
-    options.reviewReproduce === true,
+    options,
   )
   const outPath = resolveReviewOutputPath(loopDir, reviewCycle)
+  const secondaryNote = piped.secondaryModel
+    ? `\n_Secondary model: ${piped.secondaryModel}_\n`
+    : piped.secondaryReviewSkippedReason && options.reviewSecondaryRuntime
+      ? `\n_Secondary review skipped (${piped.secondaryReviewSkippedReason})_\n`
+      : ''
   fs.writeFileSync(
     outPath,
-    `# Post-loop quality review\n\n_Model: ${reviewModel}_\n\n_Generated ${new Date().toISOString()}_\n\n${applied.text.trim()}\n`,
+    `# Post-loop quality review\n\n_Primary model: ${reviewModel}_${secondaryNote}\n_Generated ${new Date().toISOString()}_\n\n${piped.text.trim()}\n`,
     'utf8',
   )
   console.error(
     `[agent-loop] quality review written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
   )
   console.error(
-    `[agent-loop] quality review verdict=${applied.parsed.verdict} risk=${applied.parsed.risk} blockers=${applied.parsed.blockers.length} gating=${blockingBlockers(applied.parsed).length}`,
+    `[agent-loop] quality review verdict=${piped.parsed.verdict} risk=${piped.parsed.risk} blockers=${piped.parsed.blockers.length} gating=${blockingBlockers(piped.parsed).length}`,
   )
   return {
-    text: applied.text,
-    parsed: applied.parsed,
+    text: piped.text,
+    parsed: piped.parsed,
     outPath,
-    usage: run.usage,
-    reproduceDroppedCount: applied.droppedCount,
+    usage: piped.usage ?? run.usage,
+    reproduceDroppedCount: piped.reproduceDroppedCount,
+    reproduceAgentDroppedCount: piped.reproduceAgentDroppedCount,
+    secondaryOnlyBlockersCount: piped.secondaryOnlyCount,
+    secondaryReviewSkippedReason: piped.secondaryReviewSkippedReason,
   }
 }
 
@@ -201,29 +429,38 @@ export async function runPostLoopBlockerRecheck(
     role: 'review',
     phase: 'review',
   })
-  const applied = maybeApplyReproduceFilter(
+  const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
     run.text,
+    goal,
     ctx,
-    options.reviewReproduce === true,
+    options,
   )
   const outPath = resolveReviewOutputPath(loopDir, reviewCycle)
+  const secondaryNote = piped.secondaryModel
+    ? `\n_Secondary model: ${piped.secondaryModel}_\n`
+    : piped.secondaryReviewSkippedReason && options.reviewSecondaryRuntime
+      ? `\n_Secondary review skipped (${piped.secondaryReviewSkippedReason})_\n`
+      : ''
   fs.writeFileSync(
     outPath,
-    `# Blocker re-check\n\n_Model: ${reviewModel}_\n\n_Generated ${new Date().toISOString()}_\n\n${applied.text.trim()}\n`,
+    `# Blocker re-check\n\n_Primary model: ${reviewModel}_${secondaryNote}\n_Generated ${new Date().toISOString()}_\n\n${piped.text.trim()}\n`,
     'utf8',
   )
   console.error(
     `[agent-loop] blocker re-check written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
   )
   console.error(
-    `[agent-loop] blocker re-check verdict=${applied.parsed.verdict} risk=${applied.parsed.risk} blockers=${applied.parsed.blockers.length} gating=${blockingBlockers(applied.parsed).length}`,
+    `[agent-loop] blocker re-check verdict=${piped.parsed.verdict} risk=${piped.parsed.risk} blockers=${piped.parsed.blockers.length} gating=${blockingBlockers(piped.parsed).length}`,
   )
   return {
-    text: applied.text,
-    parsed: applied.parsed,
+    text: piped.text,
+    parsed: piped.parsed,
     outPath,
-    usage: run.usage,
-    reproduceDroppedCount: applied.droppedCount,
+    usage: piped.usage ?? run.usage,
+    reproduceDroppedCount: piped.reproduceDroppedCount,
+    reproduceAgentDroppedCount: piped.reproduceAgentDroppedCount,
+    secondaryOnlyBlockersCount: piped.secondaryOnlyCount,
+    secondaryReviewSkippedReason: piped.secondaryReviewSkippedReason,
   }
 }

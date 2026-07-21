@@ -165,6 +165,34 @@ describe('loopConfigSchema', () => {
     ).toBe(true)
   })
 
+  it('defaults reviewReproduceAgent to false and accepts it', () => {
+    expect(loopConfigSchema.parse({ verify: 'true' }).reviewReproduceAgent).toBe(false)
+    expect(
+      loopConfigSchema.parse({ verify: 'true', reviewReproduceAgent: true }).reviewReproduceAgent,
+    ).toBe(true)
+  })
+
+  it('leaves reviewSecondaryRuntime unset by default and accepts cline-pass secondary', () => {
+    expect(loopConfigSchema.parse({ verify: 'true' }).reviewSecondaryRuntime).toBeUndefined()
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      reviewSecondaryRuntime: 'cline-pass',
+      reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+    })
+    expect(parsed.reviewSecondaryRuntime).toBe('cline-pass')
+    expect(parsed.reviewSecondaryModel).toBe('cline-pass/deepseek-v4-flash')
+  })
+
+  it('rejects ClinePass slug for cline secondary runtime', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        reviewSecondaryRuntime: 'cline',
+        reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+      }),
+    ).toThrow(/credits/)
+  })
+
   it('defaults unparseableReviewRetries to 2 and reviewBlockerRecheck to true', () => {
     const parsed = loopConfigSchema.parse({ verify: 'true' })
     expect(parsed.unparseableReviewRetries).toBe(2)

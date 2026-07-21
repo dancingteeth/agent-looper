@@ -62,9 +62,23 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     reviewBlockerRecheck: z.boolean().default(true),
     /**
      * When true, downgrade error+impact blockers that lack a citeable path in the
-     * merge-base…HEAD diff (reproduce-before-report phase 2a).
+     * merge-base…working-tree changed set (reproduce-before-report phase 2a).
      */
     reviewReproduce: z.boolean().default(false),
+    /**
+     * When true (with reviewReproduce), run a fresh Cursor review session on remaining
+     * gating blockers and DROP candidates without reproduce evidence (phase 2b).
+     */
+    reviewReproduceAgent: z.boolean().default(false),
+    /**
+     * Optional second-family review runtime (Cline). Unset = disabled (M3).
+     * Runs after primary Cursor review (+ optional reproduce filters).
+     */
+    reviewSecondaryRuntime: z
+      .enum([LOOP_RUNTIME_CLINE_PASS, LOOP_RUNTIME_CLINE])
+      .optional(),
+    /** Cline model for secondary review. Defaults per reviewSecondaryRuntime. */
+    reviewSecondaryModel: z.string().optional(),
     /** Run repo profile syncCommand after success. Legacy alias: syncPostgres. */
     syncOnSuccess: z.boolean().default(true),
     hitlCheck: hitlCheckDescriptionSchema.optional(),
@@ -167,6 +181,9 @@ export function mergeLoopConfig(
       | 'unparseableReviewRetries'
       | 'reviewBlockerRecheck'
       | 'reviewReproduce'
+      | 'reviewReproduceAgent'
+      | 'reviewSecondaryRuntime'
+      | 'reviewSecondaryModel'
       | 'syncOnSuccess'
       | 'runtime'
       | 'model'

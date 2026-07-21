@@ -40,7 +40,7 @@ Open Taskwarrior project: **`agent-loop`**. Use **UUID** in docs and `loop.json`
 | --- | --- | --- |
 | M1 | `8162dbe4-9a2d-4fc4-92d4-fd06a6e9dea6` | Impact-severity contract |
 | M2 | `b2185d70-2889-4eed-94c2-d99949954211` | Reproduce-before-report (blocked by M1) |
-| M3 | `adf66bf8-d52a-43e2-8009-756649cc32b2` | Multi-family secondary judge (blocked by M1) |
+| M3 | `adf66bf8-d52a-43e2-8009-756649cc32b2` | Multi-family secondary judge (shipped) |
 | M4 | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | Verification-as-skill |
 | M5 | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | Cross-loop meta-review CLI |
 
@@ -141,7 +141,13 @@ Rewriting consumer REVIEWS.md files in other repos — ship `templates/REVIEWS.m
 - Empty changed-files set → skip filter (no false-closure)
 - Footer in `review.md` lists downgraded items
 
-**Open:** phase 2b fresh-context agent reproduce; phase 2c second-family.
+**Open:** phase 2c second-family.
+
+**Phase 2b shipped** (`reviewReproduceAgent`, dogfood `.cursor/loops/reproduce-agent/`, TW
+`b2185d70-2889-4eed-94c2-d99949954211`):
+
+- Fresh Cursor `role: review` session on remaining gating blockers
+- KEEP/DROP via `### Blockers` (omit = DROP); footer in `review.md`
 
 ### Problem
 Same-family re-check (`reviewBlockerRecheck`) reduces *new* noise but still
@@ -180,7 +186,7 @@ shares confabulation bias with the original reviewer.
 
 - [x] Error-impact blockers without citeable path are downgraded or dropped when reproduce is on.
 - [x] Paths not in the loop diff cannot alone keep the gate open.
-- [ ] Reproduce pass uses a fresh agent session (documented in logs). *(2b)*
+- [x] Reproduce pass uses a fresh agent session (documented in logs). *(2b)*
 - [x] Unit tests for path filter; integration mock for reproduce DROP/KEEP.
 
 ---
@@ -217,10 +223,10 @@ architecture/coupling — only if merge noise stays low in the pilot.
 
 ### Acceptance criteria
 
-- [ ] Can enable a second-family review without breaking Cursor-only installs
+- [x] Can enable a second-family review without breaking Cursor-only installs
       (dynamic import / optional peer, same pattern as Cline worker).
-- [ ] Merge respects impact-severity contract from #1.
-- [ ] Documented cost: one extra judge call per review cycle when enabled.
+- [x] Merge respects impact-severity contract from #1.
+- [x] Documented cost: one extra judge call per review cycle when enabled.
 
 ### Depends on
 #1 strongly recommended first so dual review does not double cosmetic noise.

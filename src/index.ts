@@ -58,6 +58,7 @@ export {
   LOOP_RUNTIME_CLINE,
   resolveLoopAgent,
   resolveReviewModel,
+  resolveSecondaryReviewAgent,
   isClineSdkRuntime,
   CLINE_PASS_LOOP_MODELS,
   CURSOR_WORKER_MODEL,
@@ -98,9 +99,16 @@ export type { PostLoopReviewOptions, PostLoopReviewResult } from './review/loopP
 
 export {
   applyReproduceBeforeReportFilter,
+  applyAgentReproduceKeepList,
   extractFileCitations,
   pathIsInChangedSet,
+  blockerMatchKey,
+  gatingBlockerMergeKey,
+  mergePrimarySecondaryReviews,
+  formatSecondaryMergeFooter,
 } from './review/reviewReproduce.js'
+
+export { buildReproduceCandidatesPrompt } from './review/reviewPrompt.js'
 
 export {
   parseReviewMarkdown,

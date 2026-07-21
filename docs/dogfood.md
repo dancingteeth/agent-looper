@@ -17,8 +17,11 @@ Consumers already use `file:../agent-loop`. Dogfood runs against local `dist/`:
 ```bash
 pnpm build
 pnpm agent:loop run .cursor/loops/<name> --runtime cursor --review-gate
-# or: doppler run -- pnpm agent:loop run …
 ```
+
+Secrets come from Doppler project **`agent-looper`** / config **`dev`**
+(`doppler.yaml` in the repo root). Scripts wrap `doppler run` so
+`CURSOR_API_KEY`, `CLINE_API_KEY`, and `AGENT_LOOP_TELEGRAM_*` inject automatically.
 
 Publish to npm only when you want install without a sibling checkout.
 
@@ -26,7 +29,9 @@ Publish to npm only when you want install without a sibling checkout.
 
 | Loop | TW UUID | Feature |
 | --- | --- | --- |
-| `reproduce-before-report` | `b2185d70-2889-4eed-94c2-d99949954211` | M2 phase 2a — deterministic path filter |
+| `reproduce-before-report` | `b2185d70-…` (2a done; UUID now 2b) | M2a path filter |
+| `reproduce-agent` | `b2185d70-2889-4eed-94c2-d99949954211` | M2b fresh-context reproduce agent (done) |
+| `secondary-judge` | `adf66bf8-d52a-43e2-8009-756649cc32b2` | M3 multi-family secondary judge |
 | `example-fix` | — | Scaffold template only |
 
 ## Review overlays

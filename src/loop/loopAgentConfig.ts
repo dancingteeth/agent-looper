@@ -253,10 +253,39 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
   }
 }
 
+export type SecondaryReviewRuntime =
+  | typeof LOOP_RUNTIME_CLINE_PASS
+  | typeof LOOP_RUNTIME_CLINE
+
+export type ResolvedSecondaryReviewAgent = {
+  runtime: SecondaryReviewRuntime
+  model: string
+}
+
+/**
+ * Resolve optional second-family review agent (M3). Unset reviewSecondaryRuntime → disabled.
+ */
+export function resolveSecondaryReviewAgent(
+  config: Pick<LoopConfig, 'reviewSecondaryRuntime' | 'reviewSecondaryModel'>,
+): ResolvedSecondaryReviewAgent | undefined {
+  if (!config.reviewSecondaryRuntime) return undefined
+
+  const runtime = config.reviewSecondaryRuntime
+  const model = config.reviewSecondaryModel ?? defaultModelForRuntime(runtime)
+  assertLoopModelAllowed(runtime, model)
+
+  if (runtime === LOOP_RUNTIME_CLINE_PASS) {
+    return { runtime, model: assertClinePassModel(model, 'model') }
+  }
+
+  return { runtime, model: assertClineCreditsModel(model, 'model') }
+}
+
 /** Parse-time validation for loop.json (model + escalateModel + reviewModel). */
 export function validateLoopAgentConfig(config: LoopConfig): void {
   resolveLoopAgent(config)
   resolveReviewModel(config)
+  resolveSecondaryReviewAgent(config)
 
   if (!config.escalateModel) return
 

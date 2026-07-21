@@ -69,15 +69,17 @@ agent-loop-init
 # edit .cursor/agent-loop.repo.json (taskwarriorProject, syncCommand, …)
 # edit .cursor/loops/my-task/GOAL.md + loop.json
 
-doppler run -- agent-check cline
-doppler run -- agent-check cursor
+# This package: Doppler project agent-looper (see doppler.yaml)
+pnpm agent:check cursor
+pnpm agent:check cline
 
 # Cursor-only (hackathon / no 3rd-party): Composer 2.5 worker + Grok 4.5 judge
-doppler run -- agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
+pnpm agent:loop run .cursor/loops/my-task --runtime cursor --review-gate
 
-doppler run -- agent-loop run .cursor/loops/my-task --runtime cline-pass
+# Consumers: wrap with their own Doppler project, e.g.
+doppler run --project aeogeo --config dev -- agent-loop run .cursor/loops/my-task --runtime cline-pass
 # ClinePass weekly/5h quota exhausted? pay-as-you-go credits:
-doppler run -- agent-loop run .cursor/loops/my-task --runtime cline
+doppler run --project aeogeo --config dev -- agent-loop run .cursor/loops/my-task --runtime cline
 # (clears leftover cline-pass/* model ids; default deepseek/deepseek-chat)
 # optional: --model minimax/minimax-m2.5 --escalate-model google/gemini-2.5-pro
 ```
@@ -143,6 +145,9 @@ See [`docs/verification-as-skill.md`](./docs/verification-as-skill.md) for check
 | `runtime`                      | `cursor`   | `cursor` | `cline-pass` (subscription quota) | `cline` (usage-billing credits). **Cursor-only:** worker=`composer-2.5`, judge=`grok-4.5` via `reviewModel`.                              |
 | `reviewModel`                  | (see note) | Cursor SDK judge for quality review / review-gate. Default `grok-4.5` when `runtime` is `cursor`, else `composer-2.5`. Allowed: `grok-4.5`, `composer-2.5` (never Fast).                 |
 | `reviewReproduce`              | `false`    | Downgrade error+impact blockers lacking a citeable path in the merge-base…working-tree changed set (committed + staged + unstaged). Skipped if that set is empty.                      |
+| `reviewReproduceAgent`         | `false`    | After 2a filter, fresh Cursor session KEEps only evidenced gating blockers (phase 2b). Requires live review model.                                                                     |
+| `reviewSecondaryRuntime`       | (unset)    | Optional second-family judge after primary Cursor review: `cline-pass` or `cline`. Unset = disabled. Skips on primary PASS/ADVISORY with zero gating blockers.                          |
+| `reviewSecondaryModel`         | (default)  | Cline model for secondary review. Default `cline-pass/deepseek-v4-flash` or `deepseek/deepseek-chat` per runtime. Merges gating blockers with primary (union).                        |
 
 
 CLI overrides: `--mode reverse`, `--pause-after-iteration`.
@@ -281,7 +286,9 @@ When a post-loop review exists (`review.md` or `review.N.md`), a **second Telegr
 }
 ```
 
-3. Maxin/Zwook already wrap loops in `doppler run …` — add those secrets to the same Doppler project/config the loop scripts use.
+3. Wrap loops in `doppler run …` and put these secrets in that project/config.
+   This repo uses Doppler project **`agent-looper`** (`doppler.yaml`). Consumers
+   (aeogeo / maxin_dxp / sonicum) keep their own projects — same key names.
 
 **Opt out:** `"notifyTelegram": false` in `loop.json` / `loop-batch.json`, or CLI `--no-telegram`.
 

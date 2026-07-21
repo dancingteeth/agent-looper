@@ -40,8 +40,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "agent:init": "node dist/cli/init.js",
-    "agent:loop": "node dist/cli/run.js",
-    "agent:doctor": "node dist/cli/doctor.js",
+    "agent:loop": "doppler run --project agent-looper --config dev -- node dist/cli/run.js",
+    "agent:check": "doppler run --project agent-looper --config dev -- node dist/cli/check.js",
+    "agent:doctor": "doppler run --project agent-looper --config dev -- node dist/cli/doctor.js",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {

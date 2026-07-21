@@ -600,4 +600,58 @@ describe('runAgentLoop', () => {
       expect.objectContaining({ reviewModel: 'composer-2.5' }),
     )
   })
+
+  it('forwards reviewReproduce and reviewReproduceAgent to post-loop review', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
+
+    await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        postQualityReview: true,
+        reviewGate: true,
+        maxReviewCycles: 1,
+        reviewReproduce: true,
+        reviewReproduceAgent: true,
+      }),
+    })
+
+    expect(runPostLoopQualityReview).toHaveBeenCalledWith(
+      tmpLoopDir,
+      expect.any(String),
+      expect.anything(),
+      expect.objectContaining({
+        reviewReproduce: true,
+        reviewReproduceAgent: true,
+      }),
+    )
+  })
+
+  it('forwards reviewSecondaryRuntime and reviewSecondaryModel to post-loop review', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
+
+    await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        postQualityReview: true,
+        reviewGate: true,
+        maxReviewCycles: 1,
+        reviewSecondaryRuntime: 'cline-pass',
+        reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+      }),
+    })
+
+    expect(runPostLoopQualityReview).toHaveBeenCalledWith(
+      tmpLoopDir,
+      expect.any(String),
+      expect.anything(),
+      expect.objectContaining({
+        reviewSecondaryRuntime: 'cline-pass',
+        reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+      }),
+    )
+  })
 })
