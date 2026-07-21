@@ -10,25 +10,47 @@ import {
 } from '../loop/loopAgentConfig.js'
 import { buildQualityReviewPrompt, buildBlockerRecheckPrompt } from './reviewPrompt.js'
 import { parseReviewMarkdown, blockingBlockers, type ParsedReview } from './reviewVerdict.js'
+import {
+  applyReproduceBeforeReportFilter,
+  formatReproduceFilterFooter,
+} from './reviewReproduce.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
-function gitDiffSinceBranchBase(ctx: RepoContext): string {
+function requireMergeBase(ctx: RepoContext): string {
   const baseBranch = ctx.profile.defaultBranch
   if (!defaultBranchRefExists(ctx.repoRoot, baseBranch)) {
     throw new Error(
       `defaultBranch "${baseBranch}" is not a valid git ref — fix .cursor/agent-loop.repo.json or run agent-loop-init`,
     )
   }
-
-  const base = execFileSync('git', ['merge-base', 'HEAD', baseBranch], {
+  return execFileSync('git', ['merge-base', 'HEAD', baseBranch], {
     cwd: ctx.repoRoot,
     encoding: 'utf8',
   }).trim()
+}
+
+function gitDiffSinceBranchBase(ctx: RepoContext): string {
+  const base = requireMergeBase(ctx)
   return execFileSync('git', ['diff', '--stat', `${base}...HEAD`], {
     cwd: ctx.repoRoot,
     encoding: 'utf8',
     maxBuffer: 512 * 1024,
   }).trim()
+}
+
+/** Paths changed on HEAD vs merge-base with defaultBranch (reproduce-before-report). */
+export function listChangedPathsSinceBranchBase(ctx: RepoContext): string[] {
+  const base = requireMergeBase(ctx)
+  const out = execFileSync('git', ['diff', '--name-only', `${base}...HEAD`], {
+    cwd: ctx.repoRoot,
+    encoding: 'utf8',
+    maxBuffer: 512 * 1024,
+  }).trim()
+  if (!out) return []
+  return out
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
 }
 
 export function buildPostLoopQualityReviewPrompt(ctx: RepoContext, goal: string): string {
@@ -49,6 +71,11 @@ export type PostLoopReviewOptions = {
    * Cursor-only loops should pass `resolveReviewModel(config)` so the judge is Grok.
    */
   reviewModel?: CursorSdkModel
+  /**
+   * When true, downgrade error+impact blockers without a citeable path in the
+   * merge-base…HEAD changed-files set (roadmap M2 phase 2a).
+   */
+  reviewReproduce?: boolean
 }
 
 export type PostLoopReviewResult = {
@@ -56,11 +83,35 @@ export type PostLoopReviewResult = {
   parsed: ParsedReview
   outPath: string
   usage?: LoopUsageRecord
+  /** Blockers downgraded by deterministic reproduce filter (when enabled). */
+  reproduceDroppedCount?: number
 }
 
 export function resolveReviewOutputPath(loopDir: string, reviewCycle = 1): string {
   const filename = reviewCycle <= 1 ? 'review.md' : `review.${reviewCycle}.md`
   return path.join(loopDir, filename)
+}
+
+function maybeApplyReproduceFilter(
+  parsed: ParsedReview,
+  text: string,
+  ctx: RepoContext,
+  enabled: boolean,
+): { parsed: ParsedReview; text: string; droppedCount: number } {
+  if (!enabled) return { parsed, text, droppedCount: 0 }
+  const changedPaths = listChangedPathsSinceBranchBase(ctx)
+  const filtered = applyReproduceBeforeReportFilter(parsed, changedPaths)
+  const footer = formatReproduceFilterFooter(filtered.dropped)
+  if (filtered.dropped.length > 0) {
+    console.error(
+      `[agent-loop] reproduce filter: downgraded ${filtered.dropped.length} gating blocker(s) (changedPaths=${changedPaths.length})`,
+    )
+  }
+  return {
+    parsed: filtered.parsed,
+    text: `${text.trim()}${footer}`,
+    droppedCount: filtered.dropped.length,
+  }
 }
 
 export async function runPostLoopQualityReview(
@@ -79,21 +130,31 @@ export async function runPostLoopQualityReview(
     role: 'review',
     phase: 'review',
   })
-  const text = run.text
+  const applied = maybeApplyReproduceFilter(
+    parseReviewMarkdown(run.text),
+    run.text,
+    ctx,
+    options.reviewReproduce === true,
+  )
   const outPath = resolveReviewOutputPath(loopDir, reviewCycle)
   fs.writeFileSync(
     outPath,
-    `# Post-loop quality review\n\n_Model: ${reviewModel}_\n\n_Generated ${new Date().toISOString()}_\n\n${text.trim()}\n`,
+    `# Post-loop quality review\n\n_Model: ${reviewModel}_\n\n_Generated ${new Date().toISOString()}_\n\n${applied.text.trim()}\n`,
     'utf8',
   )
-  const parsed = parseReviewMarkdown(text)
   console.error(
     `[agent-loop] quality review written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
   )
   console.error(
-    `[agent-loop] quality review verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length} gating=${blockingBlockers(parsed).length}`,
+    `[agent-loop] quality review verdict=${applied.parsed.verdict} risk=${applied.parsed.risk} blockers=${applied.parsed.blockers.length} gating=${blockingBlockers(applied.parsed).length}`,
   )
-  return { text, parsed, outPath, usage: run.usage }
+  return {
+    text: applied.text,
+    parsed: applied.parsed,
+    outPath,
+    usage: run.usage,
+    reproduceDroppedCount: applied.droppedCount,
+  }
 }
 
 /**
@@ -118,19 +179,29 @@ export async function runPostLoopBlockerRecheck(
     role: 'review',
     phase: 'review',
   })
-  const text = run.text
+  const applied = maybeApplyReproduceFilter(
+    parseReviewMarkdown(run.text),
+    run.text,
+    ctx,
+    options.reviewReproduce === true,
+  )
   const outPath = resolveReviewOutputPath(loopDir, reviewCycle)
   fs.writeFileSync(
     outPath,
-    `# Blocker re-check\n\n_Model: ${reviewModel}_\n\n_Generated ${new Date().toISOString()}_\n\n${text.trim()}\n`,
+    `# Blocker re-check\n\n_Model: ${reviewModel}_\n\n_Generated ${new Date().toISOString()}_\n\n${applied.text.trim()}\n`,
     'utf8',
   )
-  const parsed = parseReviewMarkdown(text)
   console.error(
     `[agent-loop] blocker re-check written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
   )
   console.error(
-    `[agent-loop] blocker re-check verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length} gating=${blockingBlockers(parsed).length}`,
+    `[agent-loop] blocker re-check verdict=${applied.parsed.verdict} risk=${applied.parsed.risk} blockers=${applied.parsed.blockers.length} gating=${blockingBlockers(applied.parsed).length}`,
   )
-  return { text, parsed, outPath, usage: run.usage }
+  return {
+    text: applied.text,
+    parsed: applied.parsed,
+    outPath,
+    usage: run.usage,
+    reproduceDroppedCount: applied.droppedCount,
+  }
 }

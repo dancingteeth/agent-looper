@@ -3,3 +3,11 @@ dist/
 *.log
 .DS_Store
 .kilo/
+
+# Agent-loop dogfood runtime artifacts
+.cursor/loops/**/log.ndjson
+.cursor/loops/**/failure-domains.ndjson
+.cursor/loops/**/failure-context.md
+.cursor/loops/**/review.md
+.cursor/loops/**/review.*.md
+.cursor/sdk-runs/

@@ -374,11 +374,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                     verbose,
                     reviewCycle,
                     reviewModel,
+                    reviewReproduce: config.reviewReproduce,
                   })
                 : await runPostLoopQualityReview(bundle.loopDir, goal, ctx, {
                     verbose,
                     reviewCycle,
                     reviewModel,
+                    reviewReproduce: config.reviewReproduce,
                   })
               usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
               parsedReview = reviewResult.parsed

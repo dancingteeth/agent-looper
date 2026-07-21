@@ -128,6 +128,18 @@ Rewriting consumer REVIEWS.md files in other repos (ship a template section).
 
 ## 2. Reproduce-before-report
 
+### Status (2026-07-21)
+
+**Phase 2a shipped** (dogfood loop `.cursor/loops/reproduce-before-report/`, TW
+`b2185d70-2889-4eed-94c2-d99949954211`):
+
+- `reviewReproduce` loop.json flag (default `false`)
+- Deterministic filter: downgrade error+impact blockers without citeable path in
+  merge-base…HEAD changed files
+- Footer in `review.md` lists downgraded items
+
+**Open:** phase 2b fresh-context agent reproduce; phase 2c second-family.
+
 ### Problem
 Same-family re-check (`reviewBlockerRecheck`) reduces *new* noise but still
 shares confabulation bias with the original reviewer.
@@ -163,10 +175,10 @@ shares confabulation bias with the original reviewer.
 
 ### Acceptance criteria
 
-- [ ] Error-impact blockers without citeable path are downgraded or dropped when reproduce is on.
-- [ ] Paths not in the loop diff cannot alone keep the gate open.
-- [ ] Reproduce pass uses a fresh agent session (documented in logs).
-- [ ] Unit tests for path filter; integration mock for reproduce DROP/KEEP.
+- [x] Error-impact blockers without citeable path are downgraded or dropped when reproduce is on.
+- [x] Paths not in the loop diff cannot alone keep the gate open.
+- [ ] Reproduce pass uses a fresh agent session (documented in logs). *(2b)*
+- [x] Unit tests for path filter; integration mock for reproduce DROP/KEEP.
 
 ---
 

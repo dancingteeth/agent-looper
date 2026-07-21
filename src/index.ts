@@ -92,8 +92,15 @@ export {
   buildPostLoopQualityReviewPrompt,
   runPostLoopQualityReview,
   resolveReviewOutputPath,
+  listChangedPathsSinceBranchBase,
 } from './review/loopPostReview.js'
 export type { PostLoopReviewOptions, PostLoopReviewResult } from './review/loopPostReview.js'
+
+export {
+  applyReproduceBeforeReportFilter,
+  extractFileCitations,
+  pathIsInChangedSet,
+} from './review/reviewReproduce.js'
 
 export {
   parseReviewMarkdown,

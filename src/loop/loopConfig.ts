@@ -60,6 +60,11 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     unparseableReviewRetries: z.number().int().min(1).max(5).default(2),
     /** On a BLOCKERS fix round, run the lighter scope-limited blocker re-check instead of the full review. */
     reviewBlockerRecheck: z.boolean().default(true),
+    /**
+     * When true, downgrade error+impact blockers that lack a citeable path in the
+     * merge-base…HEAD diff (reproduce-before-report phase 2a).
+     */
+    reviewReproduce: z.boolean().default(false),
     /** Run repo profile syncCommand after success. Legacy alias: syncPostgres. */
     syncOnSuccess: z.boolean().default(true),
     hitlCheck: hitlCheckDescriptionSchema.optional(),
@@ -161,6 +166,7 @@ export function mergeLoopConfig(
       | 'reviewGateHitl'
       | 'unparseableReviewRetries'
       | 'reviewBlockerRecheck'
+      | 'reviewReproduce'
       | 'syncOnSuccess'
       | 'runtime'
       | 'model'

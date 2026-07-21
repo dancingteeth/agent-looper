@@ -158,6 +158,13 @@ describe('loopConfigSchema', () => {
     ).toBe(true)
   })
 
+  it('defaults reviewReproduce to false and accepts it', () => {
+    expect(loopConfigSchema.parse({ verify: 'true' }).reviewReproduce).toBe(false)
+    expect(
+      loopConfigSchema.parse({ verify: 'true', reviewReproduce: true }).reviewReproduce,
+    ).toBe(true)
+  })
+
   it('defaults unparseableReviewRetries to 2 and reviewBlockerRecheck to true', () => {
     const parsed = loopConfigSchema.parse({ verify: 'true' })
     expect(parsed.unparseableReviewRetries).toBe(2)

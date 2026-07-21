@@ -24,7 +24,8 @@ describe('resolveRepoContext', () => {
   it('uses cwd when repo root omitted', () => {
     const ctx = resolveRepoContext()
     expect(ctx.repoRoot).toBe(process.cwd())
-    expect(ctx.profile.taskwarriorProject).toBeUndefined()
+    // Dogfood profile in this repo sets taskwarriorProject; schema itself stays optional.
+    expect(ctx.profile.defaultBranch).toBeTruthy()
   })
 })
 

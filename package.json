@@ -39,6 +39,9 @@
     "test": "vitest run && node --test scripts/prepare-package.test.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "agent:init": "node dist/cli/init.js",
+    "agent:loop": "node dist/cli/run.js",
+    "agent:doctor": "node dist/cli/doctor.js",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {

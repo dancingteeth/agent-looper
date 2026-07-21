@@ -1,0 +1,13 @@
+{
+  "taskwarriorProject": "agent-loop",
+  "syncCommand": null,
+  "defaultBranch": "main",
+  "agentsFile": "AGENTS.md",
+  "reviewsFile": "REVIEWS.md",
+  "skillsGlob": ".cursor/loops/*/VERIFY.skill.md",
+  "clientName": "@dancingteeth/agent-loop",
+  "telegramNotify": {
+    "onSuccess": true,
+    "onFailure": true
+  }
+}
