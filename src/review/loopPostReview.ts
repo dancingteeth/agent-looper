@@ -9,7 +9,7 @@ import {
   type CursorSdkModel,
 } from '../loop/loopAgentConfig.js'
 import { buildQualityReviewPrompt, buildBlockerRecheckPrompt } from './reviewPrompt.js'
-import { parseReviewMarkdown, type ParsedReview } from './reviewVerdict.js'
+import { parseReviewMarkdown, blockingBlockers, type ParsedReview } from './reviewVerdict.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
 function gitDiffSinceBranchBase(ctx: RepoContext): string {
@@ -91,7 +91,7 @@ export async function runPostLoopQualityReview(
     `[agent-loop] quality review written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
   )
   console.error(
-    `[agent-loop] quality review verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length}`,
+    `[agent-loop] quality review verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length} gating=${blockingBlockers(parsed).length}`,
   )
   return { text, parsed, outPath, usage: run.usage }
 }
@@ -130,7 +130,7 @@ export async function runPostLoopBlockerRecheck(
     `[agent-loop] blocker re-check written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
   )
   console.error(
-    `[agent-loop] blocker re-check verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length}`,
+    `[agent-loop] blocker re-check verdict=${parsed.verdict} risk=${parsed.risk} blockers=${parsed.blockers.length} gating=${blockingBlockers(parsed).length}`,
   )
   return { text, parsed, outPath, usage: run.usage }
 }

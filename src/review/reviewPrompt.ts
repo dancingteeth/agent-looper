@@ -24,7 +24,14 @@ export function buildRiskTriagePreamble(): string {
 
 export function buildReviewOutputFormatReminder(): string {
   return `Output **markdown only**:
-### Risk | ### What could go wrong? | ### Review depth | ### Verdict (PASS | ADVISORY | BLOCKERS) | ### Blockers | ### Advisory | optional Code judo / Nits.`
+### Risk | ### What could go wrong? | ### Review depth | ### Verdict (PASS | ADVISORY | BLOCKERS) | ### Blockers | ### Advisory | optional Code judo / Nits.
+
+**Blocker contract (required for ### Blockers bullets):**
+- Start each bullet with \`severity: error|warning\` and \`impact: <tag>\`.
+- **Default cosmetic findings to** \`severity: warning impact: none\` — do not use BLOCKERS verdict for style-only nits.
+- **Gate-worthy impacts** (use \`severity: error\` only when real): \`data-loss\`, \`security-boundary\`, \`false-closure\`, \`cross-dispatch\`, \`verify-bypass\`.
+- Example: \`- severity: error impact: false-closure [must-fix] **Docs missing** — README still template\`
+- Example warning: \`- severity: warning impact: none [should-fix] **Tone** — prefer active voice in intro\``
 }
 
 export function loadReviewsMd(repoRoot: string, profile: RepoProfile): string {
@@ -111,6 +118,7 @@ For each blocker above, decide RESOLVED or REMAINING, then give a verdict:
 **BLOCKERS** — at least one listed blocker remains unresolved.
 ### Blockers
 - list only the REMAINING (unresolved) blockers; omit the section if none.
+- Preserve \`severity:\` and \`impact:\` prefixes from the original blocker when listing REMAINING items.
 
 ## Repository review standards (${ctx.profile.reviewsFile})
 ${loadReviewsMd(ctx.repoRoot, ctx.profile)}

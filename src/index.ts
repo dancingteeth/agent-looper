@@ -97,12 +97,26 @@ export type { PostLoopReviewOptions, PostLoopReviewResult } from './review/loopP
 
 export {
   parseReviewMarkdown,
+  parseBlockerItem,
+  formatBlockerLine,
+  isBlockingBlocker,
+  blockingBlockers,
+  warningBlockers,
   reviewVerdictAllowsCompletion,
   reviewGateBlockers,
   reviewGateBlocksCompletion,
+  BLOCKER_IMPACT_TAGS,
   UNPARSEABLE_VERDICT_BLOCKER,
 } from './review/reviewVerdict.js'
-export type { ParsedReview, ReviewRisk, ReviewVerdict } from './review/reviewVerdict.js'
+export type {
+  ParsedReview,
+  ParsedBlocker,
+  ReviewRisk,
+  ReviewVerdict,
+  BlockerSeverity,
+  BlockerImpact,
+  BlockerImpactTag,
+} from './review/reviewVerdict.js'
 
 export {
   addUsageRecord,

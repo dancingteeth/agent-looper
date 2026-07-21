@@ -1,11 +1,41 @@
 import { describe, expect, it } from 'vitest'
 import {
+  blockingBlockers,
+  formatBlockerLine,
+  isBlockingBlocker,
+  parseBlockerItem,
   parseReviewMarkdown,
   reviewGateBlockers,
   reviewGateBlocksCompletion,
   reviewVerdictAllowsCompletion,
   UNPARSEABLE_VERDICT_BLOCKER,
 } from './reviewVerdict.js'
+
+describe('parseBlockerItem', () => {
+  it('parses structured severity and impact', () => {
+    const blocker = parseBlockerItem(
+      'severity: error impact: false-closure [must-fix] **Docs missing** — README still template',
+    )
+    expect(blocker.severity).toBe('error')
+    expect(blocker.impact).toBe('false-closure')
+    expect(blocker.title).toContain('Docs missing')
+    expect(isBlockingBlocker(blocker)).toBe(true)
+  })
+
+  it('defaults legacy bullets to warning / none impact', () => {
+    const blocker = parseBlockerItem('[must-fix] **Unit guard** — verify doc.unit before PATCH')
+    expect(blocker.severity).toBe('warning')
+    expect(blocker.impact).toBe('none')
+    expect(isBlockingBlocker(blocker)).toBe(false)
+  })
+
+  it('treats error with unknown impact as non-gating', () => {
+    const blocker = parseBlockerItem('severity: error impact: cosmetic [must-fix] **Tone** — wording')
+    expect(blocker.severity).toBe('error')
+    expect(blocker.impact).toBe('none')
+    expect(isBlockingBlocker(blocker)).toBe(false)
+  })
+})
 
 describe('parseReviewMarkdown', () => {
   it('parses PASS verdict with low risk', () => {
@@ -20,8 +50,8 @@ describe('parseReviewMarkdown', () => {
     expect(parsed.verdict).toBe('PASS')
     expect(parsed.risk).toBe('low')
     expect(parsed.blockers).toEqual([])
-    expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(true)
-    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
   })
 
   it('parses ADVISORY verdict', () => {
@@ -34,10 +64,10 @@ describe('parseReviewMarkdown', () => {
 ### Blockers
 `)
     expect(parsed.verdict).toBe('ADVISORY')
-    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
   })
 
-  it('parses BLOCKERS with blocker list items', () => {
+  it('parses BLOCKERS with gating and warning items', () => {
     const parsed = parseReviewMarkdown(`### Risk
 **HIGH**
 
@@ -45,8 +75,8 @@ describe('parseReviewMarkdown', () => {
 **BLOCKERS**
 
 ### Blockers
-- [must-fix] **Unit guard** — verify doc.unit before PATCH
-- [must-fix] **Docs missing** — README still template
+- severity: error impact: verify-bypass [must-fix] **Unit guard** — verify doc.unit before PATCH
+- severity: warning impact: none [should-fix] **Docs tone** — intro wording
 
 ### Advisory
 - [should-fix] dedupe helper
@@ -54,9 +84,30 @@ describe('parseReviewMarkdown', () => {
     expect(parsed.verdict).toBe('BLOCKERS')
     expect(parsed.risk).toBe('high')
     expect(parsed.blockers).toHaveLength(2)
-    expect(parsed.blockers[0]).toContain('Unit guard')
-    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(false)
+    expect(blockingBlockers(parsed)).toHaveLength(1)
+    expect(parsed.blockers[0]!.title).toContain('Unit guard')
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(false)
     expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+    expect(reviewGateBlockers(parsed)).toHaveLength(1)
+    expect(reviewGateBlockers(parsed)[0]).toContain('severity: error')
+  })
+
+  it('allows completion when BLOCKERS verdict has only legacy/warning items', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+**BLOCKERS**
+
+### Blockers
+- [must-fix] **Docs tone** — prefer active voice
+- severity: warning impact: none [should-fix] **Nit** — rename helper
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+    expect(blockingBlockers(parsed)).toHaveLength(0)
+    expect(reviewGateBlocksCompletion(parsed)).toBe(false)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
+    expect(reviewGateBlockers(parsed)).toEqual([])
   })
 
   it('returns UNKNOWN for malformed review and blocks when reviewGate is on', () => {
@@ -64,8 +115,8 @@ describe('parseReviewMarkdown', () => {
     expect(parsed.verdict).toBe('UNKNOWN')
     expect(parsed.risk).toBe('unknown')
     expect(parsed.blockers).toEqual([])
-    expect(reviewVerdictAllowsCompletion(parsed.verdict)).toBe(true)
-    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(false)
+    expect(reviewVerdictAllowsCompletion(parsed)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(false)
     expect(reviewGateBlocksCompletion(parsed)).toBe(true)
     expect(reviewGateBlockers(parsed)).toEqual([UNPARSEABLE_VERDICT_BLOCKER])
   })
@@ -84,7 +135,7 @@ Loop-scoped implementation satisfies the write-guard blockers from the prior rev
 `)
     expect(parsed.verdict).toBe('ADVISORY')
     expect(parsed.blockers).toEqual([])
-    expect(reviewVerdictAllowsCompletion(parsed.verdict, { reviewGate: true })).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
   })
 
   it('parses BLOCKERS inside a fenced verdict section', () => {
@@ -97,7 +148,7 @@ BLOCKERS
 \`\`\`
 
 ### Blockers
-- [must-fix] fenced verdict
+- severity: error impact: security-boundary [must-fix] fenced verdict
 `)
     expect(parsed.verdict).toBe('BLOCKERS')
     expect(reviewGateBlocksCompletion(parsed)).toBe(true)
@@ -111,9 +162,10 @@ BLOCKERS
 > BLOCKERS
 
 ### Blockers
-- [must-fix] quoted verdict
+- severity: error impact: data-loss [must-fix] quoted verdict
 `)
     expect(parsed.verdict).toBe('BLOCKERS')
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
   })
 
   it('parses singular BLOCKER headline as BLOCKERS', () => {
@@ -124,23 +176,14 @@ BLOCKERS
 **BLOCKER**
 
 ### Blockers
-- [must-fix] singular label
+- severity: error impact: cross-dispatch [must-fix] singular label
 `)
     expect(parsed.verdict).toBe('BLOCKERS')
   })
 
-  it('parses BLOCKERS after a blank line under the verdict heading', () => {
-    const parsed = parseReviewMarkdown(`### Risk
-**HIGH**
-
-### Verdict
-
-BLOCKERS
-
-### Blockers
-- [must-fix] blank line before verdict token
-`)
-    expect(parsed.verdict).toBe('BLOCKERS')
+  it('formats legacy blockers with severity prefix for prompts', () => {
+    const legacy = parseBlockerItem('[must-fix] legacy line')
+    expect(formatBlockerLine(legacy)).toContain('severity: warning impact: none')
   })
 
   it('parses a high-risk BLOCKERS fixture with multiple blocker bullets', () => {
@@ -151,16 +194,17 @@ BLOCKERS
 **BLOCKERS**
 
 ### Blockers
-- [must-fix] **§2.4 task traceability** — GOAL UUID missing from commits
-- [must-fix] **App-layer unit guard** — verify doc.unit before PATCH
-- [must-fix] **Docs missing** — README still template
-- [must-fix] **Route coverage** — add regression test for PATCH handler
-- [must-fix] **Error shape** — align API errors with existing payload pattern
+- severity: error impact: false-closure [must-fix] **§2.4 task traceability** — GOAL UUID missing from commits
+- severity: error impact: verify-bypass [must-fix] **App-layer unit guard** — verify doc.unit before PATCH
+- severity: warning impact: none [must-fix] **Docs missing** — README still template
+- severity: error impact: verify-bypass [must-fix] **Route coverage** — add regression test for PATCH handler
+- severity: error impact: security-boundary [must-fix] **Error shape** — align API errors with existing payload pattern
 `)
     expect(parsed.verdict).toBe('BLOCKERS')
     expect(parsed.risk).toBe('high')
     expect(parsed.blockers.length).toBeGreaterThanOrEqual(5)
-    expect(parsed.blockers.some((b) => b.includes('§2.4 task traceability'))).toBe(true)
-    expect(parsed.blockers.some((b) => b.includes('App-layer unit guard'))).toBe(true)
+    expect(blockingBlockers(parsed).length).toBe(4)
+    expect(parsed.blockers.some((b) => b.title.includes('§2.4 task traceability'))).toBe(true)
+    expect(parsed.blockers.some((b) => b.title.includes('App-layer unit guard'))).toBe(true)
   })
 })

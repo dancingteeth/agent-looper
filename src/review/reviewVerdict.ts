@@ -2,16 +2,43 @@ export type ReviewVerdict = 'PASS' | 'ADVISORY' | 'BLOCKERS' | 'UNKNOWN'
 
 export type ReviewRisk = 'high' | 'medium' | 'low' | 'unknown'
 
+export type BlockerSeverity = 'error' | 'warning'
+
+/** Recognized impact tags that can gate reviewGate when severity is error. */
+export const BLOCKER_IMPACT_TAGS = [
+  'data-loss',
+  'security-boundary',
+  'false-closure',
+  'cross-dispatch',
+  'verify-bypass',
+] as const
+
+export type BlockerImpactTag = (typeof BLOCKER_IMPACT_TAGS)[number]
+
+export type BlockerImpact = BlockerImpactTag | 'none'
+
+export type ParsedBlocker = {
+  severity: BlockerSeverity
+  impact: BlockerImpact
+  title: string
+  detail: string
+  /** Original bullet text from review.md */
+  raw: string
+}
+
 export type ParsedReview = {
   verdict: ReviewVerdict
   risk: ReviewRisk
-  blockers: string[]
+  blockers: ParsedBlocker[]
 }
 
 export const UNPARSEABLE_VERDICT_BLOCKER =
   'Could not parse review verdict — review.md must include `### Verdict` with PASS, ADVISORY, or BLOCKERS'
 
 const SECTION_HEADING = /^###\s+(.+)\s*$/
+
+const STRUCTURED_BLOCKER_PREFIX =
+  /^severity:\s*(error|warning)\s+impact:\s*([\w-]+)\s+/i
 
 function extractSection(text: string, heading: string): string | null {
   const lines = text.split('\n')
@@ -74,10 +101,6 @@ function linesFromVerdictSection(section: string): string[] {
   return lines
 }
 
-function parseVerdictHeadline(section: string): string {
-  return linesFromVerdictSection(section)[0] ?? ''
-}
-
 function parseVerdict(section: string | null): ReviewVerdict {
   if (!section) return 'UNKNOWN'
   for (const line of linesFromVerdictSection(section)) {
@@ -106,16 +129,72 @@ function parseRisk(section: string | null): ReviewRisk {
   return 'unknown'
 }
 
-function parseBlockers(section: string | null): string[] {
+function isKnownImpactTag(value: string): value is BlockerImpactTag {
+  return (BLOCKER_IMPACT_TAGS as readonly string[]).includes(value)
+}
+
+function splitTitleDetail(body: string): { title: string; detail: string } {
+  const emDash = body.indexOf(' — ')
+  if (emDash >= 0) {
+    return {
+      title: body.slice(0, emDash).trim(),
+      detail: body.slice(emDash + 3).trim(),
+    }
+  }
+  return { title: body.trim(), detail: '' }
+}
+
+export function parseBlockerItem(item: string): ParsedBlocker {
+  const raw = item.trim()
+  const structured = raw.match(STRUCTURED_BLOCKER_PREFIX)
+  if (structured) {
+    const severity = structured[1]!.toLowerCase() as BlockerSeverity
+    const impactToken = structured[2]!.toLowerCase()
+    const impact: BlockerImpact = isKnownImpactTag(impactToken) ? impactToken : 'none'
+    const remainder = raw.slice(structured[0].length).trim()
+    const { title, detail } = splitTitleDetail(remainder)
+    return { severity, impact, title, detail, raw }
+  }
+
+  const { title, detail } = splitTitleDetail(raw)
+  return {
+    severity: 'warning',
+    impact: 'none',
+    title,
+    detail,
+    raw,
+  }
+}
+
+export function formatBlockerLine(blocker: ParsedBlocker): string {
+  if (STRUCTURED_BLOCKER_PREFIX.test(blocker.raw)) {
+    return blocker.raw
+  }
+  return `severity: ${blocker.severity} impact: ${blocker.impact} ${blocker.raw}`
+}
+
+export function isBlockingBlocker(blocker: ParsedBlocker): boolean {
+  return blocker.severity === 'error' && isKnownImpactTag(blocker.impact)
+}
+
+export function blockingBlockers(parsed: ParsedReview): ParsedBlocker[] {
+  return parsed.blockers.filter(isBlockingBlocker)
+}
+
+export function warningBlockers(parsed: ParsedReview): ParsedBlocker[] {
+  return parsed.blockers.filter((b) => !isBlockingBlocker(b))
+}
+
+function parseBlockers(section: string | null): ParsedBlocker[] {
   if (!section) return []
 
-  const blockers: string[] = []
+  const blockers: ParsedBlocker[] = []
   for (const line of section.split('\n')) {
     const trimmed = line.trim()
     if (!trimmed.startsWith('-')) continue
     const item = trimmed.replace(/^-\s*/, '').trim()
     if (!item || isEmptyBlockersDeclaration(item)) continue
-    blockers.push(item)
+    blockers.push(parseBlockerItem(item))
   }
   return blockers
 }
@@ -137,22 +216,28 @@ export type ReviewVerdictCompletionOptions = {
   reviewGate?: boolean
 }
 
+export function reviewGateBlocksCompletion(parsed: ParsedReview): boolean {
+  if (parsed.verdict === 'UNKNOWN') return true
+  if (parsed.verdict !== 'BLOCKERS') return false
+  return blockingBlockers(parsed).length > 0
+}
+
 export function reviewVerdictAllowsCompletion(
-  verdict: ReviewVerdict,
+  parsed: ParsedReview,
   options: ReviewVerdictCompletionOptions = {},
 ): boolean {
   if (options.reviewGate) {
-    return verdict === 'PASS' || verdict === 'ADVISORY'
+    return !reviewGateBlocksCompletion(parsed)
   }
-  return verdict === 'PASS' || verdict === 'ADVISORY' || verdict === 'UNKNOWN'
+  return (
+    parsed.verdict === 'PASS' ||
+    parsed.verdict === 'ADVISORY' ||
+    parsed.verdict === 'UNKNOWN' ||
+    parsed.verdict === 'BLOCKERS'
+  )
 }
 
 export function reviewGateBlockers(parsed: ParsedReview): string[] {
-  if (parsed.verdict === 'BLOCKERS') return parsed.blockers
   if (parsed.verdict === 'UNKNOWN') return [UNPARSEABLE_VERDICT_BLOCKER]
-  return []
-}
-
-export function reviewGateBlocksCompletion(parsed: ParsedReview): boolean {
-  return parsed.verdict === 'BLOCKERS' || parsed.verdict === 'UNKNOWN'
+  return blockingBlockers(parsed).map(formatBlockerLine)
 }

@@ -68,6 +68,15 @@ handful of real loops before locking defaults for #1–3.
 
 ## 1. Impact-severity contract
 
+### Status (2026-07-21)
+
+**Shipped** — `8162dbe4-9a2d-4fc4-92d4-fd06a6e9dea6`:
+
+- Structured blocker parse (`severity`, `impact`, title, detail)
+- `reviewGate` blocks only `error` + recognized impact tags
+- Legacy bullets default to `warning` / `none` (non-gating)
+- Pilot checklist: [`experiments/review-impact-severity-pilot.md`](./experiments/review-impact-severity-pilot.md)
+
 ### Problem
 Reviewers default to BLOCKERS for cosmetic findings → fix-loop thrash. Gate
 today is binary on verdict `BLOCKERS`, with blockers as plain strings.
@@ -107,9 +116,9 @@ Suggested impact tags (start small, expand via REVIEWS.md):
 
 ### Acceptance criteria
 
-- [ ] Parsed type includes `{ severity, impact, title, detail }` (legacy strings → warning / `impact: none`).
-- [ ] With `reviewGate: true`, only `error` + known impact re-enters the fix loop.
-- [ ] Cosmetic “docs tone” findings can be BLOCKERS prose but do not block completion when tagged warning.
+- [x] Parsed type includes `{ severity, impact, title, detail }` (legacy strings → warning / `impact: none`).
+- [x] With `reviewGate: true`, only `error` + known impact re-enters the fix loop.
+- [x] Cosmetic “docs tone” findings can be BLOCKERS prose but do not block completion when tagged warning.
 - [ ] 10-loop / 10-PR experiment script or checklist documents before/after false-blocker rate (see Validation).
 
 ### Out of scope
@@ -312,7 +321,7 @@ PR that lands #1.
 
 | Milestone | Ships | Exit |
 | --- | --- | --- |
-| **M1** | Impact-severity parse + gate | False-blocker thrash measurably down on pilot set |
+| **M1** | Impact-severity parse + gate | Pilot experiment shows lower false-blocker rate |
 | **M2** | Deterministic reproduce filters (+ optional fresh-context reproduce) | Error blockers require citeable evidence |
 | **M3** | Optional second-family judge | Cursor-only still default; secondary opt-in |
 | **M4** | Verify skill template (+ optional harness mode) | Track A done; consumer adopts `verify.sh`; Track B optional |

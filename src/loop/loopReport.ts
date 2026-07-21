@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { AgentLoopResult } from './agentLoop.js'
 import type { LoopBatchResult } from './loopBatch.js'
 import { captureGitWorkspaceSnapshot } from './loopGit.js'
-import { parseReviewMarkdown } from '../review/reviewVerdict.js'
+import { parseReviewMarkdown, blockingBlockers } from '../review/reviewVerdict.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 
 const TELEGRAM_MAX_MESSAGE = 4096
@@ -13,6 +13,7 @@ export type LoopReportReview = {
   verdict: string
   risk: string
   blockersCount: number
+  gatingBlockersCount: number
 }
 
 function repoLabel(repoRoot: string): string {
@@ -71,6 +72,7 @@ export function readLatestLoopReview(loopDir: string): LoopReportReview | undefi
       verdict: parsed.verdict,
       risk: parsed.risk,
       blockersCount: parsed.blockers.length,
+      gatingBlockersCount: blockingBlockers(parsed).length,
     }
   } catch {
     return undefined
@@ -101,9 +103,13 @@ function formatReviewLine(
   if (!review) return undefined
   const blockers =
     review.blockersCount > 0 ? `, ${review.blockersCount} blocker(s)` : ''
+  const gating =
+    review.gatingBlockersCount > 0 ? `, ${review.gatingBlockersCount} gating` : ''
   const advisory =
-    advisoryBlockers && review.verdict === 'BLOCKERS' ? ' [advisory — reviewGate=false]' : ''
-  return `Review: ${review.verdict} (risk ${review.risk}${blockers})${advisory}`
+    advisoryBlockers && review.verdict === 'BLOCKERS'
+      ? ' [advisory — no error+impact blockers]'
+      : ''
+  return `Review: ${review.verdict} (risk ${review.risk}${blockers}${gating})${advisory}`
 }
 
 function formatGitStatusLine(repoRoot: string): string | undefined {
@@ -147,7 +153,9 @@ export function formatLoopCompletionReport(input: {
   if (reviewLine) lines.push(reviewLine)
 
   if (result.reviewAdvisoryBlockers) {
-    lines.push('Note: review BLOCKERS are advisory only — enable reviewGate=true to enforce.')
+    lines.push(
+      'Note: review BLOCKERS are advisory only — warning/none-impact items, or reviewGate=false.',
+    )
   }
 
   if (result.innerAgentIncomplete) {

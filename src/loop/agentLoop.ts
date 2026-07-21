@@ -8,7 +8,7 @@ import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
 import { runPostLoopQualityReview, runPostLoopBlockerRecheck } from '../review/loopPostReview.js'
 import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
 import type { ParsedReview, ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
-import { reviewGateBlockers, reviewGateBlocksCompletion } from '../review/reviewVerdict.js'
+import { reviewGateBlockers, reviewGateBlocksCompletion, blockingBlockers } from '../review/reviewVerdict.js'
 import { detectStagnation } from '../loop/loopStagnation.js'
 import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
 import {
@@ -134,7 +134,9 @@ function reviewGateHitlDescription(parsed: ParsedReview, reviewCycle: number): s
   if (parsed.verdict === 'UNKNOWN') {
     return `${leading}: review verdict unparseable (see review.md)`
   }
-  const items = parsed.blockers.slice(0, 4).map((b) => b.replace(/\s+/g, ' ').trim())
+  const items = reviewGateBlockers(parsed)
+    .slice(0, 4)
+    .map((b) => b.replace(/\s+/g, ' ').trim())
   const body = items.length ? `: ${items.join('; ')}` : ''
   const text = `${leading}${body}`
   // hitlCheckDescriptionSchema caps at 500 chars; keep headroom for the "HITL Check: " prefix.
@@ -490,12 +492,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             // UNPARSEABLE_VERDICT_BLOCKER is never injected into the next agent prompt.
             return gateStop('unparseable verdict')
           } else if (config.reviewGate && reviewGateBlocksCompletion(parsedReview)) {
-            // Real BLOCKERS: count a fix round, then stop (exhausted) or re-run the
-            // agent with the blockers injected + reasoning escalated one tier.
+            const gateBlockerCount = blockingBlockers(parsedReview).length
             reviewCyclesUsed++
             const blockerRoundsExhausted = reviewCyclesUsed >= config.maxReviewCycles
             if (blockerRoundsExhausted) {
-              return gateStop(`BLOCKERS (${parsedReview.blockers.length} items)`)
+              return gateStop(`BLOCKERS (${gateBlockerCount} gating item(s))`)
             }
             reviewBlockers = reviewGateBlockers(parsedReview)
             appendLog(
@@ -516,10 +517,19 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               }),
             )
             console.error(
-              `[agent-loop] review gate: BLOCKERS (${parsedReview.blockers.length} items) — continuing for fix round ${reviewCyclesUsed}/${config.maxReviewCycles} (reasoning ${iterationAgent.reasoningEffort ?? 'default'})`,
+              `[agent-loop] review gate: BLOCKERS (${gateBlockerCount} gating, ${parsedReview.blockers.length} total) — continuing for fix round ${reviewCyclesUsed}/${config.maxReviewCycles} (reasoning ${iterationAgent.reasoningEffort ?? 'default'})`,
             )
             await maybePauseAfterIteration(config, i)
             continue
+          } else if (
+            config.reviewGate &&
+            parsedReview.verdict === 'BLOCKERS' &&
+            parsedReview.blockers.length > 0
+          ) {
+            reviewAdvisoryBlockers = true
+            console.error(
+              `[agent-loop] review gate: BLOCKERS verdict but only warning/none-impact items (${parsedReview.blockers.length}) — loop completes`,
+            )
           } else if (!config.reviewGate && parsedReview.verdict === 'BLOCKERS') {
             reviewAdvisoryBlockers = true
             console.error(

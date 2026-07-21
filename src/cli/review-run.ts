@@ -4,6 +4,7 @@ import { resolveRepoContext } from '../context/repoContext.js'
 import { resolveReviewModel } from '../loop/loopAgentConfig.js'
 import { loadLoopBundle, resolveLoopDir } from '../loop/loopConfig.js'
 import { runPostLoopQualityReview } from '../review/loopPostReview.js'
+import { blockingBlockers } from '../review/reviewVerdict.js'
 import { parseRepoRootFlag } from './shared.js'
 
 const { remaining, repoRoot } = parseRepoRootFlag(process.argv.slice(2))
@@ -32,5 +33,5 @@ const text = await runPostLoopQualityReview(bundle.loopDir, bundle.goal, ctx, {
 })
 
 console.log(`\nReview written: ${path.join(path.relative(ctx.repoRoot, loopDir), path.basename(text.outPath))}`)
-console.log(`\nVerdict: ${text.parsed.verdict} | Risk: ${text.parsed.risk} | Blockers: ${text.parsed.blockers.length}`)
+console.log(`\nVerdict: ${text.parsed.verdict} | Risk: ${text.parsed.risk} | Blockers: ${text.parsed.blockers.length} | Gating: ${blockingBlockers(text.parsed).length}`)
 console.log(`\n--- preview (first 1200 chars) ---\n${text.text.trim().slice(0, 1200)}…`)

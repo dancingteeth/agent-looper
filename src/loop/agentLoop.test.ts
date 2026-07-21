@@ -15,6 +15,7 @@ import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
 import { runPostLoopQualityReview, runPostLoopBlockerRecheck } from '../review/loopPostReview.js'
 import type { PostLoopReviewResult } from '../review/loopPostReview.js'
+import { parseReviewMarkdown } from '../review/reviewVerdict.js'
 
 vi.mock('../agents/agentRunner.js', () => ({
   createLoopAgentSession: vi.fn(),
@@ -102,17 +103,18 @@ function makeBundle(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function gatingBlocker(title: string, detail: string, impact = 'false-closure'): string {
+  return `severity: error impact: ${impact} [must-fix] **${title}** — ${detail}`
+}
+
 function reviewResult(
   verdict: 'PASS' | 'ADVISORY' | 'BLOCKERS' | 'UNKNOWN',
   blockers: string[] = [],
 ): PostLoopReviewResult {
+  const text = `### Verdict\n**${verdict}**\n\n### Blockers\n${blockers.map((b) => `- ${b}`).join('\n')}`
   return {
-    text: `### Verdict\n**${verdict}**\n\n### Blockers\n${blockers.map((b) => `- ${b}`).join('\n')}`,
-    parsed: {
-      verdict,
-      risk: 'medium',
-      blockers,
-    },
+    text,
+    parsed: parseReviewMarkdown(text),
     outPath: path.join(tmpLoopDir, 'review.md'),
   }
 }
@@ -291,7 +293,9 @@ describe('runAgentLoop', () => {
     const { runIterationPrompt } = mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValueOnce({
-      ...reviewResult('BLOCKERS', ['[must-fix] **Docs missing** — README still template']),
+      ...reviewResult('BLOCKERS', [
+        gatingBlocker('Docs missing', 'README still template'),
+      ]),
       outPath: path.join(tmpLoopDir, 'review.md'),
     })
     vi.mocked(runPostLoopBlockerRecheck).mockResolvedValueOnce({
@@ -323,10 +327,10 @@ describe('runAgentLoop', () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(
-      reviewResult('BLOCKERS', ['[must-fix] **Unit guard** — verify doc.unit']),
+      reviewResult('BLOCKERS', [gatingBlocker('Unit guard', 'verify doc.unit')]),
     )
     vi.mocked(runPostLoopBlockerRecheck).mockResolvedValue(
-      reviewResult('BLOCKERS', ['[must-fix] **Unit guard** — verify doc.unit']),
+      reviewResult('BLOCKERS', [gatingBlocker('Unit guard', 'verify doc.unit')]),
     )
 
     const result = await runAgentLoop({
@@ -416,7 +420,7 @@ describe('runAgentLoop', () => {
     const { runIterationPrompt } = mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValueOnce(
-      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README missing']),
+      reviewResult('BLOCKERS', [gatingBlocker('Docs', 'README missing')]),
     )
     vi.mocked(runPostLoopBlockerRecheck).mockResolvedValueOnce(reviewResult('PASS'))
 
@@ -460,15 +464,37 @@ describe('runAgentLoop', () => {
     expect(result.reviewAdvisoryBlockers).toBe(true)
   })
 
+  it('completes with reviewGate when BLOCKERS are warning/none-impact only', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(
+      reviewResult('BLOCKERS', [
+        'severity: warning impact: none [should-fix] **Docs tone** — intro wording',
+      ]),
+    )
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        reviewGate: true,
+        maxReviewCycles: 2,
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(result.reviewAdvisoryBlockers).toBe(true)
+    expect(runPostLoopBlockerRecheck).not.toHaveBeenCalled()
+  })
+
   it('escalates to HITL instead of hard-failing when reviewGate exhausts and reviewGateHitl is set', async () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(createHitlCheckTask).mockReturnValue('hitl-uuid-123')
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(
-      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+      reviewResult('BLOCKERS', [gatingBlocker('Docs', 'README still template')]),
     )
     vi.mocked(runPostLoopBlockerRecheck).mockResolvedValue(
-      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+      reviewResult('BLOCKERS', [gatingBlocker('Docs', 'README still template')]),
     )
 
     const result = await runAgentLoop({
@@ -494,10 +520,10 @@ describe('runAgentLoop', () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(
-      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+      reviewResult('BLOCKERS', [gatingBlocker('Docs', 'README still template')]),
     )
     vi.mocked(runPostLoopBlockerRecheck).mockResolvedValue(
-      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+      reviewResult('BLOCKERS', [gatingBlocker('Docs', 'README still template')]),
     )
 
     const result = await runAgentLoop({
@@ -520,7 +546,7 @@ describe('runAgentLoop', () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(
-      reviewResult('BLOCKERS', ['[must-fix] **Docs** — README still template']),
+      reviewResult('BLOCKERS', [gatingBlocker('Docs', 'README still template')]),
     )
 
     const result = await runAgentLoop({
