@@ -66,11 +66,17 @@ function downgradeBlocker(blocker: ParsedBlocker, reason: string): ParsedBlocker
 /**
  * Deterministic reproduce-before-report filter (roadmap M2 phase 2a).
  * Downgrades error+impact blockers that lack a citeable path in the changed-files set.
+ * When `changedPaths` is empty, returns the review unchanged (avoid false-closure).
  */
 export function applyReproduceBeforeReportFilter(
   parsed: ParsedReview,
   changedPaths: Iterable<string>,
 ): ReproduceFilterResult {
+  const changedList = [...changedPaths]
+  if (changedList.length === 0) {
+    return { parsed, dropped: [] }
+  }
+
   const dropped: ReproduceFilterResult['dropped'] = []
   const blockers = parsed.blockers.map((blocker) => {
     if (!isBlockingBlocker(blocker)) return blocker
@@ -82,7 +88,7 @@ export function applyReproduceBeforeReportFilter(
       return downgradeBlocker(blocker, reason)
     }
 
-    const inDiff = citations.some((c) => pathIsInChangedSet(c.path, changedPaths))
+    const inDiff = citations.some((c) => pathIsInChangedSet(c.path, changedList))
     if (!inDiff) {
       const reason = `cited path(s) outside merge-base diff (${citations.map((c) => c.path).join(', ')})`
       dropped.push({ blocker, reason })

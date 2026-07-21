@@ -14,7 +14,7 @@ const templatesDir = path.join(packageRoot, 'templates')
 function usage(): string {
   return `Usage: agent-loop-init [options]
 
-Scaffolds .cursor/agent-loop.repo.json, GOAL.template.md, and example loop bundle.
+Scaffolds .cursor/agent-loop.repo.json, GOAL.template.md, REVIEWS.md (if missing), and example loop bundle.
 
 Options:
   --repo-root <path>   Target repo (default: process.cwd())
@@ -68,6 +68,7 @@ function copyTemplate(name: string, dest: string, force: boolean): void {
 
 writeRepoProfile(path.join(ctx.repoRoot, REPO_PROFILE_RELATIVE_PATH), ctx.repoRoot, force)
 copyTemplate('GOAL.template.md', path.join(loopsDir, 'GOAL.template.md'), force)
+copyTemplate('REVIEWS.md', path.join(ctx.repoRoot, 'REVIEWS.md'), force)
 copyTemplate('loop.json.example', path.join(exampleDir, 'loop.json'), force)
 copyTemplate('GOAL.example.md', path.join(exampleDir, 'GOAL.md'), force)
 

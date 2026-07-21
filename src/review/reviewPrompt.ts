@@ -32,7 +32,7 @@ export function buildReviewOutputFormatReminder(): string {
 - **Gate-worthy impacts** (use \`severity: error\` only when real): \`data-loss\`, \`security-boundary\`, \`false-closure\`, \`cross-dispatch\`, \`verify-bypass\`.
 - Example: \`- severity: error impact: false-closure [must-fix] **Docs missing** — README still template\`
 - Example warning: \`- severity: warning impact: none [should-fix] **Tone** — prefer active voice in intro\`
-- For \`severity: error\` items, cite a path in the branch diff as \`path/to/file.ts:123\` (required when reproduce-before-report is enabled).`
+- For \`severity: error\` items, cite a path in the branch working tree as \`path/to/file.ts:123\` (required when reproduce-before-report is enabled; committed + staged + unstaged).`
 }
 
 export function loadReviewsMd(repoRoot: string, profile: RepoProfile): string {

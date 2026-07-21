@@ -38,10 +38,8 @@ function gitDiffSinceBranchBase(ctx: RepoContext): string {
   }).trim()
 }
 
-/** Paths changed on HEAD vs merge-base with defaultBranch (reproduce-before-report). */
-export function listChangedPathsSinceBranchBase(ctx: RepoContext): string[] {
-  const base = requireMergeBase(ctx)
-  const out = execFileSync('git', ['diff', '--name-only', `${base}...HEAD`], {
+function gitDiffNameOnly(ctx: RepoContext, args: string[]): string[] {
+  const out = execFileSync('git', ['diff', '--name-only', ...args], {
     cwd: ctx.repoRoot,
     encoding: 'utf8',
     maxBuffer: 512 * 1024,
@@ -51,6 +49,23 @@ export function listChangedPathsSinceBranchBase(ctx: RepoContext): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
+}
+
+/**
+ * Paths in scope for reproduce-before-report: commits since merge-base **plus**
+ * staged and unstaged working-tree changes vs that base.
+ * Using only `base...HEAD` misses mid-loop uncommitted edits and can false-close the gate.
+ */
+export function listChangedPathsSinceBranchBase(ctx: RepoContext): string[] {
+  const base = requireMergeBase(ctx)
+  const paths = new Set<string>([
+    ...gitDiffNameOnly(ctx, [`${base}...HEAD`]),
+    // Working tree vs merge-base (committed-on-branch + unstaged dirty files).
+    ...gitDiffNameOnly(ctx, [base]),
+    // Staged-only vs HEAD (covers index-only edges WT comparison can miss).
+    ...gitDiffNameOnly(ctx, ['--cached']),
+  ])
+  return [...paths]
 }
 
 export function buildPostLoopQualityReviewPrompt(ctx: RepoContext, goal: string): string {
@@ -73,7 +88,8 @@ export type PostLoopReviewOptions = {
   reviewModel?: CursorSdkModel
   /**
    * When true, downgrade error+impact blockers without a citeable path in the
-   * merge-base…HEAD changed-files set (roadmap M2 phase 2a).
+   * merge-base…working-tree changed-files set (roadmap M2 phase 2a).
+   * Skipped when the changed-files set is empty (fail-closed toward keeping blockers).
    */
   reviewReproduce?: boolean
 }
@@ -100,6 +116,12 @@ function maybeApplyReproduceFilter(
 ): { parsed: ParsedReview; text: string; droppedCount: number } {
   if (!enabled) return { parsed, text, droppedCount: 0 }
   const changedPaths = listChangedPathsSinceBranchBase(ctx)
+  if (changedPaths.length === 0) {
+    console.error(
+      '[agent-loop] reproduce filter: skipped — empty changed-files set (keep gating blockers)',
+    )
+    return { parsed, text, droppedCount: 0 }
+  }
   const filtered = applyReproduceBeforeReportFilter(parsed, changedPaths)
   const footer = formatReproduceFilterFooter(filtered.dropped)
   if (filtered.dropped.length > 0) {

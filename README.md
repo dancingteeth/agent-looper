@@ -142,9 +142,12 @@ See [`docs/verification-as-skill.md`](./docs/verification-as-skill.md) for check
 | `escalateAfterStagnation`      | `2`        | Identical-failure stagnation count that triggers the **model** switch — only after reasoning has reached its ceiling (cheap lever first, expensive lever second).                        |
 | `runtime`                      | `cursor`   | `cursor` | `cline-pass` (subscription quota) | `cline` (usage-billing credits). **Cursor-only:** worker=`composer-2.5`, judge=`grok-4.5` via `reviewModel`.                              |
 | `reviewModel`                  | (see note) | Cursor SDK judge for quality review / review-gate. Default `grok-4.5` when `runtime` is `cursor`, else `composer-2.5`. Allowed: `grok-4.5`, `composer-2.5` (never Fast).                 |
+| `reviewReproduce`              | `false`    | Downgrade error+impact blockers lacking a citeable path in the merge-base…working-tree changed set (committed + staged + unstaged). Skipped if that set is empty.                      |
 
 
 CLI overrides: `--mode reverse`, `--pause-after-iteration`.
+
+**Library note:** `reviewVerdictAllowsCompletion` takes a full `ParsedReview` (not a bare verdict string) so impact-severity gating can run.
 
 ## Ralph loop alignment
 

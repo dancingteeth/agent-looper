@@ -72,9 +72,32 @@ describe('applyReproduceBeforeReportFilter', () => {
   it('leaves warning blockers untouched', () => {
     const result = applyReproduceBeforeReportFilter(
       review(['severity: warning impact: none [should-fix] **Tone** — wording']),
-      [],
+      ['src/review/reviewVerdict.ts'],
     )
     expect(result.dropped).toHaveLength(0)
     expect(result.parsed.blockers[0]!.severity).toBe('warning')
+  })
+
+  it('does not downgrade when changedPaths is empty (fail-closed)', () => {
+    const result = applyReproduceBeforeReportFilter(
+      review([
+        'severity: error impact: false-closure [must-fix] **Docs** — README missing',
+        'severity: error impact: verify-bypass [must-fix] **Guard** — src/review/reviewVerdict.ts:10',
+      ]),
+      [],
+    )
+    expect(result.dropped).toHaveLength(0)
+    expect(result.parsed.blockers.every((b) => b.severity === 'error')).toBe(true)
+  })
+
+  it('keeps gating blockers citing a working-tree path in the changed set', () => {
+    const result = applyReproduceBeforeReportFilter(
+      review([
+        'severity: error impact: false-closure [must-fix] **Dirty** — src/cli/init.ts:70 missing REVIEWS copy',
+      ]),
+      ['src/cli/init.ts', 'REVIEWS.md'],
+    )
+    expect(result.dropped).toHaveLength(0)
+    expect(result.parsed.blockers[0]!.severity).toBe('error')
   })
 })

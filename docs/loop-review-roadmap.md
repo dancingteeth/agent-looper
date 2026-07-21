@@ -122,7 +122,9 @@ Suggested impact tags (start small, expand via REVIEWS.md):
 - [ ] 10-loop / 10-PR experiment script or checklist documents before/after false-blocker rate (see Validation).
 
 ### Out of scope
-Rewriting consumer REVIEWS.md files in other repos (ship a template section).
+Rewriting consumer REVIEWS.md files in other repos — ship `templates/REVIEWS.md`
+(portable core from unified-code-review; not the full skill). Meta-review brief:
+[`meta-review-prompt.md`](./meta-review-prompt.md).
 
 ---
 
@@ -131,11 +133,12 @@ Rewriting consumer REVIEWS.md files in other repos (ship a template section).
 ### Status (2026-07-21)
 
 **Phase 2a shipped** (dogfood loop `.cursor/loops/reproduce-before-report/`, TW
-`b2185d70-2889-4eed-94c2-d99949954211`):
+`b2185d70-2889-4eed-94c2-d99949954211` now tracks **2b** only):
 
 - `reviewReproduce` loop.json flag (default `false`)
 - Deterministic filter: downgrade error+impact blockers without citeable path in
-  merge-base…HEAD changed files
+  merge-base…**working tree** changed files (committed + staged + unstaged)
+- Empty changed-files set → skip filter (no false-closure)
 - Footer in `review.md` lists downgraded items
 
 **Open:** phase 2b fresh-context agent reproduce; phase 2c second-family.
@@ -300,7 +303,7 @@ adversarial judge (patterns doc §8). Consumer spike already tracked as
 | --- | --- |
 | CLI | `agent-loop meta-review <batch-or-glob>` |
 | Config | `loop-batch.json` / meta profile |
-| Prompt | Bounded residual only (uncodified design drift) |
+| Prompt | Bounded residual only — see [`meta-review-prompt.md`](./meta-review-prompt.md) |
 | HITL | Open tasks into `taskwarriorProject` for human closure |
 
 ### Acceptance criteria
