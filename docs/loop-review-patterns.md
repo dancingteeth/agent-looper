@@ -1,3 +1,8 @@
+---
+tags:
+  - documentation
+  - loops
+---
 # Loop Review Patterns to Steal
 
 Patterns from how mainstream agent-loop / coding-agent frameworks handle review
@@ -130,7 +135,8 @@ blueprint for building it.
 - **Highest-ROI next step:** add an **impact-severity contract** to blockers in
   `reviewVerdict` (gate only on `error`-with-impact; downgrade the rest to advisory).
   It is the single change the 2026 data says most directly stops the irrelevant-
-  blocker fix-loop.
+  blocker fix-loop. Full build order, acceptance criteria, and Taskwarrior mapping:
+  [`loop-review-roadmap.md`](./loop-review-roadmap.md).
 - **Encode misses as system improvements:** when a loop result doesn't meet
   standard, turn the fix into a reusable skill/check (pattern 6) or a
   `failure-domains` entry the meta-loop can learn from — don't just patch the one

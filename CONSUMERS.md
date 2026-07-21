@@ -69,7 +69,11 @@ From the consumer root:
 ```bash
 pnpm agent:init
 # edit .cursor/agent-loop.repo.json (taskwarriorProject, syncCommand, …)
+# edit .cursor/loops/example-fix/ — GOAL.md, verify.sh, VERIFY.skill.md
 ```
+
+Use Taskwarrior **UUID** in `GOAL.md` and `loop.json` `taskwarriorUuid` — see
+[`docs/verification-as-skill.md`](../docs/verification-as-skill.md).
 
 ## 5. Consumer integration test (recommended)
 

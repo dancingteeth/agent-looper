@@ -35,5 +35,13 @@ describe('validateGoalPreflight', () => {
     )
     expect(result.ok).toBe(true)
     expect(result.warnings.some((w) => /out of scope/i.test(w))).toBe(true)
+    expect(result.warnings.some((w) => /measurable verify/i.test(w))).toBe(true)
+  })
+
+  it('does not warn on measurable verify when verify.sh is referenced', () => {
+    const result = validateGoalPreflight(
+      `${MINIMAL_OK}\n\nChecks in verify.sh and VERIFY.skill.md.`,
+    )
+    expect(result.warnings.some((w) => /measurable verify/i.test(w))).toBe(false)
   })
 })

@@ -5,7 +5,7 @@
   "escalateReasoningEffort": "xhigh",
   "reasoningEscalationStep": 1,
   "maxIterations": 8,
-  "verify": "echo 'replace with your test command'",
+  "verify": "bash .cursor/loops/example-fix/verify.sh",
   "postQualityReview": "auto",
   "reviewGate": false,
   "maxReviewCycles": 2,

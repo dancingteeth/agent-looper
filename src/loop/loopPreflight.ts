@@ -11,6 +11,9 @@ const CONSTRAINT_PATTERN = /## constraints|## patterns|^constraints:|must not|do
 
 const OUT_OF_SCOPE_PATTERN = /out of scope|out-of-scope/i
 
+const MEASURABLE_VERIFY_PATTERN =
+  /verify\.sh|VERIFY\.skill|measurable check|numbered step|step \d/i
+
 export function validateGoalPreflight(goal: string): GoalPreflightResult {
   const errors: string[] = []
   const warnings: string[] = []
@@ -32,6 +35,12 @@ export function validateGoalPreflight(goal: string): GoalPreflightResult {
 
   if (!OUT_OF_SCOPE_PATTERN.test(goal)) {
     warnings.push('No out-of-scope section — add ## Out of scope to prevent agent scope creep.')
+  }
+
+  if (!MEASURABLE_VERIFY_PATTERN.test(goal)) {
+    warnings.push(
+      'No measurable verify checklist referenced — add verify.sh / VERIFY.skill.md pointers (see docs/verification-as-skill.md).',
+    )
   }
 
   if (goal.trim().length < 120) {

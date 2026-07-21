@@ -71,6 +71,13 @@ copyTemplate('GOAL.template.md', path.join(loopsDir, 'GOAL.template.md'), force)
 copyTemplate('loop.json.example', path.join(exampleDir, 'loop.json'), force)
 copyTemplate('GOAL.example.md', path.join(exampleDir, 'GOAL.md'), force)
 
+const exampleVerifySh = path.join(exampleDir, 'verify.sh')
+copyTemplate('verify.example.sh', exampleVerifySh, force)
+if (fs.existsSync(exampleVerifySh)) {
+  fs.chmodSync(exampleVerifySh, 0o755)
+}
+copyTemplate('VERIFY.skill.md', path.join(exampleDir, 'VERIFY.skill.md'), force)
+
 console.error(`[agent-loop-init] done — repo=${ctx.repoRoot}`)
 console.error(`[agent-loop-init] next: edit .cursor/agent-loop.repo.json and run:`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cursor --review-gate`)
