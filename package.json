@@ -17,7 +17,8 @@
     "agent-loop-review-run": "./dist/cli/review-run.js",
     "agent-loop-review-preview": "./dist/cli/review-preview.js",
     "agent-loop-meta-review": "./dist/cli/meta-review.js",
-    "agent-loop-doctor": "./dist/cli/doctor.js"
+    "agent-loop-doctor": "./dist/cli/doctor.js",
+    "agent-loop-export-run": "./dist/cli/export-run.js"
   },
   "exports": {
     ".": {

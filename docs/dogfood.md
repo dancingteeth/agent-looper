@@ -51,7 +51,8 @@ Publish to npm only when you want install without a sibling checkout.
 2. Put Taskwarrior **UUID** in GOAL + `taskwarriorUuid`.
 3. Implement (human or `pnpm agent:loop …`).
 4. Pass: `bash .cursor/loops/<name>/verify.sh`.
-5. Commit; `task <uuid> done` if not auto-completed.
+5. Inspect `run-report.md` / `log.ndjson` for transparency (or `agent-loop-export-run` to regenerate).
+6. Commit; `task <uuid> done` if not auto-completed.
 
 ## Caveat
 

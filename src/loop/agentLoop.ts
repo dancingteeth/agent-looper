@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
 import { createLoopAgentSession, loopRuntimeLabel, type LoopAgentSession } from '../agents/agentRunner.js'
 import { resolveIterationAgent, resolveLoopAgent, resolveReviewModel, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
@@ -43,6 +44,8 @@ import {
   type LoopUsageRecord,
   type LoopUsageSummary,
 } from '../usage/loopUsage.js'
+import { StreamCollector, type AgentSessionRef, type TranscriptEvent } from '../stream/streamCollect.js'
+import { writeRunReportArtifacts } from './loopRunReport.js'
 
 export type LoopIterationLog = {
   at: string
@@ -66,6 +69,8 @@ export type LoopIterationLog = {
   model?: string
   /** Resolved reasoning tier for the iteration; 'default' when none was requested. */
   reasoningEffort?: string
+  workerSession?: AgentSessionRef
+  toolSummary?: Record<string, number>
 }
 
 export type AgentLoopResult = {
@@ -105,7 +110,7 @@ async function runIterationWithRetry(
   session: LoopAgentSession,
   prompt: string,
   iterationAgent: ResolvedLoopAgent,
-  options: { verbose?: boolean; assistantOutput?: 'stdout' | 'none' },
+  options: { verbose?: boolean; assistantOutput?: 'stdout' | 'none'; collector?: StreamCollector },
 ): Promise<AgentRunResult> {
   let lastError: unknown
   for (let attempt = 0; attempt <= SDK_RETRY_DELAYS_MS.length; attempt++) {
@@ -148,6 +153,8 @@ function buildIterationLog(input: {
   usage?: LoopUsageRecord
   model?: string
   reasoningEffort?: string
+  workerSession?: AgentSessionRef
+  toolSummary?: Record<string, number>
 }): LoopIterationLog {
   return {
     at: new Date().toISOString(),
@@ -162,6 +169,10 @@ function buildIterationLog(input: {
     ...(input.innerAgent ? { innerAgent: input.innerAgent } : {}),
     ...(input.review ? { review: input.review } : {}),
     ...(input.usage ? { usage: input.usage } : {}),
+    ...(input.model ? { model: input.model } : {}),
+    ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {}),
+    ...(input.workerSession ? { workerSession: input.workerSession } : {}),
+    ...(input.toolSummary ? { toolSummary: input.toolSummary } : {}),
   }
 }
 
@@ -232,6 +243,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let reviewCyclesUsed = 0
   let reviewAdvisoryBlockers = false
   let usageSummary = emptyUsageSummary()
+  const transcriptEvents: TranscriptEvent[] = []
   const stagnationThreshold = config.stagnationThreshold
 
   const finish = (
@@ -239,7 +251,29 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   ): AgentLoopResult => {
     const usage = result.usage ?? usageSummary
     logUsageSummary('agent-loop', usage)
-    return { ...result, usage }
+    const finalResult: AgentLoopResult = { ...result, usage }
+    if (config.exportRunReport) {
+      const { reportPath, transcriptPath } = writeRunReportArtifacts({
+        ctx,
+        loopDir: bundle.loopDir,
+        goal,
+        config,
+        result: finalResult,
+        workerModel: baseAgent.model,
+        reviewModel,
+        runtime: config.runtime,
+        transcriptEvents,
+      })
+      console.error(
+        `[agent-loop] run report: ${path.relative(repoRoot, reportPath)}`,
+      )
+      if (transcriptPath) {
+        console.error(
+          `[agent-loop] transcript: ${path.relative(repoRoot, transcriptPath)}`,
+        )
+      }
+    }
+    return finalResult
   }
 
   try {
@@ -279,6 +313,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       console.error(
         `[agent-loop] iteration ${i}/${config.maxIterations} — ${iterationAgent.runtime} ${iterationAgent.model} (fresh context)`,
       )
+      const collector = config.exportTranscript
+        ? new StreamCollector({ phase: 'implement', iteration: i })
+        : undefined
       const assistantRun = await runIterationWithRetry(
         agentSession,
         prompt,
@@ -286,11 +323,19 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         {
           verbose,
           assistantOutput: 'none',
+          collector,
         },
       )
       usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
       const assistantText = assistantRun.text
       const innerAgent = assistantRun.innerAgent
+      if (assistantRun.transcriptEvents?.length) {
+        transcriptEvents.push(...assistantRun.transcriptEvents)
+      }
+      const workerLogFields = {
+        workerSession: assistantRun.sessionRef,
+        toolSummary: assistantRun.toolSummary,
+      }
 
       if (innerAgent && !innerAgent.complete) {
         console.error(
@@ -377,6 +422,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                 usage: assistantRun.usage,
                 model: iterationAgent.model,
                 reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+                ...workerLogFields,
               }),
             )
           }
@@ -422,6 +468,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               usage: assistantRun.usage,
               model: iterationAgent.model,
               reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+              ...workerLogFields,
             }),
           )
           await maybePauseAfterIteration(config, i)
@@ -447,6 +494,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             usage: assistantRun.usage,
             model: iterationAgent.model,
             reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+            ...workerLogFields,
           }),
         )
         if (config.taskwarriorUuid) {
@@ -486,6 +534,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           usage: assistantRun.usage,
           model: iterationAgent.model,
           reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+          ...workerLogFields,
         }),
       )
 

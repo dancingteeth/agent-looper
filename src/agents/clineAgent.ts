@@ -2,6 +2,7 @@ import { ClineCore, type CoreSessionEvent, type ClineCore as ClineCoreType } fro
 import type { RepoContext } from '../context/repoContext.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import { handleClineSessionEvent } from '../stream/streamClineSession.js'
+import type { StreamCollector } from '../stream/streamCollect.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { CLINE_LOOP_TOOL_POLICIES } from './loopToolPolicy.js'
 import { assertPosixShell } from './shellPreflight.js'
@@ -29,6 +30,7 @@ export type ClineAgentRunOptions = {
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
   reasoningEffort?: LoopReasoningEffort
+  collector?: StreamCollector
 }
 
 function requireClineApiKey(): string {
@@ -73,7 +75,7 @@ async function readSessionUsage(
 function waitForClineSession(
   cline: ClineCoreType,
   sessionId: string,
-  options: { verbose: boolean; assistantOutput: 'stdout' | 'none' },
+  options: { verbose: boolean; assistantOutput: 'stdout' | 'none'; collector?: StreamCollector },
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     let settled = false
@@ -194,7 +196,11 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
         if (started.result?.text?.trim()) {
           text = started.result.text.trim()
         } else {
-          text = await waitForClineSession(cline, started.sessionId, { verbose, assistantOutput })
+          text = await waitForClineSession(cline, started.sessionId, {
+            verbose,
+            assistantOutput,
+            collector: options.collector,
+          })
         }
 
         const usage = await readSessionUsage(
@@ -210,7 +216,14 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
           )
         }
 
-        return { text, usage, innerAgent: resolveInnerAgentStatus(text, 'cline') }
+        return {
+          text,
+          usage,
+          innerAgent: resolveInnerAgentStatus(text, 'cline'),
+          sessionRef: { provider: 'cline', sessionId: started.sessionId },
+          toolSummary: options.collector?.toolSummary,
+          transcriptEvents: options.collector?.events,
+        }
       } finally {
         await cline.stop(started.sessionId).catch(() => undefined)
         await cline.delete(started.sessionId).catch(() => undefined)

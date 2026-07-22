@@ -117,6 +117,10 @@ export const loopConfigSchema = loopExtensionFieldsSchema
      * Prefer explicit --trust-config for one-off runs.
      */
     trustConfig: z.boolean().default(false),
+    /** Write human-readable run-report.md when the loop finishes (or via export-run). */
+    exportRunReport: z.boolean().default(true),
+    /** Record tool timeline in transcript.ndjson and enrich log.ndjson tool counts. */
+    exportTranscript: z.boolean().default(true),
   })
   .superRefine((config, ctx) => {
     if (config.verifyMode === 'skill' && !config.verifySkill) {
@@ -232,6 +236,8 @@ export function mergeLoopConfig(
       | 'injectFailureContext'
       | 'notifyTelegram'
       | 'trustConfig'
+      | 'exportRunReport'
+      | 'exportTranscript'
     >
   >,
 ): LoopConfig {

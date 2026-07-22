@@ -7,6 +7,7 @@ import {
   type CursorSdkModel,
 } from '../loop/loopAgentConfig.js'
 import { printRunStream } from '../stream/streamRun.js'
+import { StreamCollector } from '../stream/streamCollect.js'
 import { assertCursorSdkModelAllowed } from '../usage/modelPolicy.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 
@@ -52,6 +53,7 @@ export type CursorAgentRunOptions = {
   role?: 'worker' | 'review'
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
+  collector?: StreamCollector
 }
 
 function requireApiKey(): string {
@@ -96,6 +98,7 @@ export async function runCursorAgentPrompt(
     await printRunStream(run.stream(), {
       verbose,
       assistantOutput: options.assistantOutput ?? 'stdout',
+      collector: options.collector,
     })
     const result = await waitForCursorRun(run.wait(), resolveCursorSessionTimeoutMs())
 
@@ -124,7 +127,13 @@ export async function runCursorAgentPrompt(
         })
       : undefined
 
-    return { text, usage }
+    return {
+      text,
+      usage,
+      sessionRef: { provider: 'cursor', runId: run.id, agentId: run.agentId },
+      toolSummary: options.collector?.toolSummary,
+      transcriptEvents: options.collector?.events,
+    }
   } catch (err) {
     if (err instanceof CursorAgentError) {
       throw new Error(`Cursor SDK error: ${err.message}`)

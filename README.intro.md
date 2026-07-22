@@ -92,6 +92,8 @@ Never use Composer **Fast** as the judge. Worker on Cursor is always Composer 2.
 
 If a README promises “autonomous digital employees,” walk away. This one promises: **green verify, bounded spend, inspectable logs.**
 
+After each run (default `exportRunReport: true`), the bundle also gets **`run-report.md`** — a human-readable timeline (models, verify, session IDs, tool counts) plus optional **`transcript.ndjson`**. Regenerate anytime with `agent-loop-export-run <loop-dir>`.
+
 ---
 
 ## 60-second install (Cursor-only)

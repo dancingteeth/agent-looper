@@ -55,6 +55,7 @@ with these invariants:
 │              └── no  ──▶ log + next iteration (or abort)       │
 │                                                                 │
 │  Each iteration writes one JSON line to log.ndjson             │
+│  On finish: run-report.md (+ optional transcript.ndjson)       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -71,6 +72,7 @@ with these invariants:
 | `agent-loop-review-run` | `src/cli/review-run.ts` | Standalone review (writes `review.md`) |
 | `agent-loop-review-preview` | `src/cli/review-preview.ts` | Dry-run review prompt to stdout |
 | `agent-loop-doctor` | `src/cli/doctor.ts` | Validate `dist/` + `file:` checkout (postinstall) |
+| `agent-loop-export-run` | `src/cli/export-run.ts` | Regenerate `run-report.md` from bundle artifacts |
 
 All CLIs consume `resolveRepoContext()` from `src/context/repoContext.ts`, which resolves
 `process.cwd()` (or an explicit `--repo-root`) and loads the repo profile from
@@ -166,6 +168,11 @@ If review runs: check review gate. If gate blocks: inject blockers into next pro
 restart (up to `maxReviewCycles`). Otherwise: success. Preview: `agent-loop-review-preview`.
 
 **Step 10 — Success cleanup:** Mark TW task done, create HITL task, run `syncCommand`.
+
+**Step 10b — Run report (default on):** When `exportRunReport` is true, write
+`run-report.md` (human timeline: models, verify, session IDs, tool counts, review summary).
+When `exportTranscript` is true, append worker tool events to `transcript.ndjson` and enrich
+`log.ndjson` per iteration. Regenerate later with `agent-loop-export-run`.
 
 **Step 11 — Failure exits:** Max iterations, stagnation, or agent SDK error — each
 aborts and logs a failure domain.

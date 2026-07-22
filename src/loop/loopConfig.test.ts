@@ -199,6 +199,12 @@ describe('loopConfigSchema', () => {
     expect(parsed.reviewBlockerRecheck).toBe(true)
   })
 
+  it('defaults exportRunReport and exportTranscript to true', () => {
+    const parsed = loopConfigSchema.parse({ verify: 'true' })
+    expect(parsed.exportRunReport).toBe(true)
+    expect(parsed.exportTranscript).toBe(true)
+  })
+
   it('rejects unparseableReviewRetries outside 1..5', () => {
     expect(() => loopConfigSchema.parse({ verify: 'true', unparseableReviewRetries: 0 })).toThrow()
     expect(() => loopConfigSchema.parse({ verify: 'true', unparseableReviewRetries: 6 })).toThrow()

@@ -234,3 +234,13 @@ export {
   formatLoopCompletionReport,
   formatBatchCompletionReport,
 } from './loop/loopReport.js'
+
+export {
+  RUN_REPORT_FILENAME,
+  TRANSCRIPT_FILENAME,
+  buildRunReportMarkdown,
+  writeRunReportArtifacts,
+  readLoopLogEntries,
+  readTranscriptEvents,
+  reconstructAgentLoopResultFromLog,
+} from './loop/loopRunReport.js'

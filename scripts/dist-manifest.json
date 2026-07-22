@@ -10,6 +10,7 @@
     "dist/cli/review-preview.js",
     "dist/cli/meta-review.js",
     "dist/cli/doctor.js",
+    "dist/cli/export-run.js",
     "dist/integrations/telegramNotify.js",
     "dist/loop/loopReport.js",
     "dist/loop/agentLoop.js",

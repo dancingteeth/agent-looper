@@ -14,10 +14,13 @@ import type { LoopConfig } from '../loop/loopConfig.js'
 // Type-only — erased at emit; keeps Cursor-only installs free of @cline/sdk.
 import type { ClineLoopSession } from './clineAgent.js'
 
+import type { StreamCollector } from '../stream/streamCollect.js'
+
 export type AgentPromptOptions = {
   verbose?: boolean
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
+  collector?: StreamCollector
 }
 
 type PromptRunner = (
@@ -46,6 +49,7 @@ function createCursorRunner(ctx: RepoContext): PromptRunner {
       role: 'worker',
       assistantOutput: options.assistantOutput,
       phase: options.phase ?? 'implement',
+      collector: options.collector,
     })
   }
 }
@@ -62,6 +66,7 @@ function createClineRunner(cline: ClineLoopSession): PromptRunner {
       assistantOutput: options.assistantOutput,
       phase: options.phase ?? 'implement',
       reasoningEffort: agent.reasoningEffort,
+      collector: options.collector,
     })
   }
 }

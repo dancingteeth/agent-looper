@@ -134,6 +134,8 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
   verify.sh                # measurable shell checks (exit 0 = pass)
   VERIFY.skill.md          # agent-readable verify procedure (optional; required for verifyMode: skill)
   log.ndjson               # append-only iteration log (runtime)
+  run-report.md            # human-readable run summary (when exportRunReport)
+  transcript.ndjson        # tool timeline (when exportTranscript)
   failure-domains.ndjson   # optional — stagnation / max iterations / gate exhaust
   failure-context.md       # optional — written by meta-loop probe for fix loop
 ```
@@ -187,6 +189,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reviewSecondaryRuntime` | (unset) | Cline SDK second-family judge (`cline-pass` or `cline`); unset = off |
 | `reviewSecondaryModel` | (default) | Cline model for secondary review |
 | `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate) |
+| `exportRunReport` | `true` | Write `run-report.md` when the loop finishes |
+| `exportTranscript` | `true` | Record tool events in `transcript.ndjson` and per-iteration tool counts in `log.ndjson` |
 
 Blocker grammar: ship `REVIEWS.md` from `templates/REVIEWS.md`. Library: `reviewVerdictAllowsCompletion` takes a full `ParsedReview` for impact-severity gating.
 
@@ -258,7 +262,7 @@ Implements the [Ralph loop](https://ghuntley.com/loop/) pattern:
 - **Fresh context** each iteration; progress in **files and git**
 - **Shell backpressure** (`verify` / `finalVerify`) as the deterministic done signal
 - **Verification-as-skill** — `verify.sh` + `VERIFY.skill.md`; optional `verifyMode: skill`
-- **Watch the loop** — `log.ndjson`, stagnation, optional `--pause-after-iteration`
+- **Watch the loop** — `log.ndjson`, `run-report.md`, `transcript.ndjson`, stagnation, optional `--pause-after-iteration`
 - **Failure domains** — `failure-domains.ndjson` on stagnation, max iterations, or review-gate exhaustion
 - **Meta-loop** — probe → `failure-context.md` → fix → re-probe
 
@@ -305,6 +309,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
 | `agent-loop-review-run` | Post-loop quality review for one bundle |
 | `agent-loop-review-preview` | Preview review risk / prompt |
+| `agent-loop-export-run` | Regenerate `run-report.md` from `log.ndjson` (+ optional `transcript.ndjson`) |
 
 ## Architecture
 
@@ -314,6 +319,7 @@ GOAL.md + loop.json
   → verify (command or skill + command)
   → optional review gate
   → log.ndjson
+  → run-report.md (+ transcript.ndjson when enabled)
   → repeat
 ```
 
