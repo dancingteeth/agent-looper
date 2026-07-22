@@ -1,56 +1,69 @@
+import type { LoopRiskKeywords } from './loopRiskProfile.js'
+import {
+  DEFAULT_LOOP_RISK_KEYWORDS,
+  inferLoopReviewRiskWithProfile,
+  type LoopRiskProfileOverride,
+} from './loopRiskProfile.js'
+
 export type LoopReviewRisk = 'high' | 'medium' | 'low'
 
-const HIGH_RISK_PATTERN =
-  /\b(auth|session|login|oauth|payment|stripe|bank|crypto|migration|secret|privacy|pii|webhook|deploy|run-sql|telegram-bot|access.?control|permission)\b/i
+export type PostQualityReviewSetting = boolean | 'auto'
 
-const MEDIUM_RISK_PATTERN =
-  /\b(checkout|order|affiliate|commission|integration|marketplace|transformer|dispatch|webhook|payload\.config|ecommerce|payment)\b/i
-
-const LOW_RISK_PATTERN =
-  /\b(docs?|readme|validator|scorer|formatting|typo|comment-only|loop harness|agent loop|cursor-sdk|harness)\b/i
-
-export function inferLoopReviewRisk(goal: string, verify: string): LoopReviewRisk {
-  const combined = `${goal}\n${verify}`
-
-  if (HIGH_RISK_PATTERN.test(combined)) {
-    return 'high'
-  }
-
-  if (MEDIUM_RISK_PATTERN.test(combined)) {
-    return 'medium'
-  }
-
-  if (LOW_RISK_PATTERN.test(combined)) {
-    return 'low'
-  }
-
-  if (/agent-loop|cursor-sdk/.test(verify)) {
-    return 'low'
-  }
-
-  return /src\//.test(verify) ? 'medium' : 'low'
+export type LoopRiskInferenceContext = {
+  profile?: LoopRiskKeywords
+  reviewRisk?: LoopReviewRisk | 'auto'
+  loopRiskProfile?: LoopRiskProfileOverride
 }
 
-export type PostQualityReviewSetting = boolean | 'auto'
+function resolveProfile(ctx?: LoopRiskInferenceContext): LoopRiskKeywords {
+  if (ctx?.profile) {
+    return ctx.profile
+  }
+  if (ctx?.loopRiskProfile) {
+    return {
+      high: [...DEFAULT_LOOP_RISK_KEYWORDS.high, ...(ctx.loopRiskProfile.high ?? [])],
+      medium: [...DEFAULT_LOOP_RISK_KEYWORDS.medium, ...(ctx.loopRiskProfile.medium ?? [])],
+      low: [...DEFAULT_LOOP_RISK_KEYWORDS.low, ...(ctx.loopRiskProfile.low ?? [])],
+    }
+  }
+  return DEFAULT_LOOP_RISK_KEYWORDS
+}
+
+export function inferLoopReviewRisk(
+  goal: string,
+  verify: string,
+  ctx?: LoopRiskInferenceContext,
+): LoopReviewRisk {
+  return inferLoopReviewRiskWithProfile(goal, verify, {
+    profile: resolveProfile(ctx),
+    reviewRisk: ctx?.reviewRisk,
+  })
+}
 
 export function resolvePostQualityReview(
   setting: PostQualityReviewSetting,
   goal: string,
   verify: string,
+  ctx?: LoopRiskInferenceContext,
 ): boolean {
   if (setting === true) return true
   if (setting === false) return false
-  return inferLoopReviewRisk(goal, verify) !== 'low'
+  return inferLoopReviewRisk(goal, verify, ctx) !== 'low'
 }
 
 export function resolveShouldRunQualityReview(
   config: {
     postQualityReview: PostQualityReviewSetting
     reviewGate: boolean
+    reviewRisk?: LoopReviewRisk | 'auto'
   },
   goal: string,
   verify: string,
+  riskCtx?: LoopRiskInferenceContext,
 ): boolean {
   if (config.reviewGate) return true
-  return resolvePostQualityReview(config.postQualityReview, goal, verify)
+  return resolvePostQualityReview(config.postQualityReview, goal, verify, {
+    ...riskCtx,
+    reviewRisk: config.reviewRisk,
+  })
 }

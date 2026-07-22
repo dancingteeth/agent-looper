@@ -34,7 +34,8 @@ Publish to npm only when you want install without a sibling checkout.
 | `secondary-judge` | `adf66bf8-d52a-43e2-8009-756649cc32b2` | M3 multi-family secondary judge (done) |
 | `meta-review` | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | M5 cross-loop meta-review CLI (done) |
 | `verify-mode` | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | M4 Track B `verifyMode` (done) |
-| `post-success-review` | `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` | Extract review-gate state machine |
+| `post-success-review` | `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` | Extract review-gate state machine (done) |
+| `loop-risk-profiles` | `de4144f2-9e6a-4cf6-8943-81efc49d4c5c` | Configurable loopRisk profiles (done) |
 | `example-fix` | — | Scaffold template only |
 
 ## Review overlays

@@ -2,8 +2,9 @@
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { loadLoopBundle, resolveLoopDir } from '../loop/loopConfig.js'
-import { buildPostLoopQualityReviewPrompt } from '../review/loopPostReview.js'
 import { inferLoopReviewRisk, resolvePostQualityReview } from '../loop/loopRisk.js'
+import { resolveLoopRiskKeywords } from '../loop/loopRiskProfile.js'
+import { buildPostLoopQualityReviewPrompt } from '../review/loopPostReview.js'
 import { parseRepoRootFlag } from './shared.js'
 
 function usage(): void {
@@ -27,12 +28,22 @@ const loopDir = resolveLoopDir(loopArg, ctx.repoRoot)
 const bundle = loadLoopBundle(loopDir)
 const { goal, config } = bundle
 
-const risk = inferLoopReviewRisk(goal, config.verify)
-const autoRuns = resolvePostQualityReview('auto', goal, config.verify)
+const riskKeywords = resolveLoopRiskKeywords({
+  ctx,
+  loopOverride: config.loopRiskProfile,
+})
+const risk = inferLoopReviewRisk(goal, config.verify, {
+  profile: riskKeywords,
+  reviewRisk: config.reviewRisk,
+})
+const autoRuns = resolvePostQualityReview('auto', goal, config.verify, {
+  profile: riskKeywords,
+  reviewRisk: config.reviewRisk,
+})
 
 console.log(`Loop:     ${path.relative(ctx.repoRoot, loopDir)}`)
 console.log(`Risk:     ${risk.toUpperCase()}`)
-console.log(`Config:   postQualityReview=${JSON.stringify(config.postQualityReview)}`)
+console.log(`Config:   postQualityReview=${JSON.stringify(config.postQualityReview)} reviewRisk=${JSON.stringify(config.reviewRisk)}`)
 console.log(`Auto:     ${autoRuns ? 'would run review.md after success' : 'would skip review'}`)
 
 if (showPrompt) {

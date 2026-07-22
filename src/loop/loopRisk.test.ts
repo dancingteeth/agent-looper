@@ -28,10 +28,21 @@ describe('loopRisk', () => {
     const verify = 'pnpm exec vitest run src/loop/'
     expect(
       resolveShouldRunQualityReview(
-        { postQualityReview: 'auto', reviewGate: true },
+        { postQualityReview: 'auto', reviewGate: true, reviewRisk: 'auto' },
         goal,
         verify,
       ),
     ).toBe(true)
+  })
+
+  it('respects explicit reviewRisk override on auto postQualityReview', () => {
+    const goal = 'docs only'
+    const verify = 'pnpm exec vitest run src/loop/'
+    expect(
+      resolvePostQualityReview('auto', goal, verify, { reviewRisk: 'high' }),
+    ).toBe(true)
+    expect(
+      resolvePostQualityReview('auto', goal, verify, { reviewRisk: 'low' }),
+    ).toBe(false)
   })
 })

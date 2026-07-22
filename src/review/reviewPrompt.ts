@@ -1,18 +1,21 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import type { RepoContext } from '../context/repoContext.js'
-import type { RepoProfile } from '../context/repoProfile.js'
+import {
+  buildRiskTriageStepFromKeywords,
+  DEFAULT_LOOP_RISK_KEYWORDS,
+  resolveLoopRiskKeywords,
+} from '../loop/loopRiskProfile.js'
+import { loadReviewsMd } from './reviewsMd.js'
+
+export { loadReviewsMd } from './reviewsMd.js'
 
 /** Default reviews filename label in prompts — actual path is `profile.reviewsFile`. */
 export const REVIEWS_MD = 'REVIEWS.md'
 
-export function buildRiskTriagePreamble(): string {
+export function buildRiskTriagePreamble(ctx?: RepoContext): string {
+  const keywords = ctx ? resolveLoopRiskKeywords({ ctx }) : DEFAULT_LOOP_RISK_KEYWORDS
   return `Review this change by **risk (blast radius), not by diff size**.
 
-**Step 1 — Classify risk**
-1. **HIGH:** auth, identity, payments, data access, network egress, PII, security, production DB writes/migrations, deploy workflows, secrets, CaMeL/agentic tools, Telegram admin/CRM.
-2. **MEDIUM:** business logic, user-facing behavior, integrations, performance-sensitive paths, webhooks.
-3. **LOW:** UI/copy, formatting, internal tooling, validators/scorers, docs, test-only refactors with coverage.
+${buildRiskTriageStepFromKeywords(keywords)}
 
 **Step 2 — Answer (concrete, repo-specific)**
 - What could go wrong?
@@ -35,14 +38,6 @@ export function buildReviewOutputFormatReminder(): string {
 - For \`severity: error\` items, cite a path in the branch working tree as \`path/to/file.ts:123\` (required when reproduce-before-report is enabled; committed + staged + unstaged).`
 }
 
-export function loadReviewsMd(repoRoot: string, profile: RepoProfile): string {
-  const reviewsPath = path.join(repoRoot, profile.reviewsFile)
-  if (!fs.existsSync(reviewsPath)) {
-    return `(REVIEWS.md not found — apply code judo bar from AGENTS.md and repo coding standards.)`
-  }
-  return fs.readFileSync(reviewsPath, 'utf8').trim()
-}
-
 export type QualityReviewPromptOptions = {
   ctx: RepoContext
   context: string
@@ -58,7 +53,7 @@ export function buildQualityReviewPrompt(options: QualityReviewPromptOptions): s
 Apply the repository review standards below.
 Do NOT edit files.
 
-${buildRiskTriagePreamble()}
+${buildRiskTriagePreamble(ctx)}
 
 ${buildReviewOutputFormatReminder()}
 
@@ -102,7 +97,7 @@ export function buildBlockerRecheckPrompt(
 
 Apply the repository review standards below for context only.
 
-${buildRiskTriagePreamble()}
+${buildRiskTriagePreamble(ctx)}
 
 Repo: ${ctx.repoRoot}
 

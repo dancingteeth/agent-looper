@@ -4,6 +4,7 @@ import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
 import type { CursorSdkModel } from '../loop/loopAgentConfig.js'
 import type { LoopConfig } from '../loop/loopConfig.js'
 import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
+import { resolveLoopRiskKeywords } from '../loop/loopRiskProfile.js'
 import { runPostLoopBlockerRecheck, runPostLoopQualityReview } from '../review/loopPostReview.js'
 import type { ParsedReview, ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
 import {
@@ -223,7 +224,13 @@ export async function runPostSuccessReviewPhase(
   } = input
   let usageSummary = input.usageSummary
 
-  const shouldRunReview = resolveShouldRunQualityReview(config, goal, config.verify)
+  const riskKeywords = resolveLoopRiskKeywords({
+    ctx,
+    loopOverride: config.loopRiskProfile,
+  })
+  const shouldRunReview = resolveShouldRunQualityReview(config, goal, config.verify, {
+    profile: riskKeywords,
+  })
   if (!shouldRunReview) {
     return { outcome: { action: 'skip' }, usageSummary, reviewCycle: 0 }
   }

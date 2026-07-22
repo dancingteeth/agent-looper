@@ -116,6 +116,7 @@ Example consumer scripts:
 | `syncCommand` | Shell command after success (or `null`) |
 | `defaultBranch` | Post-loop diff base (`main`) |
 | `agentsFile` / `reviewsFile` | Prompt + review overlay paths |
+| `loopRiskProfile` | Optional keyword merge for `postQualityReview: "auto"` (see `REVIEWS.md` ## Loop risk inference) |
 | `skillsGlob` | System prompt skills hint |
 | `clientName` | Cline client label |
 | `telegramNotify` | Optional chat id + onSuccess / onFailure |
@@ -173,6 +174,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `postQualityReview` | `auto` | Run post-loop review (`true` / `false` / `auto` by inferred risk) |
+| `reviewRisk` | `auto` | Override inferred risk for `postQualityReview: "auto"` (`high` / `medium` / `low`) |
+| `loopRiskProfile` | — | Per-loop keyword merge for risk inference (`high` / `medium` / `low` arrays) |
 | `reviewGate` | `false` | When `true`, gating blockers re-enter the fix loop (up to `maxReviewCycles`) |
 | `reviewModel` | (runtime) | Cursor judge: default `grok-4.5` on `cursor`, `composer-2.5` on Cline. Never Composer Fast. |
 | `maxReviewCycles` | `2` | Review-triggered fix rounds when `reviewGate` is on |

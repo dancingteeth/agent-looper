@@ -43,6 +43,21 @@ gating blocker with `file:line`. No Full pincer in loop reviews.
 
 Default nits → `severity: warning impact: none`.
 
+## Loop risk inference
+
+Keywords are matched case-insensitively against `GOAL.md` + `verify` when
+`postQualityReview` is `"auto"`. Merge order: harness defaults → this section →
+`.cursor/agent-loop.repo.json` `loopRiskProfile` → per-loop `loopRiskProfile`.
+
+### HIGH
+network egress, agentic tools, cline sdk, secondary judge, review gate
+
+### MEDIUM
+review pipeline, loop harness src, verify skill
+
+### LOW
+dogfood loop, loop.json scaffold, documentation-only
+
 ## Reproduce-before-report (when `reviewReproduce` is on)
 
 Error+impact blockers need a citeable path in the merge-base…**working tree**

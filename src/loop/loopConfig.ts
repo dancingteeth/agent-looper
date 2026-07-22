@@ -56,6 +56,19 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     taskwarriorProject: taskwarriorProjectSchema.optional(),
     delayMs: z.number().int().min(0).max(60_000).default(1500),
     postQualityReview: z.union([z.boolean(), z.literal('auto')]).default('auto'),
+    /**
+     * Override inferred loop risk for postQualityReview "auto" (and review-preview).
+     * When set to high|medium|low, skips keyword inference from GOAL + verify.
+     */
+    reviewRisk: z.enum(['auto', 'high', 'medium', 'low']).default('auto'),
+    /** Per-loop keyword merge on top of repo REVIEWS.md / defaults. */
+    loopRiskProfile: z
+      .object({
+        high: z.array(z.string().trim().min(1)).optional(),
+        medium: z.array(z.string().trim().min(1)).optional(),
+        low: z.array(z.string().trim().min(1)).optional(),
+      })
+      .optional(),
     /** When true, post-success review must not return BLOCKERS to complete the loop. */
     reviewGate: z.boolean().default(false),
     /** Max review-triggered fix rounds when reviewGate is on (each cycle re-runs review). */
@@ -188,6 +201,8 @@ export function mergeLoopConfig(
       | 'verify'
       | 'finalVerify'
       | 'postQualityReview'
+      | 'reviewRisk'
+      | 'loopRiskProfile'
       | 'reviewGate'
       | 'maxReviewCycles'
       | 'reviewGateHitl'

@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import { taskwarriorProjectSchema } from '../integrations/taskwarrior.js'
+import { loopRiskProfileOverrideSchema } from '../loop/loopRiskProfile.js'
 
 export const REPO_PROFILE_RELATIVE_PATH = path.join('.cursor', 'agent-loop.repo.json')
 
@@ -17,6 +18,8 @@ export const repoProfileSchema = z.object({
   skillsGlob: z.string().trim().min(1).default('packages/skills/*/SKILL.md'),
   /** Cline clientName / dispose reason label. */
   clientName: z.string().trim().min(1).default('@dancingteeth/agent-loop'),
+  /** Extra keywords merged into loop risk inference (see REVIEWS.md ## Loop risk inference). */
+  loopRiskProfile: loopRiskProfileOverrideSchema.optional(),
   /** Optional Telegram completion reports (bot token via env). */
   telegramNotify: z
     .object({

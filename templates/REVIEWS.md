@@ -61,6 +61,23 @@ Every `### Blockers` bullet:
 
 Default cosmetic / style / nits → `severity: warning impact: none`.
 
+## Loop risk inference
+
+Optional overlay for `postQualityReview: "auto"`. Keywords match `GOAL.md` + `verify`
+(word boundaries). Merge order: harness defaults → this section →
+`agent-loop.repo.json` `loopRiskProfile` → per-loop `loopRiskProfile` in `loop.json`.
+
+### HIGH
+auth, payment, PII, production database, deploy, secrets
+
+### MEDIUM
+checkout, integrations, business logic, webhooks
+
+### LOW
+docs, formatting, internal tooling, test-only refactors
+
+Set `reviewRisk` in `loop.json` to `high` | `medium` | `low` to skip inference.
+
 ## Reproduce-before-report (when `reviewReproduce` is on)
 
 Error+impact blockers must cite a path in the merge-base…**working tree** changed

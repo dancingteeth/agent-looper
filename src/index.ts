@@ -75,7 +75,17 @@ export { buildAgentLoopPrompt } from './loop/loopPrompt.js'
 export { detectStagnation } from './loop/loopStagnation.js'
 export { validateGoalPreflight } from './loop/loopPreflight.js'
 export { inferLoopReviewRisk, resolvePostQualityReview, resolveShouldRunQualityReview } from './loop/loopRisk.js'
-export type { LoopReviewRisk, PostQualityReviewSetting } from './loop/loopRisk.js'
+export type { LoopReviewRisk, LoopRiskInferenceContext, PostQualityReviewSetting } from './loop/loopRisk.js'
+export {
+  DEFAULT_LOOP_RISK_KEYWORDS,
+  LOOP_RISK_INFERENCE_SECTION,
+  buildRiskTriageStepFromKeywords,
+  inferLoopReviewRiskWithProfile,
+  keywordsToRiskPattern,
+  parseLoopRiskKeywordsFromReviewsMd,
+  resolveLoopRiskKeywords,
+} from './loop/loopRiskProfile.js'
+export type { LoopRiskKeywords, LoopRiskProfileOverride } from './loop/loopRiskProfile.js'
 
 export { runCursorAgentPrompt } from './agents/cursorAgent.js'
 export type { CursorAgentRunOptions } from './agents/cursorAgent.js'

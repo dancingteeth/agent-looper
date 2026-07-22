@@ -44,8 +44,8 @@ Open Taskwarrior project: **`agent-loop`**. Use **UUID** in docs and `loop.json`
 | M4 | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | Verification-as-skill |
 | M5 | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | Cross-loop meta-review CLI |
 
-Other `agent-loop` backlog: `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` (extract review-gate),
-`de4144f2-9e6a-4cf6-8943-81efc49d4c5c` (loopRisk profiles),
+Other `agent-loop` backlog: `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` (extract review-gate) — **done**,
+`de4144f2-9e6a-4cf6-8943-81efc49d4c5c` (loopRisk profiles) — **shipped**,
 `f3280589-70a0-463e-a472-6feccb622a70` (pricing drift check),
 `a774c5d7-5900-4d87-9092-dd0e8ba1cc38` (`--trust-config`).
 

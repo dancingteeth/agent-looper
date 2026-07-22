@@ -23,10 +23,12 @@ describe('reviewPrompt', () => {
   })
 
   it('includes Rahul GS framing in preamble', () => {
-    const preamble = buildRiskTriagePreamble()
+    const ctx = resolveRepoContext()
+    const preamble = buildRiskTriagePreamble(ctx)
     expect(preamble).toContain('HIGH')
     expect(preamble).toContain('feature flag')
     expect(preamble).toContain('line-by-line')
+    expect(preamble).toContain('network egress')
   })
 
   it('builds thermo-nuclear prompt with diff stat', () => {

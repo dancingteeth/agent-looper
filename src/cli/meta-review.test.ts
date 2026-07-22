@@ -31,19 +31,21 @@ describe('agent-loop-meta-review CLI', () => {
     const result = spawnSync(process.execPath, [cliPath, '--help'], {
       cwd: packageRoot,
       encoding: 'utf8',
+      timeout: 15_000,
     })
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('agent-loop-meta-review')
     expect(result.stdout).toContain('--hitl')
     expect(result.stdout).toContain('--out-dir')
-  })
+  }, 20_000)
 
   it('requires at least one path', () => {
     const result = spawnSync(process.execPath, [cliPath], {
       cwd: packageRoot,
       encoding: 'utf8',
+      timeout: 15_000,
     })
     expect(result.status).toBe(1)
     expect(result.stderr + result.stdout).toMatch(/At least one loop path|Usage:/)
-  })
+  }, 20_000)
 })
