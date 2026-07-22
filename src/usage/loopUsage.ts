@@ -1,4 +1,4 @@
-export type AgentRunPhase = 'implement' | 'review'
+export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
 export type LoopUsageRecord = {
   phase: AgentRunPhase

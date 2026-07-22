@@ -13,6 +13,7 @@ import { captureGitWorkspaceSnapshot } from './loopGit.js'
 import { runAgentLoop } from './agentLoop.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
+import { runVerifySkill } from './loopVerifySkill.js'
 import { runPostLoopQualityReview, runPostLoopBlockerRecheck } from '../review/loopPostReview.js'
 import type { PostLoopReviewResult } from '../review/loopPostReview.js'
 import { parseReviewMarkdown } from '../review/reviewVerdict.js'
@@ -24,6 +25,10 @@ vi.mock('../agents/agentRunner.js', () => ({
 
 vi.mock('./loopVerify.js', () => ({
   runVerifyCommand: vi.fn(),
+}))
+
+vi.mock('./loopVerifySkill.js', () => ({
+  runVerifySkill: vi.fn(),
 }))
 
 vi.mock('../review/loopPostReview.js', () => ({
@@ -52,6 +57,7 @@ vi.mock('./loopGit.js', () => ({
 
 const mockedCreateSession = vi.mocked(createLoopAgentSession)
 const mockedRunVerify = vi.mocked(runVerifyCommand)
+const mockedRunVerifySkill = vi.mocked(runVerifySkill)
 const mockedCaptureGit = vi.mocked(captureGitWorkspaceSnapshot)
 
 let tmpLoopDir: string
@@ -153,6 +159,25 @@ describe('runAgentLoop', () => {
     expect(result.iterations).toBe(1)
     expect(dispose).toHaveBeenCalledOnce()
     expect(runPostLoopQualityReview).not.toHaveBeenCalled()
+    expect(mockedRunVerifySkill).not.toHaveBeenCalled()
+  })
+
+  it('uses skill verify when verifyMode is skill', async () => {
+    const { dispose } = mockSession()
+    mockedRunVerifySkill.mockResolvedValue(passVerify('skill:true → true'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        verifyMode: 'skill',
+        verifySkill: 'VERIFY.skill.md',
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(mockedRunVerifySkill).toHaveBeenCalledOnce()
+    expect(mockedRunVerify).not.toHaveBeenCalled()
+    expect(dispose).toHaveBeenCalledOnce()
   })
 
   it('retries after a failed verifier and completes on the next pass', async () => {

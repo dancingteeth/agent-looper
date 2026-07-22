@@ -27,7 +27,7 @@ export type ClineAgentRunOptions = {
   /** ClinePass subscription vs usage-billing credits. Defaults to cline-pass. */
   providerId?: ClineProviderId
   assistantOutput?: 'stdout' | 'none'
-  phase?: 'implement' | 'review'
+  phase?: 'implement' | 'review' | 'verify'
   reasoningEffort?: LoopReasoningEffort
 }
 
@@ -47,7 +47,7 @@ async function readSessionUsage(
   cline: ClineCoreType,
   sessionId: string,
   modelId: string,
-  phase: 'implement' | 'review',
+  phase: 'implement' | 'review' | 'verify',
   providerId: ClineProviderId,
 ): Promise<AgentRunResult['usage']> {
   try {

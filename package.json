@@ -1,7 +1,7 @@
 {
   "name": "@dancingteeth/agent-loop",
   "version": "0.1.0",
-  "description": "Repo-agnostic fix-until-green agent loop (Cursor SDK + ClinePass)",
+  "description": "Repo-agnostic fix-until-green agent loop (Cursor SDK + Cline SDK)",
   "license": "MIT",
   "type": "module",
   "author": "Paul Zgordan",

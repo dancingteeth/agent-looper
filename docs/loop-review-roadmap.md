@@ -244,7 +244,7 @@ architecture/coupling — only if merge noise stays low in the pilot.
 - `agent-loop-init` copies `verify.sh` + `VERIFY.skill.md` into example loop
 - GOAL preflight warns when measurable verify artifacts are not referenced
 
-**Track B open** — optional `verifyMode: 'command' | 'skill'` in harness (no pipeline change until then).
+**Track B shipped** — optional `verifyMode: 'command' | 'skill'` in harness (default `command`).
 
 ### Problem
 `verify` is “exit 0”. Highest leverage quality move is a reusable,
@@ -272,7 +272,7 @@ optional `verifyMode: 'command' | 'skill'`.
 - [x] Template skill with measurable steps and “no partial handoff” rule.
 - [x] In-repo example via `agent-loop-init` (`verify.sh` + `loop.json` wiring).
 - [x] Docs: prefer quantitative verify over “looks good” in GOAL.md preflight tips.
-- [ ] Track B: optional `verifyMode` harness (future).
+- [x] Track B: optional `verifyMode` harness.
 
 ### Orthogonal
 Can ship in parallel with #1–3.

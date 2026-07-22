@@ -5,10 +5,7 @@ import { resolveIterationAgent, resolveLoopAgent, resolveReviewModel, type Resol
 import type { LoadedLoopBundle } from '../loop/loopConfig.js'
 import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
 import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
-import { runPostLoopQualityReview, runPostLoopBlockerRecheck } from '../review/loopPostReview.js'
-import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
-import type { ParsedReview, ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
-import { reviewGateBlockers, reviewGateBlocksCompletion, blockingBlockers } from '../review/reviewVerdict.js'
+import type { ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
 import { detectStagnation } from '../loop/loopStagnation.js'
 import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
 import {
@@ -22,7 +19,12 @@ import {
   markTaskwarriorDoneByUuid,
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
+import {
+  logReviewGateFailureDomain,
+  runPostSuccessReviewPhase,
+} from '../loop/loopPostSuccessReview.js'
 import { runVerifyCommand, type VerifyResult } from '../loop/loopVerify.js'
+import { runVerifySkill } from '../loop/loopVerifySkill.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
 import type { InnerAgentStatus } from '../agents/innerAgentStatus.js'
 import { previewAssistantText } from '../agents/innerAgentStatus.js'
@@ -129,20 +131,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function reviewGateHitlDescription(parsed: ParsedReview, reviewCycle: number): string {
-  const leading = `Review gate blocked after ${reviewCycle} cycle(s)`
-  if (parsed.verdict === 'UNKNOWN') {
-    return `${leading}: review verdict unparseable (see review.md)`
-  }
-  const items = reviewGateBlockers(parsed)
-    .slice(0, 4)
-    .map((b) => b.replace(/\s+/g, ' ').trim())
-  const body = items.length ? `: ${items.join('; ')}` : ''
-  const text = `${leading}${body}`
-  // hitlCheckDescriptionSchema caps at 500 chars; keep headroom for the "HITL Check: " prefix.
-  return text.length > 480 ? `${text.slice(0, 477)}...` : text
-}
-
 function appendLog(logPath: string, entry: LoopIterationLog): void {
   fs.appendFileSync(logPath, `${JSON.stringify(entry)}\n`, 'utf8')
 }
@@ -234,7 +222,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
   console.error(
     `[agent-loop] repo=${repoRoot} runtime=${loopRuntimeLabel(baseAgent.runtime)} ` +
-      `worker=${baseAgent.model} review=${reviewModel}`,
+      `worker=${baseAgent.model} review=${reviewModel} verify mode=${config.verifyMode}`,
   )
 
   const priorFailures: VerifyResult[] = []
@@ -315,7 +303,16 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       console.error(`[agent-loop] iteration ${i} — verify: ${config.verify}`)
-      const verify = runVerifyCommand(config.verify, repoRoot)
+      const verify =
+        config.verifyMode === 'skill'
+          ? await runVerifySkill({
+              ctx,
+              loopDir: bundle.loopDir,
+              goal,
+              config,
+              verbose,
+            })
+          : runVerifyCommand(config.verify, repoRoot)
       lastVerify = verify
 
       let finalVerify: VerifyResult | undefined
@@ -346,83 +343,25 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       let reviewLog: LoopIterationLog['review'] | undefined
-      let parsedReview: ParsedReview | undefined
 
       if (passed) {
-        const shouldRunReview = resolveShouldRunQualityReview(config, goal, config.verify)
-        if (shouldRunReview) {
-          const reviewLabel = config.reviewGate
-            ? 'post-success quality review (gated, Cursor SDK)'
-            : 'post-success quality review (advisory, Cursor SDK)'
-          console.error(`[agent-loop] ${reviewLabel}`)
+        const reviewPhase = await runPostSuccessReviewPhase({
+          config,
+          goal,
+          ctx,
+          loopDir: bundle.loopDir,
+          reviewBlockers,
+          reviewCyclesUsed,
+          reviewModel,
+          verbose,
+          usageSummary,
+          reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+        })
+        usageSummary = reviewPhase.usageSummary
+        reviewLog = reviewPhase.reviewLog
 
-          // On a fix round (reviewBlockers set from a prior BLOCKERS verdict) run the
-          // lighter, scope-limited blocker re-check instead of the full review: it only
-          // judges whether the flagged blockers are resolved, so the model cannot block
-          // completion on a *new* irrelevant finding. UNKNOWN verdicts are a transient
-          // parse glitch — retry up to unparseableReviewRetries, then treat as terminal.
-          // The iteration limit stays the ultimate backstop even when a model flags
-          // irrelevant blockers.
-          const useRecheck =
-            config.reviewBlockerRecheck && (reviewBlockers?.length ?? 0) > 0
-          let reviewCycle = 0
-          for (;;) {
-            reviewCycle++
-            try {
-              const reviewResult = useRecheck
-                ? await runPostLoopBlockerRecheck(bundle.loopDir, goal, ctx, reviewBlockers!, {
-                    verbose,
-                    reviewCycle,
-                    reviewModel,
-                    reviewReproduce: config.reviewReproduce,
-                    reviewReproduceAgent: config.reviewReproduceAgent,
-                    reviewSecondaryRuntime: config.reviewSecondaryRuntime,
-                    reviewSecondaryModel: config.reviewSecondaryModel,
-                  })
-                : await runPostLoopQualityReview(bundle.loopDir, goal, ctx, {
-                    verbose,
-                    reviewCycle,
-                    reviewModel,
-                    reviewReproduce: config.reviewReproduce,
-                    reviewReproduceAgent: config.reviewReproduceAgent,
-                    reviewSecondaryRuntime: config.reviewSecondaryRuntime,
-                    reviewSecondaryModel: config.reviewSecondaryModel,
-                  })
-              usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
-              parsedReview = reviewResult.parsed
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err)
-              if (config.reviewGate) {
-                console.error(`[agent-loop] review gate: quality review failed — stopping: ${message}`)
-                return finish({
-                  complete: false,
-                  iterations: i,
-                  completionReason: `Review gate: quality review failed: ${message}`,
-                  lastVerify,
-                  logPath,
-                })
-              }
-              console.error(`[agent-loop] quality review failed (non-blocking): ${message}`)
-              break
-            }
-            reviewLog = {
-              verdict: parsedReview.verdict,
-              risk: parsedReview.risk,
-              blockersCount: parsedReview.blockers.length,
-              reviewCycle,
-            }
-            if (parsedReview.verdict === 'UNKNOWN' && reviewCycle < config.unparseableReviewRetries) {
-              console.error(
-                `[agent-loop] review verdict unparseable — retrying review (${reviewCycle}/${config.unparseableReviewRetries})`,
-              )
-              continue
-            }
-            break
-          }
-
-          // Terminal gate outcome (hard-fail or HITL escalation) for a blocker that
-          // persisted or an unparseable verdict that exhausted retries.
-          const gateStop = (gateLabel: string): AgentLoopResult => {
+        if (reviewPhase.outcome.action === 'stop') {
+          if (!reviewPhase.outcome.skipIterationLog) {
             appendLog(
               logPath,
               buildIterationLog({
@@ -440,111 +379,59 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                 reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
               }),
             )
-            // Escalate to a human instead of dead-ending: a person decides whether the
-            // (possibly irrelevant) blockers are real. Keeps a frontier model out of the
-            // loop-closing decision.
-            if (config.reviewGateHitl) {
-              let hitlTaskUuid: string | undefined
-              try {
-                hitlTaskUuid = createHitlCheckTask(
-                  reviewGateHitlDescription(parsedReview!, reviewCycle),
-                  resolveTaskwarriorProject(config.taskwarriorProject, ctx.profile),
-                )
-              } catch (err) {
-                const message = err instanceof Error ? err.message : String(err)
-                console.error(
-                  `[agent-loop] review gate: wanted HITL escalation but ${message} — falling back to hard-fail`,
-                )
-              }
-              if (hitlTaskUuid) {
-                console.error(
-                  `[agent-loop] review gate: ${gateLabel} after ${reviewCycle} cycle(s) — escalated to human review`,
-                )
-                logFailureDomainFromVerify(bundle.loopDir, {
-                  iteration: i,
-                  reason: 'review_gate_hitl',
-                  verify: finalVerify ?? verify,
-                })
-                return finish({
-                  complete: false,
-                  iterations: i,
-                  completionReason: `Review gate: ${gateLabel} after ${reviewCycle} review cycle(s) — escalated to human review. See review.md; a HITL task was created.`,
-                  lastVerify,
-                  logPath,
-                  hitlCheckTaskUuid: hitlTaskUuid,
-                  reviewEscalatedToHitl: true,
-                })
-              }
-            }
-            console.error(
-              `[agent-loop] review gate: ${gateLabel} after ${reviewCycle} cycle(s) — stopping`,
-            )
-            logFailureDomainFromVerify(bundle.loopDir, {
+          }
+          if (reviewPhase.outcome.failureDomainReason) {
+            logReviewGateFailureDomain({
+              loopDir: bundle.loopDir,
               iteration: i,
-              reason: 'review_gate',
               verify: finalVerify ?? verify,
-            })
-            return finish({
-              complete: false,
-              iterations: i,
-              completionReason: `Review gate: ${gateLabel} after ${reviewCycle} review cycle(s). See review.md and fix blockers manually or increase maxReviewCycles.`,
-              lastVerify,
-              logPath,
+              failureDomainReason: reviewPhase.outcome.failureDomainReason,
             })
           }
-
-          if (!parsedReview) {
-            // Review threw (non-gate) — fall through to success; nothing to gate.
-          } else if (parsedReview.verdict === 'UNKNOWN') {
-            // Unparseable after retries: terminal. Never a fix round, so the synthetic
-            // UNPARSEABLE_VERDICT_BLOCKER is never injected into the next agent prompt.
-            return gateStop('unparseable verdict')
-          } else if (config.reviewGate && reviewGateBlocksCompletion(parsedReview)) {
-            const gateBlockerCount = blockingBlockers(parsedReview).length
-            reviewCyclesUsed++
-            const blockerRoundsExhausted = reviewCyclesUsed >= config.maxReviewCycles
-            if (blockerRoundsExhausted) {
-              return gateStop(`BLOCKERS (${gateBlockerCount} gating item(s))`)
-            }
-            reviewBlockers = reviewGateBlockers(parsedReview)
-            appendLog(
-              logPath,
-              buildIterationLog({
-                iteration: i,
-                git,
-                verify: verifyForLog,
-                finalVerify: finalVerifyForLog,
-                verifyLog,
-                siblingRepos,
-                assistantText,
-                innerAgent,
-                review: reviewLog,
-                usage: assistantRun.usage,
-                model: iterationAgent.model,
-                reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
-              }),
-            )
-            console.error(
-              `[agent-loop] review gate: BLOCKERS (${gateBlockerCount} gating, ${parsedReview.blockers.length} total) — continuing for fix round ${reviewCyclesUsed}/${config.maxReviewCycles} (reasoning ${iterationAgent.reasoningEffort ?? 'default'})`,
-            )
-            await maybePauseAfterIteration(config, i)
-            continue
-          } else if (
-            config.reviewGate &&
-            parsedReview.verdict === 'BLOCKERS' &&
-            parsedReview.blockers.length > 0
-          ) {
-            reviewAdvisoryBlockers = true
-            console.error(
-              `[agent-loop] review gate: BLOCKERS verdict but only warning/none-impact items (${parsedReview.blockers.length}) — loop completes`,
-            )
-          } else if (!config.reviewGate && parsedReview.verdict === 'BLOCKERS') {
-            reviewAdvisoryBlockers = true
-            console.error(
-              `[agent-loop] advisory review: BLOCKERS (${parsedReview.blockers.length}) — loop still completes (reviewGate=false; set reviewGate=true to enforce)`,
-            )
-          }
+          return finish({
+            complete: false,
+            iterations: i,
+            completionReason: reviewPhase.outcome.completionReason,
+            lastVerify,
+            logPath,
+            ...(reviewPhase.outcome.hitlCheckTaskUuid
+              ? {
+                  hitlCheckTaskUuid: reviewPhase.outcome.hitlCheckTaskUuid,
+                  reviewEscalatedToHitl: reviewPhase.outcome.reviewEscalatedToHitl,
+                }
+              : {}),
+          })
         }
+
+        if (reviewPhase.outcome.action === 'continue') {
+          reviewBlockers = reviewPhase.outcome.reviewBlockers
+          reviewCyclesUsed = reviewPhase.outcome.reviewCyclesUsed
+          reviewLog = reviewPhase.outcome.reviewLog
+          appendLog(
+            logPath,
+            buildIterationLog({
+              iteration: i,
+              git,
+              verify: verifyForLog,
+              finalVerify: finalVerifyForLog,
+              verifyLog,
+              siblingRepos,
+              assistantText,
+              innerAgent,
+              review: reviewLog,
+              usage: assistantRun.usage,
+              model: iterationAgent.model,
+              reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+            }),
+          )
+          await maybePauseAfterIteration(config, i)
+          continue
+        }
+
+        if (reviewPhase.outcome.action === 'success' && reviewPhase.outcome.reviewAdvisoryBlockers) {
+          reviewAdvisoryBlockers = true
+        }
+
         appendLog(
           logPath,
           buildIterationLog({

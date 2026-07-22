@@ -15,8 +15,8 @@ Taskwarrior: `fe3f4076-b997-4d28-a59a-baf720c28e5d` (project `agent-loop`).
 move is to make that command wrap a **quantitative checklist** — same steps every
 iteration, no "looks good" handoff.
 
-The harness does **not** run agent skills as `verify` yet (Track B: optional
-`verifyMode: 'skill'`). Today you wire:
+The harness does **not** run agent skills as `verify` by default. Set `verifyMode: "skill"`
+when you want Track B (see [Track B](#track-b-verifymode-skill) below). Today you wire:
 
 1. `verify.sh` — executable steps the shell runs.
 2. `VERIFY.skill.md` — procedure the implementer agent follows when writing/fixing code.
@@ -89,10 +89,33 @@ Under **Acceptance criteria**, link the verifier explicitly:
 
 Preflight warns when GOAL.md does not mention measurable verify artifacts.
 
-## Track B (not shipped)
+## Track B (`verifyMode: skill`)
 
-Future: `verifyMode: "command" | "skill"` so the harness can invoke a Cursor/Cline skill
-as the verify phase. Track A stays the default and does not change the pipeline.
+Optional harness mode — default remains **`command`** (shell only).
+
+```json
+{
+  "verify": "bash .cursor/loops/my-task/verify.sh",
+  "verifyMode": "skill",
+  "verifySkill": ".cursor/loops/my-task/VERIFY.skill.md"
+}
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `verifyMode` | `"command"` | `"command"` → shell `verify` only; `"skill"` → agent verify pass then shell |
+| `verifySkill` | — | Path to `VERIFY.skill.md` (required when `verifyMode` is `"skill"`). Resolved relative to the loop directory, then repo root. |
+| `verify` | required | Shell gate after skill PASS. Use `"true"` for a noop when the skill agent is the only qualitative check. |
+
+### Skill verify flow
+
+1. Fresh agent session with `phase: 'verify'` (uses loop `runtime` / `model`).
+2. Prompt = `VERIFY.skill.md` body + `GOAL.md` acceptance criteria.
+3. Agent must end with **`VERIFY_RESULT: PASS`** or **`VERIFY_RESULT: FAIL`** (last footer wins).
+4. On **FAIL** or missing footer → iteration fails (shell `verify` is **not** run).
+5. On **PASS** → run shell `verify` (same as command mode). Exit `0` still wins.
+
+Cline runtimes load `@cline/sdk` via dynamic import (Cursor-only installs stay safe).
 
 ## Related tasks (UUIDs)
 

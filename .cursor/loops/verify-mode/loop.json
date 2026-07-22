@@ -1,0 +1,20 @@
+{
+  "runtime": "cursor",
+  "model": "composer-2.5",
+  "reviewModel": "grok-4.5",
+  "maxIterations": 8,
+  "verify": "bash .cursor/loops/verify-mode/verify.sh",
+  "postQualityReview": true,
+  "reviewGate": true,
+  "reviewReproduce": true,
+  "reviewReproduceAgent": false,
+  "maxReviewCycles": 2,
+  "reviewBlockerRecheck": true,
+  "syncOnSuccess": true,
+  "taskwarriorUuid": "fe3f4076-b997-4d28-a59a-baf720c28e5d",
+  "taskwarriorProject": "agent-loop",
+  "stagnationThreshold": 3,
+  "mode": "forward",
+  "notifyTelegram": true,
+  "delayMs": 0
+}

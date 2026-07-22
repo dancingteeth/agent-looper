@@ -17,7 +17,7 @@ import type { ClineLoopSession } from './clineAgent.js'
 export type AgentPromptOptions = {
   verbose?: boolean
   assistantOutput?: 'stdout' | 'none'
-  phase?: 'implement' | 'review'
+  phase?: 'implement' | 'review' | 'verify'
 }
 
 type PromptRunner = (

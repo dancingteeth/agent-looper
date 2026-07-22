@@ -51,7 +51,7 @@ export type CursorAgentRunOptions = {
   /** Validates against worker vs review allowlists. Defaults to worker. */
   role?: 'worker' | 'review'
   assistantOutput?: 'stdout' | 'none'
-  phase?: 'implement' | 'review'
+  phase?: 'implement' | 'review' | 'verify'
 }
 
 function requireApiKey(): string {

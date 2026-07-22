@@ -26,10 +26,16 @@ export const loopRuntimeSchema = z.enum([
   LOOP_RUNTIME_CLINE,
 ])
 
+export const loopVerifyModeSchema = z.enum(['command', 'skill']).default('command')
+
 export const loopConfigSchema = loopExtensionFieldsSchema
   .extend({
     maxIterations: z.number().int().min(1).max(50).default(8),
     verify: z.string().min(1),
+    /** command = shell verify only (default); skill = agent reads verifySkill then runs verify shell. */
+    verifyMode: loopVerifyModeSchema,
+    /** Path to VERIFY.skill.md — required when verifyMode is skill (loop dir or repo root). */
+    verifySkill: z.string().trim().min(1).optional(),
     finalVerify: z.string().optional(),
     runtime: loopRuntimeSchema.default(LOOP_RUNTIME_CURSOR),
     model: z.string().optional(),
@@ -95,6 +101,13 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     telegramAttachReview: z.boolean().default(true),
   })
   .superRefine((config, ctx) => {
+    if (config.verifyMode === 'skill' && !config.verifySkill) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'verifySkill is required when verifyMode is "skill"',
+        path: ['verifySkill'],
+      })
+    }
     try {
       validateLoopAgentConfig(config)
     } catch (err) {
