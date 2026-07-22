@@ -14,7 +14,7 @@ import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopCon
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { sendLoopTelegramReport, sendLoopTelegramReviewAttachment } from '../integrations/telegramNotify.js'
 import { formatLoopCompletionReport } from '../loop/loopReport.js'
-import { warnShellCommandsFromConfig } from '../loop/loopShellTrust.js'
+import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
 
 type CliOptions = {
@@ -34,6 +34,8 @@ type CliOptions = {
   mode?: 'forward' | 'reverse'
   pauseAfterIteration?: boolean
   notifyTelegram?: boolean
+  trustConfig?: boolean
+  requireTrustConfig?: boolean
 }
 
 function usage(): string {
@@ -59,6 +61,8 @@ ${printRepoRootHelp()}
   --mode <forward|reverse>        Loop mode (default from loop.json)
   --pause-after-iteration         Wait for Enter between iterations (TTY only)
   --no-telegram                   Skip Telegram completion report
+  --trust-config                  Acknowledge reviewed shell commands (verify / finalVerify / sync)
+  --require-trust-config          Abort unless --trust-config, loop.json trustConfig, or AGENT_LOOP_TRUST_CONFIG=1
 
 Cursor-only hackathon tip:
   --runtime cursor --review-gate
@@ -85,6 +89,8 @@ function parseArgs(argv: string[]): CliOptions {
   let mode: CliOptions['mode']
   let pauseAfterIteration: boolean | undefined
   let notifyTelegram: boolean | undefined
+  let trustConfig: boolean | undefined
+  let requireTrustConfig = false
 
   for (let i = 0; i < remaining.length; i++) {
     const arg = remaining[i]
@@ -173,6 +179,14 @@ function parseArgs(argv: string[]): CliOptions {
       notifyTelegram = false
       continue
     }
+    if (arg === '--trust-config') {
+      trustConfig = true
+      continue
+    }
+    if (arg === '--require-trust-config') {
+      requireTrustConfig = true
+      continue
+    }
     if (arg === '--help' || arg === '-h') {
       console.log(usage())
       process.exit(0)
@@ -203,6 +217,8 @@ function parseArgs(argv: string[]): CliOptions {
     mode,
     pauseAfterIteration,
     notifyTelegram,
+    trustConfig,
+    requireTrustConfig,
   }
 }
 
@@ -228,6 +244,7 @@ bundle = {
     mode: cli.mode,
     pauseAfterIteration: cli.pauseAfterIteration,
     notifyTelegram: cli.notifyTelegram,
+    trustConfig: cli.trustConfig,
   }),
 }
 
@@ -276,15 +293,17 @@ if (bundle.config.taskwarriorUuid && bundle.config.syncOnSuccess === false && !c
   )
 }
 
-warnShellCommandsFromConfig({
-  cwd: ctx.repoRoot,
-  verify: bundle.config.verify,
-  finalVerify: bundle.config.finalVerify,
-  syncCommand: ctx.profile.syncCommand,
-  skipSync: cli.skipSync,
-})
-
 try {
+  assertShellConfigTrusted({
+    cwd: ctx.repoRoot,
+    verify: bundle.config.verify,
+    finalVerify: bundle.config.finalVerify,
+    syncCommand: ctx.profile.syncCommand,
+    skipSync: cli.skipSync,
+    trustConfig: cli.trustConfig || bundle.config.trustConfig,
+    requireTrustConfig: cli.requireTrustConfig,
+  })
+
   const result = await runAgentLoop({ ctx, bundle, verbose: cli.verbose })
 
   console.error(`[agent-loop] finished complete=${result.complete} iterations=${result.iterations}`)

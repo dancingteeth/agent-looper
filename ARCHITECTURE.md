@@ -152,9 +152,18 @@ Exit code 0 = pass. Output truncated at 64KB.
 `detectStagnation()` on last N failures. If stagnant: log failure domain, abort.
 Otherwise: loop.
 
-**Step 9 — On success:** Run `finalVerify` (if configured), run `postQualityReview`
-(if enabled), check review gate. If gate blocks: inject blockers into next prompt,
-restart (up to `maxReviewCycles`). Otherwise: success.
+**Step 9 — On success:** Run `finalVerify` (if configured), then decide whether to run
+`postQualityReview`:
+
+- `true` / `false` — always run or skip the judge.
+- `"auto"` (default) — infer risk from `GOAL.md` + `verify` via merged keyword profiles
+  (`src/loop/loopRiskProfile.ts`): harness defaults → `REVIEWS.md` `## Loop risk inference`
+  → `agent-loop.repo.json` `loopRiskProfile` → per-loop `loopRiskProfile`. Run review when
+  inferred tier is not `low`. Set `reviewRisk` in `loop.json` to skip inference.
+- `reviewGate: true` always runs review regardless of `postQualityReview` / risk.
+
+If review runs: check review gate. If gate blocks: inject blockers into next prompt,
+restart (up to `maxReviewCycles`). Otherwise: success. Preview: `agent-loop-review-preview`.
 
 **Step 10 — Success cleanup:** Mark TW task done, create HITL task, run `syncCommand`.
 

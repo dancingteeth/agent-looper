@@ -46,8 +46,8 @@ Open Taskwarrior project: **`agent-loop`**. Use **UUID** in docs and `loop.json`
 
 Other `agent-loop` backlog: `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` (extract review-gate) — **done**,
 `de4144f2-9e6a-4cf6-8943-81efc49d4c5c` (loopRisk profiles) — **shipped**,
-`f3280589-70a0-463e-a472-6feccb622a70` (pricing drift check),
-`a774c5d7-5900-4d87-9092-dd0e8ba1cc38` (`--trust-config`).
+`f3280589-70a0-463e-a472-6feccb622a70` (pricing drift check) — **shipped**,
+`a774c5d7-5900-4d87-9092-dd0e8ba1cc38` (`--trust-config`) — **shipped**.
 
 ---
 

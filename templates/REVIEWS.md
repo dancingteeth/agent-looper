@@ -78,6 +78,9 @@ docs, formatting, internal tooling, test-only refactors
 
 Set `reviewRisk` in `loop.json` to `high` | `medium` | `low` to skip inference.
 
+Repo-level keyword merge: optional `loopRiskProfile` in `.cursor/agent-loop.repo.json`
+(see `templates/agent-loop.repo.json.example`).
+
 ## Reproduce-before-report (when `reviewReproduce` is on)
 
 Error+impact blockers must cite a path in the merge-base…**working tree** changed

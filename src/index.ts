@@ -177,6 +177,26 @@ export {
 } from './usage/loopUsage.js'
 export type { AgentRunPhase, LoopUsageRecord, LoopUsageSummary } from './usage/loopUsage.js'
 
+export {
+  checkModelPricingDrift,
+  collectModelPricingDriftIssues,
+  formatModelPricingDriftReport,
+  requiredLoopPricingModels,
+} from './usage/modelPricingDrift.js'
+export type { ModelPricingDriftIssue } from './usage/modelPricingDrift.js'
+
+export {
+  assertShellConfigTrusted,
+  collectShellCommandWarnings,
+  formatTrustConfigRequiredError,
+  isShellConfigTrusted,
+  isTrustConfigRequired,
+  warnShellCommandsFromConfig,
+  AGENT_LOOP_TRUST_CONFIG_ENV,
+  AGENT_LOOP_REQUIRE_TRUST_CONFIG_ENV,
+} from './loop/loopShellTrust.js'
+export type { ShellCommandWarning, ShellTrustInput } from './loop/loopShellTrust.js'
+
 export { assertLoopModelAllowed, assertCursorSdkModelAllowed, isBannedCursorLoopModel } from './usage/modelPolicy.js'
 
 export {

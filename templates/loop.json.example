@@ -7,6 +7,7 @@
   "maxIterations": 8,
   "verify": "bash .cursor/loops/example-fix/verify.sh",
   "postQualityReview": "auto",
+  "reviewRisk": "auto",
   "reviewGate": false,
   "maxReviewCycles": 2,
   "syncOnSuccess": true,

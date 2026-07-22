@@ -16,5 +16,6 @@
   "stagnationThreshold": 3,
   "mode": "forward",
   "notifyTelegram": true,
-  "delayMs": 0
+  "delayMs": 0,
+  "trustConfig": true
 }

@@ -1,0 +1,18 @@
+{
+  "taskwarriorProject": "my-project",
+  "syncCommand": null,
+  "defaultBranch": "main",
+  "agentsFile": "AGENTS.md",
+  "reviewsFile": "REVIEWS.md",
+  "skillsGlob": "packages/skills/*/SKILL.md",
+  "clientName": "@my-org/my-app",
+  "loopRiskProfile": {
+    "high": ["stripe-webhook", "crm-admin", "run-sql"],
+    "medium": ["checkout", "affiliate"],
+    "low": ["copy-only", "readme"]
+  },
+  "telegramNotify": {
+    "onSuccess": true,
+    "onFailure": true
+  }
+}

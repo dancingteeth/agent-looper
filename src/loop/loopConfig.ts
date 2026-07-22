@@ -112,6 +112,11 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     notifyTelegram: z.boolean().default(true),
     /** Attach latest review.md to Telegram after the completion summary (when present). */
     telegramAttachReview: z.boolean().default(true),
+    /**
+     * When true, treat shell commands from this loop as pre-reviewed (skips --trust-config gate).
+     * Prefer explicit --trust-config for one-off runs.
+     */
+    trustConfig: z.boolean().default(false),
   })
   .superRefine((config, ctx) => {
     if (config.verifyMode === 'skill' && !config.verifySkill) {
@@ -226,6 +231,7 @@ export function mergeLoopConfig(
       | 'pauseAfterIteration'
       | 'injectFailureContext'
       | 'notifyTelegram'
+      | 'trustConfig'
     >
   >,
 ): LoopConfig {

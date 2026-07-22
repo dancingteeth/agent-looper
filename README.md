@@ -186,8 +186,52 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reviewReproduceAgent` | `false` | Fresh Cursor KEEP/DROP on gating blockers (needs `reviewReproduce`) |
 | `reviewSecondaryRuntime` | (unset) | Cline SDK second-family judge (`cline-pass` or `cline`); unset = off |
 | `reviewSecondaryModel` | (default) | Cline model for secondary review |
+| `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate) |
 
 Blocker grammar: ship `REVIEWS.md` from `templates/REVIEWS.md`. Library: `reviewVerdictAllowsCompletion` takes a full `ParsedReview` for impact-severity gating.
+
+### `postQualityReview: "auto"` and loop risk
+
+When `postQualityReview` is `"auto"` (default), the harness infers **high / medium / low**
+from keywords in `GOAL.md` + the `verify` command. Review runs when tier is not `low`.
+`reviewGate: true` always runs review regardless.
+
+Merge order (each layer adds keywords; first match wins high → medium → low):
+
+1. Harness defaults (`DEFAULT_LOOP_RISK_KEYWORDS` in `loopRiskProfile.ts`)
+2. `REVIEWS.md` → `## Loop risk inference` → `### HIGH` / `MEDIUM` / `LOW`
+3. `.cursor/agent-loop.repo.json` → `loopRiskProfile`
+4. `loop.json` → `loopRiskProfile` (per-loop merge)
+
+Override inference entirely: `"reviewRisk": "high"` | `"medium"` | `"low"` in `loop.json`.
+
+Preview without running the loop:
+
+```bash
+agent-loop-review-preview .cursor/loops/my-task
+```
+
+Example repo overlay (`agent-loop.repo.json`; full sample: `templates/agent-loop.repo.json.example`):
+
+```json
+{
+  "loopRiskProfile": {
+    "high": ["stripe-webhook", "crm-admin"],
+    "medium": ["checkout"],
+    "low": ["copy-only"]
+  }
+}
+```
+
+Example per-loop override (`loop.json`):
+
+```json
+{
+  "postQualityReview": "auto",
+  "reviewRisk": "auto",
+  "loopRiskProfile": { "high": ["payment-refund"] }
+}
+```
 
 CLI overrides: `--mode reverse`, `--pause-after-iteration`, `--review-gate`, `--no-telegram`, `--review-model <id>`.
 
@@ -257,7 +301,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
 | `agent-check cursor\|cline` | SDK + API key smoke |
 | `agent-loop-init` | Scaffold templates |
-| `agent-loop-doctor` | Validate `dist/` + `file:` checkout path |
+| `agent-loop-doctor` | Validate `dist/` + `file:` checkout path; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
 | `agent-loop-review-run` | Post-loop quality review for one bundle |
 | `agent-loop-review-preview` | Preview review risk / prompt |
@@ -290,6 +334,12 @@ For **trusted checkouts** you control:
 - `verify` / `finalVerify` / `syncCommand` run via `shell: true` — malicious config = arbitrary shell.
 - Verifier stdout/stderr is injected into the next worker prompt (soft guardrails only).
 - On start, the CLI prints configured shell commands and flags obvious exfil patterns (`curl`, `wget`, `| sh`, backticks, `$()`).
+
+**Trust gate (opt-in strict mode):**
+
+- Default: warn + tip (`--trust-config` after review).
+- `--require-trust-config` or `AGENT_LOOP_REQUIRE_TRUST_CONFIG=1`: abort unless you pass `--trust-config`, set `trustConfig: true` in `loop.json`, or `AGENT_LOOP_TRUST_CONFIG=1`.
+- Dogfood / CI: set `trustConfig: true` on known-safe loop bundles, or export `AGENT_LOOP_TRUST_CONFIG=1` in Doppler.
 
 Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/agent-loop.repo.json` first.
 

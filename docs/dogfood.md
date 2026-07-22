@@ -36,6 +36,7 @@ Publish to npm only when you want install without a sibling checkout.
 | `verify-mode` | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | M4 Track B `verifyMode` (done) |
 | `post-success-review` | `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` | Extract review-gate state machine (done) |
 | `loop-risk-profiles` | `de4144f2-9e6a-4cf6-8943-81efc49d4c5c` | Configurable loopRisk profiles (done) |
+| `pricing-trust-hygiene` | `f3280589-…` / `a774c5d7-…` | Model pricing drift + `--trust-config` gate (done) |
 | `example-fix` | — | Scaffold template only |
 
 ## Review overlays

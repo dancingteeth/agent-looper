@@ -22,11 +22,22 @@ export type LoopUsageSummary = {
   totalCostUsd: number
 }
 
-/** Official API rates (USD per 1M tokens). */
+/** Official API rates (USD per 1M tokens). Kept in sync with CLINE_PASS_LOOP_MODELS via modelPricingDrift.test.ts */
 export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: number }> = {
   'composer-2.5': { input: 0.5, output: 2.5 },
   'grok-4.5': { input: 2.0, output: 6.0 },
   'cline-pass/deepseek-v4-flash': { input: 0.14, output: 0.28 },
+  'cline-pass/mimo-v2.5': { input: 0.14, output: 0.28 },
+  'cline-pass/minimax-m3': { input: 0.14, output: 0.28 },
+  'cline-pass/qwen3.7-plus': { input: 0.2, output: 0.4 },
+  'cline-pass/kimi-k2.7-code': { input: 0.2, output: 0.4 },
+  'cline-pass/deepseek-v4-pro': { input: 0.2, output: 0.4 },
+  'cline-pass/glm-5.2': { input: 0.2, output: 0.4 },
+  'cline-pass/kimi-k2.6': { input: 0.2, output: 0.4 },
+  'cline-pass/mimo-v2.5-pro': { input: 0.2, output: 0.4 },
+  'cline-pass/qwen3.7-max': { input: 0.25, output: 0.5 },
+  'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
+  'google/gemini-2.5-pro': { input: 1.25, output: 5.0 },
 }
 
 const TOKENS_PER_MILLION = 1_000_000

@@ -11,6 +11,10 @@ import {
   inspectPackageInstall,
   validatePackageDist,
 } from '../packageDist.js'
+import {
+  checkModelPricingDrift,
+  formatModelPricingDriftReport,
+} from '../usage/modelPricingDrift.js'
 
 function resolvePackageRoot(fromModuleUrl: string): string {
   return path.resolve(path.dirname(fileURLToPath(fromModuleUrl)), '..', '..')
@@ -66,10 +70,12 @@ const installReport = {
 }
 
 const profileCheck = validateRepoProfile(resolveRepoContext({ repoRoot: consumerRoot }))
+const pricingDrift = checkModelPricingDrift()
 const report = {
   ...installReport,
   profile: profileCheck,
-  ok: installReport.ok && profileCheck.ok,
+  modelPricing: pricingDrift,
+  ok: installReport.ok && profileCheck.ok && pricingDrift.ok,
 }
 
 if (json) {
@@ -102,6 +108,11 @@ if (!profileCheck.ok) {
 
 for (const warning of profileCheck.warnings) {
   console.error(`[agent-loop-doctor] warn: ${warning}`)
+}
+
+if (!pricingDrift.ok) {
+  console.error('[agent-loop-doctor] model pricing drift:')
+  console.error(formatModelPricingDriftReport(pricingDrift.issues))
 }
 
 process.exit(1)

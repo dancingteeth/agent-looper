@@ -1,0 +1,31 @@
+import { describe, expect, it } from 'vitest'
+import { CLINE_PASS_LOOP_MODELS } from '../loop/loopAgentConfig.js'
+import { MODEL_PRICING_PER_MILLION } from './loopUsage.js'
+import {
+  checkModelPricingDrift,
+  collectModelPricingDriftIssues,
+  requiredLoopPricingModels,
+} from './modelPricingDrift.js'
+
+describe('modelPricingDrift', () => {
+  it('has no drift between harness models and MODEL_PRICING_PER_MILLION', () => {
+    const { ok, issues } = checkModelPricingDrift()
+    expect(issues).toEqual([])
+    expect(ok).toBe(true)
+  })
+
+  it('requires pricing for every CLINE_PASS_LOOP_MODELS slug', () => {
+    for (const model of CLINE_PASS_LOOP_MODELS) {
+      expect(MODEL_PRICING_PER_MILLION[model], `missing pricing for ${model}`).toBeDefined()
+    }
+  })
+
+  it('flags missing and stale pricing entries', () => {
+    const required = requiredLoopPricingModels()
+    expect(required.length).toBeGreaterThan(CLINE_PASS_LOOP_MODELS.length)
+
+    const issues = collectModelPricingDriftIssues()
+    expect(issues.some((i) => i.kind === 'missing-pricing')).toBe(false)
+    expect(issues.some((i) => i.kind === 'stale-pricing')).toBe(false)
+  })
+})

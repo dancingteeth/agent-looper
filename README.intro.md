@@ -122,11 +122,22 @@ Need Cline? Add `@cline/sdk`, set `CLINE_API_KEY`, use `--runtime cline-pass` or
   "reviewModel": "grok-4.5",
   "maxIterations": 6,
   "verify": "bash .cursor/loops/my-task/verify.sh",
-  "postQualityReview": true,
+  "postQualityReview": "auto",
   "reviewGate": true,
   "notifyTelegram": false
 }
 ```
+
+`postQualityReview: "auto"` (the default) runs the judge only when inferred risk is **not low** — docs/harness-only loops skip review and save judge tokens. Set `"postQualityReview": true` when you always want `review.md`.
+
+Preview before a run:
+
+```bash
+agent-loop-review-preview .cursor/loops/my-task
+# Risk: MEDIUM | Auto: would run review.md after success
+```
+
+Tune inference in `REVIEWS.md` (`## Loop risk inference`), `.cursor/agent-loop.repo.json` (`loopRiskProfile`), or per-loop `loopRiskProfile` / `reviewRisk` in `loop.json`. See [`README.md`](./README.md#loopjson--review--quality).
 
 Bundle layout:
 
@@ -146,7 +157,7 @@ Write `verify.sh` like a skeptic: typecheck, focused tests, one smoke command. I
 
 ## Cost & speed (honest)
 
-- **Fast path:** Cursor worker + tight `verify.sh` + `reviewGate` only when the change can actually hurt (auth, data, gate bypass).  
+- **Fast path:** Cursor worker + tight `verify.sh` + `reviewGate` only when the change can actually hurt (auth, data, gate bypass). Use `postQualityReview: "auto"` so docs-only loops skip the judge.  
 - **Cheap path:** ClinePass DeepSeek Flash as worker; escalate model only after stagnation.  
 - **Don’t:** leave `reviewReproduceAgent` + secondary Cline + full suite verify all on for a docs typo.  
 - Stderr prints token / ~$ estimates when the run finishes. Treat them as guidance, not invoices.
@@ -159,11 +170,13 @@ Once the basic loop is boringly reliable:
 
 | Feature | One line |
 | --- | --- |
+| `postQualityReview: "auto"` + `REVIEWS.md` risk keywords | Skip judge on low-risk loops; domain keywords in `## Loop risk inference` |
 | `reviewReproduce` / `reviewReproduceAgent` | Kill false blockers before they reopen the gate |
 | `reviewSecondaryRuntime` | Second-family judge via Cline SDK |
 | `verifyMode: skill` | Agent runs `VERIFY.skill.md`, then shell still wins |
 | `agent-loop-batch` / meta-loop | Probe → fix → re-probe |
 | `agent-loop-meta-review` | Read-only report across N finished loops |
+| `--trust-config` / `trustConfig` | Ack reviewed shell commands; optional strict gate |
 | Telegram + Taskwarrior UUID | Completion pings; auto-`task done` |
 
 Reference (flags, CLIs, threat model): [`README.md`](./README.md).
@@ -172,7 +185,7 @@ Reference (flags, CLIs, threat model): [`README.md`](./README.md).
 
 ## Trust model (one paragraph)
 
-`verify` / `finalVerify` / `syncCommand` run with `shell: true` in **your** repo. Only run this on checkouts you trust. Review those commands before the first run. We’re not your sandbox.
+`verify` / `finalVerify` / `syncCommand` run with `shell: true` in **your** repo. Only run this on checkouts you trust. Review those commands before the first run; pass `--trust-config` (or set `trustConfig: true` in `loop.json`) after review. Strict CI can set `AGENT_LOOP_REQUIRE_TRUST_CONFIG=1`.
 
 ---
 

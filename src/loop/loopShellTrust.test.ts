@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { collectShellCommandWarnings, warnShellCommandsFromConfig } from './loopShellTrust.js'
+import {
+  assertShellConfigTrusted,
+  collectShellCommandWarnings,
+  formatTrustConfigRequiredError,
+  isShellConfigTrusted,
+  isTrustConfigRequired,
+  warnShellCommandsFromConfig,
+} from './loopShellTrust.js'
 
 describe('collectShellCommandWarnings', () => {
   it('flags suspicious network and pipe-to-sh patterns', () => {
@@ -34,5 +41,49 @@ describe('warnShellCommandsFromConfig', () => {
     expect(errorSpy).toHaveBeenCalledWith('  syncCommand: pnpm tasks:sync')
 
     errorSpy.mockRestore()
+  })
+})
+
+describe('trust config gate', () => {
+  it('detects trusted state from CLI and env', () => {
+    expect(isShellConfigTrusted({ trustConfig: true })).toBe(true)
+    expect(isShellConfigTrusted({ env: { AGENT_LOOP_TRUST_CONFIG: '1' } })).toBe(true)
+    expect(isShellConfigTrusted({})).toBe(false)
+  })
+
+  it('throws when require-trust-config is set without acknowledgment', () => {
+    expect(() =>
+      assertShellConfigTrusted({
+        cwd: '/tmp/repo',
+        verify: 'pnpm test',
+        requireTrustConfig: true,
+      }),
+    ).toThrow(/not trusted/)
+  })
+
+  it('allows run when trusted under require mode', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(() =>
+      assertShellConfigTrusted({
+        cwd: '/tmp/repo',
+        verify: 'pnpm test',
+        requireTrustConfig: true,
+        trustConfig: true,
+      }),
+    ).not.toThrow()
+    errorSpy.mockRestore()
+  })
+
+  it('formats actionable error text', () => {
+    const message = formatTrustConfigRequiredError({
+      cwd: '/repo',
+      verify: 'bash verify.sh',
+    })
+    expect(message).toContain('verify: bash verify.sh')
+    expect(message).toContain('--trust-config')
+  })
+
+  it('honors AGENT_LOOP_REQUIRE_TRUST_CONFIG env', () => {
+    expect(isTrustConfigRequired({ env: { AGENT_LOOP_REQUIRE_TRUST_CONFIG: '1' } })).toBe(true)
   })
 })
