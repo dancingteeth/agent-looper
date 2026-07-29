@@ -22,14 +22,14 @@ export default defineConfig({
         'src/cli/review-preview.ts',
         'src/cli/meta-review.ts',
       ],
-      // Ratchet: thresholds sit ~3 points below current coverage (78/65/86/79 as
-      // of the coverage-gate introduction). Raise them as coverage improves;
-      // lowering requires a PR discussion. Enforced via `pnpm test:coverage` in CI.
+      // Ratchet: thresholds sit ~3–4 points below current coverage (84/73/90/85 as
+      // of the stream/taskwarrior/pause test expansion). Raise them as coverage
+      // improves; lowering requires a PR discussion. Enforced via `pnpm test:coverage` in CI.
       thresholds: {
-        lines: 75,
-        branches: 62,
-        functions: 84,
-        statements: 76,
+        lines: 81,
+        branches: 69,
+        functions: 87,
+        statements: 80,
       },
     },
   },

@@ -11,14 +11,20 @@ import { StreamCollector } from '../stream/streamCollect.js'
 import { assertCursorSdkModelAllowed } from '../usage/modelPolicy.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 
+export const AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV = 'AGENT_LOOP_CURSOR_TIMEOUT_MS'
 const DEFAULT_CURSOR_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 
-function resolveCursorSessionTimeoutMs(): number {
-  const raw = process.env.AGENT_LOOP_CURSOR_TIMEOUT_MS?.trim()
+/** Resolve session timeout before starting a Cursor run (fail fast on bad env). */
+export function resolveCursorSessionTimeoutMs(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const raw = env[AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV]?.trim()
   if (!raw) return DEFAULT_CURSOR_SESSION_TIMEOUT_MS
   const parsed = Number(raw)
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error('AGENT_LOOP_CURSOR_TIMEOUT_MS must be a positive number of milliseconds')
+    throw new Error(
+      `${AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV} must be a positive number of milliseconds`,
+    )
   }
   return parsed
 }
@@ -92,6 +98,8 @@ export async function runCursorAgentPrompt(
   assertCursorSdkModelAllowed(modelId, role)
 
   const apiKey = requireApiKey()
+  // Fail fast on a bad timeout before Agent.create / send (avoids burning a paid run).
+  const timeoutMs = resolveCursorSessionTimeoutMs()
   const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
   const phase = options.phase ?? (role === 'review' ? 'review' : 'implement')
   const storeDir = path.join(ctx.repoRoot, '.cursor', 'sdk-runs')
@@ -118,7 +126,7 @@ export async function runCursorAgentPrompt(
       assistantOutput: options.assistantOutput ?? 'stdout',
       collector: options.collector,
     })
-    const result = await waitForCursorRun(run.wait(), resolveCursorSessionTimeoutMs(), async () => {
+    const result = await waitForCursorRun(run.wait(), timeoutMs, async () => {
       console.error(`[agent-loop:cursor] timeout — cancelling remote run run_id=${run.id}`)
       await run.cancel()
     })

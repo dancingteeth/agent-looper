@@ -39,7 +39,7 @@ vi.mock('../context/defaultBranch.js', () => ({
 }))
 
 vi.mock('node:child_process', () => ({
-  execFileSync: vi.fn((cmd: string, args?: string[]) => {
+  execFileSync: vi.fn((_cmd: string, args?: string[]) => {
     if (args?.[0] === 'merge-base') return 'abc123'
     if (args?.[0] === 'diff' && args.includes('--stat')) {
       return ' src/example.ts | 2 ++\n'

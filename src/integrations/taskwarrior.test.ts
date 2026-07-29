@@ -39,6 +39,8 @@ describe('taskwarriorProjectSchema', () => {
   it('rejects project names with spaces', () => {
     expect(() => taskwarriorProjectSchema.parse('my project')).toThrow(/spaces/i)
   })
+})
+
 describe('escapeTaskDescriptionFilter', () => {
   it('escapes regex metacharacters so descriptions match literally', () => {
     expect(escapeTaskDescriptionFilter('fix auth (v1.2) [prod]')).toBe(
@@ -57,6 +59,4 @@ describe('escapeTaskDescriptionFilter', () => {
   it('leaves plain text unchanged', () => {
     expect(escapeTaskDescriptionFilter('HITL Check: plain text')).toBe('/HITL Check: plain text/')
   })
-})
-
 })

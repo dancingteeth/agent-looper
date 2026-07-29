@@ -29,7 +29,7 @@ New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works,
 
 **Factory scale:** `agent-loop-batch` (sequential + meta-loop probe→fix), `agent-loop-meta-review` (read-only cross-loop report over N bundles).
 
-**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `AGENT_LOOP_TELEGRAM_*`).
+**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
 
 Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md).
 
@@ -365,6 +365,19 @@ For **trusted checkouts** you control:
 - Dogfood / CI: set `trustConfig: true` on known-safe loop bundles, or export `AGENT_LOOP_TRUST_CONFIG=1` in Doppler.
 
 Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/agent-loop.repo.json` first.
+
+## Environment variables
+
+| Variable | Role |
+| --- | --- |
+| `CURSOR_API_KEY` | Cursor SDK auth (worker / judge) |
+| `CLINE_API_KEY` | Cline SDK auth (optional peer runtime) |
+| `AGENT_LOOP_VERBOSE` | `1` / `true` — extra stderr stream detail |
+| `AGENT_LOOP_CURSOR_TIMEOUT_MS` | Cursor run timeout in milliseconds (default **2700000** = 45m). Must be a positive number; validated before `Agent.create` so a bad value fails without burning a paid run. On timeout the harness cancels the remote run. |
+| `AGENT_LOOP_TRUST_CONFIG` | `1` — treat shell config as reviewed/trusted |
+| `AGENT_LOOP_REQUIRE_TRUST_CONFIG` | `1` — abort unless trust is set (CLI / env / `loop.json`) |
+| `AGENT_LOOP_TELEGRAM_BOT_TOKEN` | Telegram bot token (fallback: `TELEGRAM_BOT_TOKEN`) |
+| `AGENT_LOOP_TELEGRAM_CHAT_ID` | Telegram chat id (or `telegramNotify.chatId` in the repo profile) |
 
 ## Telegram completion reports
 

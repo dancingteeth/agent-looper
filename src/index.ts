@@ -113,7 +113,11 @@ export {
 } from './loop/loopRiskProfile.js'
 export type { LoopRiskKeywords, LoopRiskProfileOverride } from './loop/loopRiskProfile.js'
 
-export { runCursorAgentPrompt } from './agents/cursorAgent.js'
+export {
+  runCursorAgentPrompt,
+  resolveCursorSessionTimeoutMs,
+  AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV,
+} from './agents/cursorAgent.js'
 export type { CursorAgentRunOptions } from './agents/cursorAgent.js'
 
 export {

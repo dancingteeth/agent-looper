@@ -3,7 +3,7 @@ import path from 'node:path'
 import { z } from 'zod'
 import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
 import { runAgentLoop, type AgentLoopResult } from './agentLoop.js'
-import { loadLoopBundle, mergeLoopConfig, type LoopConfig } from './loopConfig.js'
+import { loadLoopBundle } from './loopConfig.js'
 import {
   createHitlCheckTask,
   hitlCheckDescriptionSchema,

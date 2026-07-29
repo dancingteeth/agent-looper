@@ -1,5 +1,34 @@
 import { describe, expect, it, vi } from 'vitest'
-import { CursorRunTimeoutError, waitForCursorRun } from './cursorAgent.js'
+import {
+  AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV,
+  CursorRunTimeoutError,
+  resolveCursorSessionTimeoutMs,
+  waitForCursorRun,
+} from './cursorAgent.js'
+
+describe('resolveCursorSessionTimeoutMs', () => {
+  it('defaults to 45 minutes when unset', () => {
+    expect(resolveCursorSessionTimeoutMs({})).toBe(45 * 60 * 1000)
+  })
+
+  it('parses a positive override from env', () => {
+    expect(
+      resolveCursorSessionTimeoutMs({ [AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV]: '120000' }),
+    ).toBe(120000)
+  })
+
+  it('rejects zero, negative, and non-numeric values', () => {
+    expect(() =>
+      resolveCursorSessionTimeoutMs({ [AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV]: '0' }),
+    ).toThrow(/positive number/)
+    expect(() =>
+      resolveCursorSessionTimeoutMs({ [AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV]: '-1' }),
+    ).toThrow(/positive number/)
+    expect(() =>
+      resolveCursorSessionTimeoutMs({ [AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV]: 'nope' }),
+    ).toThrow(/positive number/)
+  })
+})
 
 describe('waitForCursorRun', () => {
   it('resolves with the run result before the timeout', async () => {
