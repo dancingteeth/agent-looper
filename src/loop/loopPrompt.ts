@@ -4,6 +4,10 @@ import { buildFailureContextPromptSection } from './loopFailureContext.js'
 import type { GitWorkspaceSnapshot } from './loopGit.js'
 import type { VerifyResult } from './loopVerify.js'
 import { renderLoopPromptRulesSection } from './loopSafetyRules.js'
+import {
+  formatGuidePacketsForPrompt,
+  type GuidePacket,
+} from '../review/guidePackets.js'
 
 export type LoopPromptInput = {
   goal: string
@@ -14,9 +18,14 @@ export type LoopPromptInput = {
   priorFailures: VerifyResult[]
   stagnationRepeatCount?: number
   agentsFile?: string
+  /** @deprecated Prefer guidePackets — kept for callers that only have raw lines. */
   reviewBlockers?: string[]
+  /** Structured Guide feedback from reviewGate continue (preferred over reviewBlockers). */
+  guidePackets?: GuidePacket[]
   /** Inlined epic skill runbooks (from GOAL / loop.json). */
   skillsSection?: string
+  /** Per-batch fan-out rubric (prompt-only; does not rewrite GOAL.md). */
+  batchRubric?: string
   mode?: LoopMode
   failureContext?: string
 }
@@ -46,18 +55,7 @@ The verifier failed **${input.stagnationRepeatCount}** times with the same outpu
 `
       : ''
 
-  const reviewBlockersSection =
-    input.reviewBlockers && input.reviewBlockers.length > 0
-      ? `## Review blockers (must fix)
-
-The verifier passed, but the post-loop quality review returned **BLOCKERS**. Fix the items below that are achievable **in-repo** (code, docs, tests). Do **not** expand scope beyond the goal.
-
-Out-of-repo blockers (task traceability UUIDs, merge policy for unrelated branch diffs, human-only deploy steps) cannot be fixed by you — ignore those if listed.
-
-${input.reviewBlockers.map((b, i) => `${i + 1}. ${b}`).join('\n')}
-
-`
-      : ''
+  const reviewGuideSection = buildReviewGuideSection(input)
 
   const modeSection = input.mode === 'reverse' ? buildReverseModePromptSection() : ''
   const failureContextSection =
@@ -71,11 +69,12 @@ ${input.reviewBlockers.map((b, i) => `${i + 1}. ${b}`).join('\n')}
       : ''
 
   const rulesSection = renderLoopPromptRulesSection(agentsFile)
+  const batchRubricSection = buildBatchRubricSection(input.batchRubric)
 
   // Stable head first (intro + goal + skills + mode + rules) so the prompt prefix is
   // byte-identical across iterations and the provider prefix cache is reused. Volatile
-  // content (git snapshot, verifier results, failures, stagnation, review blockers, failure
-  // context) and the iteration counter go last.
+  // content (git snapshot, batch rubric, verifier results, failures, stagnation, review
+  // guides, failure context) and the iteration counter go last.
   return `You are a coding agent in a fresh-context fix-until-green loop.
 An external shell verifier decides success — do not claim the task is finished.
 
@@ -98,7 +97,7 @@ ${input.git.statusPorcelain}
 ${input.git.diffStat}
 \`\`\`
 
-## Last verifier result
+${batchRubricSection}## Last verifier result
 
 ${lastSection}
 
@@ -106,10 +105,47 @@ ${lastSection}
 
 ${failureSection}
 
-${stagnationSection}${reviewBlockersSection}${failureContextSection}## This iteration
+${stagnationSection}${reviewGuideSection}${failureContextSection}## This iteration
 
 Iteration ${input.iteration} of ${input.maxIterations}.
 `
+}
+
+function buildBatchRubricSection(batchRubric?: string): string {
+  if (!batchRubric?.trim()) return ''
+  return `## Batch rubric
+
+${batchRubric.trim()}
+
+`
+}
+
+function buildReviewGuideSection(input: LoopPromptInput): string {
+  if (input.guidePackets && input.guidePackets.length > 0) {
+    return `## Guide packets (must fix)
+
+The verifier passed, but the post-loop quality review returned **gating** findings (**Guide** / Deny). Fix each **Required change** that is achievable **in-repo** (code, docs, tests). Do **not** expand scope beyond the goal.
+
+Out-of-repo items (task UUIDs, merge policy, human-only deploy) cannot be fixed by you — ignore those if listed.
+
+${formatGuidePacketsForPrompt(input.guidePackets)}
+
+`
+  }
+
+  if (input.reviewBlockers && input.reviewBlockers.length > 0) {
+    return `## Review blockers (must fix)
+
+The verifier passed, but the post-loop quality review returned **BLOCKERS**. Fix the items below that are achievable **in-repo** (code, docs, tests). Do **not** expand scope beyond the goal.
+
+Out-of-repo blockers (task traceability UUIDs, merge policy for unrelated branch diffs, human-only deploy steps) cannot be fixed by you — ignore those if listed.
+
+${input.reviewBlockers.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+
+`
+  }
+
+  return ''
 }
 
 function formatVerifyOutput(verify: VerifyResult): string {

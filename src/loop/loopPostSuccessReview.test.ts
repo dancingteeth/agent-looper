@@ -129,6 +129,9 @@ describe('resolvePostSuccessReviewOutcome', () => {
     })
     if (outcome.action === 'continue') {
       expect(outcome.reviewBlockers[0]).toContain('Docs')
+      expect(outcome.guidePackets).toHaveLength(1)
+      expect(outcome.guidePackets[0]!.reason).toMatch(/Docs/)
+      expect(outcome.guidePackets[0]!.requiredChange).toMatch(/README missing/)
     }
   })
 

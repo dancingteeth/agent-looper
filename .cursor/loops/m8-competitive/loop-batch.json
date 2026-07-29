@@ -1,0 +1,19 @@
+{
+  "loops": [
+    {
+      "path": "batch-item-rubrics",
+      "rubric": "Schema accepts string|{path,rubric}; prompt shows Batch rubric; tests green; backward compatible."
+    },
+    {
+      "path": "computer-use-verify-example",
+      "rubric": "Templates + docs only; example verify stub runnable; no Playwright dependency."
+    },
+    {
+      "path": "cursor-auto-model",
+      "rubric": "Opt-in Auto only if SDK supports + logs routed id; else research doc; default stays composer-2.5."
+    }
+  ],
+  "taskwarriorProject": "agent-loop",
+  "syncOnSuccess": true,
+  "notifyTelegram": true
+}

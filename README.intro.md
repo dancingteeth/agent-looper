@@ -9,10 +9,13 @@ tags:
 
 **Fix-until-green for Cursor (and Cline):** one frozen goal, a cheap worker that edits the repo, a shell check that decides “done,” optional smarter review that can send the worker back — until the check is green or you stop it.
 
+Software is becoming a hierarchy of loops. The highest-value human work is **deciding which loops to create** — writing a measurable `GOAL.md` + `verify.sh`. The harness owns the grind; you own the finish line. (Models will keep changing; this system compounds across them.)
+
 If you’ve heard “stop prompting, start looping” and you’re hunting GitHub for a non-theater implementation — this is that: **small, measurable, opt-in complexity**, default path is Cursor-only and relatively cheap.
 
 > Full reference (every flag, threat model, consumer wiring): [`README.md`](./README.md)  
-> Deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+> Deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md)  
+> Before a tricky loop: [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md)
 
 ---
 

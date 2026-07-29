@@ -347,6 +347,19 @@ PR that lands #1.
 | **M3** | Optional second-family judge | Cursor-only still default; secondary opt-in |
 | **M4** | Verify skill template (+ optional harness mode) | Track A done; consumer adopts `verify.sh`; Track B optional |
 | **M5** | Meta-review CLI | Batch report over N loops without re-implement |
+| **M6** | Competitive P0 (docs/templates) | Positioning, prompt-diet, unknowns preflight, metric-grind template, `llms.txt` |
+| **M7** | Intervention + Guide packets | **Shipped** — Proceed/Guide/Deny/Confirm; Guide packets; `status` done\|continue\|waiting; trivial-verify warn |
+| **M8** | Batch rubrics / Auto model (optional) | **Shipped** — batch `{path,rubric}`; computer-use templates; Auto **blocked** pending SDK (`docs/cursor-auto-router.md`) |
+
+### M6–M8 context (2026-07 competitive session)
+
+Industry converged on goal + loop + judge (Claude Code `/goal`, Mastra Factory/Goals,
+Kilo self-test, Strands steering, Cursor Router). agent-loop’s **non-negotiable wedge**:
+shell exit `0` + fresh context per iteration — not LLM-as-sole-exit, not thread memory,
+not issue→prod factory UI.
+
+Steal map and priorities: session canvas `session-steal-decisions` +
+[`competitive-steal-backlog.md`](./competitive-steal-backlog.md).
 
 ---
 
@@ -355,3 +368,5 @@ PR that lands #1.
 - Replacing `verify` with LLM self-assessment.
 - Auto-merging or auto-closing work without human policy when HITL is configured.
 - Enabling full gate stack by default on trivial loops (`reviewGate` stays opt-in).
+- Climbing to a GitHub/Linear/Slack “software factory” product (stay the harness factories compose).
+- Accumulating conversation managers / same-session self-exit as the product spine.

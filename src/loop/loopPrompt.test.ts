@@ -100,6 +100,36 @@ describe('buildAgentLoopPrompt', () => {
     expect(prompt).toContain('Out-of-repo blockers')
   })
 
+  it('prefers guide packets over raw review blockers', () => {
+    const prompt = buildAgentLoopPrompt({
+      goal: 'Fix docs',
+      iteration: 2,
+      maxIterations: 5,
+      git: {
+        branch: 'main',
+        shortSha: 'abc1234',
+        diffStat: '',
+        statusPorcelain: '',
+      },
+      lastVerify: null,
+      priorFailures: [],
+      reviewBlockers: ['raw fallback should not appear'],
+      guidePackets: [
+        {
+          reason: 'Docs missing (impact: false-closure)',
+          requiredChange: 'Add README acceptance section',
+          impact: 'false-closure',
+          severity: 'error',
+          raw: 'severity: error impact: false-closure **Docs missing** — Add README',
+        },
+      ],
+    })
+    expect(prompt).toContain('Guide packets (must fix)')
+    expect(prompt).toContain('**Guide** — Docs missing')
+    expect(prompt).toContain('Required change: Add README acceptance section')
+    expect(prompt).not.toContain('raw fallback should not appear')
+  })
+
   it('includes reverse mode section when mode is reverse', () => {
     const prompt = buildAgentLoopPrompt({
       goal: 'Rebuild parser',
@@ -155,5 +185,45 @@ describe('buildAgentLoopPrompt', () => {
     })
     expect(prompt).toContain('Stagnation warning')
     expect(prompt).toContain('Do **not** edit `GOAL.md`')
+  })
+
+  it('includes batch rubric in volatile tail after workspace', () => {
+    const prompt = buildAgentLoopPrompt({
+      goal: 'Ship feature X',
+      iteration: 1,
+      maxIterations: 5,
+      git: {
+        branch: 'feat/x',
+        shortSha: 'abc1234',
+        diffStat: '',
+        statusPorcelain: '',
+      },
+      lastVerify: null,
+      priorFailures: [],
+      batchRubric: 'Keep docs-only; no Playwright.',
+    })
+    const workspaceIdx = prompt.indexOf('## Workspace (git)')
+    const rubricIdx = prompt.indexOf('## Batch rubric')
+    const lastVerifyIdx = prompt.indexOf('## Last verifier result')
+    expect(rubricIdx).toBeGreaterThan(workspaceIdx)
+    expect(rubricIdx).toBeLessThan(lastVerifyIdx)
+    expect(prompt).toContain('Keep docs-only; no Playwright.')
+  })
+
+  it('omits batch rubric section when not provided', () => {
+    const prompt = buildAgentLoopPrompt({
+      goal: 'Ship feature X',
+      iteration: 1,
+      maxIterations: 5,
+      git: {
+        branch: 'feat/x',
+        shortSha: 'abc1234',
+        diffStat: '',
+        statusPorcelain: '',
+      },
+      lastVerify: null,
+      priorFailures: [],
+    })
+    expect(prompt).not.toContain('## Batch rubric')
   })
 })

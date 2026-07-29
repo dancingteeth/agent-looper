@@ -139,6 +139,7 @@ export function formatLoopCompletionReport(input: {
   const status = result.complete ? '✅ Loop complete' : '❌ Loop failed'
   const lines = [
     status,
+    `Status: ${result.status}`,
     `Repo: ${repoLabel(repoRoot)}`,
     `Bundle: ${bundleLabel}`,
     `Iterations: ${result.iterations}`,

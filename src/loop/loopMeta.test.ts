@@ -19,6 +19,7 @@ const mockedRunAgentLoop = vi.mocked(runAgentLoop)
 function passResult(): Awaited<ReturnType<typeof runAgentLoop>> {
   return {
     complete: true,
+    status: 'done',
     iterations: 1,
     completionReason: 'Verifier passed',
     lastVerify: {
@@ -37,6 +38,7 @@ function passResult(): Awaited<ReturnType<typeof runAgentLoop>> {
 function failResult(stdout = 'FAIL'): Awaited<ReturnType<typeof runAgentLoop>> {
   return {
     complete: false,
+    status: 'continue',
     iterations: 2,
     completionReason: 'Max iterations',
     lastVerify: {

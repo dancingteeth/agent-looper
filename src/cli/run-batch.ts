@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
-import { runLoopBatch, resolveBatchDir, loadLoopBatchConfig, resolveBatchLoopDir } from '../loop/loopBatch.js'
+import {
+  runLoopBatch,
+  resolveBatchDir,
+  loadLoopBatchConfig,
+  resolveBatchLoopDir,
+  normalizeBatchLoopEntry,
+} from '../loop/loopBatch.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { sendLoopTelegramReport, sendLoopTelegramReviewAttachment } from '../integrations/telegramNotify.js'
 import { formatBatchCompletionReport } from '../loop/loopReport.js'
@@ -89,8 +95,9 @@ const loops = batchConfig.loops ?? []
 const batchTrusted =
   cli.trustConfig ||
   (loops.length > 0 &&
-    loops.every((loopRel) => {
+    loops.every((loopEntry) => {
       try {
+        const { path: loopRel } = normalizeBatchLoopEntry(loopEntry)
         const loopDir = resolveBatchLoopDir(loopRel, batchDir, ctx.repoRoot)
         return loadLoopBundle(loopDir).config.trustConfig
       } catch {

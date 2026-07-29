@@ -105,7 +105,30 @@ Optional harness mode — default remains **`command`** (shell only).
 | --- | --- | --- |
 | `verifyMode` | `"command"` | `"command"` → shell `verify` only; `"skill"` → agent verify pass then shell |
 | `verifySkill` | — | Path to `VERIFY.skill.md` (required when `verifyMode` is `"skill"`). Resolved relative to the loop directory, then repo root. |
-| `verify` | required | Shell gate after skill PASS. Use `"true"` for a noop when the skill agent is the only qualitative check. |
+| `verify` | required | Shell gate after skill PASS. Prefer a real `verify.sh`. `"true"` is allowed as a noop but doctor/`loadLoopBundle` will warn it is trivial. |
+
+### Hybrid dynamic verify (optional pattern)
+
+Keep a **fixed floor** in `verify.sh` (always runs). For this-change edge cases:
+
+1. Human / review lists cases worth exercising.
+2. Worker or verify-skill may add ephemeral checks (script snippets, extra greps).
+3. Shell still decides — never treat agent PASS alone as completion.
+
+See also [`docs/unknowns-preflight.md`](./unknowns-preflight.md) and intervention modes in `templates/REVIEWS.md`.
+
+## Visible UI / computer-use (template-only)
+
+Default loops stay **headless** — shell `verify` only. When the product under test
+needs UI drive (Playwright, screenshot diff, Cursor computer-use), copy:
+
+- [`templates/GOAL.computer-use.template.md`](../templates/GOAL.computer-use.template.md)
+- [`templates/verify.computer-use.example.sh`](../templates/verify.computer-use.example.sh)
+
+Pattern: a **shell floor** always runs in CI; optional UI hooks activate with
+`RUN_UI=1` locally. The harness does not ship Playwright or computer-use runtime —
+consumers wire their driver beside `verify.sh`. Dogfood loop:
+`.cursor/loops/computer-use-verify-example`.
 
 ### Skill verify flow
 

@@ -341,8 +341,9 @@ describe('runAgentLoop', () => {
     expect(result.iterations).toBe(2)
     expect(runIterationPrompt).toHaveBeenCalledTimes(2)
     const secondPrompt = runIterationPrompt.mock.calls[1]?.[0] as string
-    expect(secondPrompt).toContain('Review blockers (must fix)')
+    expect(secondPrompt).toContain('Guide packets (must fix)')
     expect(secondPrompt).toContain('Docs missing')
+    expect(secondPrompt).toContain('Required change:')
     expect(runPostLoopQualityReview).toHaveBeenCalledTimes(1)
     expect(runPostLoopBlockerRecheck).toHaveBeenCalledTimes(1)
     expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()

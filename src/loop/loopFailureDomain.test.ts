@@ -6,7 +6,9 @@ import {
   FAILURE_DOMAINS_FILENAME,
   appendFailureDomain,
   failureDomainsPath,
+  isHitlWaitingFailureDomain,
   logFailureDomainFromVerify,
+  readLatestFailureDomain,
 } from './loopFailureDomain.js'
 
 describe('loopFailureDomain', () => {
@@ -44,6 +46,28 @@ describe('loopFailureDomain', () => {
     expect(FAILURE_DOMAINS_FILENAME).toBe('failure-domains.ndjson')
   })
 
+  it('records waiting status for review_gate_hitl', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
+    logFailureDomainFromVerify(tmpDir, {
+      iteration: 2,
+      reason: 'review_gate_hitl',
+      verify: {
+        complete: true,
+        command: 'bash verify.sh',
+        exitCode: 0,
+        stdout: 'ok',
+        stderr: '',
+        reason: 'Verifier passed',
+      },
+      status: 'waiting',
+    })
+    const entry = JSON.parse(
+      fs.readFileSync(failureDomainsPath(tmpDir), 'utf8').trim(),
+    ) as { reason: string; status?: string }
+    expect(entry.reason).toBe('review_gate_hitl')
+    expect(entry.status).toBe('waiting')
+  })
+
   it('supports custom suggestions', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
     appendFailureDomain(tmpDir, {
@@ -55,5 +79,42 @@ describe('loopFailureDomain', () => {
     })
     const entry = JSON.parse(fs.readFileSync(failureDomainsPath(tmpDir), 'utf8').trim())
     expect(entry.suggestion).toBe('Custom hint')
+  })
+
+  it('reads latest failure domain and detects HITL waiting', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
+    expect(readLatestFailureDomain(tmpDir)).toBeNull()
+    expect(isHitlWaitingFailureDomain(null)).toBe(false)
+
+    logFailureDomainFromVerify(tmpDir, {
+      iteration: 1,
+      reason: 'review_gate',
+      verify: {
+        complete: true,
+        command: 'true',
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        reason: 'ok',
+      },
+    })
+    expect(isHitlWaitingFailureDomain(readLatestFailureDomain(tmpDir))).toBe(false)
+
+    logFailureDomainFromVerify(tmpDir, {
+      iteration: 2,
+      reason: 'review_gate_hitl',
+      verify: {
+        complete: true,
+        command: 'true',
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        reason: 'ok',
+      },
+      status: 'waiting',
+    })
+    const latest = readLatestFailureDomain(tmpDir)
+    expect(latest?.reason).toBe('review_gate_hitl')
+    expect(isHitlWaitingFailureDomain(latest)).toBe(true)
   })
 })

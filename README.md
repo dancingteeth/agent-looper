@@ -286,6 +286,10 @@ In `loop-batch.json`:
 
 Cycle: probe → on failure write `failure-context.md` into the fix bundle → fix with `injectFailureContext` → re-probe. Stops when probe passes or `maxCycles` is exhausted. See `templates/loop-batch.meta.example.json`.
 
+### Sequential batch with per-item rubrics
+
+Each `loops[]` entry is either a sibling loop name/path (string) or `{ "path": "...", "rubric": "..." }`. When `rubric` is set, the batch runner injects a volatile **Batch rubric** section into that loop’s worker prompt; shell `verify` remains the exit gate. See `templates/loop-batch.example.json`.
+
 ### Cross-loop meta-review
 
 Read-only aggregator over N completed loop bundles (does **not** re-run workers or flip per-loop `complete` flags):

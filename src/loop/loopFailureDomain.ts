@@ -13,6 +13,9 @@ export type FailureDomainReason =
   | 'meta_probe_failed'
   | 'agent_error'
 
+/** Lifecycle status aligned with Mastra-style done|continue|waiting (additive). */
+export type FailureDomainStatus = 'waiting'
+
 export type FailureDomainEntry = {
   at: string
   iteration: number
@@ -24,10 +27,31 @@ export type FailureDomainEntry = {
     reason: string
   }
   suggestion: string
+  /** Present when the loop is parked for human closure (e.g. review_gate_hitl). */
+  status?: FailureDomainStatus
 }
 
 export function failureDomainsPath(loopDir: string): string {
   return path.join(loopDir, FAILURE_DOMAINS_FILENAME)
+}
+
+/** Last failure-domain row in the loop dir, or null when missing/empty. */
+export function readLatestFailureDomain(loopDir: string): FailureDomainEntry | null {
+  const filePath = failureDomainsPath(loopDir)
+  if (!fs.existsSync(filePath)) return null
+  const lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean)
+  if (lines.length === 0) return null
+  try {
+    return JSON.parse(lines.at(-1)!) as FailureDomainEntry
+  } catch {
+    return null
+  }
+}
+
+/** True when the loop was parked for human closure (review_gate_hitl / status waiting). */
+export function isHitlWaitingFailureDomain(entry: FailureDomainEntry | null): boolean {
+  if (!entry) return false
+  return entry.reason === 'review_gate_hitl' || entry.status === 'waiting'
 }
 
 function suggestionForReason(reason: FailureDomainReason, repeatCount?: number): string {
@@ -53,12 +77,16 @@ function suggestionForReason(reason: FailureDomainReason, repeatCount?: number):
 
 export function appendFailureDomain(
   loopDir: string,
-  entry: Omit<FailureDomainEntry, 'at' | 'suggestion'> & { suggestion?: string; repeatCount?: number },
+  entry: Omit<FailureDomainEntry, 'at' | 'suggestion'> & {
+    suggestion?: string
+    repeatCount?: number
+  },
 ): void {
+  const { suggestion: customSuggestion, repeatCount, ...rest } = entry
   const record: FailureDomainEntry = {
+    ...rest,
     at: new Date().toISOString(),
-    suggestion: entry.suggestion ?? suggestionForReason(entry.reason, entry.repeatCount),
-    ...entry,
+    suggestion: customSuggestion ?? suggestionForReason(entry.reason, repeatCount),
   }
   fs.appendFileSync(failureDomainsPath(loopDir), `${JSON.stringify(record)}\n`, 'utf8')
   console.error(`[agent-loop] failure domain logged → ${FAILURE_DOMAINS_FILENAME} (${entry.reason})`)
@@ -71,6 +99,7 @@ export function logFailureDomainFromVerify(
     reason: FailureDomainReason
     verify: VerifyResult
     repeatCount?: number
+    status?: FailureDomainStatus
   },
 ): void {
   appendFailureDomain(loopDir, {
@@ -83,6 +112,7 @@ export function logFailureDomainFromVerify(
       reason: options.verify.reason,
     },
     repeatCount: options.repeatCount,
+    ...(options.status ? { status: options.status } : {}),
   })
 }
 

@@ -19,6 +19,7 @@ import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.j
 import { loopExtensionFieldsSchema } from './loopExtensions.js'
 import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
 import { loopModeSchema } from './loopMode.js'
+import { isTrivialVerifyCommand, trivialVerifyWarning } from './trivialVerify.js'
 
 export const loopRuntimeSchema = z.enum([
   LOOP_RUNTIME_CURSOR,
@@ -192,6 +193,12 @@ export function loadLoopBundle(loopDir: string): LoadedLoopBundle {
 
   const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as unknown
   const config = parseLoopConfig(raw)
+
+  if (isTrivialVerifyCommand(config.verify)) {
+    console.error(
+      `[agent-loop] warn: ${trivialVerifyWarning(path.basename(loopDir), config.verify)}`,
+    )
+  }
 
   return {
     loopDir,

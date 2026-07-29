@@ -19,9 +19,28 @@ import { metaLoopConfigSchema, runMetaLoop } from './loopMeta.js'
 export { metaLoopConfigSchema } from './loopMeta.js'
 export type { MetaLoopConfig } from './loopMeta.js'
 
+/** One fan-out target: legacy string path or `{ path, rubric }` object. */
+export const batchLoopEntrySchema = z.union([
+  z.string().min(1),
+  z.object({
+    path: z.string().min(1),
+    /** Non-empty after trim — whitespace-only would silently no-op in the prompt. */
+    rubric: z.string().trim().min(1),
+  }),
+])
+
+export type BatchLoopEntry = z.infer<typeof batchLoopEntrySchema>
+
+export function normalizeBatchLoopEntry(entry: BatchLoopEntry): { path: string; rubric?: string } {
+  if (typeof entry === 'string') {
+    return { path: entry }
+  }
+  return { path: entry.path, rubric: entry.rubric.trim() }
+}
+
 export const loopBatchConfigSchema = z
   .object({
-    loops: z.array(z.string().min(1)).optional(),
+    loops: z.array(batchLoopEntrySchema).optional(),
     metaLoop: metaLoopConfigSchema.optional(),
     hitlCheck: hitlCheckDescriptionSchema.optional(),
     taskwarriorProject: taskwarriorProjectSchema.optional(),
@@ -143,8 +162,8 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
   const iterations: LoopBatchIteration[] = []
 
   for (let i = 0; i < loops.length; i++) {
-    const loopEntry = loops[i]!
-    const loopDir = resolveBatchLoopDir(loopEntry, batchDir, repoRoot)
+    const { path: loopPath, rubric: batchRubric } = normalizeBatchLoopEntry(loops[i]!)
+    const loopDir = resolveBatchLoopDir(loopPath, batchDir, repoRoot)
     options.onLoopStart?.(loopDir, i + 1, loops.length)
 
     const bundle = loadLoopBundle(loopDir)
@@ -152,6 +171,7 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
       ctx,
       bundle: { ...bundle, config: batchLoopConfig(bundle.config) },
       verbose: options.verbose ?? false,
+      ...(batchRubric ? { batchRubric } : {}),
     })
 
     iterations.push({ loopDir, result })

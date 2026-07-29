@@ -12,11 +12,12 @@ import {
 } from './loopReport.js'
 import { emptyUsageSummary } from '../usage/loopUsage.js'
 import type { AgentLoopResult } from './agentLoop.js'
+import { deriveLoopRunStatus } from './agentLoop.js'
 import type { LoopBatchResult } from './loopBatch.js'
 
 function loopResult(overrides: Partial<AgentLoopResult> = {}): AgentLoopResult {
-  return {
-    complete: true,
+  const base = {
+    complete: true as const,
     iterations: 2,
     completionReason: 'Verifier passed (exit 0).',
     lastVerify: {
@@ -30,6 +31,10 @@ function loopResult(overrides: Partial<AgentLoopResult> = {}): AgentLoopResult {
     logPath: '/tmp/log.ndjson',
     usage: emptyUsageSummary(),
     ...overrides,
+  }
+  return {
+    ...base,
+    status: overrides.status ?? deriveLoopRunStatus(base),
   }
 }
 
@@ -106,6 +111,7 @@ describe('formatLoopCompletionReport', () => {
     })
 
     expect(report).toContain('✅ Loop complete')
+    expect(report).toContain('Status: done')
     expect(report).toContain('Repo: payload-ecommerce')
     expect(report).toContain('Bundle: .cursor/loops/example-fix')
     expect(report).toContain('Iterations: 2')

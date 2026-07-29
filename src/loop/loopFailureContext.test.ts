@@ -27,6 +27,7 @@ describe('loopFailureContext', () => {
       probeLoopDir: 'system-smoke',
       probeResult: {
         complete: false,
+        status: 'continue',
         iterations: 2,
         completionReason: 'Max iterations reached',
         lastVerify: {

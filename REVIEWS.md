@@ -43,6 +43,17 @@ gating blocker with `file:line`. No Full pincer in loop reviews.
 
 Default nits → `severity: warning impact: none`.
 
+## Intervention modes (Proceed / Guide / Deny / Confirm)
+
+| Mode | Meaning |
+| --- | --- |
+| **Proceed** | PASS / ADVISORY / non-gating BLOCKERS — loop completes |
+| **Guide** | `reviewGate` continue → worker Guide packets |
+| **Deny** | error + impact — keeps gate open |
+| **Confirm** | HITL (`reviewGateHitl`) → `status: waiting` |
+
+Shell verify remains the hard gate.
+
 ## Loop risk inference
 
 Keywords are matched case-insensitively against `GOAL.md` + `verify` when

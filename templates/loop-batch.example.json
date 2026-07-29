@@ -1,0 +1,12 @@
+{
+  "loops": [
+    "example-fix",
+    {
+      "path": "example-docs",
+      "rubric": "Docs and templates only; keep verify fast; no new runtime deps."
+    }
+  ],
+  "hitlCheck": "Manual QA after batch",
+  "taskwarriorProject": "loops",
+  "syncOnSuccess": true
+}

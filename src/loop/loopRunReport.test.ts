@@ -11,11 +11,12 @@ import {
   writeRunReportArtifacts,
 } from './loopRunReport.js'
 import type { AgentLoopResult } from './agentLoop.js'
+import { deriveLoopRunStatus } from './agentLoop.js'
 import type { RepoContext } from '../context/repoContext.js'
 
 function loopResult(overrides: Partial<AgentLoopResult> = {}): AgentLoopResult {
-  return {
-    complete: true,
+  const base = {
+    complete: true as const,
     iterations: 1,
     completionReason: 'Verifier passed (exit 0).',
     lastVerify: {
@@ -29,6 +30,10 @@ function loopResult(overrides: Partial<AgentLoopResult> = {}): AgentLoopResult {
     logPath: '/tmp/log.ndjson',
     usage: emptyUsageSummary(),
     ...overrides,
+  }
+  return {
+    ...base,
+    status: overrides.status ?? deriveLoopRunStatus(base),
   }
 }
 
@@ -140,7 +145,60 @@ describe('reconstructAgentLoopResultFromLog', () => {
     const config = parseLoopConfig({ verify: 'bash verify.sh', reviewGate: true })
     const result = reconstructAgentLoopResultFromLog(logPath, { config })
     expect(result.complete).toBe(false)
+    expect(result.status).toBe('continue')
     expect(result.completionReason).toMatch(/Review gate: BLOCKERS/)
+  })
+
+  it('sets status waiting when failure-domains recorded review_gate_hitl', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-run-report-hitl-'))
+    const logPath = path.join(tmpDir, 'log.ndjson')
+    fs.writeFileSync(
+      logPath,
+      `${JSON.stringify({
+        at: '2026-07-22T00:00:00.000Z',
+        iteration: 1,
+        branch: 'main',
+        shortSha: 'abc1234',
+        verify: {
+          complete: true,
+          command: 'bash verify.sh',
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          reason: 'Verifier passed (exit 0).',
+        },
+        assistantPreview: 'done',
+        review: { verdict: 'BLOCKERS', risk: 'medium', blockersCount: 1 },
+      })}\n`,
+      'utf8',
+    )
+    fs.writeFileSync(
+      path.join(tmpDir, 'failure-domains.ndjson'),
+      `${JSON.stringify({
+        at: '2026-07-22T00:01:00.000Z',
+        iteration: 1,
+        reason: 'review_gate_hitl',
+        fingerprint: 'fp',
+        verify: {
+          command: 'bash verify.sh',
+          exitCode: 0,
+          reason: 'Verifier passed (exit 0).',
+        },
+        suggestion: 'HITL',
+        status: 'waiting',
+      })}\n`,
+      'utf8',
+    )
+
+    const config = parseLoopConfig({
+      verify: 'bash verify.sh',
+      reviewGate: true,
+      reviewGateHitl: true,
+    })
+    const result = reconstructAgentLoopResultFromLog(logPath, { config })
+    expect(result.complete).toBe(false)
+    expect(result.reviewEscalatedToHitl).toBe(true)
+    expect(result.status).toBe('waiting')
   })
 })
 

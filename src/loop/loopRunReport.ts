@@ -2,7 +2,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { RepoContext } from '../context/repoContext.js'
 import type { AgentLoopResult, LoopIterationLog } from './agentLoop.js'
+import { deriveLoopRunStatus } from './agentLoop.js'
 import type { LoopConfig } from './loopConfig.js'
+import {
+  isHitlWaitingFailureDomain,
+  readLatestFailureDomain,
+} from './loopFailureDomain.js'
 import { gitDiffStatSinceBranchBase } from '../review/loopPostReview.js'
 import { readLatestLoopReview, resolveLatestReviewPath } from './loopReport.js'
 import { addUsageRecord, emptyUsageSummary, formatUsageSummaryLine } from '../usage/loopUsage.js'
@@ -68,13 +73,18 @@ export function reconstructAgentLoopResultFromLog(
     }
   }
 
+  const loopDir = path.dirname(logPath)
+  const reviewEscalatedToHitl = isHitlWaitingFailureDomain(readLatestFailureDomain(loopDir))
+
   return {
     complete,
+    status: deriveLoopRunStatus({ complete, reviewEscalatedToHitl }),
     iterations: last.iteration,
     completionReason,
     lastVerify,
     logPath,
     usage,
+    ...(reviewEscalatedToHitl ? { reviewEscalatedToHitl: true } : {}),
   }
 }
 

@@ -24,6 +24,7 @@ import {
   logReviewGateFailureDomain,
   runPostSuccessReviewPhase,
 } from '../loop/loopPostSuccessReview.js'
+import type { GuidePacket } from '../review/guidePackets.js'
 import { runVerifyCommand, type VerifyResult } from '../loop/loopVerify.js'
 import { runVerifySkill } from '../loop/loopVerifySkill.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
@@ -73,8 +74,18 @@ export type LoopIterationLog = {
   toolSummary?: Record<string, number>
 }
 
+/**
+ * Run lifecycle (additive; `complete` remains the boolean API).
+ * - done — verify (+ optional review) succeeded
+ * - waiting — parked for human (reviewGateHitl)
+ * - continue — incomplete; re-run or fix manually (stagnation, max iters, hard-fail gate)
+ */
+export type LoopRunStatus = 'done' | 'continue' | 'waiting'
+
 export type AgentLoopResult = {
   complete: boolean
+  /** Derived lifecycle status — prefer this for HITL-aware consumers. */
+  status: LoopRunStatus
   iterations: number
   completionReason: string
   lastVerify: VerifyResult | null
@@ -90,10 +101,20 @@ export type AgentLoopResult = {
   reviewEscalatedToHitl?: boolean
 }
 
+export function deriveLoopRunStatus(
+  result: Pick<AgentLoopResult, 'complete' | 'reviewEscalatedToHitl'>,
+): LoopRunStatus {
+  if (result.complete) return 'done'
+  if (result.reviewEscalatedToHitl) return 'waiting'
+  return 'continue'
+}
+
 export type AgentLoopOptions = {
   ctx: RepoContext
   bundle: LoadedLoopBundle
   verbose?: boolean
+  /** Optional per-batch fan-out rubric injected into worker prompts. */
+  batchRubric?: string
   onIterationStart?: (iteration: number) => void
 }
 
@@ -240,6 +261,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let lastVerify: VerifyResult | null = null
   let iterations = 0
   let reviewBlockers: string[] | undefined
+  let guidePackets: GuidePacket[] | undefined
   let reviewCyclesUsed = 0
   let reviewAdvisoryBlockers = false
   let usageSummary = emptyUsageSummary()
@@ -247,11 +269,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const stagnationThreshold = config.stagnationThreshold
 
   const finish = (
-    result: Omit<AgentLoopResult, 'usage'> & { usage?: LoopUsageSummary },
+    result: Omit<AgentLoopResult, 'usage' | 'status'> & {
+      usage?: LoopUsageSummary
+      status?: LoopRunStatus
+    },
   ): AgentLoopResult => {
     const usage = result.usage ?? usageSummary
     logUsageSummary('agent-loop', usage)
-    const finalResult: AgentLoopResult = { ...result, usage }
+    const status = result.status ?? deriveLoopRunStatus(result)
+    const finalResult: AgentLoopResult = { ...result, usage, status }
     if (config.exportRunReport) {
       const { reportPath, transcriptPath } = writeRunReportArtifacts({
         ctx,
@@ -305,7 +331,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         stagnationRepeatCount: stagnation.promptRepeatCount,
         agentsFile: ctx.profile.agentsFile,
         reviewBlockers,
+        guidePackets,
         skillsSection,
+        batchRubric: options.batchRubric,
         mode: config.mode,
         failureContext,
       })
@@ -441,16 +469,17 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             lastVerify,
             logPath,
             ...(reviewPhase.outcome.hitlCheckTaskUuid
-              ? {
-                  hitlCheckTaskUuid: reviewPhase.outcome.hitlCheckTaskUuid,
-                  reviewEscalatedToHitl: reviewPhase.outcome.reviewEscalatedToHitl,
-                }
+              ? { hitlCheckTaskUuid: reviewPhase.outcome.hitlCheckTaskUuid }
+              : {}),
+            ...(reviewPhase.outcome.reviewEscalatedToHitl
+              ? { reviewEscalatedToHitl: true }
               : {}),
           })
         }
 
         if (reviewPhase.outcome.action === 'continue') {
           reviewBlockers = reviewPhase.outcome.reviewBlockers
+          guidePackets = reviewPhase.outcome.guidePackets
           reviewCyclesUsed = reviewPhase.outcome.reviewCyclesUsed
           reviewLog = reviewPhase.outcome.reviewLog
           appendLog(
@@ -543,6 +572,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       // (passing-verify) fix rounds.
       reviewCyclesUsed = 0
       reviewBlockers = undefined
+      guidePackets = undefined
       priorFailures.push(lastVerify!)
       console.error(`[agent-loop] iteration ${i} failed — ${lastVerify!.reason}`)
 

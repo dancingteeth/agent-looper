@@ -13,11 +13,28 @@ export {
   REPO_PROFILE_RELATIVE_PATH,
 } from './context/repoProfile.js'
 
-export { runAgentLoop } from './loop/agentLoop.js'
-export type { AgentLoopResult, AgentLoopOptions, LoopIterationLog } from './loop/agentLoop.js'
+export { runAgentLoop, deriveLoopRunStatus } from './loop/agentLoop.js'
+export type {
+  AgentLoopResult,
+  AgentLoopOptions,
+  LoopIterationLog,
+  LoopRunStatus,
+} from './loop/agentLoop.js'
 
-export { runLoopBatch, loadLoopBatchConfig, parseLoopBatchConfig, loopBatchConfigSchema } from './loop/loopBatch.js'
-export type { LoopBatchResult, RunLoopBatchOptions, LoopBatchConfig } from './loop/loopBatch.js'
+export {
+  runLoopBatch,
+  loadLoopBatchConfig,
+  parseLoopBatchConfig,
+  loopBatchConfigSchema,
+  batchLoopEntrySchema,
+  normalizeBatchLoopEntry,
+} from './loop/loopBatch.js'
+export type {
+  LoopBatchResult,
+  RunLoopBatchOptions,
+  LoopBatchConfig,
+  BatchLoopEntry,
+} from './loop/loopBatch.js'
 
 export { runMetaLoop, metaLoopConfigSchema } from './loop/loopMeta.js'
 export { batchLoopConfig, batchLoopConfig as metaBatchLoopConfig } from './loop/loopBatchConfig.js'
@@ -32,7 +49,16 @@ export {
   logFailureDomainFromVerify,
   FAILURE_DOMAINS_FILENAME,
 } from './loop/loopFailureDomain.js'
-export type { FailureDomainEntry, FailureDomainReason } from './loop/loopFailureDomain.js'
+export type { FailureDomainEntry, FailureDomainReason, FailureDomainStatus } from './loop/loopFailureDomain.js'
+
+export { isTrivialVerifyCommand, trivialVerifyWarning } from './loop/trivialVerify.js'
+
+export {
+  guidePacketsFromReview,
+  guidePacketFromBlocker,
+  formatGuidePacketsForPrompt,
+} from './review/guidePackets.js'
+export type { GuidePacket } from './review/guidePackets.js'
 
 export {
   writeFailureContext,

@@ -1,0 +1,51 @@
+# @dancingteeth/agent-loop
+
+> Repo-agnostic fix-until-green harness: frozen GOAL → worker agent → shell verify → optional judge/reviewGate. Fresh context every iteration. Progress lives in git/files.
+
+## For coding agents
+
+Start here:
+
+- README.intro.md — product spine (worker / verify / judge / human)
+- ARCHITECTURE.md — loop engine, escalation, cache-friendly prompts
+- AGENTS.md — working agreements for this repo
+- docs/verification-as-skill.md — measurable verify.sh + VERIFY.skill.md
+- docs/unknowns-preflight.md — remove unknowns before freezing GOAL
+- docs/competitive-steal-backlog.md — what we steal vs skip from the ecosystem
+- docs/cursor-auto-router.md — Auto/Router opt-in blocked until SDK logs routed model id
+- docs/loop-review-roadmap.md — M1–M8 milestones
+
+## Non-negotiables
+
+1. Shell `verify` / `finalVerify` exit 0 is the only completion truth (not LLM self-assessment).
+2. Do not edit GOAL.md mid-loop.
+3. Fresh worker session each iteration (Ralph): no accumulating chat memory as the product.
+4. reviewGate is optional and only re-opens on gating findings (error + impact), never replaces verify.
+5. Taskwarrior: UUID only (`taskwarriorUuid`), never numeric ID alone.
+6. Result `status`: `done` | `continue` | `waiting` (HITL). Guide packets structure reviewGate re-entry.
+
+## Quick run (Cursor dogfood)
+
+```bash
+agent-loop-init
+# edit .cursor/agent-loop.repo.json, GOAL.md, loop.json, verify.sh
+export CURSOR_API_KEY=…
+agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
+```
+
+Worker default: composer-2.5. Judge default: grok-4.5 (`reviewModel`).
+
+## Templates
+
+- templates/GOAL.template.md
+- templates/GOAL.metric.template.md — perf grind until threshold
+- templates/GOAL.computer-use.template.md — visible UI verify + shell floor (headless CI default)
+- templates/verify.example.sh
+- templates/verify.metric.example.sh
+- templates/verify.computer-use.example.sh — shell floor + optional Playwright/computer-use hooks
+- templates/VERIFY.skill.md
+- templates/loop.json.example
+
+## Package
+
+npm: `@dancingteeth/agent-loop`. Layout: src/loop, src/review, src/agents, templates, .cursor/loops.

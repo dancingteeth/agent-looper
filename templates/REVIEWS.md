@@ -61,6 +61,20 @@ Every `### Blockers` bullet:
 
 Default cosmetic / style / nits → `severity: warning impact: none`.
 
+## Intervention modes (Proceed / Guide / Deny / Confirm)
+
+Strands-aligned vocabulary for how review interacts with the loop. Verifier remains
+the hard gate; these modes describe *review residual judgment* only.
+
+| Mode | agent-loop meaning |
+| --- | --- |
+| **Proceed** | PASS / ADVISORY, or BLOCKERS with only warning/`none` impact — loop completes |
+| **Guide** | `reviewGate` continue — worker gets **Guide packets** (reason + required change) |
+| **Deny** | `severity: error` + recognized impact tag — keeps the gate open (blocks Proceed) |
+| **Confirm** | `reviewGateHitl` / HITL task — human closure; result `status: waiting` |
+
+Do not invent a fifth mode. Shell `verify` exit `0` is never replaced by Proceed.
+
 ## Loop risk inference
 
 Optional overlay for `postQualityReview: "auto"`. Keywords match `GOAL.md` + `verify`

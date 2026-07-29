@@ -4,6 +4,7 @@ import type { RepoContext } from './repoContext.js'
 import { defaultBranchRefExists } from './defaultBranch.js'
 import { resolveTelegramCredentials } from '../integrations/telegramNotify.js'
 import { parseLoopConfig } from '../loop/loopConfig.js'
+import { isTrivialVerifyCommand, trivialVerifyWarning } from '../loop/trivialVerify.js'
 
 export type RepoProfileCheck = {
   ok: boolean
@@ -34,6 +35,11 @@ function scanLoopConfigWarnings(repoRoot: string): string[] {
       if (config.taskwarriorUuid && config.syncOnSuccess === false) {
         warnings.push(
           `${path.relative(repoRoot, loopJsonPath)}: taskwarriorUuid is set but syncOnSuccess=false — TW task will not auto-complete (enable reviewGate separately if review should block).`,
+        )
+      }
+      if (isTrivialVerifyCommand(config.verify)) {
+        warnings.push(
+          trivialVerifyWarning(path.relative(repoRoot, loopJsonPath), config.verify),
         )
       }
     } catch {

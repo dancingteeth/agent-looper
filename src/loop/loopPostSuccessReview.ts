@@ -6,6 +6,8 @@ import type { LoopConfig } from '../loop/loopConfig.js'
 import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
 import { resolveLoopRiskKeywords } from '../loop/loopRiskProfile.js'
 import { runPostLoopBlockerRecheck, runPostLoopQualityReview } from '../review/loopPostReview.js'
+import type { GuidePacket } from '../review/guidePackets.js'
+import { guidePacketsFromReview } from '../review/guidePackets.js'
 import type { ParsedReview, ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
 import {
   blockingBlockers,
@@ -32,7 +34,17 @@ export type PostSuccessReviewOutcome =
       /** When true, the iteration log was already emitted or should not be written. */
       skipIterationLog?: boolean
     }
-  | { action: 'continue'; reviewBlockers: string[]; reviewCyclesUsed: number; reviewLog: PostSuccessReviewLog; reviewCycle: number; gateBlockerCount: number; totalBlockerCount: number; reasoningEffort: string }
+  | {
+      action: 'continue'
+      reviewBlockers: string[]
+      guidePackets: GuidePacket[]
+      reviewCyclesUsed: number
+      reviewLog: PostSuccessReviewLog
+      reviewCycle: number
+      gateBlockerCount: number
+      totalBlockerCount: number
+      reasoningEffort: string
+    }
   | { action: 'success'; reviewLog?: PostSuccessReviewLog; reviewAdvisoryBlockers?: boolean }
 
 export type PostSuccessReviewInput = {
@@ -150,6 +162,7 @@ export function resolvePostSuccessReviewOutcome(input: {
     return {
       action: 'continue',
       reviewBlockers: reviewGateBlockers(parsedReview),
+      guidePackets: guidePacketsFromReview(parsedReview),
       reviewCyclesUsed: nextReviewCyclesUsed,
       reviewLog: {
         verdict: parsedReview.verdict,
@@ -335,5 +348,6 @@ export function logReviewGateFailureDomain(input: {
     iteration: input.iteration,
     reason: input.failureDomainReason,
     verify: input.verify,
+    status: input.failureDomainReason === 'review_gate_hitl' ? 'waiting' : undefined,
   })
 }
