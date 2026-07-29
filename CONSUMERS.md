@@ -96,7 +96,7 @@ Add a **Repo layout** section to the consumer's loop runbook (e.g. `docs/CURSOR_
 
 | When | What |
 |------|------|
-| `pnpm install` in agent-loop | `prepare` builds `dist/` if incomplete |
+| `pnpm install` in agent-loop | `prepare` rebuilds `dist/` when incomplete or older than any `src/` file |
 | `pnpm install` in consumer (local dev) | Optional `file:` link when sibling exists |
 | Anytime (dev) | `pnpm agent:doctor` or `pnpm exec agent-loop-doctor` |
 

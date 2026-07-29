@@ -23,9 +23,17 @@ function resolveCursorSessionTimeoutMs(): number {
   return parsed
 }
 
-async function waitForCursorRun<T>(
+export class CursorRunTimeoutError extends Error {}
+
+/**
+ * Race a Cursor run against a timeout. On timeout, `onTimeout` fires first
+ * (best-effort — errors are logged, not thrown) so the caller can cancel the
+ * remote run; a local reject alone would leave the cloud agent running.
+ */
+export async function waitForCursorRun<T>(
   waitPromise: Promise<T>,
   timeoutMs: number,
+  onTimeout?: () => Promise<void>,
 ): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   try {
@@ -33,10 +41,20 @@ async function waitForCursorRun<T>(
       waitPromise,
       new Promise<T>((_, reject) => {
         timeoutId = setTimeout(() => {
-          reject(new Error(`Cursor agent run timed out after ${timeoutMs}ms`))
+          reject(new CursorRunTimeoutError(`Cursor agent run timed out after ${timeoutMs}ms`))
         }, timeoutMs)
       }),
     ])
+  } catch (err) {
+    if (err instanceof CursorRunTimeoutError && onTimeout) {
+      try {
+        await onTimeout()
+      } catch (cancelErr) {
+        const message = cancelErr instanceof Error ? cancelErr.message : String(cancelErr)
+        console.error(`[agent-loop:cursor] remote run cancel failed (non-blocking): ${message}`)
+      }
+    }
+    throw err
   } finally {
     if (timeoutId !== undefined) clearTimeout(timeoutId)
   }
@@ -100,7 +118,10 @@ export async function runCursorAgentPrompt(
       assistantOutput: options.assistantOutput ?? 'stdout',
       collector: options.collector,
     })
-    const result = await waitForCursorRun(run.wait(), resolveCursorSessionTimeoutMs())
+    const result = await waitForCursorRun(run.wait(), resolveCursorSessionTimeoutMs(), async () => {
+      console.error(`[agent-loop:cursor] timeout — cancelling remote run run_id=${run.id}`)
+      await run.cancel()
+    })
 
     if (result.status === 'error') {
       throw new Error('Cursor agent run failed (status=error)')

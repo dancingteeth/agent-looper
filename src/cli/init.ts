@@ -6,6 +6,7 @@ import { detectDefaultBranch } from '../context/defaultBranch.js'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { REPO_PROFILE_RELATIVE_PATH } from '../context/repoProfile.js'
 import { parseRepoRootFlag } from './shared.js'
+import { ensureLoopGitignoreBlock } from './initGitignore.js'
 
 /** dist/cli/init.js → package root */
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -78,6 +79,13 @@ if (fs.existsSync(exampleVerifySh)) {
   fs.chmodSync(exampleVerifySh, 0o755)
 }
 copyTemplate('VERIFY.skill.md', path.join(exampleDir, 'VERIFY.skill.md'), force)
+
+const gitignore = ensureLoopGitignoreBlock(ctx.repoRoot)
+console.error(
+  gitignore === 'written'
+    ? '[agent-loop-init] updated .gitignore (loop runtime artifacts)'
+    : '[agent-loop-init] skip (.gitignore block present)',
+)
 
 console.error(`[agent-loop-init] done — repo=${ctx.repoRoot}`)
 console.error(`[agent-loop-init] next: edit .cursor/agent-loop.repo.json and run:`)

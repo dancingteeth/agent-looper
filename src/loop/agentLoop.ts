@@ -31,9 +31,11 @@ import type { AgentRunResult } from '../agents/agentRunResult.js'
 import type { InnerAgentStatus } from '../agents/innerAgentStatus.js'
 import { previewAssistantText } from '../agents/innerAgentStatus.js'
 import {
+  formatLoopExtensionPreflight,
   persistVerifyOutput,
   runPostVerifierExtensionHooks,
   siblingReposForIterationLog,
+  validateLoopExtensionPreflight,
   type SiblingRepoRef,
   type VerifyLogRefs,
 } from './loopExtensions.js'
@@ -120,11 +122,19 @@ export type AgentLoopOptions = {
 
 const SDK_RETRY_DELAYS_MS = [5000, 15_000] as const
 
-function isTransientAgentError(err: unknown): boolean {
+/**
+ * Heuristic for retryable provider errors. Deliberately narrow: bare substrings
+ * like `network` or `503` anywhere in a message produced false positives (paths,
+ * validation errors) and burned retries on permanent failures. Internal long-run
+ * timeouts ("timed out after …ms") intentionally do NOT match — a 45-minute run
+ * should not be repeated blindly.
+ */
+const TRANSIENT_AGENT_ERROR_PATTERN =
+  /rate.?limit|\b429\b|\b50[234]\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|fetch failed|\btimeout\b|retryable=true/i
+
+export function isTransientAgentError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err)
-  return /rate limit|timeout|503|502|429|ECONNRESET|ETIMEDOUT|network|retryable=true/i.test(
-    message,
-  )
+  return TRANSIENT_AGENT_ERROR_PATTERN.test(message)
 }
 
 async function runIterationWithRetry(
@@ -197,13 +207,25 @@ function buildIterationLog(input: {
   }
 }
 
-function prepareVerifyForLog(
+/** Persist verify (+ optional finalVerify) output per verifyLogMode; returns log-ready copies. */
+function persistVerifyResultsForLog(
   loopDir: string,
   iteration: number,
   verify: VerifyResult,
+  finalVerify: VerifyResult | undefined,
   verifyLogMode: LoadedLoopBundle['config']['verifyLogMode'],
-): { verify: VerifyResult; verifyLog?: VerifyLogRefs } {
-  return persistVerifyOutput(loopDir, iteration, verify, verifyLogMode)
+): { verifyForLog: VerifyResult; verifyLog?: VerifyLogRefs; finalVerifyForLog?: VerifyResult } {
+  const persisted = persistVerifyOutput(loopDir, iteration, verify, verifyLogMode)
+  return {
+    verifyForLog: persisted.verify,
+    verifyLog: persisted.verifyLog,
+    ...(finalVerify
+      ? {
+          finalVerifyForLog: persistVerifyOutput(loopDir, iteration, finalVerify, verifyLogMode)
+            .verify,
+        }
+      : {}),
+  }
 }
 
 function maybeRunSync(ctx: RepoContext, enabled: boolean): void {
@@ -240,6 +262,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const { ctx, bundle, verbose = false } = options
   const { repoRoot } = ctx
   const { config, goal, logPath } = bundle
+
+  // Surface reserved/experimental extension fields on the library path too —
+  // batch and meta loops reach this without going through the CLI preflight.
+  const extensionPreflight = validateLoopExtensionPreflight(ctx, config)
+  if (extensionPreflight.warnings.length > 0 || extensionPreflight.pendingFeatures.length > 0) {
+    console.error('[agent-loop] loop extension preflight:')
+    console.error(formatLoopExtensionPreflight(extensionPreflight))
+  }
+
   const skillsSection = loadLoopSkillSection(
     repoRoot,
     resolveLoopSkillPaths(goal, config.skills),
@@ -397,25 +428,41 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       const passed = finalVerify ? finalVerify.complete : verify.complete
       const siblingRepos = siblingReposForIterationLog(config)
-      const verifyPersisted = prepareVerifyForLog(bundle.loopDir, i, verify, config.verifyLogMode)
-      const verifyForLog = verifyPersisted.verify
-      const verifyLog = verifyPersisted.verifyLog
-      let finalVerifyForLog: VerifyResult | undefined
-      if (finalVerify) {
-        const finalPersisted = prepareVerifyForLog(
-          bundle.loopDir,
-          i,
-          finalVerify,
-          config.verifyLogMode,
-        )
-        finalVerifyForLog = finalPersisted.verify
-      }
+      const { verifyForLog, verifyLog, finalVerifyForLog } = persistVerifyResultsForLog(
+        bundle.loopDir,
+        i,
+        verify,
+        finalVerify,
+        config.verifyLogMode,
+      )
 
       if (passed) {
         runPostVerifierExtensionHooks(config, repoRoot)
       }
 
       let reviewLog: LoopIterationLog['review'] | undefined
+
+      // Every iteration-log call site below shares these fields; only `review` varies.
+      const appendCurrentIterationLog = (review?: LoopIterationLog['review']): void => {
+        appendLog(
+          logPath,
+          buildIterationLog({
+            iteration: i,
+            git,
+            verify: verifyForLog,
+            finalVerify: finalVerifyForLog,
+            verifyLog,
+            siblingRepos,
+            assistantText,
+            innerAgent,
+            review,
+            usage: assistantRun.usage,
+            model: iterationAgent.model,
+            reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+            ...workerLogFields,
+          }),
+        )
+      }
 
       if (passed) {
         const reviewPhase = await runPostSuccessReviewPhase({
@@ -435,24 +482,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
         if (reviewPhase.outcome.action === 'stop') {
           if (!reviewPhase.outcome.skipIterationLog) {
-            appendLog(
-              logPath,
-              buildIterationLog({
-                iteration: i,
-                git,
-                verify: verifyForLog,
-                finalVerify: finalVerifyForLog,
-                verifyLog,
-                siblingRepos,
-                assistantText,
-                innerAgent,
-                review: reviewLog,
-                usage: assistantRun.usage,
-                model: iterationAgent.model,
-                reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
-                ...workerLogFields,
-              }),
-            )
+            appendCurrentIterationLog(reviewLog)
           }
           if (reviewPhase.outcome.failureDomainReason) {
             logReviewGateFailureDomain({
@@ -482,24 +512,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           guidePackets = reviewPhase.outcome.guidePackets
           reviewCyclesUsed = reviewPhase.outcome.reviewCyclesUsed
           reviewLog = reviewPhase.outcome.reviewLog
-          appendLog(
-            logPath,
-            buildIterationLog({
-              iteration: i,
-              git,
-              verify: verifyForLog,
-              finalVerify: finalVerifyForLog,
-              verifyLog,
-              siblingRepos,
-              assistantText,
-              innerAgent,
-              review: reviewLog,
-              usage: assistantRun.usage,
-              model: iterationAgent.model,
-              reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
-              ...workerLogFields,
-            }),
-          )
+          appendCurrentIterationLog(reviewLog)
           await maybePauseAfterIteration(config, i)
           continue
         }
@@ -508,24 +521,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           reviewAdvisoryBlockers = true
         }
 
-        appendLog(
-          logPath,
-          buildIterationLog({
-            iteration: i,
-            git,
-            verify: verifyForLog,
-            finalVerify: finalVerifyForLog,
-            verifyLog,
-            siblingRepos,
-            assistantText,
-            innerAgent,
-            review: reviewLog,
-            usage: assistantRun.usage,
-            model: iterationAgent.model,
-            reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
-            ...workerLogFields,
-          }),
-        )
+        appendCurrentIterationLog(reviewLog)
         if (config.taskwarriorUuid) {
           markTaskwarriorDoneByUuid(config.taskwarriorUuid)
         }
@@ -549,23 +545,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         })
       }
 
-      appendLog(
-        logPath,
-        buildIterationLog({
-          iteration: i,
-          git,
-          verify: verifyForLog,
-          finalVerify: finalVerifyForLog,
-          verifyLog,
-          siblingRepos,
-          assistantText,
-          innerAgent,
-          usage: assistantRun.usage,
-          model: iterationAgent.model,
-          reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
-          ...workerLogFields,
-        }),
-      )
+      appendCurrentIterationLog()
 
       // A verifier failure starts a fresh attempt — drop any review-blocker
       // reasoning escalation and stale blocker list from the previous

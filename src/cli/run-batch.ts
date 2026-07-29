@@ -12,78 +12,19 @@ import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { sendLoopTelegramReport, sendLoopTelegramReviewAttachment } from '../integrations/telegramNotify.js'
 import { formatBatchCompletionReport } from '../loop/loopReport.js'
 import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
-import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
+import { parseRunBatchArgs, type RunBatchCliOptions } from './runBatchArgs.js'
 import { loadLoopBundle } from '../loop/loopConfig.js'
 
-type CliOptions = {
-  batchDir: string
-  repoRoot?: string
-  verbose: boolean
-  skipSync: boolean
-  notifyTelegram?: boolean
-  trustConfig?: boolean
-  requireTrustConfig?: boolean
+const parsedArgs = parseRunBatchArgs(process.argv.slice(2))
+if (parsedArgs.kind === 'help') {
+  console.log(parsedArgs.text)
+  process.exit(0)
 }
-
-function usage(): string {
-  return `Usage: agent-loop-batch <batch-dir> [options]
-
-  <batch-dir>   Directory containing loop-batch.json
-
-Options:
-  --verbose, -v     Tool args/results on stderr
-${printRepoRootHelp()}
-  --skip-sync       Do not run repo profile syncCommand after batch
-  --no-telegram     Skip Telegram completion report
-  --trust-config    Acknowledge reviewed shell commands
-  --require-trust-config  Abort unless trusted (see agent-loop run --help)`
+if (parsedArgs.kind === 'error') {
+  console.error(parsedArgs.message)
+  process.exit(1)
 }
-
-function parseArgs(argv: string[]): CliOptions {
-  const { args: verboseStripped, verbose } = parseVerboseFlag(argv)
-  const { remaining, repoRoot } = parseRepoRootFlag(verboseStripped)
-
-  const positional: string[] = []
-  let skipSync = false
-  let notifyTelegram: boolean | undefined
-  let trustConfig: boolean | undefined
-  let requireTrustConfig = false
-
-  for (const arg of remaining) {
-    if (arg === '--') continue
-    if (arg === '--skip-sync') {
-      skipSync = true
-      continue
-    }
-    if (arg === '--no-telegram') {
-      notifyTelegram = false
-      continue
-    }
-    if (arg === '--trust-config') {
-      trustConfig = true
-      continue
-    }
-    if (arg === '--require-trust-config') {
-      requireTrustConfig = true
-      continue
-    }
-    if (arg === '--help' || arg === '-h') {
-      console.log(usage())
-      process.exit(0)
-    }
-    positional.push(arg)
-  }
-
-  const batchDir = positional.join(' ').trim()
-  if (!batchDir) {
-    console.error(usage())
-    process.exit(1)
-  }
-
-  return { batchDir, repoRoot, verbose, skipSync, notifyTelegram, trustConfig, requireTrustConfig }
-}
-
-const cli = parseArgs(process.argv.slice(2))
+const cli: RunBatchCliOptions = parsedArgs.options
 const ctx = resolveRepoContext({ repoRoot: cli.repoRoot })
 const batchDir = resolveBatchDir(cli.batchDir, ctx.repoRoot)
 const batchConfig = loadLoopBatchConfig(batchDir)

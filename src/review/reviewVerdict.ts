@@ -226,15 +226,10 @@ export function reviewVerdictAllowsCompletion(
   parsed: ParsedReview,
   options: ReviewVerdictCompletionOptions = {},
 ): boolean {
-  if (options.reviewGate) {
-    return !reviewGateBlocksCompletion(parsed)
-  }
-  return (
-    parsed.verdict === 'PASS' ||
-    parsed.verdict === 'ADVISORY' ||
-    parsed.verdict === 'UNKNOWN' ||
-    parsed.verdict === 'BLOCKERS'
-  )
+  // Advisory review (reviewGate off) never blocks loop completion — even a
+  // BLOCKERS verdict surfaces as `reviewAdvisoryBlockers` on the result.
+  if (!options.reviewGate) return true
+  return !reviewGateBlocksCompletion(parsed)
 }
 
 export function reviewGateBlockers(parsed: ParsedReview): string[] {

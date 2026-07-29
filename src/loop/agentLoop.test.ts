@@ -10,7 +10,7 @@ import {
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
 import { captureGitWorkspaceSnapshot } from './loopGit.js'
-import { runAgentLoop } from './agentLoop.js'
+import { isTransientAgentError, runAgentLoop } from './agentLoop.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
 import { runVerifySkill } from './loopVerifySkill.js'
@@ -681,3 +681,28 @@ describe('runAgentLoop', () => {
     )
   })
 })
+
+describe('isTransientAgentError', () => {
+  it('matches rate limits, 5xx status codes, and connection resets', () => {
+    expect(isTransientAgentError(new Error('Cursor SDK error: rate limit exceeded'))).toBe(true)
+    expect(isTransientAgentError(new Error('HTTP 503 from backend'))).toBe(true)
+    expect(isTransientAgentError(new Error('read ECONNRESET'))).toBe(true)
+    expect(isTransientAgentError(new Error('fetch failed'))).toBe(true)
+    expect(isTransientAgentError(new Error('upstream request timeout'))).toBe(true)
+  })
+
+  it('does not retry permanent errors that merely contain risky substrings', () => {
+    // "503" inside a model id / path must not match (word-bounded now).
+    expect(isTransientAgentError(new Error('model id "composer-2.5-20260503" not found'))).toBe(false)
+    // Internal long-run timeout must not trigger blind retries of a 45-min run.
+    expect(isTransientAgentError(new Error('Cursor agent run timed out after 2700000ms'))).toBe(false)
+    expect(isTransientAgentError(new Error('escalateModel is not allowed for runtime cursor'))).toBe(false)
+    expect(isTransientAgentError(new Error('Cursor agent returned empty result'))).toBe(false)
+  })
+
+  it('accepts non-Error values', () => {
+    expect(isTransientAgentError('ETIMEDOUT')).toBe(true)
+    expect(isTransientAgentError(42)).toBe(false)
+  })
+})
+

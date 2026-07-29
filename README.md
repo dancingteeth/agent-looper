@@ -194,6 +194,19 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
 Blocker grammar: ship `REVIEWS.md` from `templates/REVIEWS.md`. Library: `reviewVerdictAllowsCompletion` takes a full `ParsedReview` for impact-severity gating.
 
+### loop.json — reserved fields (experimental)
+
+These fields validate in `loop.json` but their pipeline hooks are **not executed yet**.
+The harness logs a `loop extension preflight` note on every run (CLI, batch, and direct
+library calls) when they are configured — do not rely on them gating anything:
+
+| Field | Status |
+| --- | --- |
+| `smokeScripts` | reserved — post-verifier hook not implemented |
+| `siblingRepos` | partially wired — recorded in `log.ndjson`; cross-repo verify not implemented |
+| `verifyPreflight` | reserved — not implemented |
+| `verifyLogMode: "sidecar"` | reserved — falls back to inline verify output |
+
 ### `postQualityReview: "auto"` and loop risk
 
 When `postQualityReview` is `"auto"` (default), the harness infers **high / medium / low**

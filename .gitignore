@@ -1,5 +1,6 @@
 node_modules/
 dist/
+coverage/
 *.log
 .DS_Store
 .kilo/
@@ -11,3 +12,5 @@ dist/
 .cursor/loops/**/review.md
 .cursor/loops/**/review.*.md
 .cursor/sdk-runs/
+.cursor/loops/**/run-report.md
+.cursor/loops/**/transcript.ndjson

@@ -28,8 +28,13 @@ export function buildHitlCheckTaskArgs(
   return ['add', `project:${taskwarriorProject}`, '+hitl', '+manual', text]
 }
 
-function escapeTaskDescriptionFilter(text: string): string {
-  return `/${text.replace(/[\\/]/g, '\\$&')}/`
+/**
+ * Escape a description for use inside a Taskwarrior `/regex/` filter so it
+ * matches literally. Metacharacters (`.`, `(`, `*`, …) in a HITL description
+ * could otherwise match the wrong task and return the wrong UUID.
+ */
+export function escapeTaskDescriptionFilter(text: string): string {
+  return `/${text.replace(/[\\/^$.|?*+()[\]{}]/g, (ch) => `\\${ch}`)}/`
 }
 
 function lookupHitlTaskUuid(description: string, taskwarriorProject: string): string | undefined {

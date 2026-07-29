@@ -39,6 +39,7 @@
     "test:prepare": "node --test scripts/prepare-package.test.mjs",
     "ensure-link": "bash scripts/ensure-file-dep-link.sh",
     "test": "vitest run && node --test scripts/prepare-package.test.mjs",
+    "test:coverage": "vitest run --coverage && node --test scripts/prepare-package.test.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "agent:init": "node dist/cli/init.js",
@@ -72,5 +73,9 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }
