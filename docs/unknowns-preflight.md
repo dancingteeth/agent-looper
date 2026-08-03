@@ -3,6 +3,7 @@ tags:
   - documentation
   - loops
   - planning
+  - agents
 ---
 # Unknowns preflight (before freezing GOAL)
 
@@ -13,6 +14,18 @@ discover how the system can fail, have a human read that plan, *then* freeze
 This is **not** part of the Ralph iteration. It is a human+agent step *before*
 `agent-loop run`. Do not edit `GOAL.md` mid-loop to absorb new unknowns; stop,
 update the spec, re-run.
+
+## Prove in chat → freeze (Linear-style)
+
+Design the loop interactively first (chat / plan mode): draft the finish line,
+failure modes, and permissions. When the human is satisfied, **freeze** into
+`GOAL.md` + `verify.sh` (+ optional `PERMISSIONS.md` from
+`templates/LOOP.permissions.example.md`) and only then `agent-loop run`.
+
+Until freeze, treat the bundle as a **draft** — edits are free. After freeze /
+during a run, do not rewrite `GOAL.md` or `loop.json` acceptance in-place to
+make the worker look done; stop the run, revise the draft, freeze again, re-run.
+(No separate publish snapshot in the harness yet — discipline is the control.)
 
 ## When to run
 
@@ -31,7 +44,9 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
 3. **Human read** — Read the failure-mode list yourself. Do not trust a one-shot plan.
 4. **Kill or accept** — Turn unknowns into constraints, fixtures, or out-of-scope.
    Accept residual risk only explicitly.
-5. **Freeze** — Commit `GOAL.md` + `verify.sh` (+ `VERIFY.skill.md`). Then run.
+5. **Permissions** — Default-deny MCP/extra tools and writes beyond scope; name
+   opt-ins (see `templates/LOOP.permissions.example.md`).
+6. **Freeze** — Commit `GOAL.md` + `verify.sh` (+ `VERIFY.skill.md`). Then run.
 
 ## Relation to meta-loop
 
@@ -44,3 +59,4 @@ cases up front than thrash iterations.
 - Freezing a vibes goal (“make it great”) with `verify: "true"`
 - Discovering new requirements mid-loop and rewriting `GOAL.md` in-place
 - Treating LLM “looks done” as the finish line
+- Leaving ambient MCP / network / browser tools “just in case” without naming them

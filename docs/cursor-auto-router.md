@@ -3,6 +3,7 @@ tags:
   - documentation
   - competitive
   - cursor
+  - agents
 ---
 # Cursor Auto / Router — opt-in status (blocked)
 

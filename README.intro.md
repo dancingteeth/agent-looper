@@ -61,6 +61,8 @@ flowchart LR
 | **Judge** | Separate Cursor review model (optional) | After verify passes, write `review.md`. With `reviewGate`, only **error + impact** findings reopen the worker. |
 | **You** | Human | Write the goal and the verify script. Escalate when the gate is stuck (`reviewGateHitl` / Taskwarrior). |
 
+**Specs ≠ prompts:** `AGENTS.md` (and skills) tell the *worker* how to act. `REVIEWS.md` tells the *judge* what good residual behavior looks like after verify — it is not runtime prompt text. Keep both sparse; delete laws when models stop failing them.
+
 **Important:** “Risk: HIGH” in a review ≠ failed loop. Risk is blast radius of the *change*. Completion is verify + (optional) gating blockers.
 
 ---
@@ -95,7 +97,9 @@ Never use Composer **Fast** as the judge. Worker on Cursor is always Composer 2.
 
 If a README promises “autonomous digital employees,” walk away. This one promises: **green verify, bounded spend, inspectable logs.**
 
-After each run (default `exportRunReport: true`), the bundle also gets **`run-report.md`** — a human-readable timeline (models, verify, session IDs, tool counts) plus optional **`transcript.ndjson`**. Regenerate anytime with `agent-loop-export-run <loop-dir>`.
+After each run (default `exportRunReport: true`), the bundle also gets **`run-report.md`** — a human-readable timeline (models, verify, session IDs, tool counts) plus optional **`transcript.ndjson`**. Regenerate anytime with `agent-loop-export-run <loop-dir>`. Treat **`run-report.md`** as the default post-run audit surface (Linear-style run history); dig into `log.ndjson` / the agent only when you need failure detail.
+
+Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md). Optional scope matrix: [`templates/LOOP.permissions.example.md`](./templates/LOOP.permissions.example.md) (MCP / tools / path writes default-deny until named).
 
 ---
 

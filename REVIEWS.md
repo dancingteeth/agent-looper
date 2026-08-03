@@ -7,6 +7,10 @@ tags:
 
 Portable overlay for this dogfood repo. Keep short — inlined into quality-review prompts.
 
+**Specs ≠ prompts:** `AGENTS.md` = worker runtime; this file = judge standard. Do not
+load review laws into the worker prompt. Author new laws sparsely (see
+`templates/REVIEWS.md` five-dimension checklist); treat out-of-scope laws as NA.
+
 For full human/Cursor review (pincer Full, deep thermo), use the **unified-code-review**
 skill outside the loop. Do **not** paste that skill into gate prompts.
 

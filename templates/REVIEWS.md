@@ -9,6 +9,10 @@ tags:
 Portable review overlay for agent-loop consumers. Keep this file **short** — the
 harness inlines it into every quality-review prompt.
 
+**Specs ≠ prompts:** `AGENTS.md` steers the *worker* at runtime. This file is the
+*judge* standard (what good residual conduct looks like after verify). Do not paste
+worker instructions here, and do not load this file into the worker prompt.
+
 For a full human/Cursor review (pincer Full, deep thermo), use the
 **unified-code-review** skill outside the loop. Do **not** paste that skill here.
 
@@ -112,5 +116,25 @@ When this repo uses Taskwarrior (or similar):
 ## Project-specific laws
 
 <!-- Add cross-module invariants, file-size limits, deploy gates here. -->
+
+Keep this section **sparse** — elevate only durable, high-impact conduct you will
+actually gate on. Prefer fewer laws over a novel. When a law stops failing under
+the current worker/judge models, **delete it** (same instinct as prompt diet).
+
+When authoring a new law (or a new gating impact), if the standard feels mushy,
+sketch it with these dimensions (Agent Behavior-inspired; free-form is fine):
+
+| Dimension | Ask |
+| --- | --- |
+| **Intent** | Why it matters and when it applies |
+| **Evidence** | What the agent should inspect or verify before deciding |
+| **Decision** | What it should conclude from that evidence |
+| **Execution** | What it should do after deciding |
+| **Recovery** | What to do when evidence is incomplete or the first path fails |
+| **Failure modes** | Undesired conduct this law prevents |
+
+Then emit findings with the blocker contract above (`severity` + `impact`). Laws
+that do not apply to *this* diff → treat as **NA** (omit / advisory), do not force
+a gating blocker.
 
 - Prefer smaller surface, clearer names, fewer layers (code judo).

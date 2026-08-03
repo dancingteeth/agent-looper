@@ -350,6 +350,7 @@ PR that lands #1.
 | **M6** | Competitive P0 (docs/templates) | Positioning, prompt-diet, unknowns preflight, metric-grind template, `llms.txt` |
 | **M7** | Intervention + Guide packets | **Shipped** — Proceed/Guide/Deny/Confirm; Guide packets; `status` done\|continue\|waiting; trivial-verify warn |
 | **M8** | Batch rubrics / Auto model (optional) | **Shipped** — batch `{path,rubric}`; computer-use templates; Auto **blocked** pending SDK (`docs/cursor-auto-router.md`) |
+| **M9** | Linear Loops governance steals | **Shipped (docs/templates)** — prove→freeze, draft discipline, run-report as audit surface, `LOOP.permissions.example.md`, tool default-deny. No harness publish-snapshot yet — see [`competitive-steal-backlog.md`](./competitive-steal-backlog.md) P3 |
 
 ### M6–M8 context (2026-07 competitive session)
 
@@ -361,7 +362,12 @@ not issue→prod factory UI.
 Steal map and priorities: session canvas `session-steal-decisions` +
 [`competitive-steal-backlog.md`](./competitive-steal-backlog.md).
 
----
+### M9 context (2026-08 Linear Loops)
+
+Linear Loops ([docs](https://linear.app/docs/loops)) is team-ops automation with audit-first
+UX (draft→publish, run history, permission matrix). Adopt governance patterns only;
+do not adopt LLM-as-exit or issue-graph scope. Details in backlog **P3** —
+docs/templates shipped; optional publish-snapshot harness deferred.
 
 ## Non-goals
 
