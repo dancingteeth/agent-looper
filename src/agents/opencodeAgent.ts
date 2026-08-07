@@ -9,9 +9,9 @@ import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import {
   DEFAULT_OPENCODE_GO_LOOP_MODEL,
   LOOP_RUNTIME_OPENCODE,
-  parseOpencodeModel,
+  parseProviderModel,
 } from '../loop/loopAgentConfig.js'
-import { bootstrapOpencodeProviderAuth } from './opencodeAuth.js'
+import { bootstrapOpencodeProviderAuth, assertOpencodeProviderAuthReady } from './opencodeAuth.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 
@@ -188,7 +188,8 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const assistantOutput = options.assistantOutput ?? 'stdout'
       const phase = options.phase ?? 'implement'
-      const { providerID, modelID } = parseOpencodeModel(options.modelId)
+      const { providerID, modelID } = parseProviderModel(options.modelId)
+      assertOpencodeProviderAuthReady({ providerID, wiredProviders })
 
       const created = unwrapData(
         await client.session.create({

@@ -30,7 +30,7 @@ Any other OpenCode provider id is allowed in `provider/model` form, for example:
 | `ollama/llama3.2` | Local Ollama — no key; use `opencode /connect` or host config |
 | `anthropic/claude-sonnet-4-20250514` | Provider env or `~/.local/share/opencode/auth.json` from `/connect` |
 
-The harness **does not** set `enabled_providers` on the ephemeral server, so any provider OpenCode supports can be used once credentials exist.
+The harness wires `OPENCODE_API_KEY` / `OPENROUTER_API_KEY` into the ephemeral server when present. For those providers, each iteration **fails fast** if the key is missing and `~/.local/share/opencode/auth.json` has no entry (override path via `OPENCODE_AUTH_JSON`). Other providers (e.g. Ollama) are left to OpenCode’s own config.
 
 Curated Go list + pricing estimates: `OPENCODE_GO_LOOP_MODELS` in code. BYOK models use provider-reported cost when available; otherwise `costUsd` may be `0` in logs.
 

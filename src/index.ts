@@ -91,6 +91,7 @@ export {
   isOpencodeRuntime,
   parseOpencodeGoModel,
   parseOpencodeModel,
+  parseProviderModel,
   isOpencodeLoopModel,
   isPiLoopModel,
   isPiRuntime,

@@ -2,25 +2,25 @@ import { describe, expect, it } from 'vitest'
 import {
   isOpencodeGoModel,
   isOpencodeLoopModel,
-  parseOpencodeModel,
+  parseProviderModel,
   OPENCODE_GO_LOOP_MODELS,
 } from '../loop/loopAgentConfig.js'
 
-describe('parseOpencodeModel', () => {
+describe('parseProviderModel', () => {
   it('splits provider and model id', () => {
-    expect(parseOpencodeModel('opencode-go/deepseek-v4-flash')).toEqual({
+    expect(parseProviderModel('opencode-go/deepseek-v4-flash')).toEqual({
       providerID: 'opencode-go',
       modelID: 'deepseek-v4-flash',
     })
-    expect(parseOpencodeModel('openrouter/deepseek/deepseek-chat')).toEqual({
+    expect(parseProviderModel('openrouter/deepseek/deepseek-chat')).toEqual({
       providerID: 'openrouter',
       modelID: 'deepseek/deepseek-chat',
     })
   })
 
   it('rejects malformed ids', () => {
-    expect(() => parseOpencodeModel('deepseek-v4-flash')).toThrow(/Invalid OpenCode model/)
-    expect(() => parseOpencodeModel('opencode-go/')).toThrow(/Invalid OpenCode model/)
+    expect(() => parseProviderModel('deepseek-v4-flash')).toThrow(/Invalid provider\/model/)
+    expect(() => parseProviderModel('opencode-go/')).toThrow(/Invalid provider\/model/)
   })
 })
 

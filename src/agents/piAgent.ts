@@ -5,7 +5,7 @@ import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import {
   LOOP_RUNTIME_PI,
-  parseOpencodeModel,
+  parseProviderModel,
 } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
@@ -39,10 +39,16 @@ type PiAssistantMessage = {
   }
 }
 
-function extractPiAssistantText(messages: readonly unknown[]): string {
-  const last = [...messages].reverse().find((m) => {
+function lastPiAssistantMessage(
+  messages: readonly unknown[],
+): PiAssistantMessage | undefined {
+  return [...messages].reverse().find((m) => {
     return typeof m === 'object' && m !== null && (m as { role?: string }).role === 'assistant'
   }) as PiAssistantMessage | undefined
+}
+
+function extractPiAssistantText(messages: readonly unknown[]): string {
+  const last = lastPiAssistantMessage(messages)
   if (!last) {
     throw new Error('Pi session ended without assistant message')
   }
@@ -64,10 +70,7 @@ function readPiUsage(
   modelId: string,
   phase: NonNullable<PiAgentRunOptions['phase']>,
 ): AgentRunResult['usage'] {
-  const last = [...messages].reverse().find((m) => {
-    return typeof m === 'object' && m !== null && (m as { role?: string }).role === 'assistant'
-  }) as PiAssistantMessage | undefined
-  const usage = last?.usage
+  const usage = lastPiAssistantMessage(messages)?.usage
   if (!usage) return undefined
   return createUsageRecord({
     phase,
@@ -90,9 +93,14 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const assistantOutput = options.assistantOutput ?? 'stdout'
       const phase = options.phase ?? 'implement'
-      const { providerID, modelID } = parseOpencodeModel(options.modelId)
+      const { providerID, modelID } = parseProviderModel(options.modelId)
 
-      const { createAgentSession, SessionManager } = await import('@earendil-works/pi-coding-agent')
+      const {
+        createAgentSession,
+        SessionManager,
+        DefaultResourceLoader,
+        getAgentDir,
+      } = await import('@earendil-works/pi-coding-agent')
       const { getModel } = await import('@earendil-works/pi-ai/compat')
 
       const resolvePiModel = getModel as (
@@ -107,11 +115,20 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
         )
       }
 
+      // Append harness instructions via Pi's resource loader (first-class system channel).
+      const resourceLoader = new DefaultResourceLoader({
+        cwd: ctx.repoRoot,
+        agentDir: getAgentDir(),
+        appendSystemPrompt: [systemPrompt],
+      })
+      await resourceLoader.reload()
+
       const { session } = await createAgentSession({
         cwd: ctx.repoRoot,
         model,
         thinkingLevel: 'low',
         sessionManager: SessionManager.inMemory(),
+        resourceLoader,
       })
 
       console.error(
@@ -122,8 +139,7 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined
       try {
         const runPromise = (async () => {
-          const userPrompt = `${systemPrompt}\n\n---\n\n${prompt}`
-          await session.prompt(userPrompt)
+          await session.prompt(prompt)
           await session.waitForIdle()
         })()
 

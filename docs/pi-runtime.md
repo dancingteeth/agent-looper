@@ -7,7 +7,7 @@ tags:
 ---
 # Pi worker runtime
 
-`runtime: pi` embeds [@earendil-works/pi-coding-agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent): read/bash/edit/write tools, fresh in-memory session per worker iteration, harness system prompt prepended to each prompt.
+`runtime: pi` embeds [@earendil-works/pi-coding-agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent): read/bash/edit/write tools, fresh in-memory session per worker iteration. Harness instructions are appended via Pi’s `DefaultResourceLoader.appendSystemPrompt` (not stuffed into the user message).
 
 Judge path is unchanged (Cursor SDK).
 

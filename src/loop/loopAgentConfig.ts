@@ -193,18 +193,18 @@ export function isClineCreditsModelShape(model: string): boolean {
   return CLINE_CREDITS_MODEL_RE.test(model) && !model.startsWith('cline-pass/')
 }
 
-/** OpenCode `provider/model` ids (BYOK providers). Go slugs use a separate curated list. */
+/** OpenCode / Pi `provider/model` shape (BYOK). Go slugs use a separate curated list. */
 const OPENCODE_BYOK_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
 
-/** Split `opencode-go/deepseek-v4-flash` or `openrouter/deepseek/deepseek-chat` for the SDK prompt body. */
-export function parseOpencodeModel(model: string): {
+/** Split `provider/model` (OpenCode / Pi) for the SDK prompt body. */
+export function parseProviderModel(model: string): {
   providerID: string
   modelID: string
 } {
   const slash = model.indexOf('/')
   if (slash <= 0 || slash === model.length - 1) {
     throw new Error(
-      `Invalid OpenCode model "${model}". Expected provider/model ` +
+      `Invalid provider/model "${model}". Expected provider/model ` +
         `(e.g. "${DEFAULT_OPENCODE_GO_LOOP_MODEL}" or "openrouter/deepseek/deepseek-chat"). ` +
         `See https://opencode.ai/docs/providers/`,
     )
@@ -215,8 +215,11 @@ export function parseOpencodeModel(model: string): {
   }
 }
 
-/** @deprecated Use {@link parseOpencodeModel}. */
-export const parseOpencodeGoModel = parseOpencodeModel
+/** @deprecated Use {@link parseProviderModel}. */
+export const parseOpencodeModel = parseProviderModel
+
+/** @deprecated Use {@link parseProviderModel}. */
+export const parseOpencodeGoModel = parseProviderModel
 
 export function isOpencodeLoopModelShape(model: string): boolean {
   if (!OPENCODE_BYOK_MODEL_RE.test(model)) return false
@@ -234,7 +237,7 @@ export function isPiLoopModel(model: string): boolean {
 /** Valid `loop.json` model for runtime `opencode`. */
 export function isOpencodeLoopModel(model: string): boolean {
   if (!isOpencodeLoopModelShape(model)) return false
-  const { providerID } = parseOpencodeModel(model)
+  const { providerID } = parseProviderModel(model)
   if (providerID === 'opencode-go') return isOpencodeGoModel(model)
   return true
 }
@@ -361,7 +364,7 @@ function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'
   if (!isOpencodeLoopModel(model)) {
     const { providerID } = (() => {
       try {
-        return parseOpencodeModel(model)
+        return parseProviderModel(model)
       } catch {
         return { providerID: '' }
       }
@@ -402,7 +405,6 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
     return {
       runtime,
       model: assertOpencodeLoopModel(model, 'model'),
-      reasoningEffort: config.reasoningEffort,
     }
   }
 
@@ -410,7 +412,6 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
     return {
       runtime,
       model: assertPiLoopModel(model, 'model'),
-      reasoningEffort: config.reasoningEffort,
     }
   }
 
