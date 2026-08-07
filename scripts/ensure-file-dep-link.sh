@@ -19,12 +19,12 @@ fi
 SPECIFIER="$(node --input-type=module -e "
 import { readFileSync } from 'node:fs';
 const pkg = JSON.parse(readFileSync('${PKG_JSON}', 'utf8'));
-const spec = pkg.devDependencies?.['@dancingteeth/agent-loop']
-  ?? pkg.dependencies?.['@dancingteeth/agent-loop'];
+const spec = pkg.devDependencies?.['@dancingteeth/agent-looper']
+  ?? pkg.dependencies?.['@dancingteeth/agent-looper'];
 if (!spec?.startsWith('file:')) process.exit(2);
 process.stdout.write(spec.slice('file:'.length));
 ")" || {
-  echo "[ensure-file-dep-link] @dancingteeth/agent-loop is not a file: dependency — nothing to do" >&2
+  echo "[ensure-file-dep-link] @dancingteeth/agent-looper is not a file: dependency — nothing to do" >&2
   exit 0
 }
 

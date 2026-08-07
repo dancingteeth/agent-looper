@@ -5,7 +5,7 @@ tags:
 ---
 # AGENTS.md — agent-loop (harness)
 
-Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-loop`).
+Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 
 ## Working agreements
 

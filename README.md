@@ -3,7 +3,7 @@ tags:
   - documentation
   - agents
 ---
-# @dancingteeth/agent-loop
+# Agent Looper (`@dancingteeth/agent-looper`)
 
 Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
 
@@ -39,7 +39,7 @@ Requires **Node.js 22+** for Cline / OpenCode / Pi SDK runtimes.
 
 ```bash
 # Cursor-only
-pnpm add -D @dancingteeth/agent-loop @cursor/sdk
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 
 # Optional Cline SDK worker (ClinePass or Credits)
 pnpm add -D @cline/sdk
@@ -54,17 +54,17 @@ pnpm add -D @opencode-ai/sdk opencode-ai
 pnpm add -D @earendil-works/pi-coding-agent
 ```
 
-Or link a local checkout during development:
+CLI commands stay `agent-loop` / `agent-check` / … (bins unchanged). Or link a local checkout during development:
 
 ```bash
 pnpm link --global   # from the agent-loop package root
 # in your app repo:
-pnpm link -g @dancingteeth/agent-loop
+pnpm link -g @dancingteeth/agent-looper
 ```
 
 ### `file:` dependency
 
-Pin a relative path to a local checkout, e.g. `"@dancingteeth/agent-loop": "file:../agent-loop"`. That path must exist when you `pnpm install`.
+Pin a relative path to a local checkout, e.g. `"@dancingteeth/agent-looper": "file:../agent-loop"`. That path must exist when you `pnpm install`.
 
 | When | What |
 | --- | --- |

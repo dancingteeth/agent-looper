@@ -103,7 +103,7 @@ function makeBundle(overrides: Record<string, unknown> = {}) {
   })
   return {
     loopDir: tmpLoopDir,
-    goal: 'Fix harness tests under @dancingteeth/agent-loop.',
+    goal: 'Fix harness tests under @dancingteeth/agent-looper.',
     config,
     logPath: path.join(tmpLoopDir, 'log.ndjson'),
   }

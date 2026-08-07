@@ -10,7 +10,7 @@ describe('loopRisk', () => {
   })
 
   it('classifies harness-only loops as low under auto', () => {
-    const goal = 'Fix failing tests under @dancingteeth/agent-loop related to the agent loop harness.'
+    const goal = 'Fix failing tests under @dancingteeth/agent-looper related to the agent loop harness.'
     const verify = 'pnpm exec vitest run src/loop/'
     expect(inferLoopReviewRisk(goal, verify)).toBe('low')
     expect(resolvePostQualityReview('auto', goal, verify)).toBe(false)

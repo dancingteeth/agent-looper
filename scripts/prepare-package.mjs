@@ -102,7 +102,7 @@ function main() {
   if (build.status !== 0) {
     const stillMissing = missingRequired(packageRoot)
     if (stillMissing.length > 0) {
-      console.error('\n[@dancingteeth/agent-loop] dist/ is incomplete and build failed.')
+      console.error('\n[@dancingteeth/agent-looper] dist/ is incomplete and build failed.')
       console.error('Missing:', stillMissing.join(', '))
       console.error(
         '\nFix (from your machine):\n' +
@@ -117,7 +117,7 @@ function main() {
 
   const afterBuild = missingRequired(packageRoot)
   if (afterBuild.length > 0) {
-    console.error('\n[@dancingteeth/agent-loop] build finished but dist/ is still incomplete.')
+    console.error('\n[@dancingteeth/agent-looper] build finished but dist/ is still incomplete.')
     console.error('Missing:', afterBuild.join(', '))
     process.exit(1)
   }

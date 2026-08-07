@@ -5,7 +5,7 @@ tags:
   - agents
   - documentation
 ---
-# @dancingteeth/agent-loop — Technical Architecture
+# Agent Looper (`@dancingteeth/agent-looper`) — Technical Architecture
 
 > **Audience:** technical reviewers, integrators, and anyone who needs to understand how
 > the loop harness works under the hood. This document complements the README;

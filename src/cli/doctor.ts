@@ -23,7 +23,7 @@ function resolvePackageRoot(fromModuleUrl: string): string {
 function usage(): string {
   return `Usage: agent-loop-doctor [options]
 
-Validates @dancingteeth/agent-loop install integrity for file: consumers
+Validates @dancingteeth/agent-looper install integrity for file: consumers
 and checks consumer repo profile / loop.json pitfalls.
 
 Options:
@@ -85,7 +85,7 @@ if (json) {
 
 if (report.ok) {
   if (!installCheck) {
-    console.log(`[@dancingteeth/agent-loop] OK — packageRoot=${packageRoot}`)
+    console.log(`[@dancingteeth/agent-looper] OK — packageRoot=${packageRoot}`)
     if (report.fileDep) {
       console.log(`  file: ${report.fileDep.specifier} → ${report.fileDep.resolvedPath}`)
     }

@@ -17,7 +17,7 @@ export const repoProfileSchema = z.object({
   reviewsFile: z.string().trim().min(1).default('REVIEWS.md'),
   skillsGlob: z.string().trim().min(1).default('packages/skills/*/SKILL.md'),
   /** Cline clientName / dispose reason label. */
-  clientName: z.string().trim().min(1).default('@dancingteeth/agent-loop'),
+  clientName: z.string().trim().min(1).default('@dancingteeth/agent-looper'),
   /** Extra keywords merged into loop risk inference (see REVIEWS.md ## Loop risk inference). */
   loopRiskProfile: loopRiskProfileOverrideSchema.optional(),
   /** Optional Telegram completion reports (bot token via env). */

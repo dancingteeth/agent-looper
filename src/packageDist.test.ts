@@ -52,7 +52,7 @@ describe('findFileDependency', () => {
       path.join(dir, 'package.json'),
       JSON.stringify({
         devDependencies: {
-          '@dancingteeth/agent-loop': 'file:../../agent-loop',
+          '@dancingteeth/agent-looper': 'file:../../agent-loop',
         },
       }),
     )
@@ -70,7 +70,7 @@ describe('inspectPackageInstall', () => {
       path.join(dir, 'package.json'),
       JSON.stringify({
         devDependencies: {
-          '@dancingteeth/agent-loop': 'file:../../agent-loop',
+          '@dancingteeth/agent-looper': 'file:../../agent-loop',
         },
       }),
     )

@@ -5,9 +5,9 @@ tags:
   - agents
   - loops
 ---
-# agent-loop — a loop harness that actually finishes the job
+# Agent Looper — a loop harness that actually finishes the job
 
-**Fix-until-green for Cursor (and Cline):** one frozen goal, a cheap worker that edits the repo, a shell check that decides “done,” optional smarter review that can send the worker back — until the check is green or you stop it.
+**Fix-until-green for Cursor (and Cline / OpenCode / Pi):** one frozen goal, a cheap worker that edits the repo, a shell check that decides “done,” optional smarter review that can send the worker back — until the check is green or you stop it.
 
 Software is becoming a hierarchy of loops. The highest-value human work is **deciding which loops to create** — writing a measurable `GOAL.md` + `verify.sh`. The harness owns the grind; you own the finish line. (Models will keep changing; this system compounds across them.)
 
@@ -121,7 +121,7 @@ Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknow
 ## 60-second install (Cursor-only)
 
 ```bash
-pnpm add -D @dancingteeth/agent-loop @cursor/sdk
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 # or link a sibling checkout — see README.md
 
 export CURSOR_API_KEY=…   # or: doppler run -- …
@@ -219,4 +219,4 @@ Reference (flags, CLIs, threat model): [`README.md`](./README.md).
 
 ## License
 
-MIT · [@dancingteeth/agent-loop](https://github.com/dancingteeth/agent-loop)
+MIT · [@dancingteeth/agent-looper](https://github.com/dancingteeth/agent-loop)

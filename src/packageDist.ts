@@ -115,7 +115,7 @@ export function findFileDependency(
 
   const sections = [pkg.devDependencies, pkg.dependencies]
   for (const section of sections) {
-    const specifier = section?.['@dancingteeth/agent-loop']
+    const specifier = section?.['@dancingteeth/agent-looper']
     if (!specifier?.startsWith('file:')) continue
     const rel = specifier.slice('file:'.length)
     const resolvedPath = path.resolve(consumerRoot, rel)
@@ -165,7 +165,7 @@ export type PackageDistReportWithHint = PackageDistReport & {
 export function formatPackageDistHelp(
   report: PackageDistReportWithHint,
 ): string {
-  const lines: string[] = ['[@dancingteeth/agent-loop] install check failed.', '']
+  const lines: string[] = ['[@dancingteeth/agent-looper] install check failed.', '']
 
   for (const issue of report.issues) {
     lines.push(`  • ${issue.message}`)

@@ -5,7 +5,7 @@ tags:
 ---
 # Wiring a new consumer repo
 
-Checklist for agents and humans adding **`@dancingteeth/agent-loop`** to another repository (Maxin, Zwook, or a greenfield project).
+Checklist for agents and humans adding **`@dancingteeth/agent-looper`** to another repository (Maxin, Zwook, or a greenfield project).
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ In the consumer `package.json` `optionalDependencies` (dev harness — not requi
 ```json
 {
   "optionalDependencies": {
-    "@dancingteeth/agent-loop": "file:../agent-loop"
+    "@dancingteeth/agent-looper": "file:../agent-loop"
   },
   "devDependencies": {
     "@cline/sdk": "^0.0.55",

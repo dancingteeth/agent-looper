@@ -1,4 +1,4 @@
-# @dancingteeth/agent-loop
+# Agent Looper (`@dancingteeth/agent-looper`)
 
 > Repo-agnostic fix-until-green harness: frozen GOAL → worker agent → shell verify → optional judge/reviewGate. Fresh context every iteration. Progress lives in git/files.
 
@@ -48,4 +48,4 @@ Worker default: composer-2.5. Judge default: grok-4.5 (`reviewModel`).
 
 ## Package
 
-npm: `@dancingteeth/agent-loop`. Layout: src/loop, src/review, src/agents, templates, .cursor/loops.
+npm: `@dancingteeth/agent-looper`. Layout: src/loop, src/review, src/agents, templates, .cursor/loops.

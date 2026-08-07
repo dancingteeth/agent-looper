@@ -29,7 +29,7 @@ Success is determined **only** by `loop.json` `verify` (exit `0`).
 ## Constraints
 
 - Do **not** edit this `GOAL.md` mid-loop.
-- Do not add Playwright as a package dependency of `@dancingteeth/agent-loop`.
+- Do not add Playwright as a package dependency of `@dancingteeth/agent-looper`.
 - Do not change core loop engine.
 
 ## Out of scope

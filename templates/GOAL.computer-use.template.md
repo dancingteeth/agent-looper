@@ -38,7 +38,7 @@ are skipped (no `$DISPLAY`, `SKIP_UI=1`).
 ## Constraints
 
 - Do **not** edit this `GOAL.md` mid-loop.
-- Do **not** add Playwright (or similar) as a dependency of `@dancingteeth/agent-loop`.
+- Do **not** add Playwright (or similar) as a dependency of `@dancingteeth/agent-looper`.
 - Scope: directories and files you list here.
 
 ## Out of scope
