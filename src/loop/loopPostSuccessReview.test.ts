@@ -10,6 +10,7 @@ import {
 import { runPostLoopBlockerRecheck, runPostLoopQualityReview } from '../review/loopPostReview.js'
 import type { PostLoopReviewResult } from '../review/loopPostReview.js'
 import { parseReviewMarkdown } from '../review/reviewVerdict.js'
+import { CURSOR_REVIEW_MODEL, type CursorSdkModel, type ResolvedReviewAgent } from './loopAgentConfig.js'
 
 vi.mock('../review/loopPostReview.js', () => ({
   runPostLoopQualityReview: vi.fn(),
@@ -204,8 +205,8 @@ describe('resolvePostSuccessReviewOutcome', () => {
   })
 })
 
-function cursorJudge(model = 'grok-4.5') {
-  return { runtime: 'cursor' as const, model }
+function cursorJudge(model: CursorSdkModel = CURSOR_REVIEW_MODEL): ResolvedReviewAgent {
+  return { runtime: 'cursor', model }
 }
 
 describe('runPostSuccessReviewPhase', () => {
