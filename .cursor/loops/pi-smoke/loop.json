@@ -1,0 +1,14 @@
+{
+  "runtime": "pi",
+  "model": "openrouter/deepseek/deepseek-chat",
+  "maxIterations": 2,
+  "verify": "bash .cursor/loops/pi-smoke/verify.sh",
+  "postQualityReview": false,
+  "reviewGate": false,
+  "syncOnSuccess": false,
+  "stagnationThreshold": 2,
+  "mode": "forward",
+  "notifyTelegram": false,
+  "delayMs": 0,
+  "trustConfig": true
+}
