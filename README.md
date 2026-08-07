@@ -7,35 +7,35 @@ tags:
 
 Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
 
-Supports **Cursor SDK** (`composer-2.5` worker + `grok-4.5` judge), **Cline SDK** (`@cline/sdk`) — **ClinePass** (`runtime: cline-pass`) or **Credits** (`runtime: cline`), and **OpenCode** (`@opencode-ai/sdk` + Go subscription, `runtime: opencode`).
+Supports **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), and **Pi** workers. The primary **judge** defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 
-New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Cost-minmax runtime map: [`docs/runtime-map.md`](./docs/runtime-map.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Features at a glance
 
 | Layer | What it does | Blocks completion? |
 | --- | --- | --- |
-| **Worker** | Fresh Cursor, Cline, or OpenCode SDK session each iteration; implements toward `GOAL.md` | — (does the work) |
+| **Worker** | Fresh Cursor / Cline / OpenCode / Pi session each iteration; implements toward `GOAL.md` | — (does the work) |
 | **Verifier** | Shell `verify` / `finalVerify` (exit `0`). Optional `verifyMode: skill` runs a verify agent first (`VERIFY_RESULT: PASS/FAIL`), then shell. | **Yes** — hard gate |
-| **Review** | Post-success LLM quality review → `review.md`. Optional `reviewGate` re-opens the fix loop on **gating** findings only. | Only with `reviewGate: true` |
+| **Review** | Post-success LLM quality review → `review.md` (primary judge via `reviewRuntime`, default cursor). Optional `reviewGate` re-opens the fix loop on **gating** findings only. | Only with `reviewGate: true` |
 | **Human** | `reviewGateHitl`, `hitlCheck`, optional Taskwarrior UUID auto-done on success | Closure authority |
 
 **Review stack** (opt-in unless noted):
 
 1. **Impact-severity** — only `severity: error` + recognized `impact` tags gate (`data-loss`, `security-boundary`, `false-closure`, `cross-dispatch`, `verify-bypass`). Cosmetic findings stay advisory.
 2. **Reproduce-before-report** — `reviewReproduce`: drop error+impact blockers without a citeable path in the changed-files set.
-3. **Fresh reproduce agent** — `reviewReproduceAgent`: second Cursor session KEEP/DROP on remaining gating blockers.
+3. **Fresh reproduce agent** — `reviewReproduceAgent`: second judge session KEEP/DROP on remaining gating blockers (same `reviewRuntime` as primary).
 4. **Secondary-family judge** — `reviewSecondaryRuntime` on Cline SDK (`cline-pass` or `cline`): union gating blockers with primary; skips when primary is PASS/ADVISORY with zero gates.
 
 **Factory scale:** `agent-loop-batch` (sequential + meta-loop probe→fix), `agent-loop-meta-review` (read-only cross-loop report over N bundles).
 
-**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
+**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `OPENROUTER_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
 
 Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md).
 
 ## Install
 
-Requires **Node.js 22+** for Cline / OpenCode SDK runtimes.
+Requires **Node.js 22+** for Cline / OpenCode / Pi SDK runtimes.
 
 ```bash
 # Cursor-only
@@ -44,11 +44,14 @@ pnpm add -D @dancingteeth/agent-loop @cursor/sdk
 # Optional Cline SDK worker (ClinePass or Credits)
 pnpm add -D @cline/sdk
 
-# Optional OpenCode worker (Go subscription)
+# Optional OpenCode worker (Go subscription and/or BYOK)
 pnpm add -D @opencode-ai/sdk opencode-ai
 # pnpm may skip opencode-ai's binary download — if needed:
 #   pnpm approve-builds   # allow opencode-ai scripts
 #   node node_modules/opencode-ai/postinstall.mjs
+
+# Optional Pi worker (BYOK)
+pnpm add -D @earendil-works/pi-coding-agent
 ```
 
 Or link a local checkout during development:
@@ -102,6 +105,16 @@ export OPENCODE_API_KEY=…   # https://opencode.ai/go
 # needs `opencode` on PATH (from opencode-ai)
 agent-check opencode
 agent-loop run .cursor/loops/my-task --runtime opencode
+```
+
+Pi BYOK worker (optional cheap Pi judge):
+
+```bash
+export OPENROUTER_API_KEY=…
+agent-check pi
+agent-loop run .cursor/loops/my-task --runtime pi
+# same runtime for judge:
+agent-loop run .cursor/loops/my-task --runtime pi --review-runtime pi --review-gate
 ```
 
 Target another checkout:
@@ -170,8 +183,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `runtime` | `cursor` | `cursor` \| `cline-pass` (ClinePass) \| `cline` (Credits) \| `opencode` (OpenCode Go). Cursor defaults: worker `composer-2.5`, judge `grok-4.5`. |
-| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode: after threshold; Cline: after reasoning ceiling). OpenCode default escalate: `opencode-go/qwen3.7-plus`. |
+| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi`. See [`docs/runtime-map.md`](./docs/runtime-map.md). |
+| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi: after threshold; Cline: after reasoning ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
@@ -194,13 +207,14 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reviewRisk` | `auto` | Override inferred risk for `postQualityReview: "auto"` (`high` / `medium` / `low`) |
 | `loopRiskProfile` | — | Per-loop keyword merge for risk inference (`high` / `medium` / `low` arrays) |
 | `reviewGate` | `false` | When `true`, gating blockers re-enter the fix loop (up to `maxReviewCycles`) |
-| `reviewModel` | (runtime) | Cursor judge: default `grok-4.5` on `cursor`, `composer-2.5` on Cline. Never Composer Fast. |
+| `reviewRuntime` | `cursor` | Primary judge runtime (same enum as `runtime`). Unset → cursor. |
+| `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.5` when worker is `cursor`, else `composer-2.5`. Non-cursor judges use that runtime’s default model. Never Composer Fast on cursor. |
 | `maxReviewCycles` | `2` | Review-triggered fix rounds when `reviewGate` is on |
 | `reviewGateHitl` | `false` | On gate exhaust, open a HITL Taskwarrior task instead of hard-fail |
 | `unparseableReviewRetries` | `2` | Retries when verdict cannot be parsed |
 | `reviewBlockerRecheck` | `true` | On BLOCKERS fix rounds, lighter scope-limited re-check |
 | `reviewReproduce` | `false` | Path filter on error+impact blockers (changed-files set) |
-| `reviewReproduceAgent` | `false` | Fresh Cursor KEEP/DROP on gating blockers (needs `reviewReproduce`) |
+| `reviewReproduceAgent` | `false` | Fresh KEEP/DROP session on gating blockers (needs `reviewReproduce`; uses primary `reviewRuntime`) |
 | `reviewSecondaryRuntime` | (unset) | Cline SDK second-family judge (`cline-pass` or `cline`); unset = off |
 | `reviewSecondaryModel` | (default) | Cline model for secondary review |
 | `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate) |
@@ -265,17 +279,17 @@ Example per-loop override (`loop.json`):
 }
 ```
 
-CLI overrides: `--mode reverse`, `--pause-after-iteration`, `--review-gate`, `--no-telegram`, `--review-model <id>`.
+CLI overrides: `--mode reverse`, `--pause-after-iteration`, `--review-gate`, `--no-telegram`, `--review-runtime <id>`, `--review-model <id>`.
 
 ## Review gate flow
 
 When `reviewGate: true` and verify passes:
 
 ```text
-primary Cursor review (reviewModel)
+primary review (reviewRuntime + reviewModel; default cursor)
   → optional reviewReproduce path filter
   → optional reviewReproduceAgent KEEP/DROP
-  → optional reviewSecondaryRuntime merge
+  → optional reviewSecondaryRuntime merge (Cline-only)
   → gating blockers remain? → fix iteration (up to maxReviewCycles)
   → else PASS / ADVISORY → complete
 ```
@@ -385,9 +399,10 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 
 | Variable | Role |
 | --- | --- |
-| `CURSOR_API_KEY` | Cursor SDK auth (worker / judge) |
-| `CLINE_API_KEY` | Cline SDK auth (optional peer runtime) |
-| `OPENCODE_API_KEY` | OpenCode Go auth (optional peer runtime; https://opencode.ai/go) |
+| `CURSOR_API_KEY` | Cursor SDK auth (worker and/or default judge) |
+| `CLINE_API_KEY` | Cline SDK auth (optional peer runtime / secondary judge) |
+| `OPENCODE_API_KEY` | OpenCode Go auth (optional peer; https://opencode.ai/go) |
+| `OPENROUTER_API_KEY` | OpenRouter BYOK for OpenCode / Pi workers and judges |
 | `AGENT_LOOP_VERBOSE` | `1` / `true` — extra stderr stream detail |
 | `AGENT_LOOP_CURSOR_TIMEOUT_MS` | Cursor run timeout in milliseconds (default **2700000** = 45m). Must be a positive number; validated before `Agent.create` so a bad value fails without burning a paid run. On timeout the harness cancels the remote run. |
 | `AGENT_LOOP_TRUST_CONFIG` | `1` — treat shell config as reviewed/trusted |

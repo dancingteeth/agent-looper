@@ -39,6 +39,9 @@ pnpm agent:loop run .cursor/loops/opencode-smoke --runtime opencode \
 
 # Pi + OpenRouter BYOK
 pnpm agent:loop run .cursor/loops/pi-smoke --runtime pi
+
+# Optional: Pi worker + Pi judge (needs reviewGate / postQualityReview on the loop)
+# pnpm agent:loop run .cursor/loops/pi-smoke --runtime pi --review-runtime pi --quality-review
 ```
 
 Publish to npm only when you want install without a sibling checkout.

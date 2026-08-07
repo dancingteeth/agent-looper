@@ -40,6 +40,19 @@ Use `provider/model` ids from Pi’s catalog (`getModel` / pi TUI). **Do not** u
 }
 ```
 
+Cheap Pi worker + Pi judge:
+
+```json
+{
+  "runtime": "pi",
+  "reviewRuntime": "pi",
+  "reviewModel": "openrouter/deepseek/deepseek-chat",
+  "verify": "bash .cursor/loops/my-task/verify.sh",
+  "postQualityReview": "auto",
+  "reviewGate": true
+}
+```
+
 ## vs OpenCode
 
 | | **Pi** | **OpenCode** |

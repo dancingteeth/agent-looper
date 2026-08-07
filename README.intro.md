@@ -154,6 +154,8 @@ Need Pi BYOK? Add `@earendil-works/pi-coding-agent`, set provider keys (e.g. `OP
 }
 ```
 
+Omit `reviewRuntime` to keep the default Cursor judge. For a cheap BYOK stack set `"reviewRuntime": "pi"` (or `"opencode"`) with a matching `reviewModel` — see [`docs/runtime-map.md`](./docs/runtime-map.md#judge-presets-reviewruntime--reviewmodel).
+
 `postQualityReview: "auto"` (the default) runs the judge only when inferred risk is **not low** — docs/harness-only loops skip review and save judge tokens. Set `"postQualityReview": true` when you always want `review.md`.
 
 Preview before a run:

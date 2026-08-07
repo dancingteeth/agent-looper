@@ -68,7 +68,8 @@ Use Cursor worker when you want one bill and IDE-native dogfood; use Cline/OpenC
 
 1. **OpenCode BYOK** — **Shipped:** Go slugs stay curated; any other `provider/model` OpenCode supports ([`docs/opencode-providers.md`](./opencode-providers.md)).
 2. **Pi `WorkerRuntime`** — **Shipped:** `runtime: pi` via `@earendil-works/pi-coding-agent` ([`docs/pi-runtime.md`](./pi-runtime.md)).
-3. **Docs** — keep this file and `README.intro.md` worker table in sync when a runtime ships.
+3. **Variable primary judge** — **Shipped:** `reviewRuntime` + `reviewModel` (any worker runtime; default cursor).
+4. **Docs** — keep this file and `README.intro.md` / `README.md` worker–judge tables in sync when a runtime ships.
 
 ## Open-source positioning (share / fork)
 

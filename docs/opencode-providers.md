@@ -45,6 +45,19 @@ Curated Go list + pricing estimates: `OPENCODE_GO_LOOP_MODELS` in code. BYOK mod
 }
 ```
 
+OpenCode Go worker + Cursor Grok judge (default `reviewRuntime`):
+
+```json
+{
+  "runtime": "opencode",
+  "model": "opencode-go/deepseek-v4-flash",
+  "reviewModel": "grok-4.5",
+  "verify": "bash .cursor/loops/my-task/verify.sh",
+  "postQualityReview": "auto",
+  "reviewGate": true
+}
+```
+
 ## Check
 
 ```bash
@@ -54,5 +67,6 @@ agent-check opencode
 
 ## See also
 
-- [`docs/runtime-map.md`](./runtime-map.md) — roadmap (Pi, etc.)
+- [`docs/runtime-map.md`](./runtime-map.md) — cost-minmax presets (incl. `reviewRuntime`)
+- [`docs/pi-runtime.md`](./pi-runtime.md) — Pi BYOK worker / judge
 - [OpenCode providers](https://opencode.ai/docs/providers/)

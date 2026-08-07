@@ -25,7 +25,7 @@ Research context and citations live in the patterns doc. This file is the
 | PASS / ADVISORY / BLOCKERS parse | `reviewVerdict.ts` |
 | Scoped blocker re-check (same family) | `reviewBlockerRecheck` |
 | HITL on gate exhaust | `reviewGateHitl` |
-| Worker / judge model split | `model` + `reviewModel` (Composer worker, Grok judge on cursor) |
+| Worker / judge model split | `runtime` + `model` (worker); `reviewRuntime` + `reviewModel` (judge, default cursor) |
 | Reasoning / model escalation | `reasoningEffort`, `escalateModel` |
 | Failure domain logging | `failure-domains.ndjson` |
 | Meta-loop inject hook | `injectFailureContext` |
@@ -195,20 +195,28 @@ shares confabulation bias with the original reviewer.
 
 ### Problem
 Single-provider review under-flags own-family mistakes. Worker+judge split
-(Composer / Grok) helps but both are still Cursor SDK.
+helps when families differ.
+
+### Status (shipped slices)
+
+| Slice | Status |
+| --- | --- |
+| Primary judge any worker runtime (`reviewRuntime`) | **Shipped** — `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` |
+| Secondary Cline-family judge (`reviewSecondaryRuntime`) | **Shipped** (M3) — Cline Pass/Credits only |
+| Meta-review multi-runtime | Out of scope (meta-review stays Cursor) |
 
 ### Design
 
 ```text
-deterministic gates → primary review (Cursor judge) → optional secondary family → merge
+deterministic gates → primary review (reviewRuntime) → optional secondary Cline → merge
 ```
 
 Merge policy (start simple):
 
 - Union of **error+impact** blockers after each side’s severity contract.
 - Advisory findings do not need consensus.
-- Config: `reviewProviders: ['cursor'] | ['cursor','cline']` or
-  `reviewSecondaryModel`.
+- Config: `reviewRuntime` / `reviewModel` for primary; `reviewSecondaryRuntime` /
+  `reviewSecondaryModel` for optional second family.
 
 VNX-style split (later): one gate for concrete bugs, one for
 architecture/coupling — only if merge noise stays low in the pilot.
@@ -217,16 +225,17 @@ architecture/coupling — only if merge noise stays low in the pilot.
 
 | Area | Work |
 | --- | --- |
-| `loopAgentConfig` | Secondary review runtime/model allowlist |
-| `loopPostReview` | Run N reviews; merge structured blockers |
+| `loopAgentConfig` | `resolveReviewAgent` + secondary allowlist |
+| `reviewAgentRun` / `loopPostReview` | Dispatch primary; merge secondary |
 | Cost controls | Cap secondary to review-gate cycles only; skip on ADVISORY primary |
 
 ### Acceptance criteria
 
+- [x] Primary judge can use any worker runtime via `reviewRuntime` (default cursor).
 - [x] Can enable a second-family review without breaking Cursor-only installs
       (dynamic import / optional peer, same pattern as Cline worker).
 - [x] Merge respects impact-severity contract from #1.
-- [x] Documented cost: one extra judge call per review cycle when enabled.
+- [x] Documented cost: one extra judge call per review cycle when secondary enabled.
 
 ### Depends on
 #1 strongly recommended first so dual review does not double cosmetic noise.
