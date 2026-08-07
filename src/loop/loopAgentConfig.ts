@@ -444,7 +444,10 @@ export function resolveIterationAgent(
     return base
   }
 
-  if (isOpencodeRuntime(base.runtime)) {
+  // Discriminant check (not isOpencodeRuntime(base.runtime)): the type-predicate
+  // form only narrows `.runtime`, leaving `.model` as the full union (incl. cline's
+  // `string`) — that fails assignability to OpencodeGoLoopModel and breaks `tsc`.
+  if (base.runtime === LOOP_RUNTIME_OPENCODE) {
     const threshold = config.escalateAfterStagnation ?? 2
     if (
       config.escalateModel &&
@@ -457,7 +460,7 @@ export function resolveIterationAgent(
         model: assertOpencodeGoModel(config.escalateModel, 'escalateModel'),
       }
     }
-    return { runtime: base.runtime, model: base.model }
+    return base
   }
 
   if (!isClineSdkRuntime(base.runtime)) {
