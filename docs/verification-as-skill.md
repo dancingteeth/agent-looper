@@ -117,6 +117,20 @@ Keep a **fixed floor** in `verify.sh` (always runs). For this-change edge cases:
 
 See also [`docs/unknowns-preflight.md`](./unknowns-preflight.md) and intervention modes in `templates/REVIEWS.md`.
 
+### AI-assisted extras (optional)
+
+When the worker may add dependencies or touch credential-shaped files, layer
+model-failure checks **on top of** the fixed floor — still shell exit codes:
+
+- Secret scan (gitleaks / focused `rg`)
+- Hallucinated-dependency / lockfile drift (slopsquatting)
+- Block non-registry installs (`git+`, raw URLs) in the diff
+
+Scaffold: [`templates/verify.ai-assisted.example.sh`](../templates/verify.ai-assisted.example.sh).
+Policy rows: [`templates/LOOP.permissions.example.md`](../templates/LOOP.permissions.example.md).
+These are outside the model (same instinct as NeMo/CI gates): the judge does not
+replace them.
+
 ## Visible UI / computer-use (template-only)
 
 Default loops stay **headless** — shell `verify` only. When the product under test

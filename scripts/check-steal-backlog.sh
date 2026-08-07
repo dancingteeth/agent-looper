@@ -47,11 +47,22 @@ require_grep docs/competitive-steal-backlog.md 'P3 — M9' 'P3 section present'
 require_grep docs/competitive-steal-backlog.md 'P4 — Agent Behavior' 'P4 section present'
 
 echo
+echo "== P5 NVIDIA / validated-assistant artifacts =="
+require_file templates/verify.ai-assisted.example.sh
+require_grep docs/competitive-steal-backlog.md 'P5 — NVIDIA' 'P5 section present'
+require_grep templates/LOOP.permissions.example.md 'Model ≠ security|model ≠ security' 'permissions model≠control plane'
+require_grep templates/LOOP.permissions.example.md 'Human-only paths|registry' 'permissions human-only / registry installs'
+require_grep templates/REVIEWS.md 'not a security sandbox|model ≠' 'REVIEWS judge≠sandbox'
+require_grep docs/verification-as-skill.md 'slopsquat|verify\.ai-assisted' 'verification AI-assisted extras'
+require_grep README.intro.md 'verify\.ai-assisted|control plane' 'intro links AI-assisted / control plane'
+
+echo
 echo "== Relative links resolve =="
 for link in \
   docs/unknowns-preflight.md \
   templates/LOOP.permissions.example.md \
   templates/REVIEWS.md \
+  templates/verify.ai-assisted.example.sh \
   docs/competitive-steal-backlog.md
 do
   require_file "$link"

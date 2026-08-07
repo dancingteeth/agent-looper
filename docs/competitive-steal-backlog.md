@@ -9,7 +9,8 @@ tags:
 
 Decisions from evaluating Strands, Cursor Router, Kilo Speed, Thariq/Claude Code,
 Mastra Factory/Goals, AI Maker (Wyndo), [Linear Loops](https://linear.app/docs/loops),
-and [Agent Behavior](https://agentbehavior.dev/) / Braintrust+Basis (Aug 2026).
+[Agent Behavior](https://agentbehavior.dev/) / Braintrust+Basis, NVIDIA Red Team /
+NeMo validated-assistant posts, and T3 Code automations (Aug 2026).
 Merge canvas: `session-steal-decisions` under the workspace canvases dir.
 
 ## Wedge (never trade)
@@ -104,6 +105,27 @@ Execution / Recovery), aimed at trajectory judges — **not** runtime prompts.
 - Mid-session `BeforeToolCall` interception (Cursor owns tools)
 - Replacing reviewGate with Auto model routing
 - Semantic tool retrieval / hot-reload tools directory (wrong layer)
+
+## P5 — NVIDIA security / validated assistant + T3 (Aug 2026)
+
+Sources:
+[Four Ways to Deploy More Secure AI Agents](https://developer.nvidia.com/blog/four-ways-to-deploy-more-secure-ai-agents/),
+[Self-Host a Validated AI Coding Assistant with NeMo Guardrails](https://developer.nvidia.com/blog/how-to-self-host-a-validated-ai-coding-assistant-with-nvidia-nemo-guardrails/),
+[pingdotgg/t3code](https://github.com/pingdotgg/t3code) (#3164 automations, #3638 scheduled tasks off-main).
+
+| Item | Adopt as | Deliverable | Notes |
+| --- | --- | --- | --- |
+| Model ≠ security control plane | Docs / template | **Shipped** — `templates/LOOP.permissions.example.md` + `templates/REVIEWS.md` | Judge / prompts are residual quality, not egress/secret/RCE controls |
+| Default-deny egress + secrets out of agent env | Template rows | **Shipped** — permissions matrix | Already aligned; tightened wording |
+| Human-only paths + registry-only installs | Template rows | **Shipped** — permissions matrix | Auth/payments/crypto/deploy; no `git+`/URL installs by default |
+| AI-assisted verify extras (secrets / slopsquat / lockfile) | Template | **Shipped** — `templates/verify.ai-assisted.example.sh` + `docs/verification-as-skill.md` | Optional layers on the fixed floor; shell still decides |
+
+### Explicit skips (NVIDIA / T3)
+
+- NeMo Guardrails / NIM self-host stack as harness dependency (wrong layer; consumers wire IDE proxy)
+- OpenShell / enterprise sandbox runtime inside agent-loop (host/platform concern)
+- Replacing shell verify with LLM-as-judge for security
+- T3 / Linear-style schedule·PR·issue triggers as core harness (factories compose the loop; same skip as P3)
 
 ## Verify this backlog
 

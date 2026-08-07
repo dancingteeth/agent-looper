@@ -31,6 +31,9 @@ For a full human/Cursor review (pincer Full, deep thermo), use the
 5. **Verdict** — PASS | ADVISORY | BLOCKERS
 
 Verifier (`verify` / `finalVerify`) is the **hard gate**. Review is residual judgment.
+Do **not** treat this judge as a security sandbox — egress, secrets, and install
+policy belong in shell verify / `PERMISSIONS.md` / the host runtime (model ≠
+control plane).
 
 ## Agent-authored changes
 
@@ -78,6 +81,7 @@ the hard gate; these modes describe *review residual judgment* only.
 | **Confirm** | `reviewGateHitl` / HITL task — human closure; result `status: waiting` |
 
 Do not invent a fifth mode. Shell `verify` exit `0` is never replaced by Proceed.
+Proceed / Guide / Deny are quality residual modes — not network, secret, or RCE controls.
 
 ## Loop risk inference
 

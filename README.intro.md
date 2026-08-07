@@ -88,7 +88,7 @@ Never use Composer **Fast** as the judge. Worker on Cursor is always Composer 2.
 | Choice | Why |
 | --- | --- |
 | **Fresh context each iteration** | Long chats fill with failed tool junk → doom loops. Files + `log.ndjson` are the memory. |
-| **Shell verify is hard gate** | Models approve their own work. Exit codes don’t. |
+| **Shell verify is hard gate** | Models approve their own work. Exit codes don’t. Judge ≠ sandbox. |
 | **Cheap worker, stronger judge** | Most tokens are “edit until green.” Spend on Composer/DeepSeek for that; use Grok (or secondary Cline) when verify already passed. |
 | **Impact-severity gating** | Stops “docs tone” findings from burning another $0.50 iteration. |
 | **Reproduce filters (opt-in)** | Drops confabulated blockers that don’t cite real changed paths / evidence. |
@@ -99,7 +99,7 @@ If a README promises “autonomous digital employees,” walk away. This one pro
 
 After each run (default `exportRunReport: true`), the bundle also gets **`run-report.md`** — a human-readable timeline (models, verify, session IDs, tool counts) plus optional **`transcript.ndjson`**. Regenerate anytime with `agent-loop-export-run <loop-dir>`. Treat **`run-report.md`** as the default post-run audit surface (Linear-style run history); dig into `log.ndjson` / the agent only when you need failure detail.
 
-Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md). Optional scope matrix: [`templates/LOOP.permissions.example.md`](./templates/LOOP.permissions.example.md) (MCP / tools / path writes default-deny until named).
+Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md). Optional scope matrix: [`templates/LOOP.permissions.example.md`](./templates/LOOP.permissions.example.md) (MCP / tools / path writes / installs default-deny until named; model ≠ security control plane). For AI-touched dep/secret risk, copy steps from [`templates/verify.ai-assisted.example.sh`](./templates/verify.ai-assisted.example.sh).
 
 ---
 

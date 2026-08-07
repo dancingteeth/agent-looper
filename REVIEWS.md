@@ -30,7 +30,8 @@ Canonical template: `templates/REVIEWS.md`. Meta-review brief: `docs/meta-review
 4. **Structure** — code judo
 5. **Verdict** — PASS | ADVISORY | BLOCKERS
 
-Verifier is the hard gate; review is residual.
+Verifier is the hard gate; review is residual. This judge is not a security
+sandbox — egress / secrets / install policy live in verify + permissions.
 
 ## Call-edge Lite
 
