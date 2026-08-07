@@ -44,7 +44,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "agent:init": "node dist/cli/init.js",
     "agent:loop": "doppler run --project agent-looper --config dev -- node dist/cli/run.js",
-    "agent:check": "doppler run --project agent-looper --config dev -- node dist/cli/check.js",
+    "agent:check": "doppler run --project agent-looper --config dev -- node dist/cli/check.js cursor",
+    "agent:check:cline": "doppler run --project agent-looper --config dev -- node dist/cli/check.js cline",
+    "agent:check:opencode": "doppler run --project agent-looper --config dev -- node dist/cli/check.js opencode",
     "agent:doctor": "doppler run --project agent-looper --config dev -- node dist/cli/doctor.js",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
@@ -74,6 +76,7 @@
   "devDependencies": {
     "@cline/sdk": "^0.0.55",
     "@cursor/sdk": "^1.0.18",
+    "@earendil-works/pi-coding-agent": "0.84.1",
     "@opencode-ai/sdk": "^1.18.15",
     "@types/node": "^22.15.0",
     "@vitest/coverage-v8": "^4.1.9",

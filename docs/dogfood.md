@@ -21,7 +21,15 @@ pnpm agent:loop run .cursor/loops/<name> --runtime cursor --review-gate
 
 Secrets come from Doppler project **`agent-looper`** / config **`dev`**
 (`doppler.yaml` in the repo root). Scripts wrap `doppler run` so
-`CURSOR_API_KEY`, `CLINE_API_KEY`, and `AGENT_LOOP_TELEGRAM_*` inject automatically.
+`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, and `AGENT_LOOP_TELEGRAM_*` inject automatically.
+
+Quick OpenCode smoke:
+
+```bash
+pnpm build
+pnpm agent:check:opencode
+pnpm agent:loop run .cursor/loops/opencode-smoke --runtime opencode
+```
 
 Publish to npm only when you want install without a sibling checkout.
 
@@ -38,6 +46,7 @@ Publish to npm only when you want install without a sibling checkout.
 | `loop-risk-profiles` | `de4144f2-9e6a-4cf6-8943-81efc49d4c5c` | Configurable loopRisk profiles (done) |
 | `pricing-trust-hygiene` | `f3280589-…` / `a774c5d7-…` | Model pricing drift + `--trust-config` gate (done) |
 | `example-fix` | — | Scaffold template only |
+| `opencode-smoke` | — | OpenCode Go runtime smoke (writes `probe.txt`) |
 
 ## Review overlays
 

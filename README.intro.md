@@ -86,10 +86,10 @@ Review always goes through the **Cursor SDK** judge path (Composer or Grok). The
 | **`cursor`** (default) | **Composer 2.5** | **Grok 4.5** (override with `reviewModel`) | Cursor-only dogfood; no `@cline/sdk` required |
 | **`cline-pass`** | Cline SDK · **ClinePass** · default `cline-pass/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor **Composer 2.5** unless you set `reviewModel` | Subscription quota; cheap implement loops |
 | **`cline`** | Cline SDK · **Credits** · default `deepseek/deepseek-chat` (escalate → `gemini-2.5-pro`) | Same as above | Pass quota exhausted; pay-as-you-go |
-| **`opencode`** | OpenCode SDK · **Go** · default `opencode-go/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor judge (same as Cline workers) | Cheap open models via [OpenCode Go](https://opencode.ai/go); needs `OPENCODE_API_KEY` + `opencode` CLI |
+| **`opencode`** | OpenCode SDK · default **Go** `opencode-go/deepseek-v4-flash` (escalate → `qwen3.7-plus`) · or BYOK e.g. `openrouter/…`, `ollama/…` | Cursor judge (same as Cline workers) | Cheap workers via [OpenCode Go](https://opencode.ai/go) or [BYOK providers](https://opencode.ai/docs/providers/); see [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 
 Cline: same package (`@cline/sdk`) with two billing modes — ClinePass vs Credits — not two different products.
-OpenCode: `@opencode-ai/sdk` + `opencode-ai` CLI on PATH; Go is the subscription model gateway.
+OpenCode: `@opencode-ai/sdk` + `opencode-ai` CLI on PATH. Go uses `OPENCODE_API_KEY`; OpenRouter uses `OPENROUTER_API_KEY`; other providers via env or `opencode /connect`.
 
 Never use Composer **Fast** as the judge. Worker on Cursor is always Composer 2.5 (not Fast).
 

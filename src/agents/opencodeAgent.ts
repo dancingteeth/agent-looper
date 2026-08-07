@@ -7,15 +7,16 @@ import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import {
+  DEFAULT_OPENCODE_GO_LOOP_MODEL,
   LOOP_RUNTIME_OPENCODE,
-  parseOpencodeGoModel,
+  parseOpencodeModel,
 } from '../loop/loopAgentConfig.js'
+import { bootstrapOpencodeProviderAuth } from './opencodeAuth.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 
 const SESSION_TIMEOUT_MS = 45 * 60 * 1000
 const SERVER_START_TIMEOUT_MS = 30_000
-const OPENCODE_GO_PROVIDER_ID = 'opencode-go'
 
 export type OpencodeAgentRunOptions = {
   verbose?: boolean
@@ -28,16 +29,6 @@ export type OpencodeAgentRunOptions = {
 export type OpencodeLoopSession = {
   runPrompt(prompt: string, options: OpencodeAgentRunOptions): Promise<AgentRunResult>
   dispose(): Promise<void>
-}
-
-function requireOpencodeApiKey(): string {
-  const apiKey = process.env.OPENCODE_API_KEY?.trim()
-  if (!apiKey) {
-    throw new Error(
-      'OPENCODE_API_KEY is not set. Subscribe at https://opencode.ai/go and run via doppler or agent-check opencode',
-    )
-  }
-  return apiKey
 }
 
 async function reserveFreePort(): Promise<number> {
@@ -139,7 +130,6 @@ async function autoApprovePermissions(
 
 export async function createOpencodeLoopSession(ctx: RepoContext): Promise<OpencodeLoopSession> {
   await assertPosixShell()
-  const apiKey = requireOpencodeApiKey()
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const directory = ctx.repoRoot
 
@@ -157,8 +147,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
       timeout: SERVER_START_TIMEOUT_MS,
       config: {
         autoupdate: false,
-        model: `${OPENCODE_GO_PROVIDER_ID}/deepseek-v4-flash`,
-        enabled_providers: [OPENCODE_GO_PROVIDER_ID],
+        model: DEFAULT_OPENCODE_GO_LOOP_MODEL,
         permission: {
           edit: 'allow',
           bash: 'allow',
@@ -186,12 +175,10 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
     throwOnError: false,
   })
 
-  const authResult = await client.auth.set({
-    path: { id: OPENCODE_GO_PROVIDER_ID },
-    body: { type: 'api', key: apiKey },
-    query: { directory },
-  })
-  unwrapData(authResult, 'auth.set')
+  const wiredProviders = await bootstrapOpencodeProviderAuth(client, directory)
+  if (wiredProviders.length > 0) {
+    console.error(`[agent-loop:opencode] auth wired for: ${wiredProviders.join(', ')}`)
+  }
 
   const permissionAbort = new AbortController()
   await autoApprovePermissions(client, directory, permissionAbort.signal)
@@ -201,7 +188,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const assistantOutput = options.assistantOutput ?? 'stdout'
       const phase = options.phase ?? 'implement'
-      const { providerID, modelID } = parseOpencodeGoModel(options.modelId)
+      const { providerID, modelID } = parseOpencodeModel(options.modelId)
 
       const created = unwrapData(
         await client.session.create({

@@ -14,3 +14,4 @@ coverage/
 .cursor/sdk-runs/
 .cursor/loops/**/run-report.md
 .cursor/loops/**/transcript.ndjson
+.cursor/loops/opencode-smoke/probe.txt

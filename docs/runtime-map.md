@@ -56,7 +56,7 @@ Use Cursor worker when you want one bill and IDE-native dogfood; use Cline/OpenC
 
 ## Implementation order (harness)
 
-1. **OpenCode model allowlist** — accept non–`opencode-go/*` providers already supported by the CLI; keep Go defaults.
+1. **OpenCode BYOK** — **Shipped:** Go slugs stay curated; any other `provider/model` OpenCode supports ([`docs/opencode-providers.md`](./opencode-providers.md)).
 2. **Pi `WorkerRuntime` spike** — optional peer dependency; same fresh-session contract as other runtimes.
 3. **Docs** — keep this file and `README.intro.md` worker table in sync when a runtime ships.
 

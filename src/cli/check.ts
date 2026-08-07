@@ -45,9 +45,13 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       process.exit(1)
     }
 
-    const key = process.env.OPENCODE_API_KEY?.trim()
-    if (!key) {
-      console.error('[agent-check] OPENCODE_API_KEY is not set (https://opencode.ai/go)')
+    const goKey = process.env.OPENCODE_API_KEY?.trim()
+    const openRouterKey = process.env.OPENROUTER_API_KEY?.trim()
+    if (!goKey && !openRouterKey) {
+      console.error(
+        '[agent-check] Set OPENCODE_API_KEY (Go) and/or OPENROUTER_API_KEY (BYOK), ' +
+          'or use local Ollama via opencode /connect — https://opencode.ai/docs/providers/',
+      )
       process.exit(1)
     }
 
@@ -73,7 +77,12 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
 
     console.log('[agent-check] @opencode-ai/sdk OK — createOpencode:', typeof createOpencode)
     console.log('[agent-check] opencode CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
-    console.log('[agent-check] OPENCODE_API_KEY present (prefix):', `${key.slice(0, 4)}…`)
+    if (goKey) {
+      console.log('[agent-check] OPENCODE_API_KEY present (prefix):', `${goKey.slice(0, 4)}…`)
+    }
+    if (openRouterKey) {
+      console.log('[agent-check] OPENROUTER_API_KEY present (prefix):', `${openRouterKey.slice(0, 4)}…`)
+    }
     console.log('[agent-check] shell preflight OK')
     return
   }

@@ -5,7 +5,7 @@ export const LOOP_RUNTIME_CURSOR = 'cursor' as const
 export const LOOP_RUNTIME_CLINE_PASS = 'cline-pass' as const
 /** Cline usage-billing (pay-as-you-go credits). Same SDK/API key as ClinePass. */
 export const LOOP_RUNTIME_CLINE = 'cline' as const
-/** OpenCode agent + OpenCode Go subscription models (`opencode-go/…`). */
+/** OpenCode worker (`provider/model` — Go subscription, OpenRouter BYOK, Ollama, …). */
 export const LOOP_RUNTIME_OPENCODE = 'opencode' as const
 
 export type LoopRuntime =
@@ -100,7 +100,7 @@ export type ResolvedLoopAgent =
     }
   | {
       runtime: typeof LOOP_RUNTIME_OPENCODE
-      model: OpencodeGoLoopModel
+      model: string
       reasoningEffort?: LoopReasoningEffort
     }
 
@@ -175,22 +175,43 @@ export function isClineCreditsModelShape(model: string): boolean {
   return CLINE_CREDITS_MODEL_RE.test(model) && !model.startsWith('cline-pass/')
 }
 
-/** Split `opencode-go/deepseek-v4-flash` → provider + model id for the SDK prompt body. */
-export function parseOpencodeGoModel(model: string): {
+/** OpenCode `provider/model` ids (BYOK providers). Go slugs use a separate curated list. */
+const OPENCODE_BYOK_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
+
+/** Split `opencode-go/deepseek-v4-flash` or `openrouter/deepseek/deepseek-chat` for the SDK prompt body. */
+export function parseOpencodeModel(model: string): {
   providerID: string
   modelID: string
 } {
   const slash = model.indexOf('/')
   if (slash <= 0 || slash === model.length - 1) {
     throw new Error(
-      `Invalid OpenCode model "${model}". Expected opencode-go/<modelID> ` +
-        `(see https://opencode.ai/docs/go/).`,
+      `Invalid OpenCode model "${model}". Expected provider/model ` +
+        `(e.g. "${DEFAULT_OPENCODE_GO_LOOP_MODEL}" or "openrouter/deepseek/deepseek-chat"). ` +
+        `See https://opencode.ai/docs/providers/`,
     )
   }
   return {
     providerID: model.slice(0, slash),
     modelID: model.slice(slash + 1),
   }
+}
+
+/** @deprecated Use {@link parseOpencodeModel}. */
+export const parseOpencodeGoModel = parseOpencodeModel
+
+export function isOpencodeLoopModelShape(model: string): boolean {
+  if (!OPENCODE_BYOK_MODEL_RE.test(model)) return false
+  if (model.startsWith('cline-pass/')) return false
+  return true
+}
+
+/** Valid `loop.json` model for runtime `opencode`. */
+export function isOpencodeLoopModel(model: string): boolean {
+  if (!isOpencodeLoopModelShape(model)) return false
+  const { providerID } = parseOpencodeModel(model)
+  if (providerID === 'opencode-go') return isOpencodeGoModel(model)
+  return true
 }
 
 export function modelCompatibleWithRuntime(
@@ -206,7 +227,7 @@ export function modelCompatibleWithRuntime(
     case LOOP_RUNTIME_CLINE:
       return isClineCreditsModelShape(model)
     case LOOP_RUNTIME_OPENCODE:
-      return isOpencodeGoModel(model)
+      return isOpencodeLoopModel(model)
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -293,11 +314,25 @@ function assertClineCreditsModel(model: string, field: 'model' | 'escalateModel'
   return model
 }
 
-function assertOpencodeGoModel(model: string, field: 'model' | 'escalateModel'): OpencodeGoLoopModel {
-  if (!isOpencodeGoModel(model)) {
+function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'): string {
+  if (!isOpencodeLoopModel(model)) {
+    const { providerID } = (() => {
+      try {
+        return parseOpencodeModel(model)
+      } catch {
+        return { providerID: '' }
+      }
+    })()
+    if (providerID === 'opencode-go') {
+      throw new Error(
+        `Unknown OpenCode Go ${field} "${model}". Use a slug from OPENCODE_GO_LOOP_MODELS ` +
+          `(see https://opencode.ai/docs/go/).`,
+      )
+    }
     throw new Error(
-      `Unknown OpenCode Go ${field} "${model}". Use a slug from OPENCODE_GO_LOOP_MODELS ` +
-        `(see https://opencode.ai/docs/go/).`,
+      `Invalid OpenCode ${field} "${model}". Expected provider/model ` +
+        `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, ollama/… — ` +
+        `https://opencode.ai/docs/providers/).`,
     )
   }
   return model
@@ -323,7 +358,7 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
   if (runtime === LOOP_RUNTIME_OPENCODE) {
     return {
       runtime,
-      model: assertOpencodeGoModel(model, 'model'),
+      model: assertOpencodeLoopModel(model, 'model'),
       reasoningEffort: config.reasoningEffort,
     }
   }
@@ -383,7 +418,7 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
   }
 
   if (runtime === LOOP_RUNTIME_OPENCODE) {
-    assertOpencodeGoModel(config.escalateModel, 'escalateModel')
+    assertOpencodeLoopModel(config.escalateModel, 'escalateModel')
     return
   }
 
@@ -454,10 +489,13 @@ export function resolveIterationAgent(
       assertLoopModelAllowed(base.runtime, config.escalateModel)
       return {
         runtime: LOOP_RUNTIME_OPENCODE,
-        model: assertOpencodeGoModel(config.escalateModel, 'escalateModel'),
+        model: assertOpencodeLoopModel(config.escalateModel, 'escalateModel'),
       }
     }
-    return { runtime: base.runtime, model: base.model }
+    return {
+      runtime: LOOP_RUNTIME_OPENCODE,
+      model: assertOpencodeLoopModel(base.model, 'model'),
+    }
   }
 
   if (!isClineSdkRuntime(base.runtime)) {

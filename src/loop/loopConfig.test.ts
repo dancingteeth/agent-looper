@@ -62,7 +62,16 @@ describe('loopConfigSchema', () => {
         runtime: 'opencode',
         model: 'opencode-go/not-a-real-model',
       }),
-    ).toThrow(/OPENCODE_GO_LOOP_MODELS|Unknown OpenCode/)
+    ).toThrow(/OPENCODE_GO_LOOP_MODELS|Unknown OpenCode Go/)
+  })
+
+  it('accepts OpenRouter-style opencode worker models', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      model: 'openrouter/deepseek/deepseek-chat',
+    })
+    expect(resolveLoopAgent(parsed).model).toBe('openrouter/deepseek/deepseek-chat')
   })
 
   it('rejects ClinePass slugs for cline credits runtime', () => {
