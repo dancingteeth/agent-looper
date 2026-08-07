@@ -2,7 +2,7 @@ export const CLINE_INNER_MAX_ITERATIONS = 25
 
 const CLINE_INNER_CAP_MESSAGE_RE = /^Agent runtime exceeded maxIterations \((\d+)\)\.?$/i
 
-export type InnerAgentSource = 'cline' | 'cursor' | 'opencode'
+export type InnerAgentSource = 'cline' | 'cursor' | 'opencode' | 'pi'
 
 export type InnerAgentStatus = {
   complete: boolean

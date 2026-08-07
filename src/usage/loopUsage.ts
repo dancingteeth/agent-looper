@@ -2,7 +2,7 @@ export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
 export type LoopUsageRecord = {
   phase: AgentRunPhase
-  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode'
+  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode' | 'pi'
   model: string
   inputTokens: number
   outputTokens: number
@@ -37,7 +37,9 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'cline-pass/mimo-v2.5-pro': { input: 0.2, output: 0.4 },
   'cline-pass/qwen3.7-max': { input: 0.25, output: 0.5 },
   'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
+  'openrouter/deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
   'google/gemini-2.5-pro': { input: 1.25, output: 5.0 },
+  'openrouter/google/gemini-2.5-flash': { input: 0.1, output: 0.4 },
   // OpenCode Go — rates from https://opencode.ai/docs/go/ (subscription quota; estimates for costUsd)
   'opencode-go/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'opencode-go/mimo-v2.5': { input: 0.14, output: 0.28 },

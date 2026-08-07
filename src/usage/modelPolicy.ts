@@ -4,6 +4,7 @@ import {
   isClineSdkRuntime,
   isCursorSdkModel,
   isOpencodeRuntime,
+  isPiRuntime,
   LOOP_RUNTIME_CURSOR,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
@@ -39,7 +40,7 @@ export function assertLoopModelAllowed(runtime: LoopRuntime, model: string): voi
   }
 
   if (
-    (isClineSdkRuntime(runtime) || isOpencodeRuntime(runtime)) &&
+    (isClineSdkRuntime(runtime) || isOpencodeRuntime(runtime) || isPiRuntime(runtime)) &&
     isBannedCursorLoopModel(model)
   ) {
     throw new Error(

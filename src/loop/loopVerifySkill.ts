@@ -6,6 +6,7 @@ import type { AgentRunResult } from '../agents/agentRunResult.js'
 import {
   isClineSdkRuntime,
   isOpencodeRuntime,
+  isPiRuntime,
   LOOP_RUNTIME_CURSOR,
   resolveLoopAgent,
 } from './loopAgentConfig.js'
@@ -90,6 +91,20 @@ async function defaultSkillVerifyAgentRun(input: {
       })
     } finally {
       await opencode.dispose()
+    }
+  }
+  if (isPiRuntime(agent.runtime)) {
+    const { createPiLoopSession } = await import('../agents/piAgent.js')
+    const pi = await createPiLoopSession(input.ctx)
+    try {
+      return await pi.runPrompt(input.prompt, {
+        verbose: input.verbose,
+        modelId: agent.model,
+        assistantOutput: 'none',
+        phase: 'verify',
+      })
+    } finally {
+      await pi.dispose()
     }
   }
   if (!isClineSdkRuntime(agent.runtime)) {

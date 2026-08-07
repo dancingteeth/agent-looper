@@ -83,6 +83,7 @@ export {
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_OPENCODE,
+  LOOP_RUNTIME_PI,
   resolveLoopAgent,
   resolveReviewModel,
   resolveSecondaryReviewAgent,
@@ -91,6 +92,8 @@ export {
   parseOpencodeGoModel,
   parseOpencodeModel,
   isOpencodeLoopModel,
+  isPiLoopModel,
+  isPiRuntime,
   isOpencodeGoModel,
   CLINE_PASS_LOOP_MODELS,
   OPENCODE_GO_LOOP_MODELS,
@@ -101,6 +104,8 @@ export {
   DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
   DEFAULT_OPENCODE_GO_LOOP_MODEL,
   DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
+  DEFAULT_PI_LOOP_MODEL,
+  DEFAULT_PI_ESCALATE_MODEL,
 } from './loop/loopAgentConfig.js'
 
 export { runVerifyCommand } from './loop/loopVerify.js'

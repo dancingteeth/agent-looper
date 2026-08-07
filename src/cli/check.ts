@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
-type Runtime = 'cursor' | 'cline' | 'opencode'
+type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi'
 
 function usage(): string {
-  return `Usage: agent-check <cursor|cline|opencode>
+  return `Usage: agent-check <cursor|cline|opencode|pi>
 
 Verifies SDK install and API key env var. Does not call remote APIs.`
 }
@@ -16,7 +16,7 @@ if (!target || target === '--help' || target === '-h') {
   process.exit(target ? 0 : 1)
 }
 
-if (target !== 'cursor' && target !== 'cline' && target !== 'opencode') {
+if (target !== 'cursor' && target !== 'cline' && target !== 'opencode' && target !== 'pi') {
   console.error(usage())
   process.exit(1)
 }
@@ -83,6 +83,46 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     if (openRouterKey) {
       console.log('[agent-check] OPENROUTER_API_KEY present (prefix):', `${openRouterKey.slice(0, 4)}…`)
     }
+    console.log('[agent-check] shell preflight OK')
+    return
+  }
+
+  if (runtime === 'pi') {
+    const nodeMajor = Number(process.versions.node.split('.')[0] ?? 0)
+    if (nodeMajor < 22) {
+      console.error(
+        `[agent-check] Node.js 22+ required for @earendil-works/pi-coding-agent (current: ${process.versions.node})`,
+      )
+      process.exit(1)
+    }
+
+    const piAuthEnv = [
+      'OPENROUTER_API_KEY',
+      'ANTHROPIC_API_KEY',
+      'OPENAI_API_KEY',
+      'GOOGLE_API_KEY',
+    ] as const
+    const present = piAuthEnv.filter((name) => Boolean(process.env[name]?.trim()))
+    if (present.length === 0) {
+      console.error(
+        '[agent-check] Set at least one provider API key (e.g. OPENROUTER_API_KEY) or run `pi` /connect — https://pi.dev/docs',
+      )
+      process.exit(1)
+    }
+
+    let createAgentSession: unknown
+    try {
+      ;({ createAgentSession } = await import('@earendil-works/pi-coding-agent'))
+    } catch {
+      console.error(
+        '[agent-check] @earendil-works/pi-coding-agent is not installed (pnpm add -D @earendil-works/pi-coding-agent)',
+      )
+      process.exit(1)
+    }
+
+    await assertPosixShell()
+    console.log('[agent-check] @earendil-works/pi-coding-agent OK — createAgentSession:', typeof createAgentSession)
+    console.log('[agent-check] provider keys present:', present.join(', '))
     console.log('[agent-check] shell preflight OK')
     return
   }

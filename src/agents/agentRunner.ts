@@ -4,10 +4,12 @@ import type { AgentRunResult } from './agentRunResult.js'
 import {
   isClineSdkRuntime,
   isOpencodeRuntime,
+  isPiRuntime,
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_OPENCODE,
+  LOOP_RUNTIME_PI,
   resolveLoopAgent,
   type LoopRuntime,
   type ResolvedLoopAgent,
@@ -16,6 +18,7 @@ import type { LoopConfig } from '../loop/loopConfig.js'
 // Type-only — erased at emit; keeps Cursor-only installs free of optional SDKs.
 import type { ClineLoopSession } from './clineAgent.js'
 import type { OpencodeLoopSession } from './opencodeAgent.js'
+import type { PiLoopSession } from './piAgent.js'
 
 import type { StreamCollector } from '../stream/streamCollect.js'
 
@@ -89,6 +92,21 @@ function createOpencodeRunner(opencode: OpencodeLoopSession): PromptRunner {
   }
 }
 
+function createPiRunner(pi: PiLoopSession): PromptRunner {
+  return (prompt, agent, options) => {
+    if (!isPiRuntime(agent.runtime)) {
+      throw new Error('Pi runner invoked for non-pi agent')
+    }
+    return pi.runPrompt(prompt, {
+      verbose: options.verbose,
+      modelId: agent.model,
+      assistantOutput: options.assistantOutput,
+      phase: options.phase ?? 'implement',
+      collector: options.collector,
+    })
+  }
+}
+
 export async function createLoopAgentSession(
   config: LoopConfig,
   ctx: RepoContext,
@@ -114,6 +132,16 @@ export async function createLoopAgentSession(
     }
   }
 
+  if (runtime === LOOP_RUNTIME_PI) {
+    const { createPiLoopSession } = await import('./piAgent.js')
+    const pi = await createPiLoopSession(ctx)
+    const runner = createPiRunner(pi)
+    return {
+      runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),
+      dispose: () => pi.dispose(),
+    }
+  }
+
   // Dynamic import: @cline/sdk is an optional peer. Cursor-only consumers must not
   // load clineAgent (and thus @cline/sdk) at module evaluation time.
   const { createClineLoopSession } = await import('./clineAgent.js')
@@ -135,6 +163,8 @@ export function loopRuntimeLabel(runtime: LoopRuntime): string {
       return 'cline'
     case LOOP_RUNTIME_OPENCODE:
       return 'opencode'
+    case LOOP_RUNTIME_PI:
+      return 'pi'
     default: {
       const _exhaustive: never = runtime
       return _exhaustive

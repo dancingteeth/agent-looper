@@ -5,6 +5,7 @@ import { loopConfigSchema } from '../loop/loopConfig.js'
 const runCursorAgentPrompt = vi.fn()
 const createClineLoopSession = vi.fn()
 const createOpencodeLoopSession = vi.fn()
+const createPiLoopSession = vi.fn()
 
 vi.mock('./cursorAgent.js', () => ({
   runCursorAgentPrompt,
@@ -16,6 +17,10 @@ vi.mock('./clineAgent.js', () => ({
 
 vi.mock('./opencodeAgent.js', () => ({
   createOpencodeLoopSession,
+}))
+
+vi.mock('./piAgent.js', () => ({
+  createPiLoopSession,
 }))
 
 const testCtx = {
@@ -35,6 +40,10 @@ describe('createLoopAgentSession', () => {
       runPrompt: vi.fn().mockResolvedValue({ text: 'opencode-ok' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     })
+    createPiLoopSession.mockResolvedValue({
+      runPrompt: vi.fn().mockResolvedValue({ text: 'pi-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    })
   })
 
   it('dispatches cursor runtime to runCursorAgentPrompt', async () => {
@@ -52,15 +61,17 @@ describe('createLoopAgentSession', () => {
     expect(runCursorAgentPrompt).toHaveBeenCalledOnce()
     expect(createClineLoopSession).not.toHaveBeenCalled()
     expect(createOpencodeLoopSession).not.toHaveBeenCalled()
+    expect(createPiLoopSession).not.toHaveBeenCalled()
     await session.dispose()
   })
 
-  it('does not load Cline or OpenCode session factory for cursor runtime', async () => {
+  it('does not load optional session factories for cursor runtime', async () => {
     const { createLoopAgentSession } = await import('./agentRunner.js')
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
     await createLoopAgentSession(config, testCtx)
     expect(createClineLoopSession).not.toHaveBeenCalled()
     expect(createOpencodeLoopSession).not.toHaveBeenCalled()
+    expect(createPiLoopSession).not.toHaveBeenCalled()
   })
 
   it('dispatches cline-pass runtime to Cline session', async () => {
@@ -120,6 +131,33 @@ describe('createLoopAgentSession', () => {
     )
     await session.dispose()
     expect(opencodeSession.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches pi runtime to Pi session', async () => {
+    const { createLoopAgentSession } = await import('./agentRunner.js')
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'pi' })
+    const piSession = {
+      runPrompt: vi.fn().mockResolvedValue({ text: 'pi-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    }
+    createPiLoopSession.mockResolvedValue(piSession)
+
+    const session = await createLoopAgentSession(config, testCtx)
+    const result = await session.runIterationPrompt(
+      'prompt',
+      { runtime: 'pi', model: 'openrouter/deepseek/deepseek-chat' },
+      { assistantOutput: 'none' },
+    )
+
+    expect(result.text).toBe('pi-ok')
+    expect(createPiLoopSession).toHaveBeenCalledOnce()
+    expect(piSession.runPrompt).toHaveBeenCalledWith(
+      'prompt',
+      expect.objectContaining({
+        modelId: 'openrouter/deepseek/deepseek-chat',
+      }),
+    )
+    await session.dispose()
   })
 
   it('dispatches cline credits runtime with providerId cline', async () => {

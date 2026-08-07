@@ -65,6 +65,25 @@ describe('loopConfigSchema', () => {
     ).toThrow(/OPENCODE_GO_LOOP_MODELS|Unknown OpenCode Go/)
   })
 
+  it('accepts pi runtime with default BYOK model', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'pi',
+    })
+    expect(parsed.runtime).toBe('pi')
+    expect(resolveLoopAgent(parsed).model).toBe('openrouter/deepseek/deepseek-chat')
+  })
+
+  it('rejects opencode-go slugs on pi runtime', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        runtime: 'pi',
+        model: 'opencode-go/deepseek-v4-flash',
+      }),
+    ).toThrow(/runtime "pi"|OpenCode Go/)
+  })
+
   it('accepts OpenRouter-style opencode worker models', () => {
     const parsed = loopConfigSchema.parse({
       verify: 'true',

@@ -47,6 +47,7 @@
     "agent:check": "doppler run --project agent-looper --config dev -- node dist/cli/check.js cursor",
     "agent:check:cline": "doppler run --project agent-looper --config dev -- node dist/cli/check.js cline",
     "agent:check:opencode": "doppler run --project agent-looper --config dev -- node dist/cli/check.js opencode",
+    "agent:check:pi": "doppler run --project agent-looper --config dev -- node dist/cli/check.js pi",
     "agent:doctor": "doppler run --project agent-looper --config dev -- node dist/cli/doctor.js",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
@@ -56,6 +57,7 @@
   "peerDependencies": {
     "@cline/sdk": ">=0.0.55",
     "@cursor/sdk": ">=1.0.18",
+    "@earendil-works/pi-coding-agent": ">=0.84.0",
     "@opencode-ai/sdk": ">=1.18.0",
     "opencode-ai": ">=1.18.0"
   },
@@ -71,11 +73,15 @@
     },
     "opencode-ai": {
       "optional": true
+    },
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@cline/sdk": "^0.0.55",
     "@cursor/sdk": "^1.0.18",
+    "@earendil-works/pi-ai": "0.84.1",
     "@earendil-works/pi-coding-agent": "0.84.1",
     "@opencode-ai/sdk": "^1.18.15",
     "@types/node": "^22.15.0",

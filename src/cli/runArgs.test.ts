@@ -61,13 +61,13 @@ describe('parseRunArgs', () => {
   it('validates --runtime and --mode values', () => {
     expect(parseRunArgs(['x', '--runtime', 'bogus'])).toEqual({
       kind: 'error',
-      message: '--runtime must be cursor, cline-pass, cline, or opencode',
+      message: '--runtime must be cursor, cline-pass, cline, opencode, or pi',
     })
     expect(parseRunArgs(['x', '--mode', 'sideways'])).toEqual({
       kind: 'error',
       message: '--mode must be forward or reverse',
     })
-    for (const runtime of ['cursor', 'cline-pass', 'cline', 'opencode'] as const) {
+    for (const runtime of ['cursor', 'cline-pass', 'cline', 'opencode', 'pi'] as const) {
       expect(expectRun(['x', '--runtime', runtime]).runtime).toBe(runtime)
     }
     expect(expectRun(['x', '--mode', 'reverse']).mode).toBe('reverse')

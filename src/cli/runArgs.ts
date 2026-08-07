@@ -10,7 +10,7 @@ export type RunCliOptions = {
   qualityReview?: boolean | 'off'
   reviewGate?: boolean
   skipSync?: boolean
-  runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode'
+  runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi'
   model?: string
   reviewModel?: string
   escalateModel?: string
@@ -42,7 +42,7 @@ ${printRepoRootHelp()}
   --review-gate                   Require review verdict != BLOCKERS to complete
   --no-review-gate                Disable review gate (default from loop.json)
   --skip-sync                     Do not run repo profile syncCommand
-  --runtime <cursor|cline-pass|cline|opencode>  Override loop.json runtime (cline = credits; opencode = OpenCode Go)
+  --runtime <cursor|cline-pass|cline|opencode|pi>  Override loop.json runtime
   --model <id>                    Override loop.json worker model
   --review-model <id>             Override loop.json reviewModel (Cursor judge; default grok-4.5 on cursor)
   --escalate-model <id>           Override loop.json escalateModel
@@ -141,9 +141,10 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
         value !== 'cursor' &&
         value !== 'cline-pass' &&
         value !== 'cline' &&
-        value !== 'opencode'
+        value !== 'opencode' &&
+        value !== 'pi'
       ) {
-        return { kind: 'error', message: '--runtime must be cursor, cline-pass, cline, or opencode' }
+        return { kind: 'error', message: '--runtime must be cursor, cline-pass, cline, opencode, or pi' }
       }
       runtime = value
       continue

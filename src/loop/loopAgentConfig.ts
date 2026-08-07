@@ -7,12 +7,15 @@ export const LOOP_RUNTIME_CLINE_PASS = 'cline-pass' as const
 export const LOOP_RUNTIME_CLINE = 'cline' as const
 /** OpenCode worker (`provider/model` — Go subscription, OpenRouter BYOK, Ollama, …). */
 export const LOOP_RUNTIME_OPENCODE = 'opencode' as const
+/** Pi coding agent (`@earendil-works/pi-coding-agent`) — BYOK `provider/model` (not opencode-go). */
+export const LOOP_RUNTIME_PI = 'pi' as const
 
 export type LoopRuntime =
   | typeof LOOP_RUNTIME_CURSOR
   | typeof LOOP_RUNTIME_CLINE_PASS
   | typeof LOOP_RUNTIME_CLINE
   | typeof LOOP_RUNTIME_OPENCODE
+  | typeof LOOP_RUNTIME_PI
 
 export const CURSOR_LOOP_MODEL = 'composer-2.5' as const
 /** Alias — Cursor SDK worker for implement iterations (never Composer Fast). */
@@ -75,6 +78,10 @@ export type OpencodeGoLoopModel = (typeof OPENCODE_GO_LOOP_MODELS)[number]
 export const DEFAULT_OPENCODE_GO_LOOP_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-flash'
 export const DEFAULT_OPENCODE_GO_ESCALATE_MODEL: OpencodeGoLoopModel = 'opencode-go/qwen3.7-plus'
 
+/** Default Pi worker — OpenRouter DeepSeek (same shape as Cline credits). */
+export const DEFAULT_PI_LOOP_MODEL = 'openrouter/deepseek/deepseek-chat'
+export const DEFAULT_PI_ESCALATE_MODEL = 'openrouter/google/gemini-2.5-flash'
+
 /** OpenRouter-style `provider/model` (Cline usage-billing / API). */
 const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
 
@@ -103,6 +110,11 @@ export type ResolvedLoopAgent =
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
+  | {
+      runtime: typeof LOOP_RUNTIME_PI
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
 
 export function isClineSdkRuntime(
   runtime: LoopRuntime,
@@ -116,6 +128,10 @@ export function isOpencodeRuntime(
   return runtime === LOOP_RUNTIME_OPENCODE
 }
 
+export function isPiRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTIME_PI {
+  return runtime === LOOP_RUNTIME_PI
+}
+
 export function defaultModelForRuntime(runtime: LoopRuntime): string {
   switch (runtime) {
     case LOOP_RUNTIME_CLINE_PASS:
@@ -124,6 +140,8 @@ export function defaultModelForRuntime(runtime: LoopRuntime): string {
       return DEFAULT_CLINE_CREDITS_LOOP_MODEL
     case LOOP_RUNTIME_OPENCODE:
       return DEFAULT_OPENCODE_GO_LOOP_MODEL
+    case LOOP_RUNTIME_PI:
+      return DEFAULT_PI_LOOP_MODEL
     case LOOP_RUNTIME_CURSOR:
       return CURSOR_LOOP_MODEL
     default: {
@@ -206,6 +224,13 @@ export function isOpencodeLoopModelShape(model: string): boolean {
   return true
 }
 
+/** Valid `loop.json` model for runtime `pi` (BYOK; excludes opencode-go gateway slugs). */
+export function isPiLoopModel(model: string): boolean {
+  if (!isOpencodeLoopModelShape(model)) return false
+  if (model.startsWith('opencode-go/') || model.startsWith('cline-pass/')) return false
+  return true
+}
+
 /** Valid `loop.json` model for runtime `opencode`. */
 export function isOpencodeLoopModel(model: string): boolean {
   if (!isOpencodeLoopModelShape(model)) return false
@@ -228,6 +253,8 @@ export function modelCompatibleWithRuntime(
       return isClineCreditsModelShape(model)
     case LOOP_RUNTIME_OPENCODE:
       return isOpencodeLoopModel(model)
+    case LOOP_RUNTIME_PI:
+      return isPiLoopModel(model)
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -314,6 +341,22 @@ function assertClineCreditsModel(model: string, field: 'model' | 'escalateModel'
   return model
 }
 
+function assertPiLoopModel(model: string, field: 'model' | 'escalateModel'): string {
+  if (!isPiLoopModel(model)) {
+    if (model.startsWith('opencode-go/')) {
+      throw new Error(
+        `OpenCode Go slug "${model}" is not valid for runtime "pi". ` +
+          `Use BYOK provider/model (e.g. "${DEFAULT_PI_LOOP_MODEL}") or runtime "opencode".`,
+      )
+    }
+    throw new Error(
+      `Invalid Pi ${field} "${model}". Expected provider/model ` +
+        `(e.g. "${DEFAULT_PI_LOOP_MODEL}") — https://pi.dev/docs`,
+    )
+  }
+  return model
+}
+
 function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'): string {
   if (!isOpencodeLoopModel(model)) {
     const { providerID } = (() => {
@@ -359,6 +402,14 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
     return {
       runtime,
       model: assertOpencodeLoopModel(model, 'model'),
+      reasoningEffort: config.reasoningEffort,
+    }
+  }
+
+  if (runtime === LOOP_RUNTIME_PI) {
+    return {
+      runtime,
+      model: assertPiLoopModel(model, 'model'),
       reasoningEffort: config.reasoningEffort,
     }
   }
@@ -422,9 +473,14 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
     return
   }
 
+  if (runtime === LOOP_RUNTIME_PI) {
+    assertPiLoopModel(config.escalateModel, 'escalateModel')
+    return
+  }
+
   if (config.escalateModel !== CURSOR_LOOP_MODEL) {
     throw new Error(
-      `escalateModel is only used with runtime "cline-pass", "cline", or "opencode" ` +
+      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", or "pi" ` +
         `(got runtime "cursor" and escalateModel "${config.escalateModel}")`,
     )
   }
@@ -495,6 +551,25 @@ export function resolveIterationAgent(
     return {
       runtime: LOOP_RUNTIME_OPENCODE,
       model: assertOpencodeLoopModel(base.model, 'model'),
+    }
+  }
+
+  if (isPiRuntime(base.runtime)) {
+    const threshold = config.escalateAfterStagnation ?? 2
+    if (
+      config.escalateModel &&
+      escalationRepeatCount !== undefined &&
+      escalationRepeatCount >= threshold
+    ) {
+      assertLoopModelAllowed(base.runtime, config.escalateModel)
+      return {
+        runtime: LOOP_RUNTIME_PI,
+        model: assertPiLoopModel(config.escalateModel, 'escalateModel'),
+      }
+    }
+    return {
+      runtime: LOOP_RUNTIME_PI,
+      model: assertPiLoopModel(base.model, 'model'),
     }
   }
 

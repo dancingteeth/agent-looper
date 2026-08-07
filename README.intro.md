@@ -86,6 +86,7 @@ Review always goes through the **Cursor SDK** judge path (Composer or Grok). The
 | **`cursor`** (default) | **Composer 2.5** | **Grok 4.5** (override with `reviewModel`) | Cursor-only dogfood; no `@cline/sdk` required |
 | **`cline-pass`** | Cline SDK · **ClinePass** · default `cline-pass/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor **Composer 2.5** unless you set `reviewModel` | Subscription quota; cheap implement loops |
 | **`cline`** | Cline SDK · **Credits** · default `deepseek/deepseek-chat` (escalate → `gemini-2.5-pro`) | Same as above | Pass quota exhausted; pay-as-you-go |
+| **`pi`** | Pi SDK · default `openrouter/deepseek/deepseek-chat` (escalate → `openrouter/google/gemini-2.5-flash`) | Cursor judge | Open MIT agent; BYOK via env or `~/.pi/agent/auth.json` — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
 | **`opencode`** | OpenCode SDK · default **Go** `opencode-go/deepseek-v4-flash` (escalate → `qwen3.7-plus`) · or BYOK e.g. `openrouter/…`, `ollama/…` | Cursor judge (same as Cline workers) | Cheap workers via [OpenCode Go](https://opencode.ai/go) or [BYOK providers](https://opencode.ai/docs/providers/); see [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 
 Cline: same package (`@cline/sdk`) with two billing modes — ClinePass vs Credits — not two different products.
@@ -134,6 +135,7 @@ agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 
 Need Cline? Add `@cline/sdk`, set `CLINE_API_KEY`, use `--runtime cline-pass` or `cline`.
 Need OpenCode Go? Add `@opencode-ai/sdk` + `opencode-ai`, set `OPENCODE_API_KEY`, use `--runtime opencode`.
+Need Pi BYOK? Add `@earendil-works/pi-coding-agent`, set provider keys (e.g. `OPENROUTER_API_KEY`), use `--runtime pi`.
 
 ---
 
