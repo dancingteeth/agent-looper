@@ -204,6 +204,10 @@ describe('resolvePostSuccessReviewOutcome', () => {
   })
 })
 
+function cursorJudge(model = 'grok-4.5') {
+  return { runtime: 'cursor' as const, model }
+}
+
 describe('runPostSuccessReviewPhase', () => {
   beforeEach(() => {
     vi.mocked(runPostLoopQualityReview).mockReset()
@@ -222,7 +226,7 @@ describe('runPostSuccessReviewPhase', () => {
       loopDir: '/tmp/loop',
       reviewBlockers: undefined,
       reviewCyclesUsed: 0,
-      reviewModel: 'grok-4.5',
+      reviewAgent: cursorJudge(),
       usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
       reasoningEffort: 'default',
     })
@@ -242,7 +246,7 @@ describe('runPostSuccessReviewPhase', () => {
       loopDir: '/tmp/loop',
       reviewBlockers: ['Docs missing'],
       reviewCyclesUsed: 1,
-      reviewModel: 'grok-4.5',
+      reviewAgent: cursorJudge(),
       usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
       reasoningEffort: 'default',
     })
@@ -261,7 +265,7 @@ describe('runPostSuccessReviewPhase', () => {
       loopDir: '/tmp/loop',
       reviewBlockers: undefined,
       reviewCyclesUsed: 0,
-      reviewModel: 'grok-4.5',
+      reviewAgent: cursorJudge(),
       usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
       reasoningEffort: 'default',
     })

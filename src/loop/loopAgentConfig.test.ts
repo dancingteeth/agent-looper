@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
+  clearIncompatibleReviewFieldsOnRuntimeSwitch,
   resolveIterationAgent,
   resolveLoopAgent,
+  resolveReviewAgent,
   resolveReviewModel,
   resolveSecondaryReviewAgent,
 } from './loopAgentConfig.js'
@@ -127,6 +129,39 @@ describe('resolveIterationAgent reasoning effort', () => {
     ).toThrow(/reviewModel/)
   })
 
+  it('resolveReviewAgent defaults cursor judge to grok-4.5 on cursor worker', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
+    expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'grok-4.5' })
+  })
+
+  it('resolveReviewAgent defaults cursor judge to composer-2.5 on cline-pass worker', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline-pass' })
+    expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'composer-2.5' })
+  })
+
+  it('resolveReviewAgent uses defaultModelForRuntime when reviewRuntime is pi', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'pi',
+      reviewRuntime: 'pi',
+    })
+    expect(resolveReviewAgent(config)).toEqual({
+      runtime: 'pi',
+      model: 'openrouter/deepseek/deepseek-chat',
+    })
+  })
+
+  it('rejects reviewModel incompatible with reviewRuntime', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        runtime: 'pi',
+        reviewRuntime: 'pi',
+        reviewModel: 'grok-4.5',
+      }),
+    ).toThrow(/reviewModel/)
+  })
+
   it('escalates model on stagnation for cline credits runtime', () => {
     const config = loopConfigSchema.parse({
       verify: 'true',
@@ -194,6 +229,41 @@ describe('clearIncompatibleAgentFieldsOnRuntimeSwitch', () => {
       escalateModelOverridden: false,
     })
     expect(result.model).toBe('cline-pass/deepseek-v4-flash')
+    expect(result.warnings).toHaveLength(0)
+  })
+})
+
+describe('clearIncompatibleReviewFieldsOnRuntimeSwitch', () => {
+  it('clears cursor reviewModel when switching reviewRuntime to pi', () => {
+    const result = clearIncompatibleReviewFieldsOnRuntimeSwitch({
+      previousReviewRuntime: 'cursor',
+      nextReviewRuntime: 'pi',
+      reviewModel: 'grok-4.5',
+      reviewModelOverridden: false,
+    })
+    expect(result.reviewModel).toBeUndefined()
+    expect(result.warnings).toHaveLength(1)
+  })
+
+  it('keeps compatible reviewModel across reviewRuntime switch', () => {
+    const result = clearIncompatibleReviewFieldsOnRuntimeSwitch({
+      previousReviewRuntime: 'opencode',
+      nextReviewRuntime: 'pi',
+      reviewModel: 'openrouter/deepseek/deepseek-chat',
+      reviewModelOverridden: false,
+    })
+    expect(result.reviewModel).toBe('openrouter/deepseek/deepseek-chat')
+    expect(result.warnings).toHaveLength(0)
+  })
+
+  it('preserves explicit reviewModel override even when incompatible', () => {
+    const result = clearIncompatibleReviewFieldsOnRuntimeSwitch({
+      previousReviewRuntime: 'cursor',
+      nextReviewRuntime: 'pi',
+      reviewModel: 'grok-4.5',
+      reviewModelOverridden: true,
+    })
+    expect(result.reviewModel).toBe('grok-4.5')
     expect(result.warnings).toHaveLength(0)
   })
 })

@@ -1,7 +1,7 @@
 import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
 import { createHitlCheckTask } from '../integrations/taskwarrior.js'
 import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
-import type { CursorSdkModel } from '../loop/loopAgentConfig.js'
+import type { ResolvedReviewAgent } from '../loop/loopAgentConfig.js'
 import type { LoopConfig } from '../loop/loopConfig.js'
 import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
 import { resolveLoopRiskKeywords } from '../loop/loopRiskProfile.js'
@@ -54,7 +54,7 @@ export type PostSuccessReviewInput = {
   loopDir: string
   reviewBlockers: string[] | undefined
   reviewCyclesUsed: number
-  reviewModel: CursorSdkModel
+  reviewAgent: ResolvedReviewAgent
   verbose?: boolean
   usageSummary: LoopUsageSummary
   reasoningEffort: string
@@ -231,7 +231,7 @@ export async function runPostSuccessReviewPhase(
     loopDir,
     reviewBlockers,
     reviewCyclesUsed,
-    reviewModel,
+    reviewAgent,
     verbose,
     reasoningEffort,
   } = input
@@ -249,8 +249,8 @@ export async function runPostSuccessReviewPhase(
   }
 
   const reviewLabel = config.reviewGate
-    ? 'post-success quality review (gated, Cursor SDK)'
-    : 'post-success quality review (advisory, Cursor SDK)'
+    ? 'post-success quality review (gated)'
+    : 'post-success quality review (advisory)'
   console.error(`[agent-loop] ${reviewLabel}`)
 
   const useRecheck = config.reviewBlockerRecheck && (reviewBlockers?.length ?? 0) > 0
@@ -265,7 +265,7 @@ export async function runPostSuccessReviewPhase(
         ? await runPostLoopBlockerRecheck(loopDir, goal, ctx, reviewBlockers!, {
             verbose,
             reviewCycle,
-            reviewModel,
+            reviewAgent,
             reviewReproduce: config.reviewReproduce,
             reviewReproduceAgent: config.reviewReproduceAgent,
             reviewSecondaryRuntime: config.reviewSecondaryRuntime,
@@ -274,7 +274,7 @@ export async function runPostSuccessReviewPhase(
         : await runPostLoopQualityReview(loopDir, goal, ctx, {
             verbose,
             reviewCycle,
-            reviewModel,
+            reviewAgent,
             reviewReproduce: config.reviewReproduce,
             reviewReproduceAgent: config.reviewReproduceAgent,
             reviewSecondaryRuntime: config.reviewSecondaryRuntime,

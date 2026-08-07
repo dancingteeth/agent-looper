@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
 import { createLoopAgentSession, loopRuntimeLabel, type LoopAgentSession } from '../agents/agentRunner.js'
-import { resolveIterationAgent, resolveLoopAgent, resolveReviewModel, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
+import { resolveIterationAgent, resolveLoopAgent, resolveReviewAgent, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
 import type { LoadedLoopBundle } from '../loop/loopConfig.js'
 import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
 import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
@@ -281,11 +281,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   }
   const agentSession = await createLoopAgentSession(config, ctx)
   const baseAgent = resolveLoopAgent(config)
-  const reviewModel = resolveReviewModel(config)
+  const reviewAgent = resolveReviewAgent(config)
 
   console.error(
     `[agent-loop] repo=${repoRoot} runtime=${loopRuntimeLabel(baseAgent.runtime)} ` +
-      `worker=${baseAgent.model} review=${reviewModel} verify mode=${config.verifyMode}`,
+      `worker=${baseAgent.model} review=${loopRuntimeLabel(reviewAgent.runtime)}/${reviewAgent.model} verify mode=${config.verifyMode}`,
   )
 
   const priorFailures: VerifyResult[] = []
@@ -317,7 +317,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         config,
         result: finalResult,
         workerModel: baseAgent.model,
-        reviewModel,
+        reviewRuntime: reviewAgent.runtime,
+        reviewModel: reviewAgent.model,
         runtime: config.runtime,
         transcriptEvents,
       })
@@ -472,7 +473,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           loopDir: bundle.loopDir,
           reviewBlockers,
           reviewCyclesUsed,
-          reviewModel,
+          reviewAgent,
           verbose,
           usageSummary,
           reasoningEffort: iterationAgent.reasoningEffort ?? 'default',

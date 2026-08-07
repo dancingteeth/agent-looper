@@ -1,5 +1,5 @@
 import type { LoopConfig } from '../loop/loopConfig.js'
-import { assertLoopModelAllowed } from '../usage/modelPolicy.js'
+import { assertCursorSdkModelAllowed, assertLoopModelAllowed } from '../usage/modelPolicy.js'
 
 export const LOOP_RUNTIME_CURSOR = 'cursor' as const
 export const LOOP_RUNTIME_CLINE_PASS = 'cline-pass' as const
@@ -159,26 +159,165 @@ export function isCursorSdkModel(model: string): model is CursorSdkModel {
   return model === CURSOR_WORKER_MODEL || isCursorReviewModel(model)
 }
 
-/**
- * Resolve the Cursor SDK model used for quality review / review-gate.
- * Cursor-only loops default to Grok 4.5 as judge; Cline workers keep Composer
- * as the review fallback unless `reviewModel` is set explicitly.
- */
-export function resolveReviewModel(config: Pick<LoopConfig, 'runtime' | 'reviewModel'>): CursorSdkModel {
-  if (config.reviewModel) {
-    if (!isCursorSdkModel(config.reviewModel)) {
+export type ResolvedReviewAgent =
+  | {
+      runtime: typeof LOOP_RUNTIME_CURSOR
+      model: CursorSdkModel
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_CLINE_PASS
+      model: ClinePassLoopModel
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_CLINE
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_OPENCODE
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_PI
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+
+function assertCursorReviewModel(model: string, field: 'reviewModel'): CursorSdkModel {
+  if (!isCursorSdkModel(model)) {
+    throw new Error(
+      `Unknown ${field} "${model}" for reviewRuntime "cursor". Allowed: ${CURSOR_REVIEW_MODELS.join(', ')}`,
+    )
+  }
+  if (model.toLowerCase().includes('fast')) {
+    throw new Error(`${field} "${model}" is banned — do not use Composer Fast for reviews.`)
+  }
+  return model
+}
+
+function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): string {
+  if (runtime === LOOP_RUNTIME_CURSOR) {
+    return assertCursorReviewModel(model, 'reviewModel')
+  }
+  if (runtime === LOOP_RUNTIME_CLINE_PASS) {
+    if (!isClinePassModel(model)) {
       throw new Error(
-        `Unknown reviewModel "${config.reviewModel}". Allowed: ${CURSOR_REVIEW_MODELS.join(', ')}`,
+        `Unknown reviewModel "${model}" for reviewRuntime "cline-pass". Use a slug from CLINE_PASS_LOOP_MODELS`,
       )
     }
-    if (config.reviewModel.toLowerCase().includes('fast')) {
-      throw new Error(`reviewModel "${config.reviewModel}" is banned — do not use Composer Fast for reviews.`)
+    return model
+  }
+  if (runtime === LOOP_RUNTIME_CLINE) {
+    if (model.startsWith('cline-pass/')) {
+      throw new Error(
+        `reviewModel "${model}" is not valid for reviewRuntime "cline" (credits). ` +
+          `Use an OpenRouter-style id such as "${DEFAULT_CLINE_CREDITS_LOOP_MODEL}".`,
+      )
     }
-    return config.reviewModel
+    if (!isClineCreditsModelShape(model)) {
+      throw new Error(
+        `Invalid reviewModel "${model}" for reviewRuntime "cline". Expected provider/model ` +
+          `(e.g. "${DEFAULT_CLINE_CREDITS_LOOP_MODEL}").`,
+      )
+    }
+    return model
+  }
+  if (runtime === LOOP_RUNTIME_OPENCODE) {
+    if (!isOpencodeLoopModel(model)) {
+      throw new Error(
+        `Invalid reviewModel "${model}" for reviewRuntime "opencode". Expected provider/model ` +
+          `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, ollama/… — ` +
+          `https://opencode.ai/docs/providers/).`,
+      )
+    }
+    return model
+  }
+  if (runtime === LOOP_RUNTIME_PI) {
+    if (!isPiLoopModel(model)) {
+      if (model.startsWith('opencode-go/')) {
+        throw new Error(
+          `reviewModel "${model}" is not valid for reviewRuntime "pi". ` +
+            `Use BYOK provider/model (e.g. "${DEFAULT_PI_LOOP_MODEL}") or reviewRuntime "opencode".`,
+        )
+      }
+      throw new Error(
+        `Invalid reviewModel "${model}" for reviewRuntime "pi". Expected provider/model ` +
+          `(e.g. "${DEFAULT_PI_LOOP_MODEL}") — https://pi.dev/docs`,
+      )
+    }
+    return model
+  }
+  const _exhaustive: never = runtime
+  return _exhaustive
+}
+
+function defaultReviewModel(
+  reviewRuntime: LoopRuntime,
+  workerRuntime: LoopRuntime,
+): string {
+  if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
+    return workerRuntime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL
+  }
+  return defaultModelForRuntime(reviewRuntime)
+}
+
+/**
+ * Resolve the primary judge agent (reviewRuntime + reviewModel).
+ * Default reviewRuntime is cursor. Model defaults follow worker runtime when unset.
+ */
+export function resolveReviewAgent(
+  config: Pick<LoopConfig, 'runtime' | 'reviewRuntime' | 'reviewModel'>,
+): ResolvedReviewAgent {
+  const workerRuntime = config.runtime ?? LOOP_RUNTIME_CURSOR
+  const reviewRuntime = config.reviewRuntime ?? LOOP_RUNTIME_CURSOR
+  const model = config.reviewModel
+    ? assertReviewModelForRuntime(reviewRuntime, config.reviewModel)
+    : defaultReviewModel(reviewRuntime, workerRuntime)
+
+  if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
+    assertCursorSdkModelAllowed(model, 'review')
+  } else {
+    assertLoopModelAllowed(reviewRuntime, model)
   }
 
-  const runtime = config.runtime ?? LOOP_RUNTIME_CURSOR
-  return runtime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL
+  if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
+    return { runtime: reviewRuntime, model: assertCursorReviewModel(model, 'reviewModel') }
+  }
+  if (reviewRuntime === LOOP_RUNTIME_CLINE) {
+    return {
+      runtime: reviewRuntime,
+      model: assertClineCreditsModel(model, 'model'),
+    }
+  }
+  if (reviewRuntime === LOOP_RUNTIME_OPENCODE) {
+    return { runtime: reviewRuntime, model: assertOpencodeLoopModel(model, 'model') }
+  }
+  if (reviewRuntime === LOOP_RUNTIME_PI) {
+    return { runtime: reviewRuntime, model: assertPiLoopModel(model, 'model') }
+  }
+  return {
+    runtime: LOOP_RUNTIME_CLINE_PASS,
+    model: assertClinePassModel(model, 'model'),
+  }
+}
+
+/**
+ * Cursor SDK model for quality review when reviewRuntime is cursor (default).
+ * @deprecated Prefer {@link resolveReviewAgent} when reviewRuntime may be non-cursor.
+ */
+export function resolveReviewModel(
+  config: Pick<LoopConfig, 'runtime' | 'reviewRuntime' | 'reviewModel'>,
+): CursorSdkModel {
+  const agent = resolveReviewAgent(config)
+  if (agent.runtime !== LOOP_RUNTIME_CURSOR) {
+    throw new Error(
+      `resolveReviewModel requires reviewRuntime "cursor" (got "${agent.runtime}"). Use resolveReviewAgent().`,
+    )
+  }
+  return agent.model
 }
 
 export function isClinePassModel(model: string): model is ClinePassLoopModel {
@@ -265,6 +404,18 @@ export function modelCompatibleWithRuntime(
   }
 }
 
+/** Judge models: cursor allows Grok + Composer; other runtimes match worker shape. */
+export function reviewModelCompatibleWithRuntime(
+  runtime: LoopRuntime,
+  model: string | undefined,
+): boolean {
+  if (model === undefined) return true
+  if (runtime === LOOP_RUNTIME_CURSOR) {
+    return isCursorSdkModel(model) && !model.toLowerCase().includes('fast')
+  }
+  return modelCompatibleWithRuntime(runtime, model)
+}
+
 /**
  * When `runtime` changes without an explicit model/escalateModel override, drop
  * leftover ids from the previous provider so parse uses the new runtime defaults
@@ -316,6 +467,42 @@ export function clearIncompatibleAgentFieldsOnRuntimeSwitch(input: {
   }
 
   return { model, escalateModel, warnings }
+}
+
+/**
+ * When `reviewRuntime` changes without an explicit reviewModel override, drop
+ * leftover judge ids from the previous provider so parse uses the new defaults.
+ */
+export function clearIncompatibleReviewFieldsOnRuntimeSwitch(input: {
+  previousReviewRuntime: LoopRuntime
+  nextReviewRuntime: LoopRuntime
+  reviewModel?: string
+  reviewModelOverridden: boolean
+}): {
+  reviewModel?: string
+  warnings: string[]
+} {
+  const { previousReviewRuntime, nextReviewRuntime } = input
+  if (previousReviewRuntime === nextReviewRuntime) {
+    return { reviewModel: input.reviewModel, warnings: [] }
+  }
+
+  const warnings: string[] = []
+  let reviewModel = input.reviewModel
+
+  if (
+    !input.reviewModelOverridden &&
+    reviewModel !== undefined &&
+    !reviewModelCompatibleWithRuntime(nextReviewRuntime, reviewModel)
+  ) {
+    warnings.push(
+      `cleared reviewModel "${reviewModel}" after switching reviewRuntime ${previousReviewRuntime} → ${nextReviewRuntime}; ` +
+        `using default judge model for ${nextReviewRuntime}. Pass --review-model to set an explicit id.`,
+    )
+    reviewModel = undefined
+  }
+
+  return { reviewModel, warnings }
 }
 
 function assertClinePassModel(model: string, field: 'model' | 'escalateModel'): ClinePassLoopModel {
@@ -450,10 +637,10 @@ export function resolveSecondaryReviewAgent(
   return { runtime, model: assertClineCreditsModel(model, 'model') }
 }
 
-/** Parse-time validation for loop.json (model + escalateModel + reviewModel). */
+/** Parse-time validation for loop.json (model + escalateModel + review agent). */
 export function validateLoopAgentConfig(config: LoopConfig): void {
   resolveLoopAgent(config)
-  resolveReviewModel(config)
+  resolveReviewAgent(config)
   resolveSecondaryReviewAgent(config)
 
   if (!config.escalateModel) return

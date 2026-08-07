@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveLoopAgent } from './loopAgentConfig.js'
+import { resolveLoopAgent, resolveReviewAgent } from './loopAgentConfig.js'
 import { loopConfigSchema, mergeLoopConfig, parseLoopConfig } from './loopConfig.js'
 
 describe('loopConfigSchema', () => {
@@ -348,5 +348,20 @@ describe('mergeLoopConfig', () => {
         model: 'cline-pass/qwen3.7-plus',
       }),
     ).toThrow(/credits/)
+  })
+
+  it('clears leftover cursor reviewModel when switching reviewRuntime to pi', () => {
+    const base = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cursor',
+      reviewModel: 'grok-4.5',
+    })
+    const merged = mergeLoopConfig(base, { reviewRuntime: 'pi' })
+    expect(merged.reviewRuntime).toBe('pi')
+    expect(merged.reviewModel).toBeUndefined()
+    expect(resolveReviewAgent(merged)).toEqual({
+      runtime: 'pi',
+      model: 'openrouter/deepseek/deepseek-chat',
+    })
   })
 })

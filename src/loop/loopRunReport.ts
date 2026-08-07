@@ -111,6 +111,7 @@ export type BuildRunReportInput = {
   config: LoopConfig
   result: AgentLoopResult
   workerModel: string
+  reviewRuntime: LoopConfig['runtime']
   reviewModel: string
   runtime: LoopConfig['runtime']
 }
@@ -149,7 +150,7 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     `| Role | Runtime | Model |`,
     `| --- | --- | --- |`,
     `| Worker | ${loopRuntimeLabel(input.runtime)} | ${input.workerModel} |`,
-    `| Judge | cursor | ${input.reviewModel} |`,
+    `| Judge | ${loopRuntimeLabel(input.reviewRuntime)} | ${input.reviewModel} |`,
     '',
     '## Why this is a loop (not a one-shot prompt)',
     '',

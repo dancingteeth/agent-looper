@@ -85,6 +85,7 @@ export {
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   resolveLoopAgent,
+  resolveReviewAgent,
   resolveReviewModel,
   resolveSecondaryReviewAgent,
   isClineSdkRuntime,
@@ -108,6 +109,7 @@ export {
   DEFAULT_PI_LOOP_MODEL,
   DEFAULT_PI_ESCALATE_MODEL,
 } from './loop/loopAgentConfig.js'
+export type { ResolvedLoopAgent, ResolvedReviewAgent } from './loop/loopAgentConfig.js'
 
 export { runVerifyCommand } from './loop/loopVerify.js'
 export type { VerifyResult } from './loop/loopVerify.js'
@@ -148,10 +150,13 @@ export {
   buildPostLoopQualityReviewPrompt,
   runPostLoopQualityReview,
   resolveReviewOutputPath,
+  resolvePostLoopReviewAgent,
   listChangedPathsSinceBranchBase,
   gitDiffStatSinceBranchBase,
 } from './review/loopPostReview.js'
 export type { PostLoopReviewOptions, PostLoopReviewResult } from './review/loopPostReview.js'
+
+export { runReviewAgentPrompt } from './review/reviewAgentRun.js'
 
 export {
   applyReproduceBeforeReportFilter,

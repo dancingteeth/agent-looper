@@ -68,7 +68,7 @@ flowchart LR
 | --- | --- | --- |
 | **Worker** | Coding agent (Cursor or Cline SDK) | Implement / fix toward `GOAL.md`. **New session every iteration** — progress lives in git + files, not chat memory. |
 | **Verifier** | Your shell command (`verify.sh`) | The only thing that can say “complete.” Exit `0` = green. Not vibes. |
-| **Judge** | Separate Cursor review model (optional) | After verify passes, write `review.md`. With `reviewGate`, only **error + impact** findings reopen the worker. |
+| **Judge** | Coding agent on `reviewRuntime` (default **cursor**) | After verify passes, write `review.md`. With `reviewGate`, only **error + impact** findings reopen the worker. |
 | **You** | Human | Write the goal and the verify script. Escalate when the gate is stuck (`reviewGateHitl` / Taskwarrior). |
 
 **Specs ≠ prompts:** `AGENTS.md` (and skills) tell the *worker* how to act. `REVIEWS.md` tells the *judge* what good residual behavior looks like after verify — it is not runtime prompt text. Keep both sparse; delete laws when models stop failing them.
@@ -79,15 +79,15 @@ flowchart LR
 
 ## Worker vs judge by runtime
 
-Review always goes through the **Cursor SDK** judge path (Composer or Grok). The **worker** is either Cursor or Cline.
+**Worker** = `runtime` + `model`. **Judge** = optional `reviewRuntime` + `reviewModel` (defaults to **cursor** + Grok on cursor workers, Composer on other workers). Set `reviewRuntime` to `pi`, `opencode`, `cline-pass`, etc. to keep the judge off Cursor quota.
 
-| `runtime` | Worker (implement) | Judge (quality / review-gate) | When to use |
+| `runtime` | Worker (implement) | Judge (default) | When to use |
 | --- | --- | --- | --- |
-| **`cursor`** (default) | **Composer 2.5** | **Grok 4.5** (override with `reviewModel`) | Cursor-only dogfood; no `@cline/sdk` required |
-| **`cline-pass`** | Cline SDK · **ClinePass** · default `cline-pass/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor **Composer 2.5** unless you set `reviewModel` | Subscription quota; cheap implement loops |
+| **`cursor`** (default) | **Composer 2.5** | **Grok 4.5** (`reviewModel`) | Cursor-only dogfood; no `@cline/sdk` required |
+| **`cline-pass`** | Cline SDK · **ClinePass** · default `cline-pass/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor **Composer 2.5** unless you set `reviewModel` / `reviewRuntime` | Subscription quota; cheap implement loops |
 | **`cline`** | Cline SDK · **Credits** · default `deepseek/deepseek-chat` (escalate → `gemini-2.5-pro`) | Same as above | Pass quota exhausted; pay-as-you-go |
-| **`pi`** | Pi SDK · default `openrouter/deepseek/deepseek-chat` (escalate → `openrouter/google/gemini-2.5-flash`) | Cursor judge | Open MIT agent; BYOK via env or `~/.pi/agent/auth.json` — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
-| **`opencode`** | OpenCode SDK · default **Go** `opencode-go/deepseek-v4-flash` (escalate → `qwen3.7-plus`) · or BYOK e.g. `openrouter/…`, `ollama/…` | Cursor judge (same as Cline workers) | Cheap workers via [OpenCode Go](https://opencode.ai/go) or [BYOK providers](https://opencode.ai/docs/providers/); see [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
+| **`pi`** | Pi SDK · default `openrouter/deepseek/deepseek-chat` (escalate → `openrouter/google/gemini-2.5-flash`) | Cursor judge (or `reviewRuntime: "pi"` for cheap Pi+Pi) | Open MIT agent; BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
+| **`opencode`** | OpenCode SDK · default **Go** `opencode-go/deepseek-v4-flash` (escalate → `qwen3.7-plus`) · or BYOK e.g. `openrouter/…`, `ollama/…` | Cursor judge (or match worker via `reviewRuntime`) | Cheap workers — [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 
 Cline: same package (`@cline/sdk`) with two billing modes — ClinePass vs Credits — not two different products.
 OpenCode: `@opencode-ai/sdk` + `opencode-ai` CLI on PATH. Go uses `OPENCODE_API_KEY`; OpenRouter uses `OPENROUTER_API_KEY`; other providers via env or `opencode /connect`.

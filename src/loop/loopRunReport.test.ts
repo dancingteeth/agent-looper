@@ -246,6 +246,7 @@ describe('buildRunReportMarkdown', () => {
       config,
       result: loopResult({ logPath }),
       workerModel: 'composer-2.5',
+      reviewRuntime: 'cursor',
       reviewModel: 'grok-4.5',
       runtime: 'cursor',
     })
@@ -290,6 +291,7 @@ describe('buildRunReportMarkdown', () => {
       config,
       result: loopResult({ logPath }),
       workerModel: 'composer-2.5',
+      reviewRuntime: 'cursor',
       reviewModel: 'grok-4.5',
       runtime: 'cursor',
       transcriptEvents: [

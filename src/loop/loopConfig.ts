@@ -9,6 +9,7 @@ import {
   LOOP_RUNTIME_PI,
   LOOP_REASONING_EFFORTS,
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
+  clearIncompatibleReviewFieldsOnRuntimeSwitch,
   validateLoopAgentConfig,
   type LoopRuntime,
 } from './loopAgentConfig.js'
@@ -44,7 +45,9 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     finalVerify: z.string().optional(),
     runtime: loopRuntimeSchema.default(LOOP_RUNTIME_CURSOR),
     model: z.string().optional(),
-    /** Cursor SDK model for quality review / review-gate. Unset → resolveReviewModel(). */
+    /** Primary judge runtime. Unset → cursor (backward compatible). */
+    reviewRuntime: loopRuntimeSchema.optional(),
+    /** Judge model for quality review / review-gate. Unset → resolveReviewAgent(). */
     reviewModel: z.string().optional(),
     escalateModel: z.string().optional(),
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
@@ -90,13 +93,13 @@ export const loopConfigSchema = loopExtensionFieldsSchema
      */
     reviewReproduce: z.boolean().default(false),
     /**
-     * When true (with reviewReproduce), run a fresh Cursor review session on remaining
+     * When true (with reviewReproduce), run a fresh review session on remaining
      * gating blockers and DROP candidates without reproduce evidence (phase 2b).
      */
     reviewReproduceAgent: z.boolean().default(false),
     /**
      * Optional second-family review runtime (Cline). Unset = disabled (M3).
-     * Runs after primary Cursor review (+ optional reproduce filters).
+     * Runs after primary review (+ optional reproduce filters).
      */
     reviewSecondaryRuntime: z
       .enum([LOOP_RUNTIME_CLINE_PASS, LOOP_RUNTIME_CLINE])
@@ -143,7 +146,9 @@ export const loopConfigSchema = loopExtensionFieldsSchema
         ? ['escalateModel']
         : message.includes('reviewModel')
           ? ['reviewModel']
-          : ['model']
+          : message.includes('reviewRuntime')
+            ? ['reviewRuntime']
+            : ['model']
       ctx.addIssue({ code: 'custom', message, path: issuePath })
     }
   })
@@ -235,6 +240,7 @@ export function mergeLoopConfig(
       | 'syncOnSuccess'
       | 'runtime'
       | 'model'
+      | 'reviewRuntime'
       | 'reviewModel'
       | 'escalateModel'
       | 'reasoningEffort'
@@ -268,7 +274,19 @@ export function mergeLoopConfig(
     escalateModelOverridden: cleanedOverrides.escalateModel !== undefined,
   })
 
-  for (const warning of reconciled.warnings) {
+  const nextReviewRuntime = (cleanedOverrides.reviewRuntime ??
+    base.reviewRuntime ??
+    LOOP_RUNTIME_CURSOR) as LoopRuntime
+  const previousReviewRuntime = (base.reviewRuntime ?? LOOP_RUNTIME_CURSOR) as LoopRuntime
+
+  const reviewReconciled = clearIncompatibleReviewFieldsOnRuntimeSwitch({
+    previousReviewRuntime,
+    nextReviewRuntime,
+    reviewModel: (cleanedOverrides.reviewModel ?? base.reviewModel) as string | undefined,
+    reviewModelOverridden: cleanedOverrides.reviewModel !== undefined,
+  })
+
+  for (const warning of [...reconciled.warnings, ...reviewReconciled.warnings]) {
     console.error(`[agent-loop] ${warning}`)
   }
 
@@ -287,6 +305,12 @@ export function mergeLoopConfig(
     delete merged.escalateModel
   } else {
     merged.escalateModel = reconciled.escalateModel
+  }
+
+  if (reviewReconciled.reviewModel === undefined) {
+    delete merged.reviewModel
+  } else {
+    merged.reviewModel = reviewReconciled.reviewModel
   }
 
   return loopConfigSchema.parse(merged)

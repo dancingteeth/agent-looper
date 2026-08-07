@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
-import { resolveLoopAgent, resolveReviewModel } from '../loop/loopAgentConfig.js'
+import { resolveLoopAgent, resolveReviewAgent } from '../loop/loopAgentConfig.js'
 import { loadLoopBundle, resolveLoopDir } from '../loop/loopConfig.js'
 import {
   reconstructAgentLoopResultFromLog,
@@ -27,7 +27,7 @@ const loopDir = resolveLoopDir(loopArg, ctx.repoRoot)
 const bundle = loadLoopBundle(loopDir)
 const result = reconstructAgentLoopResultFromLog(bundle.logPath, { config: bundle.config })
 const workerModel = resolveLoopAgent(bundle.config).model
-const reviewModel = resolveReviewModel(bundle.config)
+const reviewAgent = resolveReviewAgent(bundle.config)
 const transcriptPath = path.join(loopDir, TRANSCRIPT_FILENAME)
 const transcriptEvents = readTranscriptEvents(transcriptPath)
 
@@ -42,7 +42,8 @@ const { reportPath, transcriptPath: writtenTranscript } = writeRunReportArtifact
   config: bundle.config,
   result,
   workerModel,
-  reviewModel,
+  reviewRuntime: reviewAgent.runtime,
+  reviewModel: reviewAgent.model,
   runtime: bundle.config.runtime,
   transcriptEvents: transcriptEvents.length > 0 ? transcriptEvents : undefined,
 })

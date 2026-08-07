@@ -39,6 +39,7 @@ bundle = {
     syncOnSuccess: cli.skipSync ? false : undefined,
     runtime: cli.runtime,
     model: cli.model,
+    reviewRuntime: cli.reviewRuntime,
     reviewModel: cli.reviewModel,
     escalateModel: cli.escalateModel,
     mode: cli.mode,

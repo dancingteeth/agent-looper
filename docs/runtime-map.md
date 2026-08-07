@@ -18,9 +18,19 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 | `cursor` | `@cursor/sdk` | Composer 2.5 | Grok 4.5 (`reviewModel`) | IDE subscription; dogfood default |
 | `cline-pass` | `@cline/sdk` | `cline-pass/deepseek-v4-flash` → escalate `qwen3.7-plus` | Cursor Composer 2.5 | Quota / subscription implement loops |
 | `cline` | `@cline/sdk` | `deepseek/deepseek-chat` → escalate `gemini-2.5-pro` | Cursor Composer 2.5 | Credits when Pass quota is gone |
-| `opencode` | `@opencode-ai/sdk` + `opencode` CLI | `opencode-go/deepseek-v4-flash` → escalate `qwen3.7-plus` | Cursor judge | [OpenCode Go](https://opencode.ai/go) gateway |
+| `opencode` | `@opencode-ai/sdk` + `opencode` CLI | `opencode-go/deepseek-v4-flash` → escalate `qwen3.7-plus` | Cursor judge (or `reviewRuntime: opencode`) | [OpenCode Go](https://opencode.ai/go) gateway |
+| `pi` | `@earendil-works/pi-coding-agent` | `openrouter/deepseek/deepseek-chat` | Cursor judge or `reviewRuntime: pi` | BYOK OpenRouter-class |
 
 Philosophy: **cheap worker iterations, selective judge, never LLM-as-verify.**
+
+## Judge presets (`reviewRuntime` + `reviewModel`)
+
+| Stack | `loop.json` sketch | When |
+| --- | --- | --- |
+| **Dogfood** | `runtime: cursor`, default judge (Grok) | One Cursor bill, strongest judge |
+| **Cheap Pi + Pi** | `runtime: pi`, `reviewRuntime: pi`, same `openrouter/…` model | Minimize judge + worker cost on BYOK |
+| **Pi worker + Grok judge** | `runtime: pi`, omit `reviewRuntime` (cursor) + `reviewModel: grok-4.5` | Cheap implement, Cursor subscription for review |
+| **OpenCode Go + Cursor** | `runtime: opencode`, default judge | Go worker quota; familiar Cursor judge |
 
 ## Default stack (“people like us”)
 
@@ -28,7 +38,7 @@ Philosophy: **cheap worker iterations, selective judge, never LLM-as-verify.**
 | --- | --- | --- |
 | **Worker** | OpenCode Go or ClinePass Flash-class | Escalate on stagnation only |
 | **Verify** | Your `verify.sh` | Hard gate; exit `0` |
-| **Judge** | Cursor Grok 4.5 or Composer 2.5 | `postQualityReview: "auto"` + `reviewGate` so nits don’t thrash |
+| **Judge** | Cursor Grok 4.5, Composer 2.5, or same runtime as worker (`reviewRuntime`) | `postQualityReview: "auto"` + `reviewGate` so nits don’t thrash |
 | **Escalate worker** | `qwen3.7-plus` / DeepSeek Pro tier | Not frontier Opus/GPT as default worker |
 
 Use Cursor worker when you want one bill and IDE-native dogfood; use Cline/OpenCode when implement tokens should stay off Cursor quota.

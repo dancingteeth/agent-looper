@@ -24,6 +24,14 @@ describe('parseRunArgs', () => {
     expect(expectRun(['run', 'loops/fix']).loopDir).toBe('loops/fix')
   })
 
+  it('parses --review-runtime', () => {
+    expect(expectRun(['x', '--review-runtime', 'pi']).reviewRuntime).toBe('pi')
+    expect(parseRunArgs(['x', '--review-runtime', 'bogus'])).toEqual({
+      kind: 'error',
+      message: '--review-runtime must be cursor, cline-pass, cline, opencode, or pi',
+    })
+  })
+
   it('captures value flags', () => {
     const options = expectRun([
       'loops/fix',

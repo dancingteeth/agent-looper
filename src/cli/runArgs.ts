@@ -11,6 +11,7 @@ export type RunCliOptions = {
   reviewGate?: boolean
   skipSync?: boolean
   runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi'
+  reviewRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi'
   model?: string
   reviewModel?: string
   escalateModel?: string
@@ -44,7 +45,8 @@ ${printRepoRootHelp()}
   --skip-sync                     Do not run repo profile syncCommand
   --runtime <cursor|cline-pass|cline|opencode|pi>  Override loop.json runtime
   --model <id>                    Override loop.json worker model
-  --review-model <id>             Override loop.json reviewModel (Cursor judge; default grok-4.5 on cursor)
+  --review-runtime <cursor|cline-pass|cline|opencode|pi>  Override loop.json reviewRuntime (judge)
+  --review-model <id>             Override loop.json reviewModel (judge model)
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
   --pause-after-iteration         Wait for Enter between iterations (TTY only)
@@ -76,6 +78,7 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
   let reviewGate: boolean | undefined
   let skipSync = false
   let runtime: RunCliOptions['runtime']
+  let reviewRuntime: RunCliOptions['reviewRuntime']
   let model: string | undefined
   let reviewModel: string | undefined
   let escalateModel: string | undefined
@@ -153,6 +156,23 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       model = remaining[++i]
       continue
     }
+    if (arg === '--review-runtime') {
+      const value = remaining[++i]
+      if (
+        value !== 'cursor' &&
+        value !== 'cline-pass' &&
+        value !== 'cline' &&
+        value !== 'opencode' &&
+        value !== 'pi'
+      ) {
+        return {
+          kind: 'error',
+          message: '--review-runtime must be cursor, cline-pass, cline, opencode, or pi',
+        }
+      }
+      reviewRuntime = value
+      continue
+    }
     if (arg === '--review-model') {
       reviewModel = remaining[++i]
       continue
@@ -210,6 +230,7 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       skipSync,
       runtime,
       model,
+      reviewRuntime,
       reviewModel,
       escalateModel,
       mode,

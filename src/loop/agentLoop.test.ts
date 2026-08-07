@@ -605,7 +605,9 @@ describe('runAgentLoop', () => {
       tmpLoopDir,
       expect.any(String),
       expect.anything(),
-      expect.objectContaining({ reviewModel: 'grok-4.5' }),
+      expect.objectContaining({
+        reviewAgent: { runtime: 'cursor', model: 'grok-4.5' },
+      }),
     )
   })
 
@@ -623,7 +625,9 @@ describe('runAgentLoop', () => {
       tmpLoopDir,
       expect.any(String),
       expect.anything(),
-      expect.objectContaining({ reviewModel: 'composer-2.5' }),
+      expect.objectContaining({
+        reviewAgent: { runtime: 'cursor', model: 'composer-2.5' },
+      }),
     )
   })
 

@@ -9,7 +9,7 @@ tags:
 
 `runtime: opencode` uses `@opencode-ai/sdk` + the `opencode` CLI. The harness starts a local OpenCode server per loop session, wires API keys from env when present, and passes `provider/model` from `loop.json` to each worker iteration.
 
-Judge path is unchanged: Cursor SDK (`reviewModel` / defaults).
+Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime` to `opencode` or `pi` to match a BYOK judge.
 
 ## Defaults (cost-minmax)
 

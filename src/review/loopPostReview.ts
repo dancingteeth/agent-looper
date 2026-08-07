@@ -3,10 +3,14 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import type { RepoContext } from '../context/repoContext.js'
 import { defaultBranchRefExists } from '../context/defaultBranch.js'
-import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
+import { runReviewAgentPrompt } from './reviewAgentRun.js'
 import {
-  CURSOR_WORKER_MODEL,
-  type CursorSdkModel,
+  defaultModelForRuntime,
+  LOOP_RUNTIME_CURSOR,
+  resolveReviewAgent,
+  type LoopRuntime,
+  type ResolvedReviewAgent,
+  type SecondaryReviewRuntime,
 } from '../loop/loopAgentConfig.js'
 import { buildQualityReviewPrompt, buildBlockerRecheckPrompt, buildReproduceCandidatesPrompt } from './reviewPrompt.js'
 import {
@@ -24,10 +28,6 @@ import {
   mergePrimarySecondaryReviews,
 } from './reviewReproduce.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
-import {
-  defaultModelForRuntime,
-  type SecondaryReviewRuntime,
-} from '../loop/loopAgentConfig.js'
 
 function requireMergeBase(ctx: RepoContext): string {
   const baseBranch = ctx.profile.defaultBranch
@@ -95,11 +95,14 @@ export type PostLoopReviewOptions = {
   verbose?: boolean
   /** 1-based review cycle; cycle 1 writes review.md, cycle 2+ writes review.N.md */
   reviewCycle?: number
-  /**
-   * Cursor SDK judge model. Low-level default is Composer (`composer-2.5`).
-   * Cursor-only loops should pass `resolveReviewModel(config)` so the judge is Grok.
-   */
-  reviewModel?: CursorSdkModel
+  /** Worker runtime — used to resolve default judge model when reviewAgent is omitted. */
+  workerRuntime?: LoopRuntime
+  /** Primary judge runtime. Unset → cursor. */
+  reviewRuntime?: LoopRuntime
+  /** Judge model id for the primary review runtime. */
+  reviewModel?: string
+  /** Fully resolved primary judge (preferred over workerRuntime + reviewRuntime + reviewModel). */
+  reviewAgent?: ResolvedReviewAgent
   /**
    * When true, downgrade error+impact blockers without a citeable path in the
    * merge-base…working-tree changed-files set (roadmap M2 phase 2a).
@@ -107,7 +110,7 @@ export type PostLoopReviewOptions = {
    */
   reviewReproduce?: boolean
   /**
-   * When true (typically with reviewReproduce), run a fresh Cursor session on remaining
+   * When true (typically with reviewReproduce), run a fresh review session on remaining
    * gating blockers; DROP unevidenced candidates (roadmap M2 phase 2b).
    */
   reviewReproduceAgent?: boolean
@@ -115,6 +118,21 @@ export type PostLoopReviewOptions = {
   reviewSecondaryRuntime?: SecondaryReviewRuntime
   /** Cline model for secondary review. Defaults per reviewSecondaryRuntime. */
   reviewSecondaryModel?: string
+}
+
+export function resolvePostLoopReviewAgent(options: PostLoopReviewOptions): ResolvedReviewAgent {
+  if (options.reviewAgent) {
+    return options.reviewAgent
+  }
+  return resolveReviewAgent({
+    runtime: options.workerRuntime ?? LOOP_RUNTIME_CURSOR,
+    reviewRuntime: options.reviewRuntime,
+    reviewModel: options.reviewModel,
+  })
+}
+
+function formatReviewAgentLabel(agent: ResolvedReviewAgent): string {
+  return `${agent.runtime}/${agent.model}`
 }
 
 export type PostLoopReviewResult = {
@@ -185,21 +203,17 @@ async function maybeApplyReproduceAgent(
     return { parsed, text, droppedCount: 0 }
   }
 
-  const reviewModel = options.reviewModel ?? CURSOR_WORKER_MODEL
+  const reviewAgent = resolvePostLoopReviewAgent(options)
   const prompt = buildReproduceCandidatesPrompt(
     ctx,
     goal,
     gating.map(formatBlockerLine),
   )
   console.error(
-    `[agent-loop] reproduce agent: verifying ${gating.length} gating blocker(s) (model=${reviewModel})`,
+    `[agent-loop] reproduce agent: verifying ${gating.length} gating blocker(s) (judge=${formatReviewAgentLabel(reviewAgent)})`,
   )
-  const run = await runCursorAgentPrompt(ctx, prompt, {
+  const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
-    assistantOutput: 'none',
-    modelId: reviewModel,
-    role: 'review',
-    phase: 'review',
   })
   const agentParsed = parseReviewMarkdown(run.text)
   const kept = blockingBlockers(agentParsed)
@@ -363,14 +377,10 @@ export async function runPostLoopQualityReview(
   options: PostLoopReviewOptions = {},
 ): Promise<PostLoopReviewResult> {
   const reviewCycle = options.reviewCycle ?? 1
-  const reviewModel = options.reviewModel ?? CURSOR_WORKER_MODEL
+  const reviewAgent = resolvePostLoopReviewAgent(options)
   const prompt = buildPostLoopQualityReviewPrompt(ctx, goal)
-  const run = await runCursorAgentPrompt(ctx, prompt, {
+  const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
-    assistantOutput: 'none',
-    modelId: reviewModel,
-    role: 'review',
-    phase: 'review',
   })
   const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
@@ -387,11 +397,11 @@ export async function runPostLoopQualityReview(
       : ''
   fs.writeFileSync(
     outPath,
-    `# Post-loop quality review\n\n_Primary model: ${reviewModel}_${secondaryNote}\n_Generated ${new Date().toISOString()}_\n\n${piped.text.trim()}\n`,
+    `# Post-loop quality review\n\n_Primary judge: ${formatReviewAgentLabel(reviewAgent)}_${secondaryNote}\n_Generated ${new Date().toISOString()}_\n\n${piped.text.trim()}\n`,
     'utf8',
   )
   console.error(
-    `[agent-loop] quality review written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
+    `[agent-loop] quality review written: ${path.relative(ctx.repoRoot, outPath)} (judge=${formatReviewAgentLabel(reviewAgent)})`,
   )
   console.error(
     `[agent-loop] quality review verdict=${piped.parsed.verdict} risk=${piped.parsed.risk} blockers=${piped.parsed.blockers.length} gating=${blockingBlockers(piped.parsed).length}`,
@@ -421,14 +431,10 @@ export async function runPostLoopBlockerRecheck(
   options: PostLoopReviewOptions = {},
 ): Promise<PostLoopReviewResult> {
   const reviewCycle = options.reviewCycle ?? 1
-  const reviewModel = options.reviewModel ?? CURSOR_WORKER_MODEL
+  const reviewAgent = resolvePostLoopReviewAgent(options)
   const prompt = buildBlockerRecheckPrompt(ctx, goal, blockers)
-  const run = await runCursorAgentPrompt(ctx, prompt, {
+  const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
-    assistantOutput: 'none',
-    modelId: reviewModel,
-    role: 'review',
-    phase: 'review',
   })
   const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
@@ -445,11 +451,11 @@ export async function runPostLoopBlockerRecheck(
       : ''
   fs.writeFileSync(
     outPath,
-    `# Blocker re-check\n\n_Primary model: ${reviewModel}_${secondaryNote}\n_Generated ${new Date().toISOString()}_\n\n${piped.text.trim()}\n`,
+    `# Blocker re-check\n\n_Primary judge: ${formatReviewAgentLabel(reviewAgent)}_${secondaryNote}\n_Generated ${new Date().toISOString()}_\n\n${piped.text.trim()}\n`,
     'utf8',
   )
   console.error(
-    `[agent-loop] blocker re-check written: ${path.relative(ctx.repoRoot, outPath)} (model=${reviewModel})`,
+    `[agent-loop] blocker re-check written: ${path.relative(ctx.repoRoot, outPath)} (judge=${formatReviewAgentLabel(reviewAgent)})`,
   )
   console.error(
     `[agent-loop] blocker re-check verdict=${piped.parsed.verdict} risk=${piped.parsed.risk} blockers=${piped.parsed.blockers.length} gating=${blockingBlockers(piped.parsed).length}`,
