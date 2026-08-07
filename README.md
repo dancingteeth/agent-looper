@@ -9,7 +9,7 @@ Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shel
 
 Supports **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), and **Pi** workers. The primary **judge** defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 
-New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Cost-minmax runtime map: [`docs/runtime-map.md`](./docs/runtime-map.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Cost-minmax runtime map: [`docs/runtime-map.md`](./docs/runtime-map.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
 ## Features at a glance
 

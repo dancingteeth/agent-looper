@@ -1,0 +1,76 @@
+---
+tags:
+  - documentation
+  - releasing
+  - npm
+---
+# Releasing Agent Looper (`@dancingteeth/agent-looper`)
+
+npm package name ≠ GitHub repo: publish **`@dancingteeth/agent-looper`** from repo **`dancingteeth/agent-loop`**.
+
+CLI bins stay `agent-loop` / `agent-check` / …
+
+## Preferred: trusted publishing (GitHub Actions OIDC)
+
+No long-lived publish token. Workflow: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml).
+
+Requires **npm CLI ≥ 11.5.1** and **Node ≥ 22.14** on the runner (we use Node 22).
+
+### Bootstrap (one time — package must exist first)
+
+Trusted publisher is configured on an **existing** npm package. If `0.1.0` is not on the registry yet:
+
+1. On [npm Access Tokens](https://www.npmjs.com/settings/dancingteeth/tokens), create a **granular** token:
+   - Read and write
+   - Scope / package: `@dancingteeth/agent-looper` (or all packages under your user)
+   - **Bypass 2FA**: on (browser will challenge your **security key**)
+2. Locally (token in user npmrc for `registry.npmjs.org` only):
+
+```bash
+npm config set //registry.npmjs.org/:_authToken=npm_YOUR_TOKEN --location=user
+cd /Users/paulzgordan/Projects/agent-loop
+pnpm prepublishOnly
+npm publish --registry=https://registry.npmjs.org --access public --ignore-scripts
+```
+
+3. Revoke that token after the first publish succeeds (or keep it only until trusted publishing is verified).
+
+### Configure trusted publisher (browser + security key)
+
+1. Open [package settings](https://www.npmjs.com/package/@dancingteeth/agent-looper) → **Settings** → **Trusted Publisher**
+2. Choose **GitHub Actions** and set:
+
+| Field | Value |
+| --- | --- |
+| Organization or user | `dancingteeth` |
+| Repository | `agent-loop` |
+| Workflow filename | `publish.yml` (filename only, not a path) |
+| Environment name | *(leave empty unless you add a GitHub Environment)* |
+| Allowed actions | **`npm publish`** (and optionally `npm stage publish`) |
+
+3. Save. npm does **not** validate the config until the next CI publish — match names exactly.
+
+### Cut a release
+
+```bash
+# version already in package.json must match the tag intent
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Or run **Actions → Publish → Run workflow** (`workflow_dispatch`).
+
+After a green trusted publish, optional hardening on the package: **Publishing access** → “Require two-factor authentication and disallow tokens” (OIDC still works).
+
+## Version bumps
+
+```bash
+npm version patch   # or minor / major — updates package.json + creates a tag
+git push origin main --follow-tags
+```
+
+## Local publish (fallback)
+
+Account is `auth-and-writes` with a **security key** (not TOTP). CLI `--otp=` will not work unless you also add an authenticator app. Prefer a bypass-2FA granular token or trusted publishing.
+
+Provenance is generated automatically on trusted GitHub publishes; local `publishConfig.provenance` is off so CLI publish does not require CI OIDC.
