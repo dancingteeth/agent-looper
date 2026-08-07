@@ -41,6 +41,16 @@ That’s the product. Everything else is cost control and false-positive control
 
 ---
 
+## Why open
+
+Agents collapsed the cost of personalizing tools: start from source, keep a rebase loop, bend the harness when the product’s hooks don’t fit. Closed coding agents wall that off — you get their extension surface or you leave.
+
+**agent-loop is the open spine, not the rented brain.** The models stay whoever you already pay (Cursor, Cline, OpenCode Go, …). What you own and can rewrite is the loop: frozen `GOAL.md`, measurable `verify.sh`, sparse `REVIEWS.md` / `AGENTS.md`, and the orchestration that keeps workers fresh and spend bounded. Customize those surfaces — or the harness itself — instead of hoping a vendor’s hooks match how you finish work.
+
+We don’t claim “no config.” An honest finish line (`verify`) and a frozen goal *are* the config. The bet is that an inspectable, MIT harness compounds across model swaps better than renting a sealed agent and fighting its personalization wall.
+
+---
+
 ## How one iteration works
 
 ```mermaid
@@ -82,6 +92,8 @@ Cline: same package (`@cline/sdk`) with two billing modes — ClinePass vs Credi
 OpenCode: `@opencode-ai/sdk` + `opencode-ai` CLI on PATH; Go is the subscription model gateway.
 
 Never use Composer **Fast** as the judge. Worker on Cursor is always Composer 2.5 (not Fast).
+
+Future runtimes and cost-minmax roadmap (Pi, OpenCode BYOK, what to skip): [`docs/runtime-map.md`](./docs/runtime-map.md).
 
 ---
 
