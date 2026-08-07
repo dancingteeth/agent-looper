@@ -3,6 +3,7 @@ import {
   CURSOR_WORKER_MODEL,
   isClineSdkRuntime,
   isCursorSdkModel,
+  isOpencodeRuntime,
   LOOP_RUNTIME_CURSOR,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
@@ -37,7 +38,10 @@ export function assertLoopModelAllowed(runtime: LoopRuntime, model: string): voi
     return
   }
 
-  if (isClineSdkRuntime(runtime) && isBannedCursorLoopModel(model)) {
+  if (
+    (isClineSdkRuntime(runtime) || isOpencodeRuntime(runtime)) &&
+    isBannedCursorLoopModel(model)
+  ) {
     throw new Error(
       `Model "${model}" looks like a Fast variant — not allowed in loops.`,
     )

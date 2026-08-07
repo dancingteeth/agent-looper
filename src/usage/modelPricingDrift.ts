@@ -6,6 +6,9 @@ import {
   DEFAULT_CLINE_CREDITS_LOOP_MODEL,
   DEFAULT_CLINE_PASS_ESCALATE_MODEL,
   DEFAULT_CLINE_PASS_LOOP_MODEL,
+  DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
+  DEFAULT_OPENCODE_GO_LOOP_MODEL,
+  OPENCODE_GO_LOOP_MODELS,
 } from '../loop/loopAgentConfig.js'
 import { MODEL_PRICING_PER_MILLION } from './loopUsage.js'
 
@@ -22,7 +25,10 @@ export function requiredLoopPricingModels(): string[] {
     DEFAULT_CLINE_PASS_ESCALATE_MODEL,
     DEFAULT_CLINE_CREDITS_LOOP_MODEL,
     DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
+    DEFAULT_OPENCODE_GO_LOOP_MODEL,
+    DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
     ...CLINE_PASS_LOOP_MODELS,
+    ...OPENCODE_GO_LOOP_MODELS,
   ]
 }
 
@@ -52,7 +58,7 @@ export function checkModelPricingDrift(): { ok: boolean; issues: ModelPricingDri
 
 export function formatModelPricingDriftReport(issues: ModelPricingDriftIssue[]): string {
   if (issues.length === 0) {
-    return 'model pricing: OK — MODEL_PRICING_PER_MILLION matches CLINE_PASS_LOOP_MODELS + harness defaults'
+    return 'model pricing: OK — MODEL_PRICING_PER_MILLION matches CLINE_PASS / OPENCODE_GO lists + harness defaults'
   }
 
   const lines = ['model pricing drift:']

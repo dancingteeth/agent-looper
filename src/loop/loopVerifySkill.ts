@@ -5,6 +5,7 @@ import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
 import {
   isClineSdkRuntime,
+  isOpencodeRuntime,
   LOOP_RUNTIME_CURSOR,
   resolveLoopAgent,
 } from './loopAgentConfig.js'
@@ -76,6 +77,20 @@ async function defaultSkillVerifyAgentRun(input: {
       assistantOutput: 'none',
       phase: 'verify',
     })
+  }
+  if (isOpencodeRuntime(agent.runtime)) {
+    const { createOpencodeLoopSession } = await import('../agents/opencodeAgent.js')
+    const opencode = await createOpencodeLoopSession(input.ctx)
+    try {
+      return await opencode.runPrompt(input.prompt, {
+        verbose: input.verbose,
+        modelId: agent.model,
+        assistantOutput: 'none',
+        phase: 'verify',
+      })
+    } finally {
+      await opencode.dispose()
+    }
   }
   if (!isClineSdkRuntime(agent.runtime)) {
     throw new Error(`Unsupported verify runtime: ${agent.runtime}`)

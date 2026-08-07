@@ -7,7 +7,7 @@ tags:
 
 Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
 
-Supports **Cursor SDK** (`composer-2.5` worker + `grok-4.5` judge) and **Cline SDK** (`@cline/sdk`) — **ClinePass** (`runtime: cline-pass`) or **Credits** (`runtime: cline`).
+Supports **Cursor SDK** (`composer-2.5` worker + `grok-4.5` judge), **Cline SDK** (`@cline/sdk`) — **ClinePass** (`runtime: cline-pass`) or **Credits** (`runtime: cline`), and **OpenCode** (`@opencode-ai/sdk` + Go subscription, `runtime: opencode`).
 
 New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
@@ -15,7 +15,7 @@ New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works,
 
 | Layer | What it does | Blocks completion? |
 | --- | --- | --- |
-| **Worker** | Fresh Cursor or Cline SDK session each iteration; implements toward `GOAL.md` | — (does the work) |
+| **Worker** | Fresh Cursor, Cline, or OpenCode SDK session each iteration; implements toward `GOAL.md` | — (does the work) |
 | **Verifier** | Shell `verify` / `finalVerify` (exit `0`). Optional `verifyMode: skill` runs a verify agent first (`VERIFY_RESULT: PASS/FAIL`), then shell. | **Yes** — hard gate |
 | **Review** | Post-success LLM quality review → `review.md`. Optional `reviewGate` re-opens the fix loop on **gating** findings only. | Only with `reviewGate: true` |
 | **Human** | `reviewGateHitl`, `hitlCheck`, optional Taskwarrior UUID auto-done on success | Closure authority |
@@ -29,13 +29,13 @@ New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works,
 
 **Factory scale:** `agent-loop-batch` (sequential + meta-loop probe→fix), `agent-loop-meta-review` (read-only cross-loop report over N bundles).
 
-**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
+**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
 
 Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md).
 
 ## Install
 
-Requires **Node.js 22+** for Cline SDK runtimes.
+Requires **Node.js 22+** for Cline / OpenCode SDK runtimes.
 
 ```bash
 # Cursor-only
@@ -43,6 +43,12 @@ pnpm add -D @dancingteeth/agent-loop @cursor/sdk
 
 # Optional Cline SDK worker (ClinePass or Credits)
 pnpm add -D @cline/sdk
+
+# Optional OpenCode worker (Go subscription)
+pnpm add -D @opencode-ai/sdk opencode-ai
+# pnpm may skip opencode-ai's binary download — if needed:
+#   pnpm approve-builds   # allow opencode-ai scripts
+#   node node_modules/opencode-ai/postinstall.mjs
 ```
 
 Or link a local checkout during development:
@@ -87,6 +93,15 @@ export CLINE_API_KEY=…
 agent-loop run .cursor/loops/my-task --runtime cline-pass
 # Credits (pay-as-you-go; use OpenRouter-style model ids)
 agent-loop run .cursor/loops/my-task --runtime cline
+```
+
+OpenCode Go worker:
+
+```bash
+export OPENCODE_API_KEY=…   # https://opencode.ai/go
+# needs `opencode` on PATH (from opencode-ai)
+agent-check opencode
+agent-loop run .cursor/loops/my-task --runtime opencode
 ```
 
 Target another checkout:
@@ -155,8 +170,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `runtime` | `cursor` | `cursor` \| `cline-pass` (ClinePass) \| `cline` (Credits). Cursor defaults: worker `composer-2.5`, judge `grok-4.5`. |
-| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation after reasoning ceiling (Cline). |
+| `runtime` | `cursor` | `cursor` \| `cline-pass` (ClinePass) \| `cline` (Credits) \| `opencode` (OpenCode Go). Cursor defaults: worker `composer-2.5`, judge `grok-4.5`. |
+| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode: after threshold; Cline: after reasoning ceiling). OpenCode default escalate: `opencode-go/qwen3.7-plus`. |
 | `maxIterations` | `8` | Cap implement iterations. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
@@ -320,7 +335,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | --- | --- |
 | `agent-loop run <dir>` | Single loop |
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
-| `agent-check cursor\|cline` | SDK + API key smoke |
+| `agent-check cursor\|cline\|opencode` | SDK + API key smoke |
 | `agent-loop-init` | Scaffold templates |
 | `agent-loop-doctor` | Validate `dist/` + `file:` checkout path; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
@@ -372,6 +387,7 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 | --- | --- |
 | `CURSOR_API_KEY` | Cursor SDK auth (worker / judge) |
 | `CLINE_API_KEY` | Cline SDK auth (optional peer runtime) |
+| `OPENCODE_API_KEY` | OpenCode Go auth (optional peer runtime; https://opencode.ai/go) |
 | `AGENT_LOOP_VERBOSE` | `1` / `true` — extra stderr stream detail |
 | `AGENT_LOOP_CURSOR_TIMEOUT_MS` | Cursor run timeout in milliseconds (default **2700000** = 45m). Must be a positive number; validated before `Agent.create` so a bad value fails without burning a paid run. On timeout the harness cancels the remote run. |
 | `AGENT_LOOP_TRUST_CONFIG` | `1` — treat shell config as reviewed/trusted |

@@ -76,8 +76,10 @@ Review always goes through the **Cursor SDK** judge path (Composer or Grok). The
 | **`cursor`** (default) | **Composer 2.5** | **Grok 4.5** (override with `reviewModel`) | Cursor-only dogfood; no `@cline/sdk` required |
 | **`cline-pass`** | Cline SDK · **ClinePass** · default `cline-pass/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor **Composer 2.5** unless you set `reviewModel` | Subscription quota; cheap implement loops |
 | **`cline`** | Cline SDK · **Credits** · default `deepseek/deepseek-chat` (escalate → `gemini-2.5-pro`) | Same as above | Pass quota exhausted; pay-as-you-go |
+| **`opencode`** | OpenCode SDK · **Go** · default `opencode-go/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor judge (same as Cline workers) | Cheap open models via [OpenCode Go](https://opencode.ai/go); needs `OPENCODE_API_KEY` + `opencode` CLI |
 
-Same package: **Cline SDK** (`@cline/sdk`) with two billing modes — ClinePass vs Credits — not two different products.
+Cline: same package (`@cline/sdk`) with two billing modes — ClinePass vs Credits — not two different products.
+OpenCode: `@opencode-ai/sdk` + `opencode-ai` CLI on PATH; Go is the subscription model gateway.
 
 Never use Composer **Fast** as the judge. Worker on Cursor is always Composer 2.5 (not Fast).
 
@@ -119,6 +121,7 @@ agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
 
 Need Cline? Add `@cline/sdk`, set `CLINE_API_KEY`, use `--runtime cline-pass` or `cline`.
+Need OpenCode Go? Add `@opencode-ai/sdk` + `opencode-ai`, set `OPENCODE_API_KEY`, use `--runtime opencode`.
 
 ---
 

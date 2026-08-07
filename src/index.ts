@@ -82,16 +82,22 @@ export {
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CLINE,
+  LOOP_RUNTIME_OPENCODE,
   resolveLoopAgent,
   resolveReviewModel,
   resolveSecondaryReviewAgent,
   isClineSdkRuntime,
+  isOpencodeRuntime,
+  parseOpencodeGoModel,
   CLINE_PASS_LOOP_MODELS,
+  OPENCODE_GO_LOOP_MODELS,
   CURSOR_WORKER_MODEL,
   CURSOR_REVIEW_MODEL,
   CURSOR_LOOP_MODEL,
   DEFAULT_CLINE_CREDITS_LOOP_MODEL,
   DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
+  DEFAULT_OPENCODE_GO_LOOP_MODEL,
+  DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
 } from './loop/loopAgentConfig.js'
 
 export { runVerifyCommand } from './loop/loopVerify.js'

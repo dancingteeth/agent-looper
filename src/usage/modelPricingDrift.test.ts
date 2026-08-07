@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CLINE_PASS_LOOP_MODELS } from '../loop/loopAgentConfig.js'
+import { CLINE_PASS_LOOP_MODELS, OPENCODE_GO_LOOP_MODELS } from '../loop/loopAgentConfig.js'
 import { MODEL_PRICING_PER_MILLION } from './loopUsage.js'
 import {
   checkModelPricingDrift,
@@ -16,6 +16,12 @@ describe('modelPricingDrift', () => {
 
   it('requires pricing for every CLINE_PASS_LOOP_MODELS slug', () => {
     for (const model of CLINE_PASS_LOOP_MODELS) {
+      expect(MODEL_PRICING_PER_MILLION[model], `missing pricing for ${model}`).toBeDefined()
+    }
+  })
+
+  it('requires pricing for every OPENCODE_GO_LOOP_MODELS slug', () => {
+    for (const model of OPENCODE_GO_LOOP_MODELS) {
       expect(MODEL_PRICING_PER_MILLION[model], `missing pricing for ${model}`).toBeDefined()
     }
   })

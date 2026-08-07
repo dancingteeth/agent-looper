@@ -198,6 +198,32 @@ describe('clearIncompatibleAgentFieldsOnRuntimeSwitch', () => {
   })
 })
 
+describe('resolveIterationAgent opencode', () => {
+  it('does not attach reasoningEffort (OpenCode SDK path ignores it)', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      reasoningEffort: 'high',
+    })
+    const agent = resolveIterationAgent(config, 3, undefined)
+    expect(agent.runtime).toBe('opencode')
+    expect(agent).not.toHaveProperty('reasoningEffort')
+  })
+
+  it('escalates model on stagnation without a reasoning ladder', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      escalateModel: 'opencode-go/qwen3.7-plus',
+    })
+    const agent = resolveIterationAgent(config, 1, 2)
+    expect(agent).toEqual({
+      runtime: 'opencode',
+      model: 'opencode-go/qwen3.7-plus',
+    })
+  })
+})
+
 describe('resolveSecondaryReviewAgent', () => {
   it('returns undefined when reviewSecondaryRuntime is unset', () => {
     expect(resolveSecondaryReviewAgent({})).toBeUndefined()

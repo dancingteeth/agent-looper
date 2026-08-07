@@ -1,12 +1,10 @@
 #!/usr/bin/env node
-import { Agent } from '@cursor/sdk'
-import { ClineCore } from '@cline/sdk'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
-type Runtime = 'cursor' | 'cline'
+type Runtime = 'cursor' | 'cline' | 'opencode'
 
 function usage(): string {
-  return `Usage: agent-check <cursor|cline>
+  return `Usage: agent-check <cursor|cline|opencode>
 
 Verifies SDK install and API key env var. Does not call remote APIs.`
 }
@@ -18,7 +16,7 @@ if (!target || target === '--help' || target === '-h') {
   process.exit(target ? 0 : 1)
 }
 
-if (target !== 'cursor' && target !== 'cline') {
+if (target !== 'cursor' && target !== 'cline' && target !== 'opencode') {
   console.error(usage())
   process.exit(1)
 }
@@ -27,6 +25,7 @@ await checkRuntime(target)
 
 async function checkRuntime(runtime: Runtime): Promise<void> {
   if (runtime === 'cursor') {
+    const { Agent } = await import('@cursor/sdk')
     const key = process.env.CURSOR_API_KEY?.trim()
     if (!key) {
       console.error('[agent-check] CURSOR_API_KEY is not set')
@@ -37,6 +36,49 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     return
   }
 
+  if (runtime === 'opencode') {
+    const nodeMajor = Number(process.versions.node.split('.')[0] ?? 0)
+    if (nodeMajor < 22) {
+      console.error(
+        `[agent-check] Node.js 22+ required for @opencode-ai/sdk (current: ${process.versions.node})`,
+      )
+      process.exit(1)
+    }
+
+    const key = process.env.OPENCODE_API_KEY?.trim()
+    if (!key) {
+      console.error('[agent-check] OPENCODE_API_KEY is not set (https://opencode.ai/go)')
+      process.exit(1)
+    }
+
+    let createOpencode: unknown
+    try {
+      ;({ createOpencode } = await import('@opencode-ai/sdk'))
+    } catch {
+      console.error('[agent-check] @opencode-ai/sdk is not installed (pnpm add -D @opencode-ai/sdk)')
+      process.exit(1)
+    }
+
+    await assertPosixShell()
+
+    const { spawnSync } = await import('node:child_process')
+    const which = spawnSync('opencode', ['--version'], { encoding: 'utf8' })
+    if (which.error || which.status !== 0) {
+      console.error(
+        '[agent-check] `opencode` CLI not on PATH. Install with: pnpm add -D opencode-ai\n' +
+          '  If pnpm skipped scripts: node node_modules/opencode-ai/postinstall.mjs',
+      )
+      process.exit(1)
+    }
+
+    console.log('[agent-check] @opencode-ai/sdk OK — createOpencode:', typeof createOpencode)
+    console.log('[agent-check] opencode CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
+    console.log('[agent-check] OPENCODE_API_KEY present (prefix):', `${key.slice(0, 4)}…`)
+    console.log('[agent-check] shell preflight OK')
+    return
+  }
+
+  const { ClineCore } = await import('@cline/sdk')
   const nodeMajor = Number(process.versions.node.split('.')[0] ?? 0)
   if (nodeMajor < 22) {
     console.error(`[agent-check] Node.js 22+ required for @cline/sdk (current: ${process.versions.node})`)

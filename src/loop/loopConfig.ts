@@ -5,6 +5,7 @@ import {
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_OPENCODE,
   LOOP_REASONING_EFFORTS,
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
   validateLoopAgentConfig,
@@ -25,6 +26,7 @@ export const loopRuntimeSchema = z.enum([
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CLINE,
+  LOOP_RUNTIME_OPENCODE,
 ])
 
 export const loopVerifyModeSchema = z.enum(['command', 'skill']).default('command')

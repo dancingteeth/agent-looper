@@ -2,7 +2,7 @@ export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
 export type LoopUsageRecord = {
   phase: AgentRunPhase
-  runtime: 'cline-pass' | 'cline' | 'cursor'
+  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode'
   model: string
   inputTokens: number
   outputTokens: number
@@ -22,7 +22,7 @@ export type LoopUsageSummary = {
   totalCostUsd: number
 }
 
-/** Official API rates (USD per 1M tokens). Kept in sync with CLINE_PASS_LOOP_MODELS via modelPricingDrift.test.ts */
+/** Official API rates (USD per 1M tokens). Kept in sync with CLINE_PASS_LOOP_MODELS / OPENCODE_GO_LOOP_MODELS via modelPricingDrift.test.ts */
 export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: number }> = {
   'composer-2.5': { input: 0.5, output: 2.5 },
   'grok-4.5': { input: 2.0, output: 6.0 },
@@ -38,6 +38,19 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'cline-pass/qwen3.7-max': { input: 0.25, output: 0.5 },
   'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
   'google/gemini-2.5-pro': { input: 1.25, output: 5.0 },
+  // OpenCode Go — rates from https://opencode.ai/docs/go/ (subscription quota; estimates for costUsd)
+  'opencode-go/deepseek-v4-flash': { input: 0.14, output: 0.28 },
+  'opencode-go/mimo-v2.5': { input: 0.14, output: 0.28 },
+  'opencode-go/minimax-m3': { input: 0.3, output: 1.2 },
+  'opencode-go/qwen3.7-plus': { input: 0.4, output: 1.6 },
+  'opencode-go/kimi-k2.7-code': { input: 0.95, output: 4.0 },
+  'opencode-go/deepseek-v4-pro': { input: 0.435, output: 0.87 },
+  'opencode-go/glm-5.2': { input: 1.4, output: 4.4 },
+  'opencode-go/kimi-k2.6': { input: 0.95, output: 4.0 },
+  'opencode-go/mimo-v2.5-pro': { input: 0.435, output: 0.87 },
+  'opencode-go/qwen3.7-max': { input: 2.5, output: 7.5 },
+  'opencode-go/gpt-5.6-luna': { input: 0.2, output: 1.2 },
+  'opencode-go/grok-4.5': { input: 2.0, output: 6.0 },
 }
 
 const TOKENS_PER_MILLION = 1_000_000

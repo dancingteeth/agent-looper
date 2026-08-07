@@ -1,7 +1,7 @@
 import { truncateStreamValue as truncate } from './streamFormat.js'
 
 export type AgentSessionRef = {
-  provider: 'cursor' | 'cline'
+  provider: 'cursor' | 'cline' | 'opencode'
   runId?: string
   sessionId?: string
   agentId?: string

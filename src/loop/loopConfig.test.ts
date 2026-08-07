@@ -46,6 +46,25 @@ describe('loopConfigSchema', () => {
     expect(resolveLoopAgent(parsed).model).toBe('deepseek/deepseek-chat')
   })
 
+  it('accepts opencode runtime with default OpenCode Go model', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+    })
+    expect(parsed.runtime).toBe('opencode')
+    expect(resolveLoopAgent(parsed).model).toBe('opencode-go/deepseek-v4-flash')
+  })
+
+  it('rejects unknown OpenCode Go model slugs', () => {
+    expect(() =>
+      loopConfigSchema.parse({
+        verify: 'true',
+        runtime: 'opencode',
+        model: 'opencode-go/not-a-real-model',
+      }),
+    ).toThrow(/OPENCODE_GO_LOOP_MODELS|Unknown OpenCode/)
+  })
+
   it('rejects ClinePass slugs for cline credits runtime', () => {
     expect(() =>
       loopConfigSchema.parse({

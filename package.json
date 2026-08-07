@@ -1,7 +1,7 @@
 {
   "name": "@dancingteeth/agent-loop",
   "version": "0.1.0",
-  "description": "Repo-agnostic fix-until-green agent loop (Cursor SDK + Cline SDK)",
+  "description": "Repo-agnostic fix-until-green agent loop (Cursor SDK + Cline SDK + OpenCode)",
   "license": "MIT",
   "type": "module",
   "author": "Paul Zgordan",
@@ -53,7 +53,9 @@
   },
   "peerDependencies": {
     "@cline/sdk": ">=0.0.55",
-    "@cursor/sdk": ">=1.0.18"
+    "@cursor/sdk": ">=1.0.18",
+    "@opencode-ai/sdk": ">=1.18.0",
+    "opencode-ai": ">=1.18.0"
   },
   "peerDependenciesMeta": {
     "@cline/sdk": {
@@ -61,13 +63,21 @@
     },
     "@cursor/sdk": {
       "optional": true
+    },
+    "@opencode-ai/sdk": {
+      "optional": true
+    },
+    "opencode-ai": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@cline/sdk": "^0.0.55",
     "@cursor/sdk": "^1.0.18",
+    "@opencode-ai/sdk": "^1.18.15",
     "@types/node": "^22.15.0",
     "@vitest/coverage-v8": "^4.1.9",
+    "opencode-ai": "^1.18.15",
     "typescript": "^5.8.3",
     "vitest": "^4.0.16"
   },
