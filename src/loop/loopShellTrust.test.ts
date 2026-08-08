@@ -29,6 +29,15 @@ describe('collectShellCommandWarnings', () => {
     expect(warnings[0]?.label).toBe('hitlCommand')
     expect(warnings[0]?.suspicious).toEqual(expect.arrayContaining(['curl', 'pipe-to-sh']))
   })
+
+  it('includes notifyCommand when set', () => {
+    const warnings = collectShellCommandWarnings({
+      notifyCommand: 'curl -sS "$SLACK_WEBHOOK"',
+    })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.label).toBe('notifyCommand')
+    expect(warnings[0]?.suspicious).toEqual(expect.arrayContaining(['curl']))
+  })
 })
 
 describe('warnShellCommandsFromConfig', () => {

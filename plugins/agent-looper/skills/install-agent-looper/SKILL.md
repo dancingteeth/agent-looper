@@ -70,4 +70,4 @@ Disable the line with `--no-completion-signal` or `AGENT_LOOP_NO_COMPLETION_SIGN
 
 ### Cloud Agents
 
-Cloud Shell **does not expose `notify_on_output`**, so you cannot attach that watcher even though the harness still prints `AGENT_LOOP_DONE`. Prefer Telegram (`--require-notify` when you need fail-closed), `hitlOnFailure`, or the Agents UI / PR / Slack when the cloud run ends. Revisit in-chat wake only if Cursor adds an equivalent Cloud Shell param.
+Cloud Shell **does not expose `notify_on_output`**, so you cannot attach that watcher even though the harness still prints `AGENT_LOOP_DONE`. Prefer `notifyCommand` (Slack/webhook via `LOOP_*` env), Telegram (`--require-notify` when you need fail-closed), `hitlOnFailure`, or the Agents UI / PR / Slack when the cloud run ends. Revisit in-chat wake only if Cursor adds an equivalent Cloud Shell param.

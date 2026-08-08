@@ -22,6 +22,7 @@ export type RunCliOptions = {
   requireTrustConfig?: boolean
   requireNotify?: boolean
   noCompletionSignal?: boolean
+  noNotifyCommand?: boolean
 }
 
 export type ParseRunArgsResult =
@@ -54,6 +55,7 @@ ${printRepoRootHelp()}
   --pause-after-iteration         Wait for Enter between iterations (TTY only)
   --no-telegram                   Skip Telegram completion report
   --no-completion-signal          Skip AGENT_LOOP_DONE stdout line (Cursor background wake)
+  --no-notify-command             Skip repo/loop notifyCommand shell hook
   --require-notify                Abort if Telegram notify is configured but getMe preflight fails
   --trust-config                  Acknowledge reviewed shell commands (verify / finalVerify / sync)
   --require-trust-config          Abort unless --trust-config, loop.json trustConfig, or AGENT_LOOP_TRUST_CONFIG=1
@@ -93,6 +95,7 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
   let requireTrustConfig = false
   let requireNotify = false
   let noCompletionSignal = false
+  let noNotifyCommand = false
 
   for (let i = 0; i < remaining.length; i++) {
     const arg = remaining[i]
@@ -207,6 +210,10 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       noCompletionSignal = true
       continue
     }
+    if (arg === '--no-notify-command') {
+      noNotifyCommand = true
+      continue
+    }
     if (arg === '--require-notify') {
       requireNotify = true
       continue
@@ -254,6 +261,7 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       requireTrustConfig,
       requireNotify,
       noCompletionSignal,
+      noNotifyCommand,
     },
   }
 }

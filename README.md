@@ -120,7 +120,8 @@ Harness maintainers developing this repo itself: build local `dist/` with `pnpm 
 | `hitlFileDir` | Directory for `file` provider (default `.cursor/hitl`) |
 | `hitlCommand` | Shell for `command` provider |
 | `hitlLinearTeam` | Linear team key or id when `hitlProvider` is `linear` |
-| `syncCommand` | Shell command after success (or `null`) |
+| `syncCommand` | Shell after success (or `null`) |
+| `notifyCommand` | Optional shell on every CLI exit (`LOOP_*` env) — webhooks when Telegram/Cloud wake unavailable |
 | `defaultBranch` | Post-loop diff base (`main`) |
 | `agentsFile` / `reviewsFile` | Prompt + review overlay paths |
 | `loopRiskProfile` | Optional keyword merge for `postQualityReview: "auto"` (see `REVIEWS.md` ## Loop risk inference) |
@@ -175,6 +176,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `hitlOnFailure` | `false` | Open HITL checkpoint when the loop ends incomplete |
 | `requireNotify` | `false` | Abort if Telegram preflight fails (also `--require-notify`) |
 | `completionSignal` | `true` | Emit `AGENT_LOOP_DONE` on stdout when the CLI exits (local Cursor wake; Cloud Agents cannot attach a watcher yet) |
+| `notifyCommand` | — | Override repo profile `notifyCommand` for this loop |
 | `reasoningEffort` | — | Cline: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Cursor ignores. |
 | `escalateReasoningEffort` | — | Cline reasoning ladder ceiling |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
@@ -435,11 +437,38 @@ Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, �
 
 **Cloud Agent Shell does not expose `notify_on_output` today**, so this chat cannot attach a regex watcher even though the harness still emits `AGENT_LOOP_DONE`. Until Cursor adds that (or an equivalent wake), treat cloud completion as:
 
+- **`notifyCommand`** — shell hook with `LOOP_*` env (Slack/Discord/`curl` webhook); set in `.cursor/agent-loop.repo.json` or `loop.json`
 - **Telegram** (`notifyTelegram` + env; `--require-notify` / `requireNotify` to fail closed on bad bot auth)
 - **HITL** (`hitlOnFailure`, GitHub / Linear / file / Taskwarrior)
 - **Platform** — Agents UI, PR, Slack/Automations when the cloud run finishes
 
 Do not promise in-chat wake from `AGENT_LOOP_DONE` on Cloud Agents.
+
+## `notifyCommand` (webhook / Slack without Telegram)
+
+Runs after Telegram + HITL visibility, immediately before the CLI exits (including fatal aborts). Non-blocking on failure. Included in the shell-trust gate (`--trust-config`).
+
+| Env | Meaning |
+| --- | --- |
+| `LOOP_KIND` | `loop` or `batch` |
+| `LOOP_BUNDLE` | Relative bundle/batch path |
+| `LOOP_COMPLETE` | `1` or `0` |
+| `LOOP_EXIT_CODE` | `0` / `2` / `1` |
+| `LOOP_REASON` | Completion or abort reason |
+| `LOOP_REPORT` | Same short text as the Telegram completion report (when available) |
+| `LOOP_ITERATIONS` / `LOOP_LOOPS_RUN` | Counts when known |
+| `LOOP_HITL` | Checkpoint id/url when created |
+| `LOOP_RUN_REPORT` | Relative `run-report.md` path when the file exists |
+
+Example (repo profile):
+
+```json
+{
+  "notifyCommand": "curl -sS -X POST \"$SLACK_WEBHOOK\" -H 'Content-type: application/json' --data \"{\\\"text\\\":\\\"$LOOP_BUNDLE exit $LOOP_EXIT_CODE: $LOOP_REASON\\\"}\""
+}
+```
+
+Opt out: `--no-notify-command`. Loop/batch `notifyCommand` overrides the profile.
 
 ## License
 

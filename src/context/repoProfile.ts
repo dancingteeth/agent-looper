@@ -13,6 +13,12 @@ export const repoProfileSchema = z
     taskwarriorProject: taskwarriorProjectSchema.optional(),
   /** Shell command to mirror TW after success; null = skip. */
   syncCommand: z.string().trim().min(1).nullable().default(null),
+  /**
+   * Optional shell after every loop/batch exit (success, incomplete, or fatal).
+   * Receives LOOP_* env — useful for Slack/Discord webhooks when Telegram is off
+   * (especially Cloud Agents). Loop/batch `notifyCommand` overrides this.
+   */
+  notifyCommand: z.string().trim().min(1).optional(),
   /** Base branch for post-loop diff stat. */
   defaultBranch: z.string().trim().min(1).default('main'),
   agentsFile: z.string().trim().min(1).default('AGENTS.md'),

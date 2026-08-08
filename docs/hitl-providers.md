@@ -57,7 +57,7 @@ Runs `hitlCommand` via shell in the repo root (similar to `syncCommand`). Enviro
 | `HITL_BODY` | Description, reason, loop path, project |
 | `HITL_LOOP_DIR` | Loop directory when known |
 | `HITL_PROJECT` | Resolved project label |
-| `HITL_REASON` | `post_success` or `review_gate` |
+| `HITL_REASON` | `post_success` \| `review_gate` \| `loop_failure` \| `notify_failed` |
 
 The **last non-empty line of stdout** is treated as the checkpoint id. Empty stdout still counts as success (log-only).
 
@@ -78,3 +78,15 @@ Example:
 - `command` + HITL trigger → need `hitlCommand`
 - `linear` + HITL trigger → need `hitlLinearTeam` and API key in env
 - `file` / `github` → no Taskwarrior project required
+
+## Completion notify without Telegram (`notifyCommand`)
+
+Optional shell in `.cursor/agent-loop.repo.json` or per-loop / per-batch `notifyCommand`. Runs on every CLI exit (success, incomplete, fatal) with `LOOP_*` env (`LOOP_COMPLETE`, `LOOP_EXIT_CODE`, `LOOP_REASON`, `LOOP_REPORT`, …). Non-blocking; shell-trust gated. Prefer this for Slack/Discord webhooks on **Cloud Agents** (no `notify_on_output`). See README **notifyCommand**.
+
+Example:
+
+```json
+{
+  "notifyCommand": "curl -sS -X POST \"$SLACK_WEBHOOK\" -H 'Content-type: application/json' --data \"{\\\"text\\\":\\\"$LOOP_BUNDLE: $LOOP_REASON\\\"}\""
+}
+```

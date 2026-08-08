@@ -10,6 +10,7 @@ export type RunBatchCliOptions = {
   requireTrustConfig: boolean
   requireNotify?: boolean
   noCompletionSignal?: boolean
+  noNotifyCommand?: boolean
 }
 
 export type ParseRunBatchArgsResult =
@@ -28,6 +29,7 @@ ${printRepoRootHelp()}
   --skip-sync       Do not run repo profile syncCommand after batch
   --no-telegram     Skip Telegram completion report
   --no-completion-signal  Skip AGENT_LOOP_DONE stdout line (Cursor background wake)
+  --no-notify-command  Skip repo/batch notifyCommand shell hook
   --require-notify  Abort if Telegram notify is configured but getMe preflight fails
   --trust-config    Acknowledge reviewed shell commands
   --require-trust-config  Abort unless trusted (see agent-loop run --help)`
@@ -45,6 +47,7 @@ export function parseRunBatchArgs(argv: string[]): ParseRunBatchArgsResult {
   let requireTrustConfig = false
   let requireNotify = false
   let noCompletionSignal = false
+  let noNotifyCommand = false
 
   for (const arg of remaining) {
     if (arg === '--') continue
@@ -58,6 +61,10 @@ export function parseRunBatchArgs(argv: string[]): ParseRunBatchArgsResult {
     }
     if (arg === '--no-completion-signal') {
       noCompletionSignal = true
+      continue
+    }
+    if (arg === '--no-notify-command') {
+      noNotifyCommand = true
       continue
     }
     if (arg === '--require-notify') {
@@ -95,6 +102,7 @@ export function parseRunBatchArgs(argv: string[]): ParseRunBatchArgsResult {
       requireTrustConfig,
       requireNotify,
       noCompletionSignal,
+      noNotifyCommand,
     },
   }
 }

@@ -1,6 +1,7 @@
 {
   "taskwarriorProject": "my-project",
   "syncCommand": null,
+  "notifyCommand": "curl -sS -X POST \"$SLACK_WEBHOOK\" -H 'Content-type: application/json' --data \"{\\\"text\\\":\\\"$LOOP_BUNDLE exit $LOOP_EXIT_CODE: $LOOP_REASON\\\"}\"",
   "defaultBranch": "main",
   "agentsFile": "AGENTS.md",
   "reviewsFile": "REVIEWS.md",

@@ -55,6 +55,8 @@ export const loopBatchConfigSchema = z
     syncOnSuccess: z.boolean().default(true),
     /** Send completion report to Telegram when repo profile + env are configured. */
     notifyTelegram: z.boolean().default(true),
+    /** Optional completion shell hook (overrides repo profile notifyCommand). */
+    notifyCommand: z.string().trim().min(1).optional(),
     /** Attach review.md from each loop after the batch summary (when present). */
     telegramAttachReview: z.boolean().default(true),
     /** Open a HITL checkpoint when the batch ends incomplete. */

@@ -284,6 +284,15 @@ export {
 export type { LoopCompletionSignalPayload } from './integrations/loopCompletionSignal.js'
 
 export {
+  resolveNotifyCommand,
+  runLoopNotifyCommand,
+} from './integrations/loopNotifyCommand.js'
+export type {
+  LoopNotifyCommandKind,
+  RunLoopNotifyCommandInput,
+} from './integrations/loopNotifyCommand.js'
+
+export {
   loopExtensionFieldsSchema,
   siblingRepoSchema,
   verifyLogModeSchema,

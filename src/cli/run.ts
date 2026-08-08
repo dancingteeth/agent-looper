@@ -15,6 +15,10 @@ import {
   shouldEmitLoopCompletionSignal,
 } from '../integrations/loopCompletionSignal.js'
 import {
+  resolveNotifyCommand,
+  runLoopNotifyCommand,
+} from '../integrations/loopNotifyCommand.js'
+import {
   preflightTelegramNotify,
   sendLoopTelegramReport,
   sendLoopTelegramReviewAttachment,
@@ -44,6 +48,7 @@ let loadedHitlProvider = ctx.profile.hitlProvider
 let loadedHitlFileDir = ctx.profile.hitlFileDir
 let loadedHitlCommand = ctx.profile.hitlCommand
 let loadedHitlLinearTeam = ctx.profile.hitlLinearTeam
+let loadedNotifyCommand = ctx.profile.notifyCommand
 let emitCompletionSignal = shouldEmitLoopCompletionSignal({
   completionSignal: cli.noCompletionSignal ? false : true,
 })
@@ -55,7 +60,33 @@ function finishLoopExit(input: {
   iterations?: number
   hitl?: string
   includeRunReport?: boolean
+  report?: string
 }): never {
+  const runReport = runReportSignalPath({
+    loopDir,
+    repoRoot: ctx.repoRoot,
+    include: Boolean(input.includeRunReport),
+  })
+  const notifyCommand = resolveNotifyCommand({
+    profileCommand: ctx.profile.notifyCommand,
+    loopCommand: loadedNotifyCommand,
+    disabled: cli.noNotifyCommand,
+  })
+  if (notifyCommand) {
+    runLoopNotifyCommand({
+      repoRoot: ctx.repoRoot,
+      command: notifyCommand,
+      kind: 'loop',
+      bundle: bundleLabel,
+      complete: input.complete,
+      exitCode: input.exitCode,
+      reason: input.reason,
+      report: input.report,
+      iterations: input.iterations,
+      hitl: input.hitl,
+      runReport,
+    })
+  }
   exitWithLoopCompletionSignal({
     emit: emitCompletionSignal,
     exitCode: input.exitCode,
@@ -68,11 +99,7 @@ function finishLoopExit(input: {
       reason: input.reason,
       iterations: input.iterations,
       hitl: input.hitl,
-      runReport: runReportSignalPath({
-        loopDir,
-        repoRoot: ctx.repoRoot,
-        include: Boolean(input.includeRunReport),
-      }),
+      runReport,
     },
   })
 }
@@ -136,6 +163,7 @@ try {
   loadedHitlFileDir = bundle.config.hitlFileDir ?? ctx.profile.hitlFileDir
   loadedHitlCommand = bundle.config.hitlCommand ?? ctx.profile.hitlCommand
   loadedHitlLinearTeam = bundle.config.hitlLinearTeam ?? ctx.profile.hitlLinearTeam
+  loadedNotifyCommand = bundle.config.notifyCommand ?? ctx.profile.notifyCommand
   emitCompletionSignal = shouldEmitLoopCompletionSignal({
     completionSignal: bundle.config.completionSignal,
   })
@@ -185,6 +213,9 @@ try {
     finalVerify: bundle.config.finalVerify,
     syncCommand: ctx.profile.syncCommand,
     hitlCommand: bundle.config.hitlCommand ?? ctx.profile.hitlCommand,
+    notifyCommand: cli.noNotifyCommand
+      ? null
+      : (bundle.config.notifyCommand ?? ctx.profile.notifyCommand),
     skipSync: cli.skipSync,
     trustConfig: cli.trustConfig || bundle.config.trustConfig,
     requireTrustConfig: cli.requireTrustConfig,
@@ -227,16 +258,17 @@ try {
   }
   console.error(`[agent-loop] ${formatUsageSummaryLine(result.usage)}`)
 
+  const telegramReport = formatLoopCompletionReport({
+    repoRoot: ctx.repoRoot,
+    bundleLabel,
+    loopDir,
+    result,
+  })
   const telegramReportSent = await sendLoopTelegramReport({
     profile: ctx.profile,
     notifyTelegram: bundle.config.notifyTelegram,
     complete: result.complete,
-    report: formatLoopCompletionReport({
-      repoRoot: ctx.repoRoot,
-      bundleLabel,
-      loopDir,
-      result,
-    }),
+    report: telegramReport,
   })
 
   await sendLoopTelegramReviewAttachment({
@@ -248,22 +280,23 @@ try {
     bundleLabel,
   })
 
-  await maybeCreateIncompleteLoopHitl({
-    ctx,
-    loopDir,
-    bundleLabel,
-    result,
-    telegramReportSent,
-    config: {
-      notifyTelegram: bundle.config.notifyTelegram,
-      hitlOnFailure: bundle.config.hitlOnFailure,
-      taskwarriorProject: bundle.config.taskwarriorProject,
-      hitlProvider: bundle.config.hitlProvider,
-      hitlFileDir: bundle.config.hitlFileDir,
-      hitlCommand: bundle.config.hitlCommand,
-      hitlLinearTeam: bundle.config.hitlLinearTeam,
-    },
-  })
+  const hitlId =
+    (await maybeCreateIncompleteLoopHitl({
+      ctx,
+      loopDir,
+      bundleLabel,
+      result,
+      telegramReportSent,
+      config: {
+        notifyTelegram: bundle.config.notifyTelegram,
+        hitlOnFailure: bundle.config.hitlOnFailure,
+        taskwarriorProject: bundle.config.taskwarriorProject,
+        hitlProvider: bundle.config.hitlProvider,
+        hitlFileDir: bundle.config.hitlFileDir,
+        hitlCommand: bundle.config.hitlCommand,
+        hitlLinearTeam: bundle.config.hitlLinearTeam,
+      },
+    })) ?? result.hitlCheckTaskUuid
 
   const exitCode: 0 | 2 = result.complete ? 0 : 2
   finishLoopExit({
@@ -271,8 +304,9 @@ try {
     complete: result.complete,
     reason: result.completionReason,
     iterations: result.iterations,
-    hitl: result.hitlCheckTaskUuid,
+    hitl: hitlId,
     includeRunReport: bundle.config.exportRunReport,
+    report: telegramReport,
   })
 } catch (err) {
   console.error('[agent-loop] failed:', err)

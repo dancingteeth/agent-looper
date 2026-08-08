@@ -123,6 +123,11 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     injectFailureContext: z.boolean().default(false),
     /** Send completion report to Telegram when repo profile + env are configured. */
     notifyTelegram: z.boolean().default(true),
+    /**
+     * Optional shell after CLI exit (overrides repo profile notifyCommand).
+     * Env: LOOP_COMPLETE, LOOP_EXIT_CODE, LOOP_REASON, LOOP_BUNDLE, LOOP_REPORT, …
+     */
+    notifyCommand: z.string().trim().min(1).optional(),
     /** Attach latest review.md to Telegram after the completion summary (when present). */
     telegramAttachReview: z.boolean().default(true),
     /**
@@ -273,6 +278,7 @@ export function mergeLoopConfig(
       | 'pauseAfterIteration'
       | 'injectFailureContext'
       | 'notifyTelegram'
+      | 'notifyCommand'
       | 'hitlOnFailure'
       | 'requireNotify'
       | 'completionSignal'

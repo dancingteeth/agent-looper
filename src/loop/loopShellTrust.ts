@@ -22,6 +22,8 @@ export type ShellTrustInput = {
   syncCommand?: string | null
   /** Shell for hitlProvider=command (repo profile / loop.json). */
   hitlCommand?: string | null
+  /** Shell after loop/batch exit (repo profile / loop.json). */
+  notifyCommand?: string | null
   skipSync?: boolean
   /** CLI --trust-config or loop.json trustConfig */
   trustConfig?: boolean
@@ -35,12 +37,14 @@ export function collectShellCommandWarnings(input: {
   finalVerify?: string
   syncCommand?: string | null
   hitlCommand?: string | null
+  notifyCommand?: string | null
 }): ShellCommandWarning[] {
   const entries: Array<{ label: string; command: string }> = []
   if (input.verify) entries.push({ label: 'verify', command: input.verify })
   if (input.finalVerify) entries.push({ label: 'finalVerify', command: input.finalVerify })
   if (input.syncCommand) entries.push({ label: 'syncCommand', command: input.syncCommand })
   if (input.hitlCommand) entries.push({ label: 'hitlCommand', command: input.hitlCommand })
+  if (input.notifyCommand) entries.push({ label: 'notifyCommand', command: input.notifyCommand })
 
   return entries.map(({ label, command }) => ({
     label,
@@ -75,6 +79,7 @@ export function formatTrustConfigRequiredError(input: ShellTrustInput): string {
     finalVerify: input.finalVerify,
     syncCommand: input.skipSync ? null : input.syncCommand,
     hitlCommand: input.hitlCommand,
+    notifyCommand: input.notifyCommand,
   })
 
   const lines = [
@@ -110,6 +115,7 @@ export function warnShellCommandsFromConfig(input: ShellTrustInput): void {
     finalVerify: input.finalVerify,
     syncCommand: input.skipSync ? null : input.syncCommand,
     hitlCommand: input.hitlCommand,
+    notifyCommand: input.notifyCommand,
   })
 
   if (warnings.length === 0) return

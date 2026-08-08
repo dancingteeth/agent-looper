@@ -15,6 +15,10 @@ import {
   shouldEmitLoopCompletionSignal,
 } from '../integrations/loopCompletionSignal.js'
 import {
+  resolveNotifyCommand,
+  runLoopNotifyCommand,
+} from '../integrations/loopNotifyCommand.js'
+import {
   preflightTelegramNotify,
   sendLoopTelegramReport,
   sendLoopTelegramReviewAttachment,
@@ -70,7 +74,28 @@ function finishBatchExit(input: {
   complete: boolean
   reason: string
   loopsRun?: number
+  report?: string
+  hitl?: string
 }): never {
+  const notifyCommand = resolveNotifyCommand({
+    profileCommand: ctx.profile.notifyCommand,
+    loopCommand: batchConfig.notifyCommand,
+    disabled: cli.noNotifyCommand,
+  })
+  if (notifyCommand) {
+    runLoopNotifyCommand({
+      repoRoot: ctx.repoRoot,
+      command: notifyCommand,
+      kind: 'batch',
+      bundle: batchLabel,
+      complete: input.complete,
+      exitCode: input.exitCode,
+      reason: input.reason,
+      report: input.report,
+      loopsRun: input.loopsRun,
+      hitl: input.hitl,
+    })
+  }
   exitWithLoopCompletionSignal({
     emit: emitCompletionSignal,
     exitCode: input.exitCode,
@@ -82,6 +107,7 @@ function finishBatchExit(input: {
       exitCode: input.exitCode,
       reason: input.reason,
       loopsRun: input.loopsRun,
+      hitl: input.hitl,
     },
   })
 }
@@ -118,6 +144,9 @@ try {
     cwd: ctx.repoRoot,
     syncCommand: ctx.profile.syncCommand,
     hitlCommand: batchConfig.hitlCommand ?? ctx.profile.hitlCommand,
+    notifyCommand: cli.noNotifyCommand
+      ? null
+      : (batchConfig.notifyCommand ?? ctx.profile.notifyCommand),
     skipSync: cli.skipSync,
     trustConfig: batchTrusted,
     requireTrustConfig: cli.requireTrustConfig,
@@ -158,15 +187,16 @@ try {
   console.error(`[agent-loop-batch] reason: ${result.completionReason}`)
   console.error(`[agent-loop-batch] ${formatUsageSummaryLine(result.usage)}`)
 
+  const batchReport = formatBatchCompletionReport({
+    repoRoot: ctx.repoRoot,
+    batchLabel,
+    result,
+  })
   const telegramReportSent = await sendLoopTelegramReport({
     profile: ctx.profile,
     notifyTelegram,
     complete: result.complete,
-    report: formatBatchCompletionReport({
-      repoRoot: ctx.repoRoot,
-      batchLabel,
-      result,
-    }),
+    report: batchReport,
   })
 
   for (const entry of result.iterations) {
@@ -180,7 +210,7 @@ try {
     })
   }
 
-  await maybeCreateIncompleteLoopHitl({
+  const hitlId = await maybeCreateIncompleteLoopHitl({
     ctx,
     loopDir: batchDir,
     bundleLabel: batchLabel,
@@ -206,6 +236,8 @@ try {
     complete: result.complete,
     reason: result.completionReason,
     loopsRun: result.loopsRun,
+    report: batchReport,
+    hitl: hitlId,
   })
 } catch (err) {
   console.error('[agent-loop-batch] failed:', err)
