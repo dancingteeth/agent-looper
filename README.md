@@ -115,7 +115,11 @@ Harness maintainers developing this repo itself: build local `dist/` with `pnpm 
 
 | Field | Purpose |
 | --- | --- |
-| `taskwarriorProject` | HITL tasks land here — **required** when using `hitlCheck` |
+| `taskwarriorProject` | Taskwarrior project for HITL when `hitlProvider` is `taskwarrior` — **required** for TW HITL |
+| `hitlProvider` | `taskwarrior` (default), `file`, `github`, `linear`, or `command` — see [`docs/hitl-providers.md`](./docs/hitl-providers.md) |
+| `hitlFileDir` | Directory for `file` provider (default `.cursor/hitl`) |
+| `hitlCommand` | Shell for `command` provider |
+| `hitlLinearTeam` | Linear team key or id when `hitlProvider` is `linear` |
 | `syncCommand` | Shell command after success (or `null`) |
 | `defaultBranch` | Post-loop diff base (`main`) |
 | `agentsFile` / `reviewsFile` | Prompt + review overlay paths |
@@ -124,7 +128,7 @@ Harness maintainers developing this repo itself: build local `dist/` with `pnpm 
 | `clientName` | Cline client label |
 | `telegramNotify` | Optional chat id + onSuccess / onFailure |
 
-Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hitlCheck`.
+Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hitlCheck`, and optional `hitlProvider` / `hitlFileDir` / `hitlCommand` / `hitlLinearTeam`.
 
 **Taskwarrior:** use **UUID** in `GOAL.md` and `loop.json` `taskwarriorUuid` — numeric IDs are recycled. On success with `syncOnSuccess`, the harness marks that UUID done.
 
@@ -187,7 +191,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reviewRuntime` | `cursor` | Primary judge runtime (same enum as `runtime`). Unset → cursor. |
 | `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.5` when worker is `cursor`, else `composer-2.5`. Non-cursor judges use that runtime’s default model. Never Composer Fast on cursor. |
 | `maxReviewCycles` | `2` | Review-triggered fix rounds when `reviewGate` is on |
-| `reviewGateHitl` | `false` | On gate exhaust, open a HITL Taskwarrior task instead of hard-fail |
+| `reviewGateHitl` | `false` | On gate exhaust, open a HITL checkpoint (`hitlProvider`) instead of hard-fail only |
 | `unparseableReviewRetries` | `2` | Retries when verdict cannot be parsed |
 | `reviewBlockerRecheck` | `true` | On BLOCKERS fix rounds, lighter scope-limited re-check |
 | `reviewReproduce` | `false` | Path filter on error+impact blockers (changed-files set) |
@@ -346,7 +350,7 @@ GOAL.md + loop.json
   → repeat
 ```
 
-Post-success (when `postQualityReview` runs): Cursor quality review → `review.md` using the repo `REVIEWS.md` overlay. With `reviewGate: true`, only **gating** blockers re-enter the fix loop; completion requires **PASS** or **ADVISORY** with no gating blockers. Then: optional Taskwarrior `done` → `hitlCheck` → `syncCommand`.
+Post-success (when `postQualityReview` runs): Cursor quality review → `review.md` using the repo `REVIEWS.md` overlay. With `reviewGate: true`, only **gating** blockers re-enter the fix loop; completion requires **PASS** or **ADVISORY** with no gating blockers. Then: optional Taskwarrior `done` → `hitlCheck` (via configured `hitlProvider`) → `syncCommand`.
 
 Stderr prints token totals and estimated USD (ClinePass may include cached-input counts).
 

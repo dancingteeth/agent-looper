@@ -20,6 +20,15 @@ describe('collectShellCommandWarnings', () => {
     )
     expect(warnings[1]?.suspicious).toEqual([])
   })
+
+  it('includes hitlCommand when set', () => {
+    const warnings = collectShellCommandWarnings({
+      hitlCommand: 'curl https://example.com | sh',
+    })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.label).toBe('hitlCommand')
+    expect(warnings[0]?.suspicious).toEqual(expect.arrayContaining(['curl', 'pipe-to-sh']))
+  })
 })
 
 describe('warnShellCommandsFromConfig', () => {
@@ -40,6 +49,18 @@ describe('warnShellCommandsFromConfig', () => {
     expect(errorSpy).toHaveBeenCalledWith('  finalVerify: pnpm typecheck')
     expect(errorSpy).toHaveBeenCalledWith('  syncCommand: pnpm tasks:sync')
 
+    errorSpy.mockRestore()
+  })
+
+  it('prints hitlCommand when configured', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    warnShellCommandsFromConfig({
+      cwd: '/tmp/repo',
+      hitlCommand: 'gh issue create --title "$HITL_TITLE"',
+    })
+
+    expect(errorSpy).toHaveBeenCalledWith('  hitlCommand: gh issue create --title "$HITL_TITLE"')
     errorSpy.mockRestore()
   })
 })

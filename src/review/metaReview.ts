@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { RepoContext } from '../context/repoContext.js'
-import { resolveTaskwarriorProject } from '../context/repoContext.js'
 import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
 import {
   CURSOR_REVIEW_MODEL,
@@ -12,7 +11,7 @@ import {
   readLatestReviewContent,
   resolveLatestReviewPath,
 } from '../loop/loopReport.js'
-import { createHitlCheckTask } from '../integrations/taskwarrior.js'
+import { createHitlCheckpoint, hitlLoopOverridesFrom } from '../integrations/hitlCheckpoint.js'
 import { gitDiffStatSinceBranchBase } from './loopPostReview.js'
 import { buildMetaReviewPrompt, type CollectedLoopArtifacts } from './metaReviewPrompt.js'
 import { parseReviewMarkdown } from './reviewVerdict.js'
@@ -157,19 +156,28 @@ export function parseTaskAddDescription(line: string): { project: string; descri
   return { project: match[1]!, description: match[3]!.trim() }
 }
 
-export function createHitlTasksFromFollowUps(
+export async function createHitlTasksFromFollowUps(
   bullets: string[],
-  defaultProject: string,
-): string[] {
+  ctx: RepoContext,
+  defaultOverrides: ReturnType<typeof hitlLoopOverridesFrom>,
+): Promise<string[]> {
   const uuids: string[] = []
 
   for (const bullet of bullets) {
     const parsed = parseTaskAddDescription(bullet)
-    const project = parsed?.project ?? defaultProject
+    const project = parsed?.project ?? defaultOverrides.taskwarriorProject
     const description =
       parsed?.description ??
       (bullet.replace(/^`task add[^`]*`\s*/, '').trim() || bullet)
-    const uuid = createHitlCheckTask(description, project)
+    const uuid = await createHitlCheckpoint({
+      description,
+      reason: 'post_success',
+      ctx,
+      loopOverrides: {
+        ...defaultOverrides,
+        ...(project ? { taskwarriorProject: project } : {}),
+      },
+    })
     if (uuid) uuids.push(uuid)
   }
 
@@ -255,14 +263,20 @@ _Loops (${bundles.length}): ${bundles.map((b) => b.relPath).join(', ')}_
 
   let hitlTaskUuids: string[] = []
   if (options.hitl) {
-    const project = resolveTaskwarriorProject(options.taskwarriorProject, ctx.profile)
+    const overrides = hitlLoopOverridesFrom({
+      taskwarriorProject: options.taskwarriorProject ?? ctx.profile.taskwarriorProject,
+      hitlProvider: ctx.profile.hitlProvider,
+      hitlFileDir: ctx.profile.hitlFileDir,
+      hitlCommand: ctx.profile.hitlCommand,
+      hitlLinearTeam: ctx.profile.hitlLinearTeam,
+    })
     const bullets = extractHitlFollowUpBullets(run.text)
     if (bullets.length === 0) {
       console.error('[agent-loop-meta-review] --hitl: no ### HITL follow-ups bullets in judge output')
     } else {
-      hitlTaskUuids = createHitlTasksFromFollowUps(bullets, project)
+      hitlTaskUuids = await createHitlTasksFromFollowUps(bullets, ctx, overrides)
       console.error(
-        `[agent-loop-meta-review] --hitl: created ${hitlTaskUuids.length}/${bullets.length} task(s) in project:${project}`,
+        `[agent-loop-meta-review] --hitl: created ${hitlTaskUuids.length}/${bullets.length} checkpoint(s)`,
       )
     }
   }

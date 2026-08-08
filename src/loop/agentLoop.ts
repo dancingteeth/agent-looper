@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
+import { type RepoContext } from '../context/repoContext.js'
 import { createLoopAgentSession, loopRuntimeLabel, type LoopAgentSession } from '../agents/agentRunner.js'
 import { resolveIterationAgent, resolveLoopAgent, resolveReviewAgent, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
 import type { LoadedLoopBundle } from '../loop/loopConfig.js'
@@ -16,10 +16,10 @@ import {
 import { readFailureContext } from '../loop/loopFailureContext.js'
 import { pauseForContinue } from '../loop/loopPause.js'
 import {
-  createHitlCheckTask,
-  markTaskwarriorDoneByUuid,
-  runTaskwarriorSync,
-} from '../integrations/taskwarrior.js'
+  createHitlCheckpoint,
+  hitlLoopOverridesFrom,
+} from '../integrations/hitlCheckpoint.js'
+import { markTaskwarriorDoneByUuid, runTaskwarriorSync } from '../integrations/taskwarrior.js'
 import {
   logReviewGateFailureDomain,
   runPostSuccessReviewPhase,
@@ -540,10 +540,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         }
         let hitlCheckTaskUuid: string | undefined
         if (config.hitlCheck) {
-          hitlCheckTaskUuid = createHitlCheckTask(
-            config.hitlCheck,
-            resolveTaskwarriorProject(config.taskwarriorProject, ctx.profile),
-          )
+          hitlCheckTaskUuid = await createHitlCheckpoint({
+            description: config.hitlCheck,
+            reason: 'post_success',
+            ctx,
+            loopDir: bundle.loopDir,
+            loopOverrides: hitlLoopOverridesFrom(config),
+          })
         }
         maybeRunSync(ctx, config.syncOnSuccess)
         return finish({

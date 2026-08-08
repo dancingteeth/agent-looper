@@ -94,6 +94,7 @@ try {
     verify: bundle.config.verify,
     finalVerify: bundle.config.finalVerify,
     syncCommand: ctx.profile.syncCommand,
+    hitlCommand: bundle.config.hitlCommand ?? ctx.profile.hitlCommand,
     skipSync: cli.skipSync,
     trustConfig: cli.trustConfig || bundle.config.trustConfig,
     requireTrustConfig: cli.requireTrustConfig,

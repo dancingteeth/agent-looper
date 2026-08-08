@@ -18,6 +18,7 @@ import {
   taskwarriorProjectSchema,
   taskwarriorUuidSchema,
 } from '../integrations/taskwarrior.js'
+import { hitlProviderSchema } from '../integrations/hitlConfig.js'
 import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.js'
 import { loopExtensionFieldsSchema } from './loopExtensions.js'
 import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
@@ -62,6 +63,10 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     taskwarriorUuid: taskwarriorUuidSchema.optional(),
     /** Override repo profile taskwarriorProject for HITL tasks. */
     taskwarriorProject: taskwarriorProjectSchema.optional(),
+    hitlProvider: hitlProviderSchema.optional(),
+    hitlFileDir: z.string().trim().min(1).optional(),
+    hitlCommand: z.string().trim().min(1).optional(),
+    hitlLinearTeam: z.string().trim().min(1).optional(),
     delayMs: z.number().int().min(0).max(60_000).default(1500),
     postQualityReview: z.union([z.boolean(), z.literal('auto')]).default('auto'),
     /**

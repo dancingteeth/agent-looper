@@ -1,5 +1,8 @@
-import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
-import { createHitlCheckTask } from '../integrations/taskwarrior.js'
+import { type RepoContext } from '../context/repoContext.js'
+import {
+  createHitlCheckpoint,
+  hitlLoopOverridesFrom,
+} from '../integrations/hitlCheckpoint.js'
 import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
 import type { ResolvedReviewAgent } from '../loop/loopAgentConfig.js'
 import type { LoopConfig } from '../loop/loopConfig.js'
@@ -82,27 +85,23 @@ export function reviewGateHitlDescription(parsed: ParsedReview, reviewCycle: num
   return text.length > 480 ? `${text.slice(0, 477)}...` : text
 }
 
-function buildReviewGateStopOutcome(input: {
+async function buildReviewGateStopOutcome(input: {
   config: LoopConfig
   ctx: RepoContext
   parsedReview: ParsedReview
   reviewCycle: number
   gateLabel: string
-}): PostSuccessReviewOutcome {
-  const { config, ctx, parsedReview, reviewCycle, gateLabel } = input
+  loopDir?: string
+}): Promise<PostSuccessReviewOutcome> {
+  const { config, ctx, parsedReview, reviewCycle, gateLabel, loopDir } = input
   if (config.reviewGateHitl) {
-    let hitlTaskUuid: string | undefined
-    try {
-      hitlTaskUuid = createHitlCheckTask(
-        reviewGateHitlDescription(parsedReview, reviewCycle),
-        resolveTaskwarriorProject(config.taskwarriorProject, ctx.profile),
-      )
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error(
-        `[agent-loop] review gate: wanted HITL escalation but ${message} — falling back to hard-fail`,
-      )
-    }
+    const hitlTaskUuid = await createHitlCheckpoint({
+      description: reviewGateHitlDescription(parsedReview, reviewCycle),
+      reason: 'review_gate',
+      ctx,
+      loopDir,
+      loopOverrides: hitlLoopOverridesFrom(config),
+    })
     if (hitlTaskUuid) {
       console.error(
         `[agent-loop] review gate: ${gateLabel} after ${reviewCycle} cycle(s) — escalated to human review`,
@@ -126,15 +125,17 @@ function buildReviewGateStopOutcome(input: {
   }
 }
 
-export function resolvePostSuccessReviewOutcome(input: {
+export async function resolvePostSuccessReviewOutcome(input: {
   config: LoopConfig
   ctx: RepoContext
   parsedReview: ParsedReview | undefined
   reviewCycle: number
   reviewCyclesUsed: number
   reasoningEffort: string
-}): PostSuccessReviewOutcome {
-  const { config, ctx, parsedReview, reviewCycle, reviewCyclesUsed, reasoningEffort } = input
+  loopDir?: string
+}): Promise<PostSuccessReviewOutcome> {
+  const { config, ctx, parsedReview, reviewCycle, reviewCyclesUsed, reasoningEffort, loopDir } =
+    input
   if (!parsedReview) {
     return { action: 'success' }
   }
@@ -145,6 +146,7 @@ export function resolvePostSuccessReviewOutcome(input: {
       parsedReview,
       reviewCycle,
       gateLabel: 'unparseable verdict',
+      loopDir,
     })
   }
   if (config.reviewGate && reviewGateBlocksCompletion(parsedReview)) {
@@ -157,6 +159,7 @@ export function resolvePostSuccessReviewOutcome(input: {
         parsedReview,
         reviewCycle,
         gateLabel: `BLOCKERS (${gateBlockerCount} gating item(s))`,
+        loopDir,
       })
     }
     return {
@@ -314,13 +317,14 @@ export async function runPostSuccessReviewPhase(
     break
   }
 
-  const outcome = resolvePostSuccessReviewOutcome({
+  const outcome = await resolvePostSuccessReviewOutcome({
     config,
     ctx,
     parsedReview,
     reviewCycle,
     reviewCyclesUsed,
     reasoningEffort,
+    loopDir,
   })
 
   if (outcome.action === 'continue') {

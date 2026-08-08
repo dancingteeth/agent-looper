@@ -1,11 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
-import { resolveTaskwarriorProject, type RepoContext } from '../context/repoContext.js'
+import { type RepoContext } from '../context/repoContext.js'
 import { runAgentLoop, type AgentLoopResult } from './agentLoop.js'
 import { loadLoopBundle } from './loopConfig.js'
 import {
-  createHitlCheckTask,
+  createHitlCheckpoint,
+  hitlLoopOverridesFrom,
+} from '../integrations/hitlCheckpoint.js'
+import { hitlProviderSchema } from '../integrations/hitlConfig.js'
+import {
   hitlCheckDescriptionSchema,
   taskwarriorProjectSchema,
   runTaskwarriorSync,
@@ -44,6 +48,10 @@ export const loopBatchConfigSchema = z
     metaLoop: metaLoopConfigSchema.optional(),
     hitlCheck: hitlCheckDescriptionSchema.optional(),
     taskwarriorProject: taskwarriorProjectSchema.optional(),
+    hitlProvider: hitlProviderSchema.optional(),
+    hitlFileDir: z.string().trim().min(1).optional(),
+    hitlCommand: z.string().trim().min(1).optional(),
+    hitlLinearTeam: z.string().trim().min(1).optional(),
     syncOnSuccess: z.boolean().default(true),
     /** Send completion report to Telegram when repo profile + env are configured. */
     notifyTelegram: z.boolean().default(true),
@@ -123,10 +131,12 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
 
     if (metaResult.complete) {
       if (batchConfig.hitlCheck) {
-        createHitlCheckTask(
-          batchConfig.hitlCheck,
-          resolveTaskwarriorProject(batchConfig.taskwarriorProject, ctx.profile),
-        )
+        await createHitlCheckpoint({
+          description: batchConfig.hitlCheck,
+          reason: 'post_success',
+          ctx,
+          loopOverrides: hitlLoopOverridesFrom(batchConfig),
+        })
       }
       const shouldSync = batchConfig.syncOnSuccess && !options.skipSync
       if (shouldSync && ctx.profile.syncCommand) {
@@ -190,10 +200,12 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
   }
 
   if (batchConfig.hitlCheck) {
-    createHitlCheckTask(
-      batchConfig.hitlCheck,
-      resolveTaskwarriorProject(batchConfig.taskwarriorProject, ctx.profile),
-    )
+    await createHitlCheckpoint({
+      description: batchConfig.hitlCheck,
+      reason: 'post_success',
+      ctx,
+      loopOverrides: hitlLoopOverridesFrom(batchConfig),
+    })
   }
 
   const shouldSync = batchConfig.syncOnSuccess && !options.skipSync

@@ -18,21 +18,18 @@ const { runCursorAgentPrompt } = vi.hoisted(() => ({
   runCursorAgentPrompt: vi.fn(),
 }))
 
-const { createHitlCheckTask } = vi.hoisted(() => ({
-  createHitlCheckTask: vi.fn(),
+const { createHitlCheckpoint } = vi.hoisted(() => ({
+  createHitlCheckpoint: vi.fn(),
 }))
 
 vi.mock('../agents/cursorAgent.js', () => ({
   runCursorAgentPrompt,
 }))
 
-vi.mock('../integrations/taskwarrior.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../integrations/taskwarrior.js')>()
-  return {
-    ...actual,
-    createHitlCheckTask,
-  }
-})
+vi.mock('../integrations/hitlCheckpoint.js', () => ({
+  createHitlCheckpoint,
+  hitlLoopOverridesFrom: vi.fn((c) => c),
+}))
 
 vi.mock('../context/defaultBranch.js', () => ({
   defaultBranchRefExists: () => true,
@@ -80,7 +77,7 @@ describe('metaReview', () => {
 ### Blockers
 - none`,
     })
-    createHitlCheckTask.mockReturnValue('hitl-uuid-1')
+    createHitlCheckpoint.mockResolvedValue('hitl-uuid-1')
   })
 
   it('detects loop bundles and discovers children of a parent dir', () => {
@@ -151,11 +148,16 @@ describe('metaReview', () => {
       hitl: true,
     })
 
-    expect(createHitlCheckTask).toHaveBeenCalledWith('Manual cross-loop QA', 'loops')
+    expect(createHitlCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Manual cross-loop QA',
+        reason: 'post_success',
+      }),
+    )
     expect(result.hitlTaskUuids).toEqual(['hitl-uuid-1'])
   })
 
-  it('parses HITL bullets and task add lines', () => {
+  it('parses HITL bullets and task add lines', async () => {
     const text = `### HITL follow-ups
 - task add project:dxp -- 'Check migration drift'
 - plain follow-up`
@@ -169,8 +171,13 @@ describe('metaReview', () => {
       description: 'Check migration drift',
     })
 
-    createHitlCheckTask.mockReturnValueOnce('uuid-a').mockReturnValueOnce('uuid-b')
-    const uuids = createHitlTasksFromFollowUps(extractHitlFollowUpBullets(text), 'loops')
+    createHitlCheckpoint.mockResolvedValueOnce('uuid-a').mockResolvedValueOnce('uuid-b')
+    const ctx = { repoRoot: process.cwd(), profile: repoProfileSchema.parse({ taskwarriorProject: 'loops' }) }
+    const uuids = await createHitlTasksFromFollowUps(
+      extractHitlFollowUpBullets(text),
+      ctx,
+      { taskwarriorProject: 'loops' },
+    )
     expect(uuids).toEqual(['uuid-a', 'uuid-b'])
   })
 })

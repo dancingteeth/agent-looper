@@ -2,13 +2,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import { taskwarriorProjectSchema } from '../integrations/taskwarrior.js'
+import { hitlProfileFieldsSchema } from '../integrations/hitlConfig.js'
 import { loopRiskProfileOverrideSchema } from '../loop/loopRiskProfile.js'
 
 export const REPO_PROFILE_RELATIVE_PATH = path.join('.cursor', 'agent-loop.repo.json')
 
-export const repoProfileSchema = z.object({
-  /** Taskwarrior project for HITL checkpoints (e.g. dxp, zwook). Required when using hitlCheck. */
-  taskwarriorProject: taskwarriorProjectSchema.optional(),
+export const repoProfileSchema = z
+  .object({
+    /** Taskwarrior project for HITL checkpoints (e.g. dxp, zwook). Required when hitlProvider is taskwarrior. */
+    taskwarriorProject: taskwarriorProjectSchema.optional(),
   /** Shell command to mirror TW after success; null = skip. */
   syncCommand: z.string().trim().min(1).nullable().default(null),
   /** Base branch for post-loop diff stat. */
@@ -31,7 +33,8 @@ export const repoProfileSchema = z.object({
       attachReview: z.boolean().default(true),
     })
     .optional(),
-})
+  })
+  .merge(hitlProfileFieldsSchema)
 
 export type RepoProfile = z.infer<typeof repoProfileSchema>
 

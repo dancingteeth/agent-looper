@@ -1,5 +1,7 @@
 {
   "taskwarriorProject": "dxp",
+  "hitlProvider": "taskwarrior",
+  "hitlFileDir": ".cursor/hitl",
   "syncCommand": null,
   "defaultBranch": "main",
   "agentsFile": "AGENTS.md",

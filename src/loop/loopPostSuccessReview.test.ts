@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoProfileSchema } from '../context/repoProfile.js'
-import { createHitlCheckTask } from '../integrations/taskwarrior.js'
+vi.mock('../integrations/hitlCheckpoint.js', () => ({
+  createHitlCheckpoint: vi.fn(),
+  hitlLoopOverridesFrom: vi.fn((c) => c),
+}))
+import { createHitlCheckpoint } from '../integrations/hitlCheckpoint.js'
 import { loopConfigSchema } from './loopConfig.js'
 import {
   resolvePostSuccessReviewOutcome,
@@ -21,7 +25,6 @@ vi.mock('../integrations/taskwarrior.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../integrations/taskwarrior.js')>()
   return {
     ...actual,
-    createHitlCheckTask: vi.fn(),
   }
 })
 
@@ -83,8 +86,8 @@ describe('reviewGateHitlDescription', () => {
 describe('resolvePostSuccessReviewOutcome', () => {
   const ctx = { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) }
 
-  it('returns success when no parsed review', () => {
-    expect(
+  it('returns success when no parsed review', async () => {
+    await expect(
       resolvePostSuccessReviewOutcome({
         config: baseConfig(),
         ctx,
@@ -93,11 +96,11 @@ describe('resolvePostSuccessReviewOutcome', () => {
         reviewCyclesUsed: 0,
         reasoningEffort: 'default',
       }),
-    ).toEqual({ action: 'success' })
+    ).resolves.toEqual({ action: 'success' })
   })
 
-  it('stops on unparseable verdict after retries', () => {
-    const outcome = resolvePostSuccessReviewOutcome({
+  it('stops on unparseable verdict after retries', async () => {
+    const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ reviewGateHitl: false }),
       ctx,
       parsedReview: parsedReview('UNKNOWN'),
@@ -112,9 +115,9 @@ describe('resolvePostSuccessReviewOutcome', () => {
     }
   })
 
-  it('continues for a BLOCKERS fix round when cycles remain', () => {
+  it('continues for a BLOCKERS fix round when cycles remain', async () => {
     const parsed = parsedReview('BLOCKERS', [gatingBlocker('Docs', 'README missing')])
-    const outcome = resolvePostSuccessReviewOutcome({
+    const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ maxReviewCycles: 2 }),
       ctx,
       parsedReview: parsed,
@@ -136,9 +139,9 @@ describe('resolvePostSuccessReviewOutcome', () => {
     }
   })
 
-  it('stops when BLOCKERS exhaust maxReviewCycles', () => {
+  it('stops when BLOCKERS exhaust maxReviewCycles', async () => {
     const parsed = parsedReview('BLOCKERS', [gatingBlocker('Docs', 'README missing')])
-    const outcome = resolvePostSuccessReviewOutcome({
+    const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ maxReviewCycles: 2, reviewGateHitl: false }),
       ctx,
       parsedReview: parsed,
@@ -152,10 +155,10 @@ describe('resolvePostSuccessReviewOutcome', () => {
     }
   })
 
-  it('escalates to HITL when reviewGateHitl is set and cycles exhaust', () => {
-    vi.mocked(createHitlCheckTask).mockReturnValue('hitl-uuid')
+  it('escalates to HITL when reviewGateHitl is set and cycles exhaust', async () => {
+    vi.mocked(createHitlCheckpoint).mockResolvedValue('hitl-uuid')
     const parsed = parsedReview('BLOCKERS', [gatingBlocker('Docs', 'README missing')])
-    const outcome = resolvePostSuccessReviewOutcome({
+    const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ maxReviewCycles: 2, reviewGateHitl: true, taskwarriorProject: 'dxp' }),
       ctx,
       parsedReview: parsed,
@@ -169,11 +172,11 @@ describe('resolvePostSuccessReviewOutcome', () => {
       reviewEscalatedToHitl: true,
       failureDomainReason: 'review_gate_hitl',
     })
-    expect(createHitlCheckTask).toHaveBeenCalledOnce()
+    expect(createHitlCheckpoint).toHaveBeenCalledOnce()
   })
 
-  it('completes with advisory blockers when reviewGate is off', () => {
-    const outcome = resolvePostSuccessReviewOutcome({
+  it('completes with advisory blockers when reviewGate is off', async () => {
+    const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ reviewGate: false }),
       ctx,
       parsedReview: parsedReview('BLOCKERS', ['[must-fix] **Docs** — missing README section']),
@@ -187,8 +190,8 @@ describe('resolvePostSuccessReviewOutcome', () => {
     })
   })
 
-  it('completes with advisory blockers when only warning/none-impact items gate', () => {
-    const outcome = resolvePostSuccessReviewOutcome({
+  it('completes with advisory blockers when only warning/none-impact items gate', async () => {
+    const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ reviewGate: true }),
       ctx,
       parsedReview: parsedReview('BLOCKERS', [

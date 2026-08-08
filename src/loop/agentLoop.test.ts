@@ -4,8 +4,8 @@ import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoProfileSchema } from '../context/repoProfile.js'
 import { createLoopAgentSession } from '../agents/agentRunner.js'
+import { createHitlCheckpoint } from '../integrations/hitlCheckpoint.js'
 import {
-  createHitlCheckTask,
   markTaskwarriorDoneByUuid,
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
@@ -36,11 +36,15 @@ vi.mock('../review/loopPostReview.js', () => ({
   runPostLoopBlockerRecheck: vi.fn(),
 }))
 
+vi.mock('../integrations/hitlCheckpoint.js', () => ({
+  createHitlCheckpoint: vi.fn(),
+  hitlLoopOverridesFrom: vi.fn((c) => c),
+}))
+
 vi.mock('../integrations/taskwarrior.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../integrations/taskwarrior.js')>()
   return {
     ...actual,
-    createHitlCheckTask: vi.fn(),
     markTaskwarriorDoneByUuid: vi.fn(),
     runTaskwarriorSync: vi.fn(),
   }
@@ -272,7 +276,13 @@ describe('runAgentLoop', () => {
     })
 
     expect(markTaskwarriorDoneByUuid).toHaveBeenCalledWith('a74a94d1-2069-4e05-861e-de80143b0526')
-    expect(createHitlCheckTask).toHaveBeenCalledWith('Manual QA after harness change', 'dxp')
+    expect(createHitlCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Manual QA after harness change',
+        reason: 'post_success',
+        loopOverrides: expect.objectContaining({ taskwarriorProject: 'dxp' }),
+      }),
+    )
     expect(runTaskwarriorSync).toHaveBeenCalledWith('pnpm tasks:sync', process.cwd())
   })
 
@@ -515,7 +525,7 @@ describe('runAgentLoop', () => {
   it('escalates to HITL instead of hard-failing when reviewGate exhausts and reviewGateHitl is set', async () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
-    vi.mocked(createHitlCheckTask).mockReturnValue('hitl-uuid-123')
+    vi.mocked(createHitlCheckpoint).mockResolvedValue('hitl-uuid-123')
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(
       reviewResult('BLOCKERS', [gatingBlocker('Docs', 'README still template')]),
     )
@@ -538,7 +548,7 @@ describe('runAgentLoop', () => {
     expect(result.reviewEscalatedToHitl).toBe(true)
     expect(result.hitlCheckTaskUuid).toBeDefined()
     expect(result.completionReason).toMatch(/escalated to human review/i)
-    expect(createHitlCheckTask).toHaveBeenCalledOnce()
+    expect(createHitlCheckpoint).toHaveBeenCalledOnce()
     expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
   })
 
@@ -564,7 +574,7 @@ describe('runAgentLoop', () => {
 
     expect(result.complete).toBe(false)
     expect(result.reviewEscalatedToHitl).toBeUndefined()
-    expect(createHitlCheckTask).not.toHaveBeenCalled()
+    expect(createHitlCheckpoint).not.toHaveBeenCalled()
     expect(result.completionReason).toMatch(/Review gate: BLOCKERS/)
   })
 

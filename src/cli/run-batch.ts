@@ -50,6 +50,7 @@ try {
   assertShellConfigTrusted({
     cwd: ctx.repoRoot,
     syncCommand: ctx.profile.syncCommand,
+    hitlCommand: batchConfig.hitlCommand ?? ctx.profile.hitlCommand,
     skipSync: cli.skipSync,
     trustConfig: batchTrusted,
     requireTrustConfig: cli.requireTrustConfig,

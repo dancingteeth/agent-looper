@@ -11,22 +11,18 @@ import {
   TELEGRAM_CHAT_ID_ENV,
 } from './telegramNotify.js'
 import type { RepoProfile } from '../context/repoProfile.js'
+import { repoProfileSchema } from '../context/repoProfile.js'
 
-const baseProfile: RepoProfile = {
+const baseProfile: RepoProfile = repoProfileSchema.parse({
   taskwarriorProject: 'dxp',
-  syncCommand: null,
-  defaultBranch: 'main',
-  agentsFile: 'AGENTS.md',
-  reviewsFile: 'REVIEWS.md',
-  skillsGlob: 'packages/skills/*/SKILL.md',
-  clientName: 'test',
   telegramNotify: {
     chatId: '12345',
     onSuccess: true,
     onFailure: true,
     attachReview: true,
   },
-}
+  clientName: 'test',
+})
 
 describe('resolveTelegramCredentials', () => {
   it('returns null when bot token env is missing', () => {
