@@ -49,6 +49,7 @@
     "agent:check:opencode": "doppler run --project agent-looper --config dev -- node dist/cli/check.js opencode",
     "agent:check:pi": "doppler run --project agent-looper --config dev -- node dist/cli/check.js pi",
     "agent:doctor": "doppler run --project agent-looper --config dev -- node dist/cli/doctor.js",
+    "test:cursor-plugin": "node scripts/validate-cursor-plugin.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {

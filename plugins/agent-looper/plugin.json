@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agent-looper",
+  "version": "0.1.0",
+  "description": "Portable Agent Plugins skills for designing and running Agent Looper fix-until-green cycles.",
+  "author": {
+    "name": "Paul Zgordan (dancingteeth)"
+  },
+  "homepage": "https://github.com/dancingteeth/agent-loop",
+  "repository": "https://github.com/dancingteeth/agent-loop",
+  "license": "MIT",
+  "keywords": ["agent-loop", "agent-looper", "verify", "fix-until-green"]
+}

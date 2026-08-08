@@ -24,6 +24,8 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 - `src/loop/` — harness orchestration
 - `src/review/` — quality review, verdicts, prompts (incl. multi-runtime `reviewAgentRun`)
 - `src/agents/` — Cursor / Cline / OpenCode / Pi runners
+- `src/plugins/` — Agent Plugins skills-only loader
+- `plugins/agent-looper/` — Cursor marketplace companion (skills / rules / commands)
 - `templates/` — init scaffolds
 - `.cursor/loops/` — dogfood loops for this repo
 

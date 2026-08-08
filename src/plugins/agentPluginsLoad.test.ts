@@ -147,4 +147,13 @@ describe('loadAgentPlugin / loadConfiguredAgentPlugins', () => {
     expect(loaded.manifest.name).toBe('agent-looper-example')
     expect(loaded.skillRelativePaths.some((p) => p.includes('hello-verify'))).toBe(true)
   })
+
+  it('loads the Cursor companion plugin skills', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '../..')
+    const companion = path.join(repoRoot, 'plugins', 'agent-looper')
+    const loaded = loadAgentPlugin(companion, repoRoot)
+    expect(loaded.manifest.name).toBe('agent-looper')
+    expect(loaded.skillRelativePaths.length).toBeGreaterThanOrEqual(3)
+    expect(loaded.skillRelativePaths.some((p) => p.includes('design-loop'))).toBe(true)
+  })
 })

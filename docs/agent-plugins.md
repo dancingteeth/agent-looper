@@ -34,6 +34,8 @@ Broken plugins are skipped with a stderr warning (fail-open per entry). Missing 
 
 See [`templates/agent-plugin.example/`](../templates/agent-plugin.example/) for a minimal conformant layout.
 
+Cursor marketplace companion (skills + rules + commands): [`plugins/agent-looper/`](../plugins/agent-looper/) — see [`docs/cursor-marketplace-plugin.md`](./cursor-marketplace-plugin.md).
+
 ## Spec links
 
 - [Client implementers](https://agent-plugins.org/client-implementers)
