@@ -174,7 +174,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `telegramAttachReview` | `true` | Attach `review.md` as a second Telegram message |
 | `hitlOnFailure` | `false` | Open HITL checkpoint when the loop ends incomplete |
 | `requireNotify` | `false` | Abort if Telegram preflight fails (also `--require-notify`) |
-| `completionSignal` | `true` | Emit `AGENT_LOOP_DONE` on stdout when the CLI exits (Cursor background wake) |
+| `completionSignal` | `true` | Emit `AGENT_LOOP_DONE` on stdout when the CLI exits (local Cursor wake; Cloud Agents cannot attach a watcher yet) |
 | `reasoningEffort` | — | Cline: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Cursor ignores. |
 | `escalateReasoningEffort` | — | Cline reasoning ladder ceiling |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
@@ -289,7 +289,7 @@ Implements the [Ralph loop](https://ghuntley.com/loop/) pattern:
 - **Shell backpressure** (`verify` / `finalVerify`) as the deterministic done signal
 - **Verification-as-skill** — `verify.sh` + `VERIFY.skill.md`; optional `verifyMode: skill`
 - **Watch the loop** — `log.ndjson`, `run-report.md`, `transcript.ndjson`, stagnation, optional `--pause-after-iteration`
-- **Cursor background wake** — on exit, stdout line `AGENT_LOOP_DONE {…}` for Shell `notify_on_output` (see below)
+- **Cursor background wake** — on exit, stdout line `AGENT_LOOP_DONE {…}` for **local** Shell `notify_on_output` (Cloud Agents: no watcher yet — see below)
 - **Failure domains** — `failure-domains.ndjson` on stagnation, max iterations, or review-gate exhaustion
 - **Meta-loop** — probe → `failure-context.md` → fix → re-probe
 
@@ -417,7 +417,7 @@ Optional second message: attach `review.md` as a document. Opt out with `"telegr
 
 ## Background runs in Cursor (chat wake-up)
 
-When a Cursor agent starts `agent-loop` in a **background shell**, the chat can wake on completion without Telegram:
+When a **local** Cursor Agent starts `agent-loop` in a **background shell**, the chat can wake on completion without Telegram:
 
 1. Background the run with a long `block_until_ms` (or `0`) and **`notify_on_output`** on pattern `^AGENT_LOOP_DONE `.
 2. On wake, read the JSON on that stdout line (`complete`, `exitCode`, `reason`, `bundle`, optional `runReport`) and/or open `run-report.md`.
@@ -429,7 +429,17 @@ Example payload:
 AGENT_LOOP_DONE {"v":1,"kind":"loop","bundle":".cursor/loops/my-task","complete":true,"exitCode":0,"reason":"Verifier passed (exit 0).","iterations":2,"runReport":".cursor/loops/my-task/run-report.md"}
 ```
 
-Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout (Cursor background shells) is not lost before `process.exit`.
+Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout (local background shells) is not lost before `process.exit`.
+
+### Cloud Agents
+
+**Cloud Agent Shell does not expose `notify_on_output` today**, so this chat cannot attach a regex watcher even though the harness still emits `AGENT_LOOP_DONE`. Until Cursor adds that (or an equivalent wake), treat cloud completion as:
+
+- **Telegram** (`notifyTelegram` + env; `--require-notify` / `requireNotify` to fail closed on bad bot auth)
+- **HITL** (`hitlOnFailure`, GitHub / Linear / file / Taskwarrior)
+- **Platform** — Agents UI, PR, Slack/Automations when the cloud run finishes
+
+Do not promise in-chat wake from `AGENT_LOOP_DONE` on Cloud Agents.
 
 ## License
 

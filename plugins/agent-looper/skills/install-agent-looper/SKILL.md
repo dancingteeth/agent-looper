@@ -58,6 +58,8 @@ npm view @dancingteeth/agent-looper version
 
 ## Long runs from Cursor chat
 
+### Local Agent
+
 To start a loop in the **background** and wake this chat when it finishes:
 
 1. Run `agent-loop run .cursor/loops/<name>` in a background shell.
@@ -65,3 +67,7 @@ To start a loop in the **background** and wake this chat when it finishes:
 3. On notification, parse the JSON on that stdout line and read `runReport` / `run-report.md`.
 
 Disable the line with `--no-completion-signal` or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.
+
+### Cloud Agents
+
+Cloud Shell **does not expose `notify_on_output`**, so you cannot attach that watcher even though the harness still prints `AGENT_LOOP_DONE`. Prefer Telegram (`--require-notify` when you need fail-closed), `hitlOnFailure`, or the Agents UI / PR / Slack when the cloud run ends. Revisit in-chat wake only if Cursor adds an equivalent Cloud Shell param.
