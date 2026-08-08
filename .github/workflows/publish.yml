@@ -24,17 +24,25 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.14'
           registry-url: 'https://registry.npmjs.org'
           cache: pnpm
+          # Release builds should not reuse a stale store across publishes.
+          package-manager-cache: false
+
+      # Trusted publishing needs npm ≥ 11.5.1 (Node 22.14+).
+      - run: npm install -g npm@^11.5.1
+      - run: node -v && npm -v
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
 
-      # OIDC trusted publishing — no NPM_TOKEN.
+      # OIDC trusted publishing — do not set NODE_AUTH_TOKEN (setup-node may inject
+      # an empty/invalid token that forces token auth and yields scoped E404).
       # Configure on npmjs.com: user dancingteeth, repo agent-loop, workflow publish.yml
       - run: npm publish --access public --ignore-scripts
         env:
+          NODE_AUTH_TOKEN: ''
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org

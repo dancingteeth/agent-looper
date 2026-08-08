@@ -55,6 +55,10 @@ npm publish --registry=https://registry.npmjs.org --access public --ignore-scrip
 
 3. Save. npm does **not** validate the config until the next CI publish — match names exactly.
 
+**Symptom if missing / mismatched:** `npm error code E404` on
+`PUT https://registry.npmjs.org/@dancingteeth%2fagent-looper` (npm hides 401 as 404 for
+scoped packages). Fix the Trusted Publisher fields, then re-run **Actions → Publish**.
+
 ### Cut a release
 
 ```bash
