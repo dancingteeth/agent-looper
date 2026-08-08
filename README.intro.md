@@ -71,7 +71,7 @@ flowchart LR
 | **Judge** | Coding agent on `reviewRuntime` (default **cursor**) | After verify passes, write `review.md`. With `reviewGate`, only **error + impact** findings reopen the worker. |
 | **You** | Human | Write the goal and the verify script. Escalate when the gate is stuck (`reviewGateHitl` / Taskwarrior). |
 
-**Specs ≠ prompts:** `AGENTS.md` (and skills) tell the *worker* how to act. `REVIEWS.md` tells the *judge* what good residual behavior looks like after verify — it is not runtime prompt text. Keep both sparse; delete laws when models stop failing them.
+**Specs ≠ prompts:** `AGENTS.md` (and skills / optional [Agent Plugins](./docs/agent-plugins.md)) tell the *worker* how to act. `REVIEWS.md` tells the *judge* what good residual behavior looks like after verify — it is not runtime prompt text. Keep both sparse; delete laws when models stop failing them.
 
 **Important:** “Risk: HIGH” in a review ≠ failed loop. Risk is blast radius of the *change*. Completion is verify + (optional) gating blockers.
 

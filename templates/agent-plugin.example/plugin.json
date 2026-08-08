@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agent-looper-example",
+  "version": "0.1.0",
+  "description": "Example Agent Plugins package for agent-looper (skills-only client).",
+  "license": "MIT"
+}

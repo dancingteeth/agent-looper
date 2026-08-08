@@ -42,5 +42,5 @@ export function loadLoopSkillSection(
     blocks.push(`### ${relativePath}\n\n${body}`)
   }
 
-  return `## Loaded skills (from GOAL / loop.json — follow these runbooks)\n\n${blocks.join('\n\n')}`
+  return `## Loaded skills (from GOAL / loop.json / plugins — follow these runbooks)\n\n${blocks.join('\n\n')}`
 }

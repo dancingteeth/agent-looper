@@ -39,6 +39,7 @@ import {
   type SiblingRepoRef,
   type VerifyLogRefs,
 } from './loopExtensions.js'
+import { loadConfiguredAgentPlugins } from '../plugins/agentPluginsLoad.js'
 import { loadLoopSkillSection, resolveLoopSkillPaths } from './loopSkills.js'
 import {
   addUsageRecord,
@@ -271,13 +272,24 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     console.error(formatLoopExtensionPreflight(extensionPreflight))
   }
 
-  const skillsSection = loadLoopSkillSection(
-    repoRoot,
-    resolveLoopSkillPaths(goal, config.skills),
-  )
+  const pluginLoad = loadConfiguredAgentPlugins(repoRoot, config.plugins)
+  for (const warning of pluginLoad.warnings) {
+    console.error(`[agent-loop] ${warning}`)
+  }
+  if (pluginLoad.plugins.length > 0) {
+    console.error(
+      `[agent-loop] loaded ${pluginLoad.plugins.length} Agent Plugin(s) ` +
+        `(${pluginLoad.skillRelativePaths.length} skill path(s))`,
+    )
+  }
+
+  const skillPaths = resolveLoopSkillPaths(goal, [
+    ...pluginLoad.skillRelativePaths,
+    ...(config.skills ?? []),
+  ])
+  const skillsSection = loadLoopSkillSection(repoRoot, skillPaths)
   if (skillsSection) {
-    const skillCount = resolveLoopSkillPaths(goal, config.skills).length
-    console.error(`[agent-loop] inlined ${skillCount} skill runbook(s) into iteration prompts`)
+    console.error(`[agent-loop] inlined ${skillPaths.length} skill runbook(s) into iteration prompts`)
   }
   const agentSession = await createLoopAgentSession(config, ctx)
   const baseAgent = resolveLoopAgent(config)

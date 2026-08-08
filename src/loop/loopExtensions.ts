@@ -23,6 +23,12 @@ export const loopExtensionFieldsSchema = z.object({
   verifyPreflight: z.string().trim().min(1).optional(),
   /** Skill runbooks inlined into each iteration prompt (merged with paths found in GOAL.md). */
   skills: z.array(z.string().trim().min(1)).optional(),
+  /**
+   * Agent Plugins package roots (dirs with plugin.json). Discovers immediate child
+   * skill directories (SKILL.md) and inlines them. MCP is ignored (worker-owned).
+   * See https://agent-plugins.org/client-implementers
+   */
+  plugins: z.array(z.string().trim().min(1)).optional(),
   verifyLogMode: verifyLogModeSchema,
 })
 
@@ -78,6 +84,19 @@ export function validateLoopExtensionPreflight(
 
   if (config.verifyPreflight) {
     pendingFeatures.push('verifyPreflight')
+  }
+
+  if (config.plugins?.length) {
+    for (const pluginRoot of config.plugins) {
+      const resolved = path.isAbsolute(pluginRoot)
+        ? pluginRoot
+        : path.resolve(ctx.repoRoot, pluginRoot)
+      if (!fs.existsSync(resolved)) {
+        warnings.push(`plugins path missing on disk: ${pluginRoot} → ${resolved}`)
+      } else if (!fs.existsSync(path.join(resolved, 'plugin.json'))) {
+        warnings.push(`plugins path missing plugin.json: ${pluginRoot}`)
+      }
+    }
   }
 
   if (config.verifyLogMode === 'sidecar') {

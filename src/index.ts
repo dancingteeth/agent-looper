@@ -281,6 +281,15 @@ export type {
 } from './loop/loopExtensions.js'
 
 export {
+  AGENT_PLUGINS_PLUGIN_SCHEMA_ID,
+  parseAgentPluginManifest,
+  discoverAgentPluginSkillPaths,
+  loadAgentPlugin,
+  loadConfiguredAgentPlugins,
+} from './plugins/agentPluginsLoad.js'
+export type { AgentPluginManifest, LoadedAgentPlugin } from './plugins/agentPluginsLoad.js'
+
+export {
   formatLoopCompletionReport,
   formatBatchCompletionReport,
 } from './loop/loopReport.js'

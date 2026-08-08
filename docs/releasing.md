@@ -58,9 +58,8 @@ npm publish --registry=https://registry.npmjs.org --access public --ignore-scrip
 ### Cut a release
 
 ```bash
-# version already in package.json must match the tag intent
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 Or run **Actions → Publish → Run workflow** (`workflow_dispatch`).
@@ -74,6 +73,7 @@ npm version patch   # or minor / major — updates package.json + creates a tag
 git push origin main --follow-tags
 ```
 
+Example after `0.1.0`: bump to `0.1.1` in `package.json`, merge to `main`, then tag `v0.1.1`.
 ## Local publish (fallback)
 
 Account is `auth-and-writes` with a **security key** (not TOTP). CLI `--otp=` will not work unless you also add an authenticator app. Prefer a bypass-2FA granular token or trusted publishing.

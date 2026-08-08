@@ -173,6 +173,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
 | `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling) |
+| `skills` | — | Explicit `…/SKILL.md` paths inlined into worker prompts (merged with GOAL refs) |
+| `plugins` | — | Agent Plugins package dirs — discovers `skills/*/SKILL.md` ([`docs/agent-plugins.md`](./docs/agent-plugins.md)) |
 
 ### loop.json — review & quality
 

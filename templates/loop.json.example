@@ -16,5 +16,6 @@
   "pauseAfterIteration": false,
   "injectFailureContext": false,
   "notifyTelegram": true,
-  "verifyLogMode": "inline"
+  "verifyLogMode": "inline",
+  "plugins": ["templates/agent-plugin.example"]
 }
