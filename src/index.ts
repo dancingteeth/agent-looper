@@ -273,6 +273,17 @@ export {
 } from './integrations/loopFailureVisibility.js'
 
 export {
+  LOOP_COMPLETION_SIGNAL_PREFIX,
+  LOOP_NO_COMPLETION_SIGNAL_ENV,
+  emitLoopCompletionSignal,
+  exitWithLoopCompletionSignal,
+  formatLoopCompletionSignalLine,
+  runReportSignalPath,
+  shouldEmitLoopCompletionSignal,
+} from './integrations/loopCompletionSignal.js'
+export type { LoopCompletionSignalPayload } from './integrations/loopCompletionSignal.js'
+
+export {
   loopExtensionFieldsSchema,
   siblingRepoSchema,
   verifyLogModeSchema,

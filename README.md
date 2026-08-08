@@ -174,6 +174,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `telegramAttachReview` | `true` | Attach `review.md` as a second Telegram message |
 | `hitlOnFailure` | `false` | Open HITL checkpoint when the loop ends incomplete |
 | `requireNotify` | `false` | Abort if Telegram preflight fails (also `--require-notify`) |
+| `completionSignal` | `true` | Emit `AGENT_LOOP_DONE` on stdout when the CLI exits (Cursor background wake) |
 | `reasoningEffort` | — | Cline: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Cursor ignores. |
 | `escalateReasoningEffort` | — | Cline reasoning ladder ceiling |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
@@ -288,6 +289,7 @@ Implements the [Ralph loop](https://ghuntley.com/loop/) pattern:
 - **Shell backpressure** (`verify` / `finalVerify`) as the deterministic done signal
 - **Verification-as-skill** — `verify.sh` + `VERIFY.skill.md`; optional `verifyMode: skill`
 - **Watch the loop** — `log.ndjson`, `run-report.md`, `transcript.ndjson`, stagnation, optional `--pause-after-iteration`
+- **Cursor background wake** — on exit, stdout line `AGENT_LOOP_DONE {…}` for Shell `notify_on_output` (see below)
 - **Failure domains** — `failure-domains.ndjson` on stagnation, max iterations, or review-gate exhaustion
 - **Meta-loop** — probe → `failure-context.md` → fix → re-probe
 
@@ -392,6 +394,7 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 | `AGENT_LOOP_REQUIRE_TRUST_CONFIG` | `1` — abort unless trust is set (CLI / env / `loop.json`) |
 | `AGENT_LOOP_TELEGRAM_BOT_TOKEN` | Telegram bot token (fallback: `TELEGRAM_BOT_TOKEN`) |
 | `AGENT_LOOP_TELEGRAM_CHAT_ID` | Telegram chat id (or `telegramNotify.chatId` in the repo profile) |
+| `AGENT_LOOP_NO_COMPLETION_SIGNAL` | `1` — skip `AGENT_LOOP_DONE` stdout line on CLI exit |
 
 ## Telegram completion reports
 
@@ -411,6 +414,22 @@ Optional second message: attach `review.md` as a document. Opt out with `"telegr
 3. Inject secrets the same way you already run the loop (`doppler run`, direnv, CI secrets, …)
 
 **Opt out:** `"notifyTelegram": false` or `--no-telegram`. Notify send failures are non-blocking for exit code, but if Telegram was configured and a **failure** report did not land, the harness opens a HITL checkpoint (`notify_failed`) via `hitlProvider`. Use `--require-notify` / `requireNotify: true` to abort before the loop when `getMe` preflight fails.
+
+## Background runs in Cursor (chat wake-up)
+
+When a Cursor agent starts `agent-loop` in a **background shell**, the chat can wake on completion without Telegram:
+
+1. Background the run with a long `block_until_ms` (or `0`) and **`notify_on_output`** on pattern `^AGENT_LOOP_DONE `.
+2. On wake, read the JSON on that stdout line (`complete`, `exitCode`, `reason`, `bundle`, optional `runReport`) and/or open `run-report.md`.
+3. Opt out: `--no-completion-signal`, `"completionSignal": false` in `loop.json` / `loop-batch.json`, or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.
+
+Example payload:
+
+```text
+AGENT_LOOP_DONE {"v":1,"kind":"loop","bundle":".cursor/loops/my-task","complete":true,"exitCode":0,"reason":"Verifier passed (exit 0).","iterations":2,"runReport":".cursor/loops/my-task/run-report.md"}
+```
+
+Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout (Cursor background shells) is not lost before `process.exit`.
 
 ## License
 

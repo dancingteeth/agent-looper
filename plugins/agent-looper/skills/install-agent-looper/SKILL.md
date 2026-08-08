@@ -55,3 +55,13 @@ Build `dist/` (`pnpm build`) and run via repo scripts — see `docs/dogfood.md`.
 pnpm exec agent-loop --help
 npm view @dancingteeth/agent-looper version
 ```
+
+## Long runs from Cursor chat
+
+To start a loop in the **background** and wake this chat when it finishes:
+
+1. Run `agent-loop run .cursor/loops/<name>` in a background shell.
+2. Use Shell `notify_on_output` with pattern `^AGENT_LOOP_DONE `.
+3. On notification, parse the JSON on that stdout line and read `runReport` / `run-report.md`.
+
+Disable the line with `--no-completion-signal` or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.

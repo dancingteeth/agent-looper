@@ -140,6 +140,12 @@ export const loopConfigSchema = loopExtensionFieldsSchema
      * Prefer explicit --trust-config for one-off runs.
      */
     trustConfig: z.boolean().default(false),
+    /**
+     * Emit `AGENT_LOOP_DONE` JSON on stdout when the CLI exits (for Cursor background
+     * shell `notify_on_output`). Disable with --no-completion-signal or
+     * AGENT_LOOP_NO_COMPLETION_SIGNAL=1.
+     */
+    completionSignal: z.boolean().default(true),
     /** Write human-readable run-report.md when the loop finishes (or via export-run). */
     exportRunReport: z.boolean().default(true),
     /** Record tool timeline in transcript.ndjson and enrich log.ndjson tool counts. */
@@ -269,6 +275,7 @@ export function mergeLoopConfig(
       | 'notifyTelegram'
       | 'hitlOnFailure'
       | 'requireNotify'
+      | 'completionSignal'
       | 'trustConfig'
       | 'exportRunReport'
       | 'exportTranscript'

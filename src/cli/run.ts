@@ -10,6 +10,11 @@ import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopCon
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { maybeCreateIncompleteLoopHitl } from '../integrations/loopFailureVisibility.js'
 import {
+  exitWithLoopCompletionSignal,
+  runReportSignalPath,
+  shouldEmitLoopCompletionSignal,
+} from '../integrations/loopCompletionSignal.js'
+import {
   preflightTelegramNotify,
   sendLoopTelegramReport,
   sendLoopTelegramReviewAttachment,
@@ -34,12 +39,42 @@ const loopDir = resolveLoopDir(cli.loopDir, ctx.repoRoot)
 const bundleLabel = path.relative(ctx.repoRoot, loopDir)
 let loadedNotifyTelegram = cli.notifyTelegram ?? false
 let loadedHitlOnFailure = false
-let loadedHitl = {
-  taskwarriorProject: undefined as string | undefined,
-  hitlProvider: ctx.profile.hitlProvider,
-  hitlFileDir: ctx.profile.hitlFileDir,
-  hitlCommand: ctx.profile.hitlCommand,
-  hitlLinearTeam: ctx.profile.hitlLinearTeam,
+let loadedHitlTaskwarriorProject: string | undefined
+let loadedHitlProvider = ctx.profile.hitlProvider
+let loadedHitlFileDir = ctx.profile.hitlFileDir
+let loadedHitlCommand = ctx.profile.hitlCommand
+let loadedHitlLinearTeam = ctx.profile.hitlLinearTeam
+let emitCompletionSignal = shouldEmitLoopCompletionSignal({
+  completionSignal: cli.noCompletionSignal ? false : true,
+})
+
+function finishLoopExit(input: {
+  exitCode: 0 | 1 | 2
+  complete: boolean
+  reason: string
+  iterations?: number
+  hitl?: string
+  includeRunReport?: boolean
+}): never {
+  exitWithLoopCompletionSignal({
+    emit: emitCompletionSignal,
+    exitCode: input.exitCode,
+    payload: {
+      v: 1,
+      kind: 'loop',
+      bundle: bundleLabel,
+      complete: input.complete,
+      exitCode: input.exitCode,
+      reason: input.reason,
+      iterations: input.iterations,
+      hitl: input.hitl,
+      runReport: runReportSignalPath({
+        loopDir,
+        repoRoot: ctx.repoRoot,
+        include: Boolean(input.includeRunReport),
+      }),
+    },
+  })
 }
 
 async function reportFatalVisibility(err: unknown): Promise<void> {
@@ -57,7 +92,11 @@ async function reportFatalVisibility(err: unknown): Promise<void> {
       config: {
         notifyTelegram: loadedNotifyTelegram,
         hitlOnFailure: loadedHitlOnFailure,
-        ...loadedHitl,
+        taskwarriorProject: loadedHitlTaskwarriorProject,
+        hitlProvider: loadedHitlProvider,
+        hitlFileDir: loadedHitlFileDir,
+        hitlCommand: loadedHitlCommand,
+        hitlLinearTeam: loadedHitlLinearTeam,
       },
     })
   } catch (hitlErr) {
@@ -87,17 +126,19 @@ try {
       notifyTelegram: cli.notifyTelegram,
       trustConfig: cli.trustConfig,
       requireNotify: cli.requireNotify ? true : undefined,
+      completionSignal: cli.noCompletionSignal ? false : undefined,
     }),
   }
   loadedNotifyTelegram = bundle.config.notifyTelegram
   loadedHitlOnFailure = Boolean(bundle.config.hitlOnFailure)
-  loadedHitl = {
-    taskwarriorProject: bundle.config.taskwarriorProject,
-    hitlProvider: bundle.config.hitlProvider ?? ctx.profile.hitlProvider,
-    hitlFileDir: bundle.config.hitlFileDir ?? ctx.profile.hitlFileDir,
-    hitlCommand: bundle.config.hitlCommand ?? ctx.profile.hitlCommand,
-    hitlLinearTeam: bundle.config.hitlLinearTeam ?? ctx.profile.hitlLinearTeam,
-  }
+  loadedHitlTaskwarriorProject = bundle.config.taskwarriorProject
+  loadedHitlProvider = bundle.config.hitlProvider ?? ctx.profile.hitlProvider
+  loadedHitlFileDir = bundle.config.hitlFileDir ?? ctx.profile.hitlFileDir
+  loadedHitlCommand = bundle.config.hitlCommand ?? ctx.profile.hitlCommand
+  loadedHitlLinearTeam = bundle.config.hitlLinearTeam ?? ctx.profile.hitlLinearTeam
+  emitCompletionSignal = shouldEmitLoopCompletionSignal({
+    completionSignal: bundle.config.completionSignal,
+  })
 
   console.error(`[agent-loop] repo=${ctx.repoRoot}`)
   console.error(`[agent-loop] bundle=${path.relative(ctx.repoRoot, loopDir)}`)
@@ -224,11 +265,22 @@ try {
     },
   })
 
-  if (!result.complete) {
-    process.exit(2)
-  }
+  const exitCode: 0 | 2 = result.complete ? 0 : 2
+  finishLoopExit({
+    exitCode,
+    complete: result.complete,
+    reason: result.completionReason,
+    iterations: result.iterations,
+    hitl: result.hitlCheckTaskUuid,
+    includeRunReport: bundle.config.exportRunReport,
+  })
 } catch (err) {
   console.error('[agent-loop] failed:', err)
   await reportFatalVisibility(err)
-  process.exit(1)
+  const message = err instanceof Error ? err.message : String(err)
+  finishLoopExit({
+    exitCode: 1,
+    complete: false,
+    reason: message,
+  })
 }

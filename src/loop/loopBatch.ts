@@ -61,6 +61,8 @@ export const loopBatchConfigSchema = z
     hitlOnFailure: z.boolean().default(false),
     /** Abort before the batch if Telegram notify preflight fails. */
     requireNotify: z.boolean().default(false),
+    /** Emit AGENT_LOOP_DONE on stdout when the batch CLI exits (default true). */
+    completionSignal: z.boolean().default(true),
   })
   .superRefine((config, ctx) => {
     const hasLoops = (config.loops?.length ?? 0) > 0

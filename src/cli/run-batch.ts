@@ -11,6 +11,10 @@ import {
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { maybeCreateIncompleteLoopHitl } from '../integrations/loopFailureVisibility.js'
 import {
+  exitWithLoopCompletionSignal,
+  shouldEmitLoopCompletionSignal,
+} from '../integrations/loopCompletionSignal.js'
+import {
   preflightTelegramNotify,
   sendLoopTelegramReport,
   sendLoopTelegramReviewAttachment,
@@ -55,6 +59,32 @@ const batchTrusted =
 
 const notifyTelegram =
   cli.notifyTelegram === false ? false : batchConfig.notifyTelegram
+
+let emitCompletionSignal = shouldEmitLoopCompletionSignal({
+  completionSignal:
+    cli.noCompletionSignal === true ? false : batchConfig.completionSignal,
+})
+
+function finishBatchExit(input: {
+  exitCode: 0 | 1 | 2
+  complete: boolean
+  reason: string
+  loopsRun?: number
+}): never {
+  exitWithLoopCompletionSignal({
+    emit: emitCompletionSignal,
+    exitCode: input.exitCode,
+    payload: {
+      v: 1,
+      kind: 'batch',
+      bundle: batchLabel,
+      complete: input.complete,
+      exitCode: input.exitCode,
+      reason: input.reason,
+      loopsRun: input.loopsRun,
+    },
+  })
+}
 
 async function reportFatalVisibility(err: unknown): Promise<void> {
   const message = err instanceof Error ? err.message : String(err)
@@ -170,11 +200,20 @@ try {
     },
   })
 
-  if (!result.complete) {
-    process.exit(2)
-  }
+  const exitCode: 0 | 2 = result.complete ? 0 : 2
+  finishBatchExit({
+    exitCode,
+    complete: result.complete,
+    reason: result.completionReason,
+    loopsRun: result.loopsRun,
+  })
 } catch (err) {
   console.error('[agent-loop-batch] failed:', err)
   await reportFatalVisibility(err)
-  process.exit(1)
+  const message = err instanceof Error ? err.message : String(err)
+  finishBatchExit({
+    exitCode: 1,
+    complete: false,
+    reason: message,
+  })
 }

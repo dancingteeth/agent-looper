@@ -12,3 +12,4 @@ alwaysApply: false
 - Prompt diet on model bumps: delete deterministic instructions workers stop failing before adding new ones.
 - Harness package is `@dancingteeth/agent-looper` (npm); GitHub repo is `dancingteeth/agent-looper`.
 - This Cursor plugin is guidance only — install the npm package to run loops.
+- Background loops: use Shell `notify_on_output` on `^AGENT_LOOP_DONE ` (see install skill).
