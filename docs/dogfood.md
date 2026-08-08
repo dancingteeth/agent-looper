@@ -4,15 +4,18 @@ tags:
   - loops
   - dogfood
 ---
-# Dogfooding agent-loop on itself
+# Dogfooding Agent Looper on itself
 
 This repo is both the **harness package** and a **consumer**. Loops live under
 `.cursor/loops/`; profile is `.cursor/agent-loop.repo.json`
 (`taskwarriorProject: agent-loop`).
 
-## Why not publish to npm first?
+**Consumers** should install from npm: `pnpm add -D @dancingteeth/agent-looper @cursor/sdk`
+(see [`CONSUMERS.md`](../CONSUMERS.md), [`docs/releasing.md`](./releasing.md)).
 
-Consumers already use `file:../agent-loop`. Dogfood runs against local `dist/`:
+## Local dogfood (this checkout)
+
+Run against local `dist/` while developing the harness:
 
 ```bash
 pnpm build
@@ -21,7 +24,7 @@ pnpm agent:loop run .cursor/loops/<name> --runtime cursor --review-gate
 
 Secrets come from Doppler project **`agent-looper`** / config **`dev`**
 (`doppler.yaml` in the repo root). Scripts wrap `doppler run` so
-`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, and `AGENT_LOOP_TELEGRAM_*` inject automatically.
+`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `OPENROUTER_API_KEY`, and `AGENT_LOOP_TELEGRAM_*` inject automatically.
 
 Quick OpenCode / OpenRouter / Pi smoke:
 
@@ -40,11 +43,9 @@ pnpm agent:loop run .cursor/loops/opencode-smoke --runtime opencode \
 # Pi + OpenRouter BYOK
 pnpm agent:loop run .cursor/loops/pi-smoke --runtime pi
 
-# Optional: Pi worker + Pi judge (needs reviewGate / postQualityReview on the loop)
+# Optional: Pi worker + Pi judge
 # pnpm agent:loop run .cursor/loops/pi-smoke --runtime pi --review-runtime pi --quality-review
 ```
-
-Publish to npm only when you want install without a sibling checkout.
 
 ## Active loops
 

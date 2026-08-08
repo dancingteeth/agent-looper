@@ -35,92 +35,64 @@ Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verif
 
 ## Install
 
-Requires **Node.js 22+** for Cline / OpenCode / Pi SDK runtimes.
+Requires **Node.js 22+**. Install from npm (works in cloud agents and any consumer repo):
 
 ```bash
-# Cursor-only
+# Cursor-only (minimum)
 pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 
-# Optional Cline SDK worker (ClinePass or Credits)
-pnpm add -D @cline/sdk
-
-# Optional OpenCode worker (Go subscription and/or BYOK)
-pnpm add -D @opencode-ai/sdk opencode-ai
-# pnpm may skip opencode-ai's binary download — if needed:
-#   pnpm approve-builds   # allow opencode-ai scripts
-#   node node_modules/opencode-ai/postinstall.mjs
-
-# Optional Pi worker (BYOK)
-pnpm add -D @earendil-works/pi-coding-agent
+# Optional workers
+pnpm add -D @cline/sdk                                    # Cline Pass / Credits
+pnpm add -D @opencode-ai/sdk opencode-ai                  # OpenCode Go / BYOK
+pnpm add -D @earendil-works/pi-coding-agent               # Pi BYOK
 ```
 
-CLI commands stay `agent-loop` / `agent-check` / … (bins unchanged). Or link a local checkout during development:
+Use CLIs via `pnpm exec` (or `npx`) so you do not need a global install:
 
 ```bash
-pnpm link --global   # from the agent-loop package root
-# in your app repo:
-pnpm link -g @dancingteeth/agent-looper
+pnpm exec agent-loop-init
+pnpm exec agent-check cursor
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
-
-### `file:` dependency
-
-Pin a relative path to a local checkout, e.g. `"@dancingteeth/agent-looper": "file:../agent-loop"`. That path must exist when you `pnpm install`.
-
-| When | What |
-| --- | --- |
-| Install in the package | `prepare` builds `dist/` if incomplete |
-| Install in a consumer with doctor wired | `postinstall` can run `agent-loop-doctor --install-check` |
-| Anytime | `pnpm exec agent-loop-doctor` — dist + `file:` path diagnostics |
 
 ## Quick start
 
-From any repository root:
-
 ```bash
-agent-loop-init
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk
+export CURSOR_API_KEY=…   # or wrap with your secret manager (Doppler, etc.)
+
+pnpm exec agent-loop-init
 # edit .cursor/agent-loop.repo.json
 # edit .cursor/loops/my-task/GOAL.md + loop.json + verify.sh
 
-export CURSOR_API_KEY=…   # or wrap with your secret manager
-agent-check cursor
-
-# Cursor worker (Composer 2.5) + Grok 4.5 judge
-agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
+pnpm exec agent-check cursor
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
 
-Cline SDK workers:
+Other workers (after installing the matching optional peer):
 
 ```bash
+# ClinePass / Credits
 export CLINE_API_KEY=…
-# ClinePass (subscription)
-agent-loop run .cursor/loops/my-task --runtime cline-pass
-# Credits (pay-as-you-go; use OpenRouter-style model ids)
-agent-loop run .cursor/loops/my-task --runtime cline
-```
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cline
 
-OpenCode Go worker:
+# OpenCode (needs `opencode` on PATH from opencode-ai)
+export OPENCODE_API_KEY=…   # and/or OPENROUTER_API_KEY for BYOK
+pnpm exec agent-check opencode
+pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode
 
-```bash
-export OPENCODE_API_KEY=…   # https://opencode.ai/go
-# needs `opencode` on PATH (from opencode-ai)
-agent-check opencode
-agent-loop run .cursor/loops/my-task --runtime opencode
-```
-
-Pi BYOK worker (optional cheap Pi judge):
-
-```bash
+# Pi BYOK
 export OPENROUTER_API_KEY=…
-agent-check pi
-agent-loop run .cursor/loops/my-task --runtime pi
-# same runtime for judge:
-agent-loop run .cursor/loops/my-task --runtime pi --review-runtime pi --review-gate
+pnpm exec agent-check pi
+pnpm exec agent-loop run .cursor/loops/my-task --runtime pi
+pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-runtime pi --review-gate
 ```
 
 Target another checkout:
 
 ```bash
-agent-loop run /path/to/repo/.cursor/loops/fix-foo --repo-root /path/to/repo
+pnpm exec agent-loop run /path/to/repo/.cursor/loops/fix-foo --repo-root /path/to/repo
 ```
 
 Example consumer scripts:
@@ -129,10 +101,13 @@ Example consumer scripts:
 {
   "scripts": {
     "agent:loop": "doppler run -- agent-loop run",
-    "agent:check": "doppler run -- agent-check cursor"
+    "agent:check": "doppler run -- agent-check cursor",
+    "agent:init": "agent-loop-init"
   }
 }
 ```
+
+Harness maintainers developing this repo itself: build local `dist/` with `pnpm build` and run via `pnpm agent:loop` (see [`docs/dogfood.md`](./docs/dogfood.md)). Release / trusted publishing: [`docs/releasing.md`](./docs/releasing.md).
 
 ## Repo profile
 
@@ -351,7 +326,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
 | `agent-check cursor\|cline\|opencode` | SDK + API key smoke |
 | `agent-loop-init` | Scaffold templates |
-| `agent-loop-doctor` | Validate `dist/` + `file:` checkout path; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
+| `agent-loop-doctor` | Validate install / `dist/` integrity; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
 | `agent-loop-review-run` | Post-loop quality review for one bundle |
 | `agent-loop-review-preview` | Preview review risk / prompt |

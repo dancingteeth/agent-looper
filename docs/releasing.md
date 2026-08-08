@@ -12,9 +12,14 @@ CLI bins stay `agent-loop` / `agent-check` / …
 
 ## Preferred: trusted publishing (GitHub Actions OIDC)
 
-No long-lived publish token. Workflow: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml).
+No long-lived publish token. Workflow: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
+(on `main`, triggers on `v*` tags and `workflow_dispatch`).
 
 Requires **npm CLI ≥ 11.5.1** and **Node ≥ 22.14** on the runner (we use Node 22).
+
+**Status check:** `npm view @dancingteeth/agent-looper version` must succeed before trusted
+publishing can complete a release. If that 404s, do the bootstrap publish below first —
+npm’s Trusted Publisher UI attaches to an **existing** package.
 
 ### Bootstrap (one time — package must exist first)
 
