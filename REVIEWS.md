@@ -11,10 +11,15 @@ Portable overlay for this dogfood repo. Keep short — inlined into quality-revi
 load review laws into the worker prompt. Author new laws sparsely (see
 `templates/REVIEWS.md` five-dimension checklist); treat out-of-scope laws as NA.
 
-For full human/Cursor review (pincer Full, deep thermo), use the **unified-code-review**
-skill outside the loop. Do **not** paste that skill into gate prompts.
+For full human/Cursor review (Pass 0…3, pincer Full, deep thermo), use the
+**unified-code-review** skill (≥1.4.x) outside the loop. Do **not** paste that
+skill into gate prompts.
 
 Canonical template: `templates/REVIEWS.md`. Meta-review brief: `docs/meta-review-prompt.md`.
+
+**Sensor contract:** `PASS` | `ADVISORY` | `BLOCKERS`. Omit empty sections.
+Non-empty `### Blockers` ⇒ verdict `BLOCKERS`. Guide / HITL act on **gating**
+blockers; Advisory/Nits are for humans unless explicitly asked.
 
 ## Rubric wins (stop at first hit)
 
@@ -24,8 +29,15 @@ Canonical template: `templates/REVIEWS.md`. Meta-review brief: `docs/meta-review
 
 ## Process order
 
-1. **Risk** — blast radius, not diff size
-2. **Agent-authored** (loop-written code) — GOAL + verify are intent; test hunks first
+Compressed from UCR — Lite only in the gate:
+
+0. **Change set** — loop working tree + verify evidence; do not invent missing files
+1. **Risk** — blast radius, not diff size (tiers below)
+2. **Agent-authored** (loop-written) — GOAL + verify are intent; test hunks first;
+   unbacked “done” → `[unverified_claim]`
+2b. **Always** — open cited callee before gating blockers; live path or
+   `[latent_contract]`
+2c. **Call-edge Lite** — shared helpers only (below)
 3. **Operational laws** — Taskwarrior UUID below
 4. **Structure** — code judo
 5. **Verdict** — PASS | ADVISORY | BLOCKERS
@@ -33,10 +45,10 @@ Canonical template: `templates/REVIEWS.md`. Meta-review brief: `docs/meta-review
 Verifier is the hard gate; review is residual. This judge is not a security
 sandbox — egress / secrets / install policy live in verify + permissions.
 
-## Call-edge Lite
+## Call-edge Lite (§2c Lite)
 
 Shared helper / multi-caller change → open callee once; assumption mismatch →
-gating blocker with `file:line`. No Full pincer in loop reviews.
+gating blocker with `file:line`. No Full pincer in loop reviews (chat / meta-review).
 
 ## Blocker contract (impact-severity)
 

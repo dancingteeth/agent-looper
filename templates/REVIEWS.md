@@ -13,8 +13,14 @@ harness inlines it into every quality-review prompt.
 *judge* standard (what good residual conduct looks like after verify). Do not paste
 worker instructions here, and do not load this file into the worker prompt.
 
-For a full human/Cursor review (pincer Full, deep thermo), use the
-**unified-code-review** skill outside the loop. Do **not** paste that skill here.
+For a full human/Cursor review (Pass 0…3, pincer Full, deep thermo), use the
+**unified-code-review** skill (≥1.4.x) outside the loop. Do **not** paste that
+skill here. Cross-loop residual: `docs/meta-review-prompt.md` (when shipped).
+
+**Sensor contract:** verdict tokens `PASS` | `ADVISORY` | `BLOCKERS`. Omit empty
+`### Blockers` / `### Advisory` / `### Nits`. Non-empty `### Blockers` ⇒ verdict
+**must** be `BLOCKERS`. Guide / HITL / autofix act on **gating** blockers;
+Advisory and Nits are for humans unless the user explicitly asks otherwise.
 
 ## Rubric wins (stop at first hit)
 
@@ -24,8 +30,17 @@ For a full human/Cursor review (pincer Full, deep thermo), use the
 
 ## Process order (every gated review)
 
-1. **Risk** — blast radius, not diff size (HIGH / MEDIUM / LOW)
+Compressed from UCR — keep Lite; no Full pincer in the gate:
+
+0. **Change set** — review the loop’s working-tree / verify evidence; do not invent
+   missing files; lockfiles / generated / scaffold prose gaps → Nit or omit
+1. **Risk** — blast radius, not diff size (HIGH / MEDIUM / LOW); repo tiers below
+   override portable defaults when present
 2. **Agent-authored** (when the change was loop/agent-written) — see below
+2b. **Always** — before a gating blocker, open the cited callee once (throw vs null
+   vs early-return); `[must-fix]` needs a live production path, else Advisory
+   `[latent_contract]`
+2c. **Call-edge Lite** — shared helpers / multi-caller only (below)
 3. **Operational laws** — only if this file or `AGENTS.md` defines them (skip if not)
 4. **Structure** — code judo; no unearned layers
 5. **Verdict** — PASS | ADVISORY | BLOCKERS
@@ -40,15 +55,18 @@ control plane).
 - Intent evidence = frozen `GOAL.md` + verifier output — not the agent's "done" message.
 - Read **test hunks first**; green CI ≠ correct until assertions are justified.
 - Do not weaken tests, skip CI, or disable lint to go green.
+- Unbacked “tested / done” claims without verify/log evidence → Advisory
+  `[unverified_claim]` (elevate to gating blocker only on HIGH + open risk questions).
 
-## Call-edge Lite (shared helpers only)
+## Call-edge Lite (shared helpers only — §2c Lite)
 
 When the diff touches a shared helper, middleware, or multi-caller path:
 
 - Open the **callee once**; confirm throw vs null vs early-return.
 - If caller assumptions disagree with callee reality → gating blocker with `file:line`.
 
-Skip Full multi-pass pincer in loop reviews. Reserve that for chat / meta-review.
+Skip Full multi-pass pincer in loop reviews. Reserve Full / Standard depth for
+chat (UCR skill) or cross-loop meta-review.
 
 ## Blocker contract (impact-severity)
 
