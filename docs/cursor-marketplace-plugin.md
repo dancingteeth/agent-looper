@@ -42,7 +42,7 @@ Expected: **Validation passed.** Missing `hooks/` / `mcp.json` warnings are fine
 ## Publish
 
 1. Local-test as above
-2. Submit the **repo** URL at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish)
+2. Submit the **repo** URL (`https://github.com/dancingteeth/agent-looper`) at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish)
 3. Wait for Cursor manual review
 
 ## Harness dogfood

@@ -12,7 +12,7 @@ Agent Looper owns the grind; the human (or this chat) owns the finish line.
 
 ## Before freezing
 
-1. Prefer an [unknowns preflight](https://github.com/dancingteeth/agent-loop/blob/main/docs/unknowns-preflight.md) when verify/deps are unfamiliar.
+1. Prefer an [unknowns preflight](https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md) when verify/deps are unfamiliar.
 2. Design in chat → freeze. **Do not edit `GOAL.md` mid-run.**
 3. Optional permissions matrix: tools/MCP/path writes default-deny until named.
 

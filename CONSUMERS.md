@@ -74,7 +74,7 @@ Keep a short loop runbook with:
 ## Harness maintainers only (`file:` / sibling checkout)
 
 Developing **this** package against a consumer before a release: you may still use
-`"@dancingteeth/agent-looper": "file:../agent-loop"` and `pnpm ensure-link`. Prefer
+`"@dancingteeth/agent-looper": "file:../agent-looper"` (or `file:../agent-loop` if your checkout folder still uses the old name) and `pnpm ensure-link`. Prefer
 publishing to npm for everyone else — see [`docs/releasing.md`](./docs/releasing.md)
 and [`docs/dogfood.md`](./docs/dogfood.md).
 

@@ -7,7 +7,7 @@
   "author": "Paul Zgordan",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dancingteeth/agent-loop.git"
+    "url": "git+https://github.com/dancingteeth/agent-looper.git"
   },
   "bin": {
     "agent-loop": "./dist/cli/run.js",

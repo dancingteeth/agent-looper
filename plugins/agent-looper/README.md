@@ -16,7 +16,7 @@ Guidance for designing and wiring **[Agent Looper](https://www.npmjs.com/package
 
 ```bash
 mkdir -p ~/.cursor/plugins/local
-ln -sfn /ABS/PATH/TO/agent-loop/plugins/agent-looper ~/.cursor/plugins/local/agent-looper
+ln -sfn /ABS/PATH/TO/agent-looper/plugins/agent-looper ~/.cursor/plugins/local/agent-looper
 ```
 
 Reload the Cursor window, then exercise the skills / `/loop-scaffold`.

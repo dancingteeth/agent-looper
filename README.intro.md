@@ -220,4 +220,4 @@ Reference (flags, CLIs, threat model): [`README.md`](./README.md).
 
 ## License
 
-MIT · [@dancingteeth/agent-looper](https://github.com/dancingteeth/agent-loop)
+MIT · [@dancingteeth/agent-looper](https://github.com/dancingteeth/agent-looper)

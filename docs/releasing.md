@@ -6,7 +6,7 @@ tags:
 ---
 # Releasing Agent Looper (`@dancingteeth/agent-looper`)
 
-npm package name ≠ GitHub repo: publish **`@dancingteeth/agent-looper`** from repo **`dancingteeth/agent-loop`**.
+Publish **`@dancingteeth/agent-looper`** from GitHub repo **`dancingteeth/agent-looper`**.
 
 CLI bins stay `agent-loop` / `agent-check` / …
 
@@ -48,7 +48,7 @@ npm publish --registry=https://registry.npmjs.org --access public --ignore-scrip
 | Field | Value |
 | --- | --- |
 | Organization or user | `dancingteeth` |
-| Repository | `agent-loop` |
+| Repository | `agent-looper` |
 | Workflow filename | `publish.yml` (filename only, not a path) |
 | Environment name | *(leave empty unless you add a GitHub Environment)* |
 | Allowed actions | **`npm publish`** (and optionally `npm stage publish`) |

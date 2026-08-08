@@ -10,5 +10,5 @@ alwaysApply: false
 - Taskwarrior: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`), never numeric ID alone.
 - `AGENTS.md` = worker runtime; `REVIEWS.md` = judge standard — do not conflate.
 - Prompt diet on model bumps: delete deterministic instructions workers stop failing before adding new ones.
-- Harness package is `@dancingteeth/agent-looper` (npm); GitHub repo is `dancingteeth/agent-loop`.
+- Harness package is `@dancingteeth/agent-looper` (npm); GitHub repo is `dancingteeth/agent-looper`.
 - This Cursor plugin is guidance only — install the npm package to run loops.

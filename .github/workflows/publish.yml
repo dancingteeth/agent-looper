@@ -41,7 +41,7 @@ jobs:
 
       # OIDC trusted publishing — do not set NODE_AUTH_TOKEN (setup-node may inject
       # an empty/invalid token that forces token auth and yields scoped E404).
-      # Configure on npmjs.com: user dancingteeth, repo agent-loop, workflow publish.yml
+      # Configure on npmjs.com: user dancingteeth, repo agent-looper, workflow publish.yml
       - run: npm publish --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ''

@@ -20,7 +20,7 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 # pnpm add -D @earendil-works/pi-coding-agent
 ```
 
-Node **22+**. Package: `@dancingteeth/agent-looper` (GitHub repo remains `dancingteeth/agent-loop`).
+Node **22+**. Package: `@dancingteeth/agent-looper` (GitHub: `dancingteeth/agent-looper`).
 
 ## Scaffold
 

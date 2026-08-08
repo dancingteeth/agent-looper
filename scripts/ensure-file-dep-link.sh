@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Ensures the file:../../agent-loop (or file:../agent-loop) checkout exists for a consumer repo.
-# Creates a symlink to ~/Projects/agent-loop when the expected sibling path is missing.
+# Ensures a file:…/@dancingteeth/agent-looper checkout exists for a consumer repo.
+# Creates a symlink to ~/Projects/agent-looper (or agent-loop) when the expected path is missing.
 set -euo pipefail
 
 CONSUMER_ROOT="${1:-}"
@@ -36,10 +36,18 @@ if [[ -e "${TARGET}" ]]; then
   exit 0
 fi
 
-HARNESS="${AGENT_LOOP_CHECKOUT:-${HOME}/Projects/agent-loop}"
+if [[ -n "${AGENT_LOOP_CHECKOUT:-}" ]]; then
+  HARNESS="${AGENT_LOOP_CHECKOUT}"
+elif [[ -d "${HOME}/Projects/agent-looper" ]]; then
+  HARNESS="${HOME}/Projects/agent-looper"
+elif [[ -d "${HOME}/Projects/agent-loop" ]]; then
+  HARNESS="${HOME}/Projects/agent-loop"
+else
+  HARNESS="${HOME}/Projects/agent-looper"
+fi
 if [[ ! -d "${HARNESS}" ]]; then
   echo "[ensure-file-dep-link] harness checkout not found at ${HARNESS}" >&2
-  echo "Clone agent-loop there or set AGENT_LOOP_CHECKOUT." >&2
+  echo "Clone dancingteeth/agent-looper there or set AGENT_LOOP_CHECKOUT." >&2
   exit 1
 fi
 
