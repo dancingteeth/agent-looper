@@ -138,6 +138,38 @@ describe('metaReview', () => {
     stderrSpy.mockRestore()
   })
 
+  it('honors reviewRuntime when selecting the judge agent', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-meta-runtime-'))
+    const loopDir = writeLoopBundle(root, 'done', {
+      review: '### Verdict\n**PASS**',
+      log: '{"iteration":1}\n',
+    })
+    const outDir = path.join(root, 'reports')
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await runMetaReview({
+      inputPaths: [loopDir],
+      ctx: { repoRoot: root, profile: repoProfileSchema.parse({}) },
+      outDir,
+      reviewRuntime: 'opencode',
+      reviewModel: 'opencode-go/deepseek-v4-flash',
+    })
+
+    expect(runReviewAgentPrompt).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.objectContaining({
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+      }),
+      expect.anything(),
+    )
+    expect(
+      stderrSpy.mock.calls.some((c) => String(c[0]).includes('judge runtime=opencode')),
+    ).toBe(true)
+    stderrSpy.mockRestore()
+  })
+
   it('falls back to export pack when in-loop artifacts are missing', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-meta-export-'))
     const loopDir = writeLoopBundle(root, 'packed', {

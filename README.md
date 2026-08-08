@@ -439,7 +439,7 @@ Example payload:
 AGENT_LOOP_DONE {"v":1,"kind":"loop","bundle":".cursor/loops/my-task","complete":true,"exitCode":0,"reason":"Verifier passed (exit 0).","iterations":2,"runReport":".cursor/loops/my-task/run-report.md"}
 ```
 
-Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout (local background shells) is not lost before `process.exit`.
+Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout (local background shells) is not lost before `process.exit`. Side channels (`notifyWebhook` / `notifyCommand` / PR comment) run **after** the sentinel and are time-capped so a hung hook cannot delay local wake.
 
 ### Cloud Agents
 
@@ -467,7 +467,7 @@ In-loop `review.md` / `log.ndjson` / `run-report.md` stay **gitignored** (noisy 
   failure-domains.ndjson
 ```
 
-**Commit that directory** (or attach it on the PR) so cloud clones and meta-review are not a black box. Cloud agent tip: after the loop, `git add .cursor/loop-exports && git commit && git push` on the loop branch.
+**Commit that directory** (or attach it on the PR) so cloud clones and meta-review are not a black box. Cloud agent tip: after the loop, `git add .cursor/loop-exports && git commit && git push` on the loop branch. Batch completion webhooks/PR comments list every existing child export pack (comma-separated / bullet list).
 
 ## `notifyWebhook` + PR comments
 
@@ -480,13 +480,13 @@ Repo profile:
 }
 ```
 
-Put the URL in Doppler as `AGENT_LOOP_NOTIFY_WEBHOOK_URL` (or set `notifyWebhook.url`). Payload is JSON (`v`, `kind`, `bundle`, `complete`, `exitCode`, `reason`, `exportPack`, …).
+Put the URL in Doppler as `AGENT_LOOP_NOTIFY_WEBHOOK_URL` (or set `notifyWebhook.url`). Payload is JSON (`v`, `kind`, `bundle`, `complete`, `exitCode`, `reason`, `exportPack`, …). POSTs are aborted after ~8s; stderr logs redact query/hash from the URL.
 
 `notifyPrComment` runs `gh pr comment` for the current branch’s PR (or `AGENT_LOOP_PR_NUMBER`). Same `gh` auth as GitHub HITL — works with a user/PAT that can comment; GitHub App tokens often can comment on PRs even when they cannot `issue create`.
 
 ## `notifyCommand` (shell fallback)
 
-Optional shell with `LOOP_*` env when you need custom logic beyond JSON webhook. Non-blocking; shell-trust gated. Opt out: `--no-notify-command`.
+Optional shell with `LOOP_*` env (`LOOP_EXPORT_PACK`, `LOOP_RUN_REPORT`, …) when you need custom logic beyond JSON webhook. Non-blocking; ~15s timeout; shell-trust gated. Opt out: `--no-notify-command`.
 
 ## License
 

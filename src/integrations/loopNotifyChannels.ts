@@ -2,6 +2,9 @@ import { execFileSync } from 'node:child_process'
 
 export const NOTIFY_WEBHOOK_URL_ENV = 'AGENT_LOOP_NOTIFY_WEBHOOK_URL'
 
+/** Cap webhook POST so hung endpoints cannot block CLI exit / wake. */
+export const NOTIFY_WEBHOOK_TIMEOUT_MS = 8_000
+
 export type NotifyWebhookSettings = {
   /** Explicit URL; otherwise AGENT_LOOP_NOTIFY_WEBHOOK_URL. */
   url?: string
@@ -20,8 +23,18 @@ export type NotifyWebhookPayload = {
   iterations?: number
   loopsRun?: number
   hitl?: string
-  runReport?: string
+  /** Relative path(s) to `.cursor/loop-exports/<slug>/` (comma-separated for batch). */
   exportPack?: string
+}
+
+/** Strip query/hash so tokenized webhook URLs are not dumped to stderr. */
+export function redactWebhookUrlForLog(url: string): string {
+  try {
+    const parsed = new URL(url)
+    return `${parsed.origin}${parsed.pathname}`
+  } catch {
+    return '[webhook]'
+  }
 }
 
 export function resolveNotifyWebhookUrl(
@@ -54,6 +67,7 @@ export async function sendNotifyWebhook(input: {
   payload: NotifyWebhookPayload
   fetchImpl?: typeof fetch
   env?: NodeJS.ProcessEnv
+  timeoutMs?: number
 }): Promise<boolean> {
   if (!shouldSendNotifyWebhook({ settings: input.settings, complete: input.payload.complete, env: input.env })) {
     return false
@@ -62,12 +76,16 @@ export async function sendNotifyWebhook(input: {
   if (!url) return false
 
   const fetchFn = input.fetchImpl ?? fetch
+  const timeoutMs = input.timeoutMs ?? NOTIFY_WEBHOOK_TIMEOUT_MS
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    console.error(`[agent-loop] notifyWebhook → ${url}`)
+    console.error(`[agent-loop] notifyWebhook → ${redactWebhookUrlForLog(url)}`)
     const response = await fetchFn(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(input.payload),
+      signal: controller.signal,
     })
     if (!response.ok) {
       const body = await response.text()
@@ -79,8 +97,13 @@ export async function sendNotifyWebhook(input: {
     return true
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error(`[agent-loop] warn: notifyWebhook failed (non-blocking): ${message}`)
+    const timedOut = controller.signal.aborted
+    console.error(
+      `[agent-loop] warn: notifyWebhook failed (non-blocking)${timedOut ? ` after ${timeoutMs}ms` : ''}: ${message}`,
+    )
     return false
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -134,8 +157,17 @@ export function formatLoopPrCommentBody(input: {
     `- **Status:** ${status} (exit ${input.exitCode})`,
     `- **Reason:** ${input.reason}`,
   ]
-  if (input.exportPack) {
-    lines.push(`- **Export pack:** \`${input.exportPack}\``)
+  const packs = (input.exportPack ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  if (packs.length === 1) {
+    lines.push(`- **Export pack:** \`${packs[0]}\``)
+  } else if (packs.length > 1) {
+    lines.push('- **Export packs:**')
+    for (const pack of packs) {
+      lines.push(`  - \`${pack}\``)
+    }
   }
   if (input.hitl) {
     lines.push(`- **HITL:** ${input.hitl}`)

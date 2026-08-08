@@ -10,7 +10,7 @@ import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopCon
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { maybeCreateIncompleteLoopHitl } from '../integrations/loopFailureVisibility.js'
 import {
-  exitWithLoopCompletionSignal,
+  emitLoopCompletionSignal,
   runReportSignalPath,
   shouldEmitLoopCompletionSignal,
 } from '../integrations/loopCompletionSignal.js'
@@ -65,6 +65,20 @@ async function finishLoopExit(input: {
     repoRoot: ctx.repoRoot,
     include: Boolean(input.includeRunReport),
   })
+  // Wake local agents before slow webhook/notifyCommand/PR comment.
+  if (emitCompletionSignal) {
+    emitLoopCompletionSignal({
+      v: 1,
+      kind: 'loop',
+      bundle: bundleLabel,
+      complete: input.complete,
+      exitCode: input.exitCode,
+      reason: input.reason,
+      iterations: input.iterations,
+      hitl: input.hitl,
+      runReport,
+    })
+  }
   await postLoopCompletionChannels({
     repoRoot: ctx.repoRoot,
     profile: ctx.profile,
@@ -77,25 +91,12 @@ async function finishLoopExit(input: {
     report: input.report,
     iterations: input.iterations,
     hitl: input.hitl,
+    runReport,
     notifyCommand: loadedNotifyCommand,
     notifyPrComment: loadedNotifyPrComment,
     noNotifyCommand: cli.noNotifyCommand,
   })
-  exitWithLoopCompletionSignal({
-    emit: emitCompletionSignal,
-    exitCode: input.exitCode,
-    payload: {
-      v: 1,
-      kind: 'loop',
-      bundle: bundleLabel,
-      complete: input.complete,
-      exitCode: input.exitCode,
-      reason: input.reason,
-      iterations: input.iterations,
-      hitl: input.hitl,
-      runReport,
-    },
-  })
+  process.exit(input.exitCode)
 }
 
 async function reportFatalVisibility(err: unknown): Promise<void> {

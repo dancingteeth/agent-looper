@@ -11,7 +11,7 @@ import {
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { maybeCreateIncompleteLoopHitl } from '../integrations/loopFailureVisibility.js'
 import {
-  exitWithLoopCompletionSignal,
+  emitLoopCompletionSignal,
   shouldEmitLoopCompletionSignal,
 } from '../integrations/loopCompletionSignal.js'
 import { postLoopCompletionChannels } from '../integrations/loopCompletionChannels.js'
@@ -73,7 +73,21 @@ async function finishBatchExit(input: {
   loopsRun?: number
   report?: string
   hitl?: string
+  loopDirs?: string[]
 }): Promise<never> {
+  // Wake local agents before slow webhook/notifyCommand/PR comment.
+  if (emitCompletionSignal) {
+    emitLoopCompletionSignal({
+      v: 1,
+      kind: 'batch',
+      bundle: batchLabel,
+      complete: input.complete,
+      exitCode: input.exitCode,
+      reason: input.reason,
+      loopsRun: input.loopsRun,
+      hitl: input.hitl,
+    })
+  }
   await postLoopCompletionChannels({
     repoRoot: ctx.repoRoot,
     profile: ctx.profile,
@@ -85,24 +99,12 @@ async function finishBatchExit(input: {
     report: input.report,
     loopsRun: input.loopsRun,
     hitl: input.hitl,
+    loopDirs: input.loopDirs,
     notifyCommand: batchConfig.notifyCommand,
     notifyPrComment: batchConfig.notifyPrComment,
     noNotifyCommand: cli.noNotifyCommand,
   })
-  exitWithLoopCompletionSignal({
-    emit: emitCompletionSignal,
-    exitCode: input.exitCode,
-    payload: {
-      v: 1,
-      kind: 'batch',
-      bundle: batchLabel,
-      complete: input.complete,
-      exitCode: input.exitCode,
-      reason: input.reason,
-      loopsRun: input.loopsRun,
-      hitl: input.hitl,
-    },
-  })
+  process.exit(input.exitCode)
 }
 
 async function reportFatalVisibility(err: unknown): Promise<void> {
@@ -231,6 +233,7 @@ try {
     loopsRun: result.loopsRun,
     report: batchReport,
     hitl: hitlId,
+    loopDirs: result.iterations.map((entry) => entry.loopDir),
   })
 } catch (err) {
   console.error('[agent-loop-batch] failed:', err)

@@ -1,7 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { RepoProfile } from '../context/repoProfile.js'
-import { resolveLoopExportDir } from './loopExportPack.js'
+import {
+  resolveExistingExportPackRels,
+  resolveLoopExportDir,
+} from './loopExportPack.js'
 import {
   formatLoopPrCommentBody,
   postLoopPrComment,
@@ -24,6 +27,10 @@ export type PostLoopCompletionChannelsInput = {
   hitl?: string
   /** Absolute loop dir when kind=loop (for export path). */
   loopDir?: string
+  /** Absolute loop dirs when kind=batch — aggregates existing export packs. */
+  loopDirs?: string[]
+  /** Relative path to in-loop run-report.md when present. */
+  runReport?: string
   /** Loop/batch override for notifyCommand. */
   notifyCommand?: string
   /** Loop/batch override for notifyPrComment. */
@@ -31,23 +38,33 @@ export type PostLoopCompletionChannelsInput = {
   noNotifyCommand?: boolean
 }
 
-/**
- * Side channels after Telegram/HITL: notifyCommand, notifyWebhook, PR comment.
- * Non-blocking.
- */
-export async function postLoopCompletionChannels(
-  input: PostLoopCompletionChannelsInput,
-): Promise<{ exportPackRel?: string; prCommentId?: string }> {
-  let exportPackRel: string | undefined
+function resolveExportPackRel(input: PostLoopCompletionChannelsInput): string | undefined {
   if (input.kind === 'loop' && input.loopDir) {
     const exportDir = resolveLoopExportDir(
       input.repoRoot,
       path.relative(input.repoRoot, input.loopDir) || '.',
     )
     if (fs.existsSync(exportDir)) {
-      exportPackRel = path.relative(input.repoRoot, exportDir)
+      return path.relative(input.repoRoot, exportDir)
     }
+    return undefined
   }
+
+  const dirs = input.loopDirs ?? []
+  if (dirs.length === 0) return undefined
+  const packs = resolveExistingExportPackRels(input.repoRoot, dirs)
+  return packs.length > 0 ? packs.join(', ') : undefined
+}
+
+/**
+ * Side channels after Telegram/HITL: notifyCommand, notifyWebhook, PR comment.
+ * Non-blocking. Callers should emit AGENT_LOOP_DONE before awaiting this so local
+ * wake is not held behind hung notify hooks.
+ */
+export async function postLoopCompletionChannels(
+  input: PostLoopCompletionChannelsInput,
+): Promise<{ exportPackRel?: string; prCommentId?: string }> {
+  const exportPackRel = resolveExportPackRel(input)
 
   const notifyCommand = resolveNotifyCommand({
     profileCommand: input.profile.notifyCommand,
@@ -67,7 +84,8 @@ export async function postLoopCompletionChannels(
       iterations: input.iterations,
       loopsRun: input.loopsRun,
       hitl: input.hitl,
-      runReport: exportPackRel,
+      runReport: input.runReport,
+      exportPack: exportPackRel,
     })
   }
 

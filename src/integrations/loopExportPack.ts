@@ -48,6 +48,25 @@ export function resolveLoopExportDir(repoRoot: string, loopRel: string): string 
   return path.join(repoRoot, LOOP_EXPORTS_DIRNAME, loopExportSlug(loopRel))
 }
 
+/** Relative export-pack dirs that already exist on disk (for batch notify payloads). */
+export function resolveExistingExportPackRels(
+  repoRoot: string,
+  loopDirs: readonly string[],
+): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const loopDir of loopDirs) {
+    const loopRel = path.relative(repoRoot, loopDir) || '.'
+    const exportDir = resolveLoopExportDir(repoRoot, loopRel)
+    if (!fs.existsSync(exportDir)) continue
+    const rel = path.relative(repoRoot, exportDir)
+    if (seen.has(rel)) continue
+    seen.add(rel)
+    out.push(rel)
+  }
+  return out
+}
+
 function copyIfExists(src: string, dest: string): boolean {
   if (!fs.existsSync(src)) return false
   fs.mkdirSync(path.dirname(dest), { recursive: true })

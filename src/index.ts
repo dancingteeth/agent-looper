@@ -286,6 +286,7 @@ export type { LoopCompletionSignalPayload } from './integrations/loopCompletionS
 export {
   resolveNotifyCommand,
   runLoopNotifyCommand,
+  NOTIFY_COMMAND_TIMEOUT_MS,
 } from './integrations/loopNotifyCommand.js'
 export type {
   LoopNotifyCommandKind,
@@ -297,6 +298,7 @@ export {
   writeLoopExportPack,
   readLoopExportPackArtifacts,
   resolveLoopExportDir,
+  resolveExistingExportPackRels,
 } from './integrations/loopExportPack.js'
 export type { LoopExportMeta, WriteLoopExportPackResult } from './integrations/loopExportPack.js'
 
@@ -304,7 +306,9 @@ export {
   sendNotifyWebhook,
   postLoopPrComment,
   formatLoopPrCommentBody,
+  redactWebhookUrlForLog,
   NOTIFY_WEBHOOK_URL_ENV,
+  NOTIFY_WEBHOOK_TIMEOUT_MS,
   NOTIFY_PR_NUMBER_ENV,
 } from './integrations/loopNotifyChannels.js'
 export type { NotifyWebhookPayload, NotifyWebhookSettings } from './integrations/loopNotifyChannels.js'

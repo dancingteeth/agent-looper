@@ -2,6 +2,9 @@ import { execFileSync } from 'node:child_process'
 
 export type LoopNotifyCommandKind = 'loop' | 'batch'
 
+/** Cap shell notify so a hung hook cannot block CLI exit after AGENT_LOOP_DONE. */
+export const NOTIFY_COMMAND_TIMEOUT_MS = 15_000
+
 export type RunLoopNotifyCommandInput = {
   repoRoot: string
   command: string
@@ -15,7 +18,11 @@ export type RunLoopNotifyCommandInput = {
   iterations?: number
   loopsRun?: number
   hitl?: string
+  /** Relative path to in-loop run-report.md when present. */
   runReport?: string
+  /** Relative path(s) to export pack dir(s), comma-separated for batch. */
+  exportPack?: string
+  timeoutMs?: number
 }
 
 /**
@@ -31,6 +38,7 @@ export function runLoopNotifyCommand(input: RunLoopNotifyCommandInput): boolean 
       shell: true,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: input.timeoutMs ?? NOTIFY_COMMAND_TIMEOUT_MS,
       env: {
         ...process.env,
         LOOP_KIND: input.kind,
@@ -43,6 +51,7 @@ export function runLoopNotifyCommand(input: RunLoopNotifyCommandInput): boolean 
         LOOP_LOOPS_RUN: input.loopsRun !== undefined ? String(input.loopsRun) : '',
         LOOP_HITL: input.hitl ?? '',
         LOOP_RUN_REPORT: input.runReport ?? '',
+        LOOP_EXPORT_PACK: input.exportPack ?? '',
       },
       maxBuffer: 1024 * 1024,
     })

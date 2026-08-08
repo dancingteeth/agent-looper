@@ -53,6 +53,7 @@ describe('runLoopNotifyCommand', () => {
       expect.objectContaining({
         cwd: '/tmp/repo',
         shell: true,
+        timeout: 15_000,
         env: expect.objectContaining({
           LOOP_KIND: 'loop',
           LOOP_BUNDLE: '.cursor/loops/x',
@@ -61,6 +62,7 @@ describe('runLoopNotifyCommand', () => {
           LOOP_REASON: 'fetch failed',
           LOOP_REPORT: 'status incomplete',
           LOOP_ITERATIONS: '1',
+          LOOP_EXPORT_PACK: '',
         }),
       }),
     )

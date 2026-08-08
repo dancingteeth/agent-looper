@@ -8,6 +8,7 @@ import {
   LOOP_EXPORTS_DIRNAME,
   loopExportSlug,
   readLoopExportPackArtifacts,
+  resolveExistingExportPackRels,
   writeLoopExportPack,
 } from './loopExportPack.js'
 
@@ -50,5 +51,40 @@ describe('loopExportPack', () => {
     expect(packed.logNdjson).toContain('"iteration":2')
     expect(packed.meta?.complete).toBe(true)
     expect(packed.runReport).toContain('# report')
+  })
+
+  it('lists existing export packs for batch notify aggregation', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-export-list-'))
+    const a = path.join(root, '.cursor', 'loops', 'a')
+    const b = path.join(root, '.cursor', 'loops', 'b')
+    const missing = path.join(root, '.cursor', 'loops', 'missing')
+    fs.mkdirSync(a, { recursive: true })
+    fs.mkdirSync(b, { recursive: true })
+    writeLoopExportPack({
+      repoRoot: root,
+      loopDir: a,
+      result: {
+        complete: true,
+        status: 'done',
+        completionReason: 'ok',
+        iterations: 1,
+      },
+    })
+    writeLoopExportPack({
+      repoRoot: root,
+      loopDir: b,
+      result: {
+        complete: false,
+        status: 'continue',
+        completionReason: 'verify',
+        iterations: 2,
+      },
+    })
+
+    const packs = resolveExistingExportPackRels(root, [a, b, missing])
+    expect(packs).toEqual([
+      path.join(LOOP_EXPORTS_DIRNAME, 'a'),
+      path.join(LOOP_EXPORTS_DIRNAME, 'b'),
+    ])
   })
 })
