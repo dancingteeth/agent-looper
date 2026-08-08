@@ -5,12 +5,15 @@ function runGit(args: string[], cwd: string): string {
 }
 
 function branchRefExists(repoRoot: string, branch: string): boolean {
-  try {
-    runGit(['rev-parse', '--verify', branch], repoRoot)
-    return true
-  } catch {
-    return false
+  for (const ref of [branch, `refs/remotes/origin/${branch}`, `origin/${branch}`]) {
+    try {
+      runGit(['rev-parse', '--verify', '--quiet', ref], repoRoot)
+      return true
+    } catch {
+      // try next
+    }
   }
+  return false
 }
 
 /** Best-effort default branch for post-loop diffs and init scaffolding. */
