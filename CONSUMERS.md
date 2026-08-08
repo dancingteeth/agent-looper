@@ -5,7 +5,7 @@ tags:
 ---
 # Wiring a new consumer repo
 
-Checklist for agents and humans adding **`@dancingteeth/agent-looper`** to another repository (Maxin, Zwook, cloud agent, or greenfield).
+Checklist for agents and humans adding **`@dancingteeth/agent-looper`** to any repository (local, CI, or cloud agent).
 
 ## Prerequisites
 
@@ -33,8 +33,6 @@ Or in `package.json`:
 }
 ```
 
-Cloud / Cursor agents: same install — no sibling checkout or `file:` link required.
-
 ## 2. Scaffold repo profile and example loop
 
 From the consumer root:
@@ -45,7 +43,7 @@ pnpm exec agent-loop-init
 # edit .cursor/loops/example-fix/ — GOAL.md, verify.sh, VERIFY.skill.md
 ```
 
-Use Taskwarrior **UUID** in `GOAL.md` and `loop.json` `taskwarriorUuid` — see
+Use Taskwarrior **UUID** in `GOAL.md` and `loop.json` `taskwarriorUuid` when HITL is enabled — see
 [`docs/verification-as-skill.md`](./docs/verification-as-skill.md).
 
 ## 3. Wire scripts (recommended)
@@ -63,16 +61,11 @@ Use Taskwarrior **UUID** in `GOAL.md` and `loop.json` `taskwarriorUuid` — see
 
 ## 4. Consumer integration test (recommended)
 
-Add a smoke test that imports the package and asserts your repo profile — copy from:
-
-- Maxin: `src/lib/agentLoop.integration.test.ts`
-- Zwook: `test/agent-loop.integration.test.mjs`
-
-Point a loop bundle's `verify` at that test (see `.cursor/loops/system-smoke` in Maxin).
+Add a small smoke test that imports `@dancingteeth/agent-looper` and asserts your repo profile / init layout loads. Point a loop bundle’s `verify` at that test so the harness stays honest.
 
 ## 5. Document in the consumer repo
 
-Add a short loop runbook (e.g. `docs/CURSOR_SDK_LOOPS.md`) with:
+Keep a short loop runbook with:
 
 - Install line (`pnpm add -D @dancingteeth/agent-looper @cursor/sdk`)
 - Required env keys (`CURSOR_API_KEY`, …)
@@ -84,13 +77,6 @@ Developing **this** package against a consumer before a release: you may still u
 `"@dancingteeth/agent-looper": "file:../agent-loop"` and `pnpm ensure-link`. Prefer
 publishing to npm for everyone else — see [`docs/releasing.md`](./docs/releasing.md)
 and [`docs/dogfood.md`](./docs/dogfood.md).
-
-## Reference consumers
-
-| Repo | Preferred install | Runbook |
-|------|-------------------|---------|
-| Maxin DXP | npm `@dancingteeth/agent-looper` | `multi-store/payload-ecommerce/docs/CURSOR_SDK_LOOPS.md` |
-| Zwook | npm `@dancingteeth/agent-looper` | `zwook/docs/CURSOR_SDK_LOOPS.md` |
 
 ## Docker / production images
 
