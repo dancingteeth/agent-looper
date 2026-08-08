@@ -246,7 +246,8 @@ describe('createHitlCheckpoint', () => {
     })
     expect(id).toBe('https://linear.app/acme/issue/ENG-99')
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit)?.body)) as {
+    const firstCall = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    const body = JSON.parse(String(firstCall[1]?.body)) as {
       variables: { input: { teamId: string } }
     }
     expect(body.variables.input.teamId).toBe(teamId)
