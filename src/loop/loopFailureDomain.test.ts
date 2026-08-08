@@ -7,6 +7,7 @@ import {
   appendFailureDomain,
   failureDomainsPath,
   isHitlWaitingFailureDomain,
+  logFailureDomainFromAgentError,
   logFailureDomainFromVerify,
   readLatestFailureDomain,
 } from './loopFailureDomain.js'
@@ -116,5 +117,18 @@ describe('loopFailureDomain', () => {
     const latest = readLatestFailureDomain(tmpDir)
     expect(latest?.reason).toBe('review_gate_hitl')
     expect(isHitlWaitingFailureDomain(latest)).toBe(true)
+  })
+
+  it('tags transport agent_error with a clearer suggestion', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
+    logFailureDomainFromAgentError(tmpDir, {
+      iteration: 1,
+      message:
+        'OpenCode session.prompt failed (provider=opencode-go model=x session=ses_1): fetch failed [layer=transport]',
+    })
+    const entry = readLatestFailureDomain(tmpDir)
+    expect(entry?.reason).toBe('agent_error')
+    expect(entry?.fingerprint).toContain('transport|')
+    expect(entry?.suggestion).toMatch(/Transport\/provider failure before verify/)
   })
 })

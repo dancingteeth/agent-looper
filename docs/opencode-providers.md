@@ -65,6 +65,24 @@ export OPENROUTER_API_KEY=…   # and/or OPENCODE_API_KEY for Go
 agent-check opencode
 ```
 
+## Transport failures (`fetch failed`)
+
+If iteration 1 dies with `OpenCode session.prompt failed …: fetch failed` **before** verify runs:
+
+| Symptom | Meaning |
+| --- | --- |
+| Local server started, `session.create` OK, `session.prompt` fails | Provider/TLS/reset or wedged OpenCode process — **not** a bad GOAL/verify |
+| Empty `log.ndjson`, no token usage | No successful model round-trip |
+| Short OpenCode prompts (meta-review) still work | Long implement prompts to Go can flake independently |
+
+Harness behavior (0.1.9+):
+
+1. Error messages include the `Error.cause` chain (`code` / `errno` / `syscall` when present) plus `[layer=transport]`
+2. Transient retries **recycle the local OpenCode server** (not only `session.create`) before the next attempt
+3. `failure-domains.ndjson` fingerprints `agent_error|transport|…` with a suggestion that this is pre-verify transport
+
+If all retries still fail: check Go gateway / network, try `escalateModel` or a BYOK slug, re-run later. Product salvage outside the harness is expected when the worker never starts.
+
 ## See also
 
 - [`docs/runtime-map.md`](./runtime-map.md) — cost-minmax presets (incl. `reviewRuntime`)

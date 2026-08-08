@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { type RepoContext } from '../context/repoContext.js'
 import { createLoopAgentSession, loopRuntimeLabel, type LoopAgentSession } from '../agents/agentRunner.js'
+import { formatErrorChain, isTransportAgentError } from '../agents/errorFormat.js'
 import { resolveIterationAgent, resolveLoopAgent, resolveReviewAgent, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
 import type { LoadedLoopBundle } from '../loop/loopConfig.js'
 import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
@@ -155,10 +156,21 @@ async function runIterationWithRetry(
         throw err
       }
       const delayMs = SDK_RETRY_DELAYS_MS[attempt]!
-      const message = err instanceof Error ? err.message : String(err)
+      const message = formatErrorChain(err)
       console.error(
         `[agent-loop] transient agent error (retry ${attempt + 1}/${SDK_RETRY_DELAYS_MS.length} in ${delayMs}ms): ${message}`,
       )
+      // New OpenCode sessions on the same wedged local server still fail with
+      // bare "fetch failed" — recycle the backend before sleeping.
+      if (session.recycle && isTransportAgentError(err)) {
+        try {
+          await session.recycle()
+        } catch (recycleErr) {
+          console.error(
+            `[agent-loop] warn: agent session recycle failed: ${formatErrorChain(recycleErr)}`,
+          )
+        }
+      }
       await sleep(delayMs)
     }
   }
@@ -619,7 +631,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       logPath,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = formatErrorChain(err)
     console.error(`[agent-loop] agent SDK error during iteration ${iterations}: ${message}`)
     logFailureDomainFromAgentError(bundle.loopDir, { iteration: iterations, message })
     return finish({

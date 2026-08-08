@@ -12,6 +12,7 @@ import {
   parseProviderModel,
 } from '../loop/loopAgentConfig.js'
 import { bootstrapOpencodeProviderAuth, assertOpencodeProviderAuthReady } from './opencodeAuth.js'
+import { formatErrorChain, isTransportAgentError } from './errorFormat.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 
@@ -74,13 +75,9 @@ function extractTextFromParts(parts: ReadonlyArray<{ type?: string; text?: strin
 
 function unwrapData<T>(result: { data?: T; error?: unknown }, label: string): T {
   if (result.error) {
-    const message =
-      result.error instanceof Error
-        ? result.error.message
-        : typeof result.error === 'object' && result.error !== null && 'message' in result.error
-          ? String((result.error as { message: unknown }).message)
-          : String(result.error)
-    throw new Error(`OpenCode ${label} failed: ${message}`)
+    throw new Error(`OpenCode ${label} failed: ${formatErrorChain(result.error)}`, {
+      cause: result.error instanceof Error ? result.error : undefined,
+    })
   }
   if (result.data === undefined) {
     throw new Error(`OpenCode ${label} returned no data`)
@@ -231,9 +228,13 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
         try {
           result = unwrapData(await Promise.race([promptPromise, timeoutPromise]), 'session.prompt')
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
+          const chain = formatErrorChain(err)
+          const transportHint = isTransportAgentError(err)
+            ? ' [layer=transport — provider/TLS/reset or wedged local OpenCode server; not a verifier failure]'
+            : ''
           throw new Error(
-            `OpenCode session.prompt failed (provider=${providerID} model=${options.modelId} session=${sessionId}): ${message}`,
+            `OpenCode session.prompt failed (provider=${providerID} model=${options.modelId} session=${sessionId}): ${chain}${transportHint}`,
+            { cause: err instanceof Error ? err : undefined },
           )
         }
 

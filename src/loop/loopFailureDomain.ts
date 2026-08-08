@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { VerifyResult } from './loopVerify.js'
 import { failureFingerprint } from './loopStagnation.js'
+import { isTransportErrorMessage } from '../agents/errorFormat.js'
 
 export const FAILURE_DOMAINS_FILENAME = 'failure-domains.ndjson'
 
@@ -120,14 +121,18 @@ export function logFailureDomainFromAgentError(
   loopDir: string,
   options: { iteration: number; message: string },
 ): void {
+  const transport = isTransportErrorMessage(options.message)
   appendFailureDomain(loopDir, {
     iteration: options.iteration,
     reason: 'agent_error',
-    fingerprint: `agent_error|${options.message.slice(0, 300)}`,
+    fingerprint: `agent_error|${transport ? 'transport|' : ''}${options.message.slice(0, 280)}`,
     verify: {
       command: '(agent SDK)',
       exitCode: null,
       reason: options.message.slice(0, 500),
     },
+    suggestion: transport
+      ? 'Transport/provider failure before verify (e.g. OpenCode session.prompt fetch failed) — not a product test failure. Re-run; harness recycles the local OpenCode server on transport retries. Check OPENCODE_API_KEY / network / Go gateway status.'
+      : undefined,
   })
 }

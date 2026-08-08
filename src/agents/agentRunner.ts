@@ -41,6 +41,11 @@ export type LoopAgentSession = {
     agent: ResolvedLoopAgent,
     options: AgentPromptOptions,
   ): Promise<AgentRunResult>
+  /**
+   * Optional: tear down and recreate the worker backend (OpenCode local server).
+   * Used on transport retries — new sessions on a wedged server still fail.
+   */
+  recycle?: () => Promise<void>
   dispose(): Promise<void>
 }
 
@@ -124,10 +129,16 @@ export async function createLoopAgentSession(
   if (runtime === LOOP_RUNTIME_OPENCODE) {
     // Dynamic import: @opencode-ai/sdk is an optional peer.
     const { createOpencodeLoopSession } = await import('./opencodeAgent.js')
-    const opencode = await createOpencodeLoopSession(ctx)
-    const runner = createOpencodeRunner(opencode)
+    let opencode = await createOpencodeLoopSession(ctx)
+    let runner = createOpencodeRunner(opencode)
     return {
       runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),
+      recycle: async () => {
+        console.error('[agent-loop:opencode] recycling local server after transport error')
+        await opencode.dispose()
+        opencode = await createOpencodeLoopSession(ctx)
+        runner = createOpencodeRunner(opencode)
+      },
       dispose: () => opencode.dispose(),
     }
   }

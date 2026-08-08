@@ -129,13 +129,17 @@ function reviewResult(
   }
 }
 
-function mockSession(runIterationPrompt = vi.fn().mockResolvedValue({ text: 'assistant ok' })) {
+function mockSession(
+  runIterationPrompt = vi.fn().mockResolvedValue({ text: 'assistant ok' }),
+  extras: { recycle?: () => Promise<void> } = {},
+) {
   const dispose = vi.fn().mockResolvedValue(undefined)
   mockedCreateSession.mockResolvedValue({
     runIterationPrompt,
     dispose,
+    ...(extras.recycle ? { recycle: extras.recycle } : {}),
   })
-  return { runIterationPrompt, dispose }
+  return { runIterationPrompt, dispose, recycle: extras.recycle }
 }
 
 describe('runAgentLoop', () => {
@@ -257,6 +261,30 @@ describe('runAgentLoop', () => {
     const result = await pending
 
     expect(result.complete).toBe(true)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('recycles the agent backend on transport fetch failed before retrying', async () => {
+    vi.useFakeTimers()
+    const recycle = vi.fn().mockResolvedValue(undefined)
+    const runIterationPrompt = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error(
+          'OpenCode session.prompt failed (provider=opencode-go model=opencode-go/deepseek-v4-flash session=ses_x): fetch failed [layer=transport]',
+        ),
+      )
+      .mockResolvedValueOnce({ text: 'recovered after recycle' })
+    mockSession(runIterationPrompt, { recycle })
+    mockedRunVerify.mockReturnValue(passVerify())
+
+    const pending = runAgentLoop({ ctx: makeCtx(), bundle: makeBundle() })
+    await vi.runAllTimersAsync()
+    const result = await pending
+
+    expect(result.complete).toBe(true)
+    expect(recycle).toHaveBeenCalledOnce()
     expect(runIterationPrompt).toHaveBeenCalledTimes(2)
     vi.useRealTimers()
   })
