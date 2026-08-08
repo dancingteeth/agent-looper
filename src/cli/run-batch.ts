@@ -14,10 +14,7 @@ import {
   exitWithLoopCompletionSignal,
   shouldEmitLoopCompletionSignal,
 } from '../integrations/loopCompletionSignal.js'
-import {
-  resolveNotifyCommand,
-  runLoopNotifyCommand,
-} from '../integrations/loopNotifyCommand.js'
+import { postLoopCompletionChannels } from '../integrations/loopCompletionChannels.js'
 import {
   preflightTelegramNotify,
   sendLoopTelegramReport,
@@ -69,33 +66,29 @@ let emitCompletionSignal = shouldEmitLoopCompletionSignal({
     cli.noCompletionSignal === true ? false : batchConfig.completionSignal,
 })
 
-function finishBatchExit(input: {
+async function finishBatchExit(input: {
   exitCode: 0 | 1 | 2
   complete: boolean
   reason: string
   loopsRun?: number
   report?: string
   hitl?: string
-}): never {
-  const notifyCommand = resolveNotifyCommand({
-    profileCommand: ctx.profile.notifyCommand,
-    loopCommand: batchConfig.notifyCommand,
-    disabled: cli.noNotifyCommand,
+}): Promise<never> {
+  await postLoopCompletionChannels({
+    repoRoot: ctx.repoRoot,
+    profile: ctx.profile,
+    kind: 'batch',
+    bundleLabel: batchLabel,
+    complete: input.complete,
+    exitCode: input.exitCode,
+    reason: input.reason,
+    report: input.report,
+    loopsRun: input.loopsRun,
+    hitl: input.hitl,
+    notifyCommand: batchConfig.notifyCommand,
+    notifyPrComment: batchConfig.notifyPrComment,
+    noNotifyCommand: cli.noNotifyCommand,
   })
-  if (notifyCommand) {
-    runLoopNotifyCommand({
-      repoRoot: ctx.repoRoot,
-      command: notifyCommand,
-      kind: 'batch',
-      bundle: batchLabel,
-      complete: input.complete,
-      exitCode: input.exitCode,
-      reason: input.reason,
-      report: input.report,
-      loopsRun: input.loopsRun,
-      hitl: input.hitl,
-    })
-  }
   exitWithLoopCompletionSignal({
     emit: emitCompletionSignal,
     exitCode: input.exitCode,
@@ -231,7 +224,7 @@ try {
   })
 
   const exitCode: 0 | 2 = result.complete ? 0 : 2
-  finishBatchExit({
+  await finishBatchExit({
     exitCode,
     complete: result.complete,
     reason: result.completionReason,
@@ -243,7 +236,7 @@ try {
   console.error('[agent-loop-batch] failed:', err)
   await reportFatalVisibility(err)
   const message = err instanceof Error ? err.message : String(err)
-  finishBatchExit({
+  await finishBatchExit({
     exitCode: 1,
     complete: false,
     reason: message,

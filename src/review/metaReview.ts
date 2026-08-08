@@ -1,20 +1,22 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { RepoContext } from '../context/repoContext.js'
-import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
-import {
-  CURSOR_REVIEW_MODEL,
-  type CursorSdkModel,
-} from '../loop/loopAgentConfig.js'
 import { FAILURE_DOMAINS_FILENAME } from '../loop/loopFailureDomain.js'
 import {
   readLatestReviewContent,
   resolveLatestReviewPath,
 } from '../loop/loopReport.js'
 import { createHitlCheckpoint, hitlLoopOverridesFrom } from '../integrations/hitlCheckpoint.js'
+import { readLoopExportPackArtifacts } from '../integrations/loopExportPack.js'
+import {
+  LOOP_RUNTIME_CURSOR,
+  resolveReviewAgent,
+  type LoopRuntime,
+} from '../loop/loopAgentConfig.js'
 import { gitDiffStatSinceBranchBase } from './loopPostReview.js'
 import { buildMetaReviewPrompt, type CollectedLoopArtifacts } from './metaReviewPrompt.js'
 import { parseReviewMarkdown } from './reviewVerdict.js'
+import { runReviewAgentPrompt } from './reviewAgentRun.js'
 
 export type { CollectedLoopArtifacts } from './metaReviewPrompt.js'
 
@@ -61,6 +63,7 @@ export function collectLoopArtifacts(
   const relPath = path.relative(ctx.repoRoot, loopDir) || '.'
   const missing: string[] = []
   const diffStat = gitDiffStatSinceBranchBase(ctx)
+  const exportPack = readLoopExportPackArtifacts({ repoRoot: ctx.repoRoot, loopDir })
 
   let goal: string | undefined
   const goalPath = path.join(loopDir, 'GOAL.md')
@@ -75,6 +78,8 @@ export function collectLoopArtifacts(
   const reviewContent = readLatestReviewContent(loopDir)
   if (reviewPath && reviewContent) {
     review = { path: reviewPath, content: reviewContent }
+  } else if (exportPack.review) {
+    review = exportPack.review
   } else {
     missing.push('review.md')
   }
@@ -83,6 +88,8 @@ export function collectLoopArtifacts(
   let logNdjson: string | undefined
   if (fs.existsSync(logPath)) {
     logNdjson = fs.readFileSync(logPath, 'utf8').trim()
+  } else if (exportPack.logNdjson) {
+    logNdjson = exportPack.logNdjson
   } else {
     missing.push('log.ndjson')
   }
@@ -91,6 +98,8 @@ export function collectLoopArtifacts(
   let failureDomains: string | undefined
   if (fs.existsSync(failurePath)) {
     failureDomains = fs.readFileSync(failurePath, 'utf8').trim()
+  } else if (exportPack.failureDomains) {
+    failureDomains = exportPack.failureDomains
   } else {
     missing.push(FAILURE_DOMAINS_FILENAME)
   }
@@ -191,7 +200,9 @@ export type MetaReviewOptions = {
   outputPath?: string
   hitl?: boolean
   taskwarriorProject?: string
-  reviewModel?: CursorSdkModel
+  /** Primary judge runtime (default cursor). */
+  reviewRuntime?: LoopRuntime
+  reviewModel?: string
   verbose?: boolean
 }
 
@@ -235,15 +246,17 @@ export async function runMetaReview(options: MetaReviewOptions): Promise<MetaRev
   }
 
   const prompt = buildMetaReviewPrompt(ctx, bundles)
-  const reviewModel = options.reviewModel ?? CURSOR_REVIEW_MODEL
-  console.error(`[agent-loop-meta-review] judge model=${reviewModel}`)
+  const reviewAgent = resolveReviewAgent({
+    runtime: LOOP_RUNTIME_CURSOR,
+    reviewRuntime: options.reviewRuntime ?? LOOP_RUNTIME_CURSOR,
+    reviewModel: options.reviewModel,
+  })
+  console.error(
+    `[agent-loop-meta-review] judge runtime=${reviewAgent.runtime} model=${reviewAgent.model}`,
+  )
 
-  const run = await runCursorAgentPrompt(ctx, prompt, {
+  const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
-    assistantOutput: 'none',
-    modelId: reviewModel,
-    role: 'review',
-    phase: 'review',
   })
 
   const parsed = parseReviewMarkdown(run.text)
@@ -252,7 +265,8 @@ export async function runMetaReview(options: MetaReviewOptions): Promise<MetaRev
 
   const header = `# Cross-loop meta-review
 
-_Model: ${reviewModel}_
+_Runtime: ${reviewAgent.runtime}_
+_Model: ${reviewAgent.model}_
 _Generated ${new Date().toISOString()}_
 _Loops (${bundles.length}): ${bundles.map((b) => b.relPath).join(', ')}_
 

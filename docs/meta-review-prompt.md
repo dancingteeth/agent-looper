@@ -22,11 +22,12 @@ bullets) — Advisory/Nits are for humans.
 
 Treat the collected artifacts as the change set (not a PR merge-base diff):
 
-- Latest `review.md` / `review.N.md`
-- `log.ndjson` (iterations, models, verify outcomes)
-- `failure-domains.ndjson` (`review_gate`, `review_gate_hitl`, stagnation, …)
+- Latest `review.md` / `review.N.md` **or** `.cursor/loop-exports/<slug>/review.md`
+- `log.ndjson` **or** export `log-tail.ndjson`
+- `failure-domains.ndjson` (in-loop or export pack)
 - Diff stats vs `defaultBranch` (or stored snapshots)
 - Note missing artifacts; do not invent file contents
+- **Do not** treat missing gitignored in-loop files alone as “never ran” when an export pack or PR exists
 
 Out of scope for findings unless they encode a **code** invariant: lockfiles,
 generated output, scaffold/`GOAL.md` prose gaps → omit or Nit, never Advisory/Blocker.

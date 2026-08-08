@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
-import type { CursorSdkModel } from '../loop/loopAgentConfig.js'
+import {
+  LOOP_RUNTIME_CLINE,
+  LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_OPENCODE,
+  LOOP_RUNTIME_PI,
+  type LoopRuntime,
+} from '../loop/loopAgentConfig.js'
 import { runMetaReview } from '../review/metaReview.js'
 import { blockingBlockers } from '../review/reviewVerdict.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
@@ -10,15 +17,17 @@ function usage(): string {
   return `Usage: agent-loop-meta-review <paths…> [options]
 
 Read-only cross-loop aggregator: collect loop artifacts → meta prompt → judge → report.
+Prefers in-loop artifacts; falls back to \`.cursor/loop-exports/<slug>/\` (cloud/PR audit packs).
 
   <paths…>   One or more loop bundle dirs and/or a parent dir (e.g. .cursor/loops)
 
 Options:
   --output <path>         Write report to this file (overrides --out-dir)
   --out-dir <path>        Directory for meta-review.md (default: cwd)
-  --hitl                  Create Taskwarrior tasks from ### HITL follow-ups bullets
+  --hitl                  Create HITL checkpoints from ### HITL follow-ups bullets
   --project <name>        Taskwarrior project for --hitl (default: repo profile)
-  --review-model <id>     Cursor judge model (default: grok-4.5)
+  --review-runtime <id>   Judge runtime: cursor|cline-pass|cline|opencode|pi (default: cursor)
+  --review-model <id>     Judge model (default depends on runtime)
   --verbose, -v
 ${printRepoRootHelp()}
   --help, -h              Show this help`
@@ -32,7 +41,24 @@ type CliOptions = {
   outDir?: string
   hitl: boolean
   project?: string
+  reviewRuntime?: LoopRuntime
   reviewModel?: string
+}
+
+function parseReviewRuntime(value: string): LoopRuntime {
+  const allowed = [
+    LOOP_RUNTIME_CURSOR,
+    LOOP_RUNTIME_CLINE_PASS,
+    LOOP_RUNTIME_CLINE,
+    LOOP_RUNTIME_OPENCODE,
+    LOOP_RUNTIME_PI,
+  ] as const
+  if ((allowed as readonly string[]).includes(value)) {
+    return value as LoopRuntime
+  }
+  throw new Error(
+    `--review-runtime must be one of ${allowed.join(', ')} (got ${value})`,
+  )
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -44,6 +70,7 @@ function parseArgs(argv: string[]): CliOptions {
   let outDir: string | undefined
   let hitl = false
   let project: string | undefined
+  let reviewRuntime: LoopRuntime | undefined
   let reviewModel: string | undefined
 
   for (let i = 0; i < remaining.length; i++) {
@@ -69,6 +96,12 @@ function parseArgs(argv: string[]): CliOptions {
         project = remaining[++i]
         if (!project) throw new Error('--project requires a name')
         break
+      case '--review-runtime': {
+        const value = remaining[++i]
+        if (!value) throw new Error('--review-runtime requires an id')
+        reviewRuntime = parseReviewRuntime(value)
+        break
+      }
       case '--review-model':
         reviewModel = remaining[++i]
         if (!reviewModel) throw new Error('--review-model requires an id')
@@ -89,6 +122,7 @@ function parseArgs(argv: string[]): CliOptions {
     outDir,
     hitl,
     project,
+    reviewRuntime,
     reviewModel,
   }
 }
@@ -125,7 +159,8 @@ const result = await runMetaReview({
   outputPath: options.outputPath,
   hitl: options.hitl,
   taskwarriorProject: options.project,
-  reviewModel: options.reviewModel as CursorSdkModel | undefined,
+  reviewRuntime: options.reviewRuntime,
+  reviewModel: options.reviewModel,
   verbose: options.verbose,
 })
 

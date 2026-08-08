@@ -293,6 +293,27 @@ export type {
 } from './integrations/loopNotifyCommand.js'
 
 export {
+  LOOP_EXPORTS_DIRNAME,
+  writeLoopExportPack,
+  readLoopExportPackArtifacts,
+  resolveLoopExportDir,
+} from './integrations/loopExportPack.js'
+export type { LoopExportMeta, WriteLoopExportPackResult } from './integrations/loopExportPack.js'
+
+export {
+  sendNotifyWebhook,
+  postLoopPrComment,
+  formatLoopPrCommentBody,
+  NOTIFY_WEBHOOK_URL_ENV,
+  NOTIFY_PR_NUMBER_ENV,
+} from './integrations/loopNotifyChannels.js'
+export type { NotifyWebhookPayload, NotifyWebhookSettings } from './integrations/loopNotifyChannels.js'
+
+export {
+  postLoopCompletionChannels,
+} from './integrations/loopCompletionChannels.js'
+
+export {
   loopExtensionFieldsSchema,
   siblingRepoSchema,
   verifyLogModeSchema,

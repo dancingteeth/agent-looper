@@ -50,6 +50,7 @@ import {
 } from '../usage/loopUsage.js'
 import { StreamCollector, type AgentSessionRef, type TranscriptEvent } from '../stream/streamCollect.js'
 import { writeRunReportArtifacts } from './loopRunReport.js'
+import { writeLoopExportPack } from '../integrations/loopExportPack.js'
 
 export type LoopIterationLog = {
   at: string
@@ -342,6 +343,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           `[agent-loop] transcript: ${path.relative(repoRoot, transcriptPath)}`,
         )
       }
+    }
+    if (config.exportPack) {
+      writeLoopExportPack({
+        repoRoot,
+        loopDir: bundle.loopDir,
+        result: finalResult,
+      })
     }
     return finalResult
   }

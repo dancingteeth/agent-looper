@@ -121,7 +121,9 @@ Harness maintainers developing this repo itself: build local `dist/` with `pnpm 
 | `hitlCommand` | Shell for `command` provider |
 | `hitlLinearTeam` | Linear team key or id when `hitlProvider` is `linear` |
 | `syncCommand` | Shell after success (or `null`) |
-| `notifyCommand` | Optional shell on every CLI exit (`LOOP_*` env) — webhooks when Telegram/Cloud wake unavailable |
+| `notifyCommand` | Optional shell on every CLI exit (`LOOP_*` env) |
+| `notifyWebhook` | Optional JSON POST (`url` or `AGENT_LOOP_NOTIFY_WEBHOOK_URL`) |
+| `notifyPrComment` | Comment on the open PR after CLI exit (`gh pr comment`) |
 | `defaultBranch` | Post-loop diff base (`main`) |
 | `agentsFile` / `reviewsFile` | Prompt + review overlay paths |
 | `loopRiskProfile` | Optional keyword merge for `postQualityReview: "auto"` (see `REVIEWS.md` ## Loop risk inference) |
@@ -177,6 +179,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `requireNotify` | `false` | Abort if Telegram preflight fails (also `--require-notify`) |
 | `completionSignal` | `true` | Emit `AGENT_LOOP_DONE` on stdout when the CLI exits (local Cursor wake; Cloud Agents cannot attach a watcher yet) |
 | `notifyCommand` | — | Override repo profile `notifyCommand` for this loop |
+| `exportPack` | `true` | Copy curated artifacts to `.cursor/loop-exports/<slug>/` (commit-friendly) |
+| `notifyPrComment` | — | Override profile `notifyPrComment` for this loop |
 | `reasoningEffort` | — | Cline: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Cursor ignores. |
 | `escalateReasoningEffort` | — | Cline reasoning ladder ceiling |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
@@ -321,14 +325,15 @@ Each `loops[]` entry is either a sibling loop name/path (string) or `{ "path": "
 
 ### Cross-loop meta-review
 
-Read-only aggregator over N completed loop bundles (does **not** re-run workers or flip per-loop `complete` flags):
+Read-only aggregator over N loop bundles (does **not** re-run workers or flip per-loop `complete` flags):
 
 ```bash
 agent-loop-meta-review .cursor/loops --out-dir /tmp/meta-out
+agent-loop-meta-review .cursor/loops --review-runtime opencode --review-model openrouter/anthropic/claude-sonnet-4
 agent-loop-meta-review .cursor/loops/a .cursor/loops/b --hitl --project my-project
 ```
 
-Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff stat vs `defaultBranch`. Prompt brief: [`docs/meta-review-prompt.md`](./docs/meta-review-prompt.md).
+Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff stat vs `defaultBranch`. When in-loop files are missing (typical after a cloud clone — those paths are gitignored), falls back to **`.cursor/loop-exports/<slug>/`**. Prompt brief: [`docs/meta-review-prompt.md`](./docs/meta-review-prompt.md).
 
 ## CLIs
 
@@ -353,6 +358,7 @@ GOAL.md + loop.json
   → optional review gate
   → log.ndjson
   → run-report.md (+ transcript.ndjson when enabled)
+  → .cursor/loop-exports/<slug>/ (curated pack; commit-friendly)
   → repeat
 ```
 
@@ -397,6 +403,8 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 | `AGENT_LOOP_TELEGRAM_BOT_TOKEN` | Telegram bot token (fallback: `TELEGRAM_BOT_TOKEN`) |
 | `AGENT_LOOP_TELEGRAM_CHAT_ID` | Telegram chat id (or `telegramNotify.chatId` in the repo profile) |
 | `AGENT_LOOP_NO_COMPLETION_SIGNAL` | `1` — skip `AGENT_LOOP_DONE` stdout line on CLI exit |
+| `AGENT_LOOP_NOTIFY_WEBHOOK_URL` | JSON webhook URL when `notifyWebhook` is enabled without inline `url` |
+| `AGENT_LOOP_PR_NUMBER` | PR number for `notifyPrComment` (fallback: `GH_PR_NUMBER`, then `gh pr view`) |
 
 ## Telegram completion reports
 
@@ -437,38 +445,48 @@ Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, �
 
 **Cloud Agent Shell does not expose `notify_on_output` today**, so this chat cannot attach a regex watcher even though the harness still emits `AGENT_LOOP_DONE`. Until Cursor adds that (or an equivalent wake), treat cloud completion as:
 
-- **`notifyCommand`** — shell hook with `LOOP_*` env (Slack/Discord/`curl` webhook); set in `.cursor/agent-loop.repo.json` or `loop.json`
-- **Telegram** (`notifyTelegram` + env; `--require-notify` / `requireNotify` to fail closed on bad bot auth)
-- **HITL** (`hitlOnFailure`, GitHub / Linear / file / Taskwarrior)
-- **Platform** — Agents UI, PR, Slack/Automations when the cloud run finishes
+- **`notifyWebhook`** — JSON POST to Slack/Discord/n8n (`AGENT_LOOP_NOTIFY_WEBHOOK_URL` in Doppler)
+- **`notifyPrComment: true`** — `gh pr comment` on the branch PR (set when the cloud agent already opened a PR)
+- **Telegram** (`notifyTelegram` + env; `--require-notify` to fail closed)
+- **HITL** (`hitlOnFailure`, Linear / file / github with an issue-capable token)
+- **Export packs** — commit or attach `.cursor/loop-exports/<slug>/` so meta-review and humans can read reviews without gitignored mid-run files
 
 Do not promise in-chat wake from `AGENT_LOOP_DONE` on Cloud Agents.
 
-## `notifyCommand` (webhook / Slack without Telegram)
+## Export packs (cloud / PR audit)
 
-Runs after Telegram + HITL visibility, immediately before the CLI exits (including fatal aborts). Non-blocking on failure. Included in the shell-trust gate (`--trust-config`).
+In-loop `review.md` / `log.ndjson` / `run-report.md` stay **gitignored** (noisy mid-run). When `exportPack: true` (default), each finished loop also writes a curated snapshot to:
 
-| Env | Meaning |
-| --- | --- |
-| `LOOP_KIND` | `loop` or `batch` |
-| `LOOP_BUNDLE` | Relative bundle/batch path |
-| `LOOP_COMPLETE` | `1` or `0` |
-| `LOOP_EXIT_CODE` | `0` / `2` / `1` |
-| `LOOP_REASON` | Completion or abort reason |
-| `LOOP_REPORT` | Same short text as the Telegram completion report (when available) |
-| `LOOP_ITERATIONS` / `LOOP_LOOPS_RUN` | Counts when known |
-| `LOOP_HITL` | Checkpoint id/url when created |
-| `LOOP_RUN_REPORT` | Relative `run-report.md` path when the file exists |
+```text
+.cursor/loop-exports/<slug>/
+  SUMMARY.md
+  meta.json
+  run-report.md      # when present
+  review.md          # latest review when present
+  log-tail.ndjson    # last ~40 log lines
+  failure-domains.ndjson
+```
 
-Example (repo profile):
+**Commit that directory** (or attach it on the PR) so cloud clones and meta-review are not a black box. Cloud agent tip: after the loop, `git add .cursor/loop-exports && git commit && git push` on the loop branch.
+
+## `notifyWebhook` + PR comments
+
+Repo profile:
 
 ```json
 {
-  "notifyCommand": "curl -sS -X POST \"$SLACK_WEBHOOK\" -H 'Content-type: application/json' --data \"{\\\"text\\\":\\\"$LOOP_BUNDLE exit $LOOP_EXIT_CODE: $LOOP_REASON\\\"}\""
+  "notifyWebhook": { "onSuccess": true, "onFailure": true },
+  "notifyPrComment": true
 }
 ```
 
-Opt out: `--no-notify-command`. Loop/batch `notifyCommand` overrides the profile.
+Put the URL in Doppler as `AGENT_LOOP_NOTIFY_WEBHOOK_URL` (or set `notifyWebhook.url`). Payload is JSON (`v`, `kind`, `bundle`, `complete`, `exitCode`, `reason`, `exportPack`, …).
+
+`notifyPrComment` runs `gh pr comment` for the current branch’s PR (or `AGENT_LOOP_PR_NUMBER`). Same `gh` auth as GitHub HITL — works with a user/PAT that can comment; GitHub App tokens often can comment on PRs even when they cannot `issue create`.
+
+## `notifyCommand` (shell fallback)
+
+Optional shell with `LOOP_*` env when you need custom logic beyond JSON webhook. Non-blocking; shell-trust gated. Opt out: `--no-notify-command`.
 
 ## License
 

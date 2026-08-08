@@ -13,17 +13,18 @@ import {
   resolveMetaReviewOutputPath,
   runMetaReview,
 } from './metaReview.js'
+import { writeLoopExportPack } from '../integrations/loopExportPack.js'
 
-const { runCursorAgentPrompt } = vi.hoisted(() => ({
-  runCursorAgentPrompt: vi.fn(),
+const { runReviewAgentPrompt } = vi.hoisted(() => ({
+  runReviewAgentPrompt: vi.fn(),
 }))
 
 const { createHitlCheckpoint } = vi.hoisted(() => ({
   createHitlCheckpoint: vi.fn(),
 }))
 
-vi.mock('../agents/cursorAgent.js', () => ({
-  runCursorAgentPrompt,
+vi.mock('./reviewAgentRun.js', () => ({
+  runReviewAgentPrompt,
 }))
 
 vi.mock('../integrations/hitlCheckpoint.js', () => ({
@@ -61,7 +62,7 @@ function writeLoopBundle(root: string, name: string, files: Record<string, strin
 describe('metaReview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    runCursorAgentPrompt.mockResolvedValue({
+    runReviewAgentPrompt.mockResolvedValue({
       text: `### Cross-loop themes
 - shared drift
 
@@ -127,7 +128,7 @@ describe('metaReview', () => {
       reviewModel: 'grok-4.5',
     })
 
-    expect(runCursorAgentPrompt).toHaveBeenCalledOnce()
+    expect(runReviewAgentPrompt).toHaveBeenCalledOnce()
     expect(fs.existsSync(result.outPath)).toBe(true)
     expect(result.outPath).toBe(resolveMetaReviewOutputPath({ outDir }))
     expect(result.text).toContain('### Cross-loop themes')
@@ -135,6 +136,34 @@ describe('metaReview', () => {
     expect(result.loops).toHaveLength(1)
     expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('included loops'))).toBe(true)
     stderrSpy.mockRestore()
+  })
+
+  it('falls back to export pack when in-loop artifacts are missing', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-meta-export-'))
+    const loopDir = writeLoopBundle(root, 'packed', {
+      review: '### Verdict\n**PASS** from pack',
+      log: '{"iteration":1}\n',
+    })
+    writeLoopExportPack({
+      repoRoot: root,
+      loopDir,
+      result: {
+        complete: true,
+        status: 'done',
+        completionReason: 'ok',
+        iterations: 1,
+      },
+    })
+    fs.rmSync(path.join(loopDir, 'review.md'))
+    fs.rmSync(path.join(loopDir, 'log.ndjson'))
+
+    const bundle = collectLoopArtifacts(loopDir, {
+      repoRoot: root,
+      profile: repoProfileSchema.parse({}),
+    })
+    expect(bundle.review?.content).toContain('PASS')
+    expect(bundle.logNdjson).toContain('"iteration":1')
+    expect(bundle.missing).not.toContain('review.md')
   })
 
   it('creates HITL tasks when --hitl is enabled', async () => {

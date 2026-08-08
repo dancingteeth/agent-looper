@@ -14,10 +14,7 @@ import {
   runReportSignalPath,
   shouldEmitLoopCompletionSignal,
 } from '../integrations/loopCompletionSignal.js'
-import {
-  resolveNotifyCommand,
-  runLoopNotifyCommand,
-} from '../integrations/loopNotifyCommand.js'
+import { postLoopCompletionChannels } from '../integrations/loopCompletionChannels.js'
 import {
   preflightTelegramNotify,
   sendLoopTelegramReport,
@@ -49,11 +46,12 @@ let loadedHitlFileDir = ctx.profile.hitlFileDir
 let loadedHitlCommand = ctx.profile.hitlCommand
 let loadedHitlLinearTeam = ctx.profile.hitlLinearTeam
 let loadedNotifyCommand = ctx.profile.notifyCommand
+let loadedNotifyPrComment: boolean | undefined
 let emitCompletionSignal = shouldEmitLoopCompletionSignal({
   completionSignal: cli.noCompletionSignal ? false : true,
 })
 
-function finishLoopExit(input: {
+async function finishLoopExit(input: {
   exitCode: 0 | 1 | 2
   complete: boolean
   reason: string
@@ -61,32 +59,28 @@ function finishLoopExit(input: {
   hitl?: string
   includeRunReport?: boolean
   report?: string
-}): never {
+}): Promise<never> {
   const runReport = runReportSignalPath({
     loopDir,
     repoRoot: ctx.repoRoot,
     include: Boolean(input.includeRunReport),
   })
-  const notifyCommand = resolveNotifyCommand({
-    profileCommand: ctx.profile.notifyCommand,
-    loopCommand: loadedNotifyCommand,
-    disabled: cli.noNotifyCommand,
+  await postLoopCompletionChannels({
+    repoRoot: ctx.repoRoot,
+    profile: ctx.profile,
+    kind: 'loop',
+    bundleLabel,
+    loopDir,
+    complete: input.complete,
+    exitCode: input.exitCode,
+    reason: input.reason,
+    report: input.report,
+    iterations: input.iterations,
+    hitl: input.hitl,
+    notifyCommand: loadedNotifyCommand,
+    notifyPrComment: loadedNotifyPrComment,
+    noNotifyCommand: cli.noNotifyCommand,
   })
-  if (notifyCommand) {
-    runLoopNotifyCommand({
-      repoRoot: ctx.repoRoot,
-      command: notifyCommand,
-      kind: 'loop',
-      bundle: bundleLabel,
-      complete: input.complete,
-      exitCode: input.exitCode,
-      reason: input.reason,
-      report: input.report,
-      iterations: input.iterations,
-      hitl: input.hitl,
-      runReport,
-    })
-  }
   exitWithLoopCompletionSignal({
     emit: emitCompletionSignal,
     exitCode: input.exitCode,
@@ -164,6 +158,7 @@ try {
   loadedHitlCommand = bundle.config.hitlCommand ?? ctx.profile.hitlCommand
   loadedHitlLinearTeam = bundle.config.hitlLinearTeam ?? ctx.profile.hitlLinearTeam
   loadedNotifyCommand = bundle.config.notifyCommand ?? ctx.profile.notifyCommand
+  loadedNotifyPrComment = bundle.config.notifyPrComment
   emitCompletionSignal = shouldEmitLoopCompletionSignal({
     completionSignal: bundle.config.completionSignal,
   })
@@ -299,7 +294,7 @@ try {
     })) ?? result.hitlCheckTaskUuid
 
   const exitCode: 0 | 2 = result.complete ? 0 : 2
-  finishLoopExit({
+  await finishLoopExit({
     exitCode,
     complete: result.complete,
     reason: result.completionReason,
@@ -312,7 +307,7 @@ try {
   console.error('[agent-loop] failed:', err)
   await reportFatalVisibility(err)
   const message = err instanceof Error ? err.message : String(err)
-  finishLoopExit({
+  await finishLoopExit({
     exitCode: 1,
     complete: false,
     reason: message,

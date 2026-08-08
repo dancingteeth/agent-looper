@@ -153,8 +153,15 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     completionSignal: z.boolean().default(true),
     /** Write human-readable run-report.md when the loop finishes (or via export-run). */
     exportRunReport: z.boolean().default(true),
+    /**
+     * Copy curated artifacts to `.cursor/loop-exports/<slug>/` (not gitignored)
+     * for cloud/PR/meta-review. Default true.
+     */
+    exportPack: z.boolean().default(true),
     /** Record tool timeline in transcript.ndjson and enrich log.ndjson tool counts. */
     exportTranscript: z.boolean().default(true),
+    /** Comment on the open PR after CLI exit (overrides profile notifyPrComment when set). */
+    notifyPrComment: z.boolean().optional(),
   })
   .superRefine((config, ctx) => {
     if (config.verifyMode === 'skill' && !config.verifySkill) {
@@ -284,7 +291,9 @@ export function mergeLoopConfig(
       | 'completionSignal'
       | 'trustConfig'
       | 'exportRunReport'
+      | 'exportPack'
       | 'exportTranscript'
+      | 'notifyPrComment'
     >
   >,
 ): LoopConfig {

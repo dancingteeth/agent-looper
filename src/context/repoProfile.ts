@@ -19,6 +19,22 @@ export const repoProfileSchema = z
    * (especially Cloud Agents). Loop/batch `notifyCommand` overrides this.
    */
   notifyCommand: z.string().trim().min(1).optional(),
+  /**
+   * Structured webhook (JSON POST). URL from `url` or AGENT_LOOP_NOTIFY_WEBHOOK_URL.
+   * Prefer this over notifyCommand for Slack/Discord on Cloud Agents.
+   */
+  notifyWebhook: z
+    .object({
+      url: z.string().trim().min(1).optional(),
+      onSuccess: z.boolean().default(true),
+      onFailure: z.boolean().default(true),
+    })
+    .optional(),
+  /**
+   * After each CLI exit, comment on the open PR for this branch
+   * (or AGENT_LOOP_PR_NUMBER). Uses `gh pr comment`.
+   */
+  notifyPrComment: z.boolean().default(false),
   /** Base branch for post-loop diff stat. */
   defaultBranch: z.string().trim().min(1).default('main'),
   agentsFile: z.string().trim().min(1).default('AGENTS.md'),

@@ -79,14 +79,15 @@ Example:
 - `linear` + HITL trigger → need `hitlLinearTeam` and API key in env
 - `file` / `github` → no Taskwarrior project required
 
-## Completion notify without Telegram (`notifyCommand`)
+## Completion notify without Telegram (`notifyCommand` / webhook / PR)
 
-Optional shell in `.cursor/agent-loop.repo.json` or per-loop / per-batch `notifyCommand`. Runs on every CLI exit (success, incomplete, fatal) with `LOOP_*` env (`LOOP_COMPLETE`, `LOOP_EXIT_CODE`, `LOOP_REASON`, `LOOP_REPORT`, …). Non-blocking; shell-trust gated. Prefer this for Slack/Discord webhooks on **Cloud Agents** (no `notify_on_output`). See README **notifyCommand**.
+Optional shell in `.cursor/agent-loop.repo.json` or per-loop / per-batch `notifyCommand`. Runs on every CLI exit with `LOOP_*` env. Non-blocking; shell-trust gated.
 
-Example:
+Prefer for Cloud Agents:
 
-```json
-{
-  "notifyCommand": "curl -sS -X POST \"$SLACK_WEBHOOK\" -H 'Content-type: application/json' --data \"{\\\"text\\\":\\\"$LOOP_BUNDLE: $LOOP_REASON\\\"}\""
-}
-```
+- **`notifyWebhook`** + `AGENT_LOOP_NOTIFY_WEBHOOK_URL` (JSON POST)
+- **`notifyPrComment: true`** — comments on the open PR after the loop
+
+## Export packs
+
+`.cursor/loop-exports/<slug>/` is the commit-friendly audit surface (in-loop reviews/logs stay gitignored). Default `exportPack: true`. See README.

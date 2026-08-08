@@ -18,8 +18,10 @@ const LOOP_GITIGNORE_LINES: readonly string[] = [
 /**
  * Append the loop-artifact ignore block to the repo's .gitignore (created when
  * missing). Idempotent: skips when the marker line is already present.
- * Loop artifacts (logs, reviews, transcripts) contain assistant output and
- * should not be committed.
+ *
+ * In-loop working artifacts (logs, reviews, transcripts) stay ignored — they are
+ * noisy mid-run. Curated snapshots go to `.cursor/loop-exports/` (not ignored)
+ * for cloud/PR/meta-review.
  */
 export function ensureLoopGitignoreBlock(repoRoot: string): 'written' | 'skipped' {
   const gitignorePath = path.join(repoRoot, '.gitignore')
