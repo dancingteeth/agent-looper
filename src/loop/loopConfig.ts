@@ -126,6 +126,16 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     /** Attach latest review.md to Telegram after the completion summary (when present). */
     telegramAttachReview: z.boolean().default(true),
     /**
+     * When true, open a HITL checkpoint if the loop ends incomplete (even when Telegram
+     * failure notify succeeded). Default false to avoid issue spam on verify misses.
+     */
+    hitlOnFailure: z.boolean().default(false),
+    /**
+     * Abort before the loop if Telegram notify is enabled but preflight (getMe) fails.
+     * CLI --require-notify also sets this.
+     */
+    requireNotify: z.boolean().default(false),
+    /**
      * When true, treat shell commands from this loop as pre-reviewed (skips --trust-config gate).
      * Prefer explicit --trust-config for one-off runs.
      */
@@ -257,6 +267,8 @@ export function mergeLoopConfig(
       | 'pauseAfterIteration'
       | 'injectFailureContext'
       | 'notifyTelegram'
+      | 'hitlOnFailure'
+      | 'requireNotify'
       | 'trustConfig'
       | 'exportRunReport'
       | 'exportTranscript'

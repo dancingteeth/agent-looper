@@ -258,10 +258,19 @@ export {
   shouldSendTelegramNotify,
   shouldAttachTelegramReview,
   describeTelegramSkipReason,
+  preflightTelegramNotify,
+  shouldPreflightTelegram,
+  wantsTelegramFailureNotify,
   TELEGRAM_BOT_TOKEN_ENV,
   TELEGRAM_BOT_TOKEN_FALLBACK_ENV,
   TELEGRAM_CHAT_ID_ENV,
 } from './integrations/telegramNotify.js'
+export type { TelegramPreflightResult } from './integrations/telegramNotify.js'
+
+export {
+  maybeCreateIncompleteLoopHitl,
+  buildLoopFailureHitlDescription,
+} from './integrations/loopFailureVisibility.js'
 
 export {
   loopExtensionFieldsSchema,

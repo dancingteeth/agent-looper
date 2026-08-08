@@ -18,7 +18,12 @@ export const hitlProviderSchema = z.enum([
 
 export type HitlProvider = z.infer<typeof hitlProviderSchema>
 
-export const hitlCheckpointReasonSchema = z.enum(['post_success', 'review_gate'])
+export const hitlCheckpointReasonSchema = z.enum([
+  'post_success',
+  'review_gate',
+  'loop_failure',
+  'notify_failed',
+])
 
 export type HitlCheckpointReason = z.infer<typeof hitlCheckpointReasonSchema>
 

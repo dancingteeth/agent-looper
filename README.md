@@ -18,7 +18,7 @@ New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works,
 | **Worker** | Fresh Cursor / Cline / OpenCode / Pi session each iteration; implements toward `GOAL.md` | — (does the work) |
 | **Verifier** | Shell `verify` / `finalVerify` (exit `0`). Optional `verifyMode: skill` runs a verify agent first (`VERIFY_RESULT: PASS/FAIL`), then shell. | **Yes** — hard gate |
 | **Review** | Post-success LLM quality review → `review.md` (primary judge via `reviewRuntime`, default cursor). Optional `reviewGate` re-opens the fix loop on **gating** findings only. | Only with `reviewGate: true` |
-| **Human** | `reviewGateHitl`, `hitlCheck`, optional Taskwarrior UUID auto-done on success | Closure authority |
+| **Human** | `reviewGateHitl`, `hitlCheck`, `hitlOnFailure`, Telegram (+ HITL fallback if notify fails) | Closure / alerts |
 
 **Review stack** (opt-in unless noted):
 
@@ -128,7 +128,7 @@ Harness maintainers developing this repo itself: build local `dist/` with `pnpm 
 | `clientName` | Cline client label |
 | `telegramNotify` | Optional chat id + onSuccess / onFailure |
 
-Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hitlCheck`, and optional `hitlProvider` / `hitlFileDir` / `hitlCommand` / `hitlLinearTeam`.
+Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hitlCheck`, `hitlOnFailure`, `requireNotify`, and optional `hitlProvider` / `hitlFileDir` / `hitlCommand` / `hitlLinearTeam`.
 
 **Taskwarrior:** use **UUID** in `GOAL.md` and `loop.json` `taskwarriorUuid` — numeric IDs are recycled. On success with `syncOnSuccess`, the harness marks that UUID done.
 
@@ -172,6 +172,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `syncOnSuccess` | `true` | Run repo profile `syncCommand` after success |
 | `notifyTelegram` | `true` | Send completion report when Telegram env + profile are configured |
 | `telegramAttachReview` | `true` | Attach `review.md` as a second Telegram message |
+| `hitlOnFailure` | `false` | Open HITL checkpoint when the loop ends incomplete |
+| `requireNotify` | `false` | Abort if Telegram preflight fails (also `--require-notify`) |
 | `reasoningEffort` | — | Cline: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Cursor ignores. |
 | `escalateReasoningEffort` | — | Cline reasoning ladder ceiling |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
@@ -408,7 +410,7 @@ Optional second message: attach `review.md` as a document. Opt out with `"telegr
 2. Chat id: `AGENT_LOOP_TELEGRAM_CHAT_ID` or `telegramNotify.chatId` in the repo profile
 3. Inject secrets the same way you already run the loop (`doppler run`, direnv, CI secrets, …)
 
-**Opt out:** `"notifyTelegram": false` or `--no-telegram`. Notify is non-blocking.
+**Opt out:** `"notifyTelegram": false` or `--no-telegram`. Notify send failures are non-blocking for exit code, but if Telegram was configured and a **failure** report did not land, the harness opens a HITL checkpoint (`notify_failed`) via `hitlProvider`. Use `--require-notify` / `requireNotify: true` to abort before the loop when `getMe` preflight fails.
 
 ## License
 

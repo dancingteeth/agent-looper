@@ -7,6 +7,9 @@ import {
   sendLoopTelegramReport,
   sendLoopTelegramReviewAttachment,
   describeTelegramSkipReason,
+  preflightTelegramNotify,
+  shouldPreflightTelegram,
+  wantsTelegramFailureNotify,
   TELEGRAM_BOT_TOKEN_ENV,
   TELEGRAM_CHAT_ID_ENV,
 } from './telegramNotify.js'
@@ -205,5 +208,74 @@ describe('sendLoopTelegramReport', () => {
 
     if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
     else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
+  })
+})
+
+describe('preflightTelegramNotify', () => {
+  it('returns ok when getMe succeeds', async () => {
+    const prevToken = process.env[TELEGRAM_BOT_TOKEN_ENV]
+    process.env[TELEGRAM_BOT_TOKEN_ENV] = 'bot-token'
+    const result = await preflightTelegramNotify(baseProfile, async () =>
+      Response.json({ ok: true, result: { username: 'loop_bot' } }),
+    )
+    expect(result).toEqual({ ok: true, botUsername: 'loop_bot' })
+    if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
+    else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
+  })
+
+  it('returns not ok on getMe HTTP error', async () => {
+    const prevToken = process.env[TELEGRAM_BOT_TOKEN_ENV]
+    process.env[TELEGRAM_BOT_TOKEN_ENV] = 'bot-token'
+    const result = await preflightTelegramNotify(baseProfile, async () =>
+      new Response('unauthorized', { status: 401 }),
+    )
+    expect(result.ok).toBe(false)
+    if (result.ok === false) expect(result.detail).toContain('401')
+    if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
+    else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
+  })
+
+  it('shouldPreflightTelegram is true when profile has telegramNotify', () => {
+    expect(shouldPreflightTelegram({ profile: baseProfile, notifyTelegram: true })).toBe(true)
+    expect(shouldPreflightTelegram({ profile: baseProfile, notifyTelegram: false })).toBe(false)
+  })
+
+  it('does not require chat id (token-only getMe)', async () => {
+    const prevToken = process.env[TELEGRAM_BOT_TOKEN_ENV]
+    const prevChat = process.env[TELEGRAM_CHAT_ID_ENV]
+    process.env[TELEGRAM_BOT_TOKEN_ENV] = 'bot-token'
+    delete process.env[TELEGRAM_CHAT_ID_ENV]
+    const noChat = repoProfileSchema.parse({
+      taskwarriorProject: 'dxp',
+      telegramNotify: { onSuccess: true, onFailure: true, attachReview: true },
+      clientName: 'test',
+    })
+    const result = await preflightTelegramNotify(noChat, async () =>
+      Response.json({ ok: true, result: { username: 'loop_bot' } }),
+    )
+    expect(result).toEqual({ ok: true, botUsername: 'loop_bot' })
+    if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
+    else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
+    if (prevChat) process.env[TELEGRAM_CHAT_ID_ENV] = prevChat
+  })
+})
+
+describe('wantsTelegramFailureNotify', () => {
+  it('respects onFailure=false with credentials present', () => {
+    const prevToken = process.env[TELEGRAM_BOT_TOKEN_ENV]
+    process.env[TELEGRAM_BOT_TOKEN_ENV] = 'bot-token'
+    process.env[TELEGRAM_CHAT_ID_ENV] = '123'
+    const profile = repoProfileSchema.parse({
+      telegramNotify: { chatId: '123', onSuccess: true, onFailure: false },
+      clientName: 'test',
+    })
+    expect(wantsTelegramFailureNotify({ profile, notifyTelegram: true })).toBe(false)
+    if (prevToken) process.env[TELEGRAM_BOT_TOKEN_ENV] = prevToken
+    else delete process.env[TELEGRAM_BOT_TOKEN_ENV]
+    delete process.env[TELEGRAM_CHAT_ID_ENV]
+  })
+
+  it('is true when notify intended even if bot token missing', () => {
+    expect(wantsTelegramFailureNotify({ profile: baseProfile, notifyTelegram: true })).toBe(true)
   })
 })

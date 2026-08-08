@@ -227,13 +227,23 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           timeoutHandle.unref?.()
         })
 
-        const result = unwrapData(await Promise.race([promptPromise, timeoutPromise]), 'session.prompt')
+        let result
+        try {
+          result = unwrapData(await Promise.race([promptPromise, timeoutPromise]), 'session.prompt')
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          throw new Error(
+            `OpenCode session.prompt failed (provider=${providerID} model=${options.modelId} session=${sessionId}): ${message}`,
+          )
+        }
 
         if (result.info.error) {
           const errName = result.info.error.name ?? 'Error'
           const errMsg =
             'message' in result.info.error ? String(result.info.error.message) : errName
-          throw new Error(`OpenCode assistant error (${errName}): ${errMsg}`)
+          throw new Error(
+            `OpenCode assistant error (${errName}) (provider=${providerID} model=${options.modelId} session=${sessionId}): ${errMsg}`,
+          )
         }
 
         const text = extractTextFromParts(result.parts)

@@ -6,6 +6,8 @@ Triggers:
 
 - `hitlCheck` in `loop.json` after a **successful** loop (post-verify / post-review)
 - `reviewGateHitl: true` when the review gate **exhausts** cycles (instead of a hard fail only)
+- **Notify fallback:** when the loop ends **incomplete**, Telegram notify was configured, and the failure report did not land → HITL with reason `notify_failed`
+- `hitlOnFailure: true` → HITL on every incomplete run (reason `loop_failure`), even when Telegram succeeded
 
 `taskwarriorUuid` + mark-done on success remains **Taskwarrior-specific** (linked goal task), independent of `hitlProvider`.
 
@@ -20,6 +22,8 @@ Set defaults in `.cursor/agent-loop.repo.json`; optional per-loop overrides in `
 | `hitlCommand` | — | Shell command for `command` provider |
 | `hitlLinearTeam` | — | Linear team **key** (e.g. `ENG`) or team UUID when `hitlProvider` is `linear` |
 | `taskwarriorProject` | — | Required when `hitlProvider` is `taskwarrior` and a HITL checkpoint fires |
+| `hitlOnFailure` | `false` | Open a HITL checkpoint when the loop ends incomplete |
+| `requireNotify` | `false` | Abort before run if Telegram preflight (`getMe`) fails (also `--require-notify`) |
 
 ## Providers
 

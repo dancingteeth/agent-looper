@@ -147,6 +147,77 @@ export async function sendTelegramMessage(input: {
   }
 }
 
+export type TelegramPreflightResult = { ok: true; botUsername?: string } | { ok: false; detail: string }
+
+/**
+ * Lightweight auth check (getMe) when Telegram notify may be used.
+ * Validates the bot token only — chat id is checked at send time.
+ */
+export async function preflightTelegramNotify(
+  _profile: RepoProfile,
+  fetchImpl?: typeof fetch,
+): Promise<TelegramPreflightResult> {
+  const botToken =
+    process.env[TELEGRAM_BOT_TOKEN_ENV]?.trim() ||
+    process.env[TELEGRAM_BOT_TOKEN_FALLBACK_ENV]?.trim()
+  if (!botToken) {
+    return {
+      ok: false,
+      detail: `missing bot token (${TELEGRAM_BOT_TOKEN_ENV} or ${TELEGRAM_BOT_TOKEN_FALLBACK_ENV})`,
+    }
+  }
+
+  const fetchFn = fetchImpl ?? fetch
+  try {
+    const response = await fetchFn(`https://api.telegram.org/bot${botToken}/getMe`)
+    if (!response.ok) {
+      const body = await response.text()
+      return { ok: false, detail: `getMe failed (${response.status}): ${body.slice(0, 200)}` }
+    }
+    const json = (await response.json()) as {
+      ok?: boolean
+      result?: { username?: string }
+      description?: string
+    }
+    if (!json.ok) {
+      return { ok: false, detail: json.description ?? 'getMe returned ok=false' }
+    }
+    return { ok: true, botUsername: json.result?.username }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { ok: false, detail: message }
+  }
+}
+
+/** True when loop/batch asked for Telegram and profile/env look like notify is intended. */
+export function shouldPreflightTelegram(input: {
+  profile: RepoProfile
+  notifyTelegram: boolean
+}): boolean {
+  if (!input.notifyTelegram) return false
+  if (input.profile.telegramNotify) return true
+  if (process.env[TELEGRAM_BOT_TOKEN_ENV]?.trim() || process.env[TELEGRAM_BOT_TOKEN_FALLBACK_ENV]?.trim()) {
+    return true
+  }
+  if (process.env[TELEGRAM_CHAT_ID_ENV]?.trim()) return true
+  return false
+}
+
+/**
+ * Whether a failure-completion Telegram report is desired (structured, not stringly).
+ * Missing credentials still count as "wanted" when notify is on and onFailure is not false.
+ */
+export function wantsTelegramFailureNotify(input: {
+  profile: RepoProfile
+  notifyTelegram: boolean
+}): boolean {
+  if (!input.notifyTelegram) return false
+  const credentials = resolveTelegramCredentials(input.profile)
+  if (credentials) return credentials.onFailure
+  if (!shouldPreflightTelegram(input)) return false
+  return input.profile.telegramNotify?.onFailure !== false
+}
+
 export async function sendTelegramDocument(input: {
   botToken: string
   chatId: string

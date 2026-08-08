@@ -57,6 +57,10 @@ export const loopBatchConfigSchema = z
     notifyTelegram: z.boolean().default(true),
     /** Attach review.md from each loop after the batch summary (when present). */
     telegramAttachReview: z.boolean().default(true),
+    /** Open a HITL checkpoint when the batch ends incomplete. */
+    hitlOnFailure: z.boolean().default(false),
+    /** Abort before the batch if Telegram notify preflight fails. */
+    requireNotify: z.boolean().default(false),
   })
   .superRefine((config, ctx) => {
     const hasLoops = (config.loops?.length ?? 0) > 0
