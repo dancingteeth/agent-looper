@@ -13,19 +13,20 @@ import {
 } from '../loop/loopAgentConfig.js'
 import { bootstrapOpencodeProviderAuth, assertOpencodeProviderAuthReady } from './opencodeAuth.js'
 import { formatErrorChain, isTransportAgentError } from './errorFormat.js'
+import {
+  OPENCODE_SESSION_TIMEOUT_MS,
+  pickLatestAssistantMessage,
+  waitForOpencodeSessionTurn,
+  type OpencodeAgentRunOptions,
+} from './opencodeTurn.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
-import type { StreamCollector } from '../stream/streamCollect.js'
 
-const SESSION_TIMEOUT_MS = 45 * 60 * 1000
-const SERVER_START_TIMEOUT_MS = 30_000
-
-export type OpencodeAgentRunOptions = {
-  verbose?: boolean
-  modelId: string
-  assistantOutput?: 'stdout' | 'none'
-  phase?: 'implement' | 'review' | 'verify'
-  collector?: StreamCollector
-}
+export type { OpencodeAgentRunOptions } from './opencodeTurn.js'
+export {
+  OPENCODE_SESSION_TIMEOUT_MS,
+  OPENCODE_STALL_MS,
+  OPENCODE_HEARTBEAT_MS,
+} from './opencodeTurn.js'
 
 export type OpencodeLoopSession = {
   runPrompt(prompt: string, options: OpencodeAgentRunOptions): Promise<AgentRunResult>
@@ -125,6 +126,21 @@ async function autoApprovePermissions(
   })().catch(() => undefined)
 }
 
+function wrapOpencodePromptError(
+  err: unknown,
+  ctx: { providerID: string; modelId: string; sessionId: string },
+): Error {
+  const chain = formatErrorChain(err)
+  const transportHint =
+    isTransportAgentError(err) || /\[layer=transport\]/i.test(chain)
+      ? ' [layer=transport — provider/TLS/reset or wedged local OpenCode server; not a verifier failure]'
+      : ''
+  return new Error(
+    `OpenCode session.prompt failed (provider=${ctx.providerID} model=${ctx.modelId} session=${ctx.sessionId}): ${chain}${transportHint}`,
+    { cause: err instanceof Error ? err : undefined },
+  )
+}
+
 export async function createOpencodeLoopSession(ctx: RepoContext): Promise<OpencodeLoopSession> {
   await assertPosixShell()
   const systemPrompt = buildLoopSystemPrompt(ctx)
@@ -141,7 +157,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
     const started = await createOpencode({
       hostname: '127.0.0.1',
       port,
-      timeout: SERVER_START_TIMEOUT_MS,
+      timeout: 30_000,
       config: {
         autoupdate: false,
         model: DEFAULT_OPENCODE_GO_LOOP_MODEL,
@@ -201,53 +217,88 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
         `[agent-loop:opencode] provider=${providerID} session_id=${sessionId} model=${options.modelId}`,
       )
 
-      const timeoutMs = SESSION_TIMEOUT_MS
-      let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+      const turnAbort = new AbortController()
       try {
-        const promptPromise = client.session.prompt({
-          path: { id: sessionId },
-          query: { directory },
-          body: {
-            model: { providerID, modelID },
-            system: systemPrompt,
-            parts: [{ type: 'text', text: prompt }],
+        // Subscribe + start the wait loop *before* promptAsync so we cannot miss
+        // early session.idle / message events. promptAsync returns HTTP 204 immediately;
+        // blocking session.prompt used to hold the connection and hit UND_ERR_HEADERS_TIMEOUT.
+        const events = await client.event.subscribe()
+        const turnPromise = waitForOpencodeSessionTurn({
+          sessionId,
+          events: events.stream,
+          timeoutMs: OPENCODE_SESSION_TIMEOUT_MS,
+          signal: turnAbort.signal,
+          onHeartbeat: (elapsedMs, lastEventType) => {
+            console.error(
+              `[agent-loop:opencode] still working session=${sessionId} elapsed=${Math.round(elapsedMs / 1000)}s lastEvent=${lastEventType ?? 'none'}`,
+            )
           },
         })
 
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutHandle = setTimeout(() => {
-            void client.session
-              .abort({ path: { id: sessionId }, query: { directory } })
-              .catch(() => undefined)
-            reject(new Error(`OpenCode session timed out after ${timeoutMs}ms`))
-          }, timeoutMs)
-          timeoutHandle.unref?.()
-        })
-
-        let result
         try {
-          result = unwrapData(await Promise.race([promptPromise, timeoutPromise]), 'session.prompt')
-        } catch (err) {
-          const chain = formatErrorChain(err)
-          const transportHint = isTransportAgentError(err)
-            ? ' [layer=transport — provider/TLS/reset or wedged local OpenCode server; not a verifier failure]'
-            : ''
-          throw new Error(
-            `OpenCode session.prompt failed (provider=${providerID} model=${options.modelId} session=${sessionId}): ${chain}${transportHint}`,
-            { cause: err instanceof Error ? err : undefined },
+          unwrapData(
+            await client.session.promptAsync({
+              path: { id: sessionId },
+              query: { directory },
+              body: {
+                model: { providerID, modelID },
+                system: systemPrompt,
+                parts: [{ type: 'text', text: prompt }],
+              },
+            }),
+            'session.promptAsync',
           )
+        } catch (err) {
+          turnAbort.abort()
+          await turnPromise.catch(() => undefined)
+          throw wrapOpencodePromptError(err, {
+            providerID,
+            modelId: options.modelId,
+            sessionId,
+          })
         }
 
-        if (result.info.error) {
-          const errName = result.info.error.name ?? 'Error'
+        console.error(
+          `[agent-loop:opencode] promptAsync accepted — waiting for session.idle`,
+        )
+
+        const turn = await turnPromise
+
+        if (turn.kind === 'error') {
+          void client.session
+            .abort({ path: { id: sessionId }, query: { directory } })
+            .catch(() => undefined)
+          throw wrapOpencodePromptError(new Error(turn.message), {
+            providerID,
+            modelId: options.modelId,
+            sessionId,
+          })
+        }
+
+        const messages = unwrapData(
+          await client.session.messages({
+            path: { id: sessionId },
+            query: { directory },
+          }),
+          'session.messages',
+        )
+        const assistant = pickLatestAssistantMessage(messages)
+        if (!assistant || assistant.info.role !== 'assistant') {
+          throw new Error('OpenCode session ended without an assistant message')
+        }
+        const assistantInfo = assistant.info
+        if (assistantInfo.error) {
+          const errName = assistantInfo.error.name ?? 'Error'
           const errMsg =
-            'message' in result.info.error ? String(result.info.error.message) : errName
+            'message' in assistantInfo.error
+              ? String(assistantInfo.error.message)
+              : errName
           throw new Error(
             `OpenCode assistant error (${errName}) (provider=${providerID} model=${options.modelId} session=${sessionId}): ${errMsg}`,
           )
         }
 
-        const text = extractTextFromParts(result.parts)
+        const text = extractTextFromParts(assistant.parts)
         if (!text) {
           throw new Error('OpenCode session ended without assistant text')
         }
@@ -256,7 +307,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           process.stdout.write(`${text}\n`)
         }
 
-        const tokens = result.info.tokens
+        const tokens = assistantInfo.tokens
         const usage = createUsageRecord({
           phase,
           runtime: LOOP_RUNTIME_OPENCODE,
@@ -265,7 +316,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           outputTokens: tokens?.output ?? 0,
           cacheReadTokens: tokens?.cache?.read ?? 0,
           cacheWriteTokens: tokens?.cache?.write ?? 0,
-          providerCostUsd: result.info.cost,
+          providerCostUsd: assistantInfo.cost,
         })
         console.error(
           `[agent-loop:opencode] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
@@ -280,7 +331,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           transcriptEvents: options.collector?.events,
         }
       } finally {
-        if (timeoutHandle) clearTimeout(timeoutHandle)
+        turnAbort.abort()
         await client.session.abort({ path: { id: sessionId }, query: { directory } }).catch(() => undefined)
         await client.session.delete({ path: { id: sessionId }, query: { directory } }).catch(() => undefined)
       }

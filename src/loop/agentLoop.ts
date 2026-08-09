@@ -137,7 +137,7 @@ const TRANSIENT_AGENT_ERROR_PATTERN =
 
 export function isTransientAgentError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err)
-  return TRANSIENT_AGENT_ERROR_PATTERN.test(message)
+  return TRANSIENT_AGENT_ERROR_PATTERN.test(message) || isTransportAgentError(err)
 }
 
 async function runIterationWithRetry(

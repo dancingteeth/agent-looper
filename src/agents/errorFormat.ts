@@ -57,7 +57,7 @@ export function formatErrorChain(err: unknown, maxDepth = 6): string {
 
 /** Provider/transport failures (vs auth, validation, or long agent timeouts). */
 const TRANSPORT_ERROR_PATTERN =
-  /\bfetch failed\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|\bUND_ERR_|\bECONNREFUSED\b|\bENOTFOUND\b|\bCERT_|\bSSL\b/i
+  /\bfetch failed\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|\bUND_ERR_|\bECONNREFUSED\b|\bENOTFOUND\b|\bCERT_|\bSSL\b|\[layer=transport\]|\bstalled after\b/i
 
 export function isTransportErrorMessage(message: string): boolean {
   return TRANSPORT_ERROR_PATTERN.test(message)

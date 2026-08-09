@@ -65,23 +65,27 @@ export OPENROUTER_API_KEY=…   # and/or OPENCODE_API_KEY for Go
 agent-check opencode
 ```
 
-## Transport failures (`fetch failed`)
+## Transport failures (`fetch failed` / hang)
 
-If iteration 1 dies with `OpenCode session.prompt failed …: fetch failed` **before** verify runs:
+If iteration 1 dies with `OpenCode session.prompt failed …: fetch failed` **or** appears to hang after `session_id=…`:
 
 | Symptom | Meaning |
 | --- | --- |
-| Local server started, `session.create` OK, `session.prompt` fails | Provider/TLS/reset or wedged OpenCode process — **not** a bad GOAL/verify |
+| Local server started, `session.create` OK, then silence | Worker is waiting on the Go provider (normal until heartbeat/stall) |
+| `UND_ERR_HEADERS_TIMEOUT` on old releases | Blocking `session.prompt` held one HTTP call for the whole turn |
 | Empty `log.ndjson`, no token usage | No successful model round-trip |
-| Short OpenCode prompts (meta-review) still work | Long implement prompts to Go can flake independently |
 
-Harness behavior (0.1.9+):
+Harness behavior (0.1.10+):
 
-1. Error messages include the `Error.cause` chain (`code` / `errno` / `syscall` when present) plus `[layer=transport]`
-2. Transient retries **recycle the local OpenCode server** (not only `session.create`) before the next attempt
-3. `failure-domains.ndjson` fingerprints `agent_error|transport|…` with a suggestion that this is pre-verify transport
+1. Uses **`session.promptAsync`** + waits for **`session.idle`** (HTTP returns immediately; no undici headers timeout on a 45‑minute turn)
+2. **Heartbeat** every ~30s: `still working session=… elapsed=…s lastEvent=…`
+3. **Stall watchdog** (~3 min with no events) → transport error + local server recycle on retry
+4. Error messages include the `Error.cause` chain plus `[layer=transport]`
+5. `failure-domains.ndjson` fingerprints `agent_error|transport|…`
 
-If all retries still fail: check Go gateway / network, try `escalateModel` or a BYOK slug, re-run later. Product salvage outside the harness is expected when the worker never starts.
+Cloud poll tip: match `EXIT:` / `finished complete=` / `Verifier passed` — **not** `layer=transport` (that’s a retry, not done).
+
+If all retries still stall: check Go gateway / network, try `escalateModel` or a BYOK slug, re-run later.
 
 ## See also
 
