@@ -75,17 +75,18 @@ If iteration 1 dies with `OpenCode session.prompt failed …: fetch failed` **or
 | `UND_ERR_HEADERS_TIMEOUT` on old releases | Blocking `session.prompt` held one HTTP call for the whole turn |
 | Empty `log.ndjson`, no token usage | No successful model round-trip |
 
-Harness behavior (0.1.10+):
+Harness behavior (0.1.11+):
 
 1. Uses **`session.promptAsync`** + waits for **`session.idle`** (HTTP returns immediately; no undici headers timeout on a 45‑minute turn)
-2. **Heartbeat** every ~30s: `still working session=… elapsed=…s lastEvent=…`
-3. **Stall watchdog** (~3 min with no events) → transport error + local server recycle on retry
-4. Error messages include the `Error.cause` chain plus `[layer=transport]`
-5. `failure-domains.ndjson` fingerprints `agent_error|transport|…`
+2. **Heartbeat** every ~30s: `still working session=… elapsed=…s phase=awaiting_first_byte|in_turn …`
+3. **TTFB stall** (~3 min with **no session-scoped events yet**) → transport error + local server recycle. After the turn is alive (`session.status` / messages), long quiet tools are allowed until the **45m** overall timeout — stall does **not** re-arm mid-turn
+4. Sid-less SSE noise is ignored for activity; sid-less `session.idle` is accepted for the single waiter
+5. Error messages include the `Error.cause` chain plus `[layer=transport]`
+6. `failure-domains.ndjson` fingerprints `agent_error|transport|…`
 
 Cloud poll tip: match `EXIT:` / `finished complete=` / `Verifier passed` — **not** `layer=transport` (that’s a retry, not done).
 
-If all retries still stall: check Go gateway / network, try `escalateModel` or a BYOK slug, re-run later.
+If all retries still stall at TTFB: check Go gateway / network, try `escalateModel` or a BYOK slug, re-run later.
 
 ## See also
 

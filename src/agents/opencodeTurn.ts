@@ -3,7 +3,11 @@ import type { StreamCollector } from '../stream/streamCollect.js'
 /** Overall implement/review turn cap (tools + model). */
 export const OPENCODE_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 
-/** No session events after this → treat as provider/transport stall. */
+/**
+ * Time-to-first-byte / first session-scoped event.
+ * Only armed before any activity for this session — long quiet tool runs must
+ * not trip this (they rely on OPENCODE_SESSION_TIMEOUT_MS instead).
+ */
 export const OPENCODE_STALL_MS = 3 * 60 * 1000
 
 /** Stderr heartbeat while waiting on promptAsync → session.idle. */
@@ -26,10 +30,28 @@ export type WaitOpencodeTurnResult =
   | { kind: 'idle' }
   | { kind: 'error'; message: string }
 
+export function resolveOpencodeEventSessionId(
+  event: OpencodeEvent,
+): string | undefined {
+  const props = event.properties ?? {}
+  if (typeof props.sessionID === 'string') return props.sessionID
+  if (typeof props.sessionId === 'string') return props.sessionId
+  const info = props.info as { sessionID?: string; sessionId?: string } | undefined
+  if (typeof info?.sessionID === 'string') return info.sessionID
+  if (typeof info?.sessionId === 'string') return info.sessionId
+  return undefined
+}
+
+function sessionStatusIsBusy(status: unknown): boolean {
+  if (!status || typeof status !== 'object') return false
+  const type = (status as { type?: unknown }).type
+  return type === 'busy' || type === 'retry'
+}
+
 /**
  * Wait for session.idle / session.error after promptAsync.
- * Heartbeats keep cloud polls honest; stallMs fails fast when the provider
- * never starts streaming (the old blocking session.prompt hit UND_ERR_HEADERS_TIMEOUT).
+ * Heartbeats keep cloud polls honest. Stall only covers TTFB (no session-scoped
+ * events yet) — once the turn is busy, only the overall timeout applies.
  */
 export async function waitForOpencodeSessionTurn(input: {
   sessionId: string
@@ -38,7 +60,12 @@ export async function waitForOpencodeSessionTurn(input: {
   stallMs?: number
   heartbeatMs?: number
   now?: () => number
-  onHeartbeat?: (elapsedMs: number, lastEventType: string | undefined) => void
+  onHeartbeat?: (info: {
+    elapsedMs: number
+    lastEventType: string | undefined
+    phase: 'awaiting_first_byte' | 'in_turn'
+    busy: boolean
+  }) => void
   signal?: AbortSignal
 }): Promise<WaitOpencodeTurnResult> {
   const timeoutMs = input.timeoutMs ?? OPENCODE_SESSION_TIMEOUT_MS
@@ -49,22 +76,31 @@ export async function waitForOpencodeSessionTurn(input: {
   const startedAt = now()
   let lastEventAt = startedAt
   let lastEventType: string | undefined
+  let seenSessionActivity = false
+  let busy = false
   let heartbeatHandle: ReturnType<typeof setInterval> | undefined
   let stallHandle: ReturnType<typeof setTimeout> | undefined
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined
 
+  const clearStall = () => {
+    if (stallHandle) {
+      clearTimeout(stallHandle)
+      stallHandle = undefined
+    }
+  }
+
   const clearTimers = () => {
     if (heartbeatHandle) clearInterval(heartbeatHandle)
-    if (stallHandle) clearTimeout(stallHandle)
+    clearStall()
     if (timeoutHandle) clearTimeout(timeoutHandle)
   }
 
-  const armStall = (resolve: (value: WaitOpencodeTurnResult) => void) => {
-    if (stallHandle) clearTimeout(stallHandle)
+  const armTtfbStall = (resolve: (value: WaitOpencodeTurnResult) => void) => {
+    clearStall()
     stallHandle = setTimeout(() => {
       resolve({
         kind: 'error',
-        message: `OpenCode session stalled after ${stallMs}ms with no events (last=${lastEventType ?? 'none'}) [layer=transport]`,
+        message: `OpenCode session stalled after ${stallMs}ms waiting for first session event (TTFB) [layer=transport]`,
       })
     }, stallMs)
     stallHandle.unref?.()
@@ -97,39 +133,54 @@ export async function waitForOpencodeSessionTurn(input: {
     timeoutHandle.unref?.()
 
     heartbeatHandle = setInterval(() => {
-      input.onHeartbeat?.(now() - startedAt, lastEventType)
+      input.onHeartbeat?.({
+        elapsedMs: now() - startedAt,
+        lastEventType,
+        phase: seenSessionActivity ? 'in_turn' : 'awaiting_first_byte',
+        busy,
+      })
     }, heartbeatMs)
     heartbeatHandle.unref?.()
 
-    armStall(finish)
+    // Stall only until the provider/session shows life.
+    armTtfbStall(finish)
 
     ;(async () => {
       try {
         for await (const event of input.events) {
           if (settled) break
-          const props = event.properties ?? {}
-          const eventSessionId =
-            typeof props.sessionID === 'string'
-              ? props.sessionID
-              : typeof props.sessionId === 'string'
-                ? props.sessionId
-                : undefined
 
-          // message.updated carries info.sessionID
-          const info = props.info as { sessionID?: string } | undefined
-          const fromInfo = info?.sessionID
-          const sid = eventSessionId ?? fromInfo
+          const sid = resolveOpencodeEventSessionId(event)
+          // Sid-less noise must not count as activity (except terminal idle/error below).
+          const isTerminal =
+            event.type === 'session.idle' || event.type === 'session.error'
+          if (!sid && !isTerminal) continue
           if (sid && sid !== input.sessionId) continue
 
+          const props = event.properties ?? {}
           lastEventAt = now()
           lastEventType = event.type
-          armStall(finish)
 
-          if (event.type === 'session.idle' && sid === input.sessionId) {
-            finish({ kind: 'idle' })
-            break
+          if (!seenSessionActivity) {
+            seenSessionActivity = true
+            clearStall()
           }
+
+          if (event.type === 'session.status') {
+            busy = sessionStatusIsBusy(props.status)
+          }
+
+          if (event.type === 'session.idle') {
+            // Accept idle for our sid, or sid-less idle (single waiter).
+            if (!sid || sid === input.sessionId) {
+              finish({ kind: 'idle' })
+              break
+            }
+            continue
+          }
+
           if (event.type === 'session.error') {
+            if (sid && sid !== input.sessionId) continue
             const err = props.error as { name?: string; message?: string } | undefined
             const errName = err?.name ?? 'Error'
             const errMsg = err?.message ? String(err.message) : errName

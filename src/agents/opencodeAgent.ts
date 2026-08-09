@@ -228,9 +228,9 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           events: events.stream,
           timeoutMs: OPENCODE_SESSION_TIMEOUT_MS,
           signal: turnAbort.signal,
-          onHeartbeat: (elapsedMs, lastEventType) => {
+          onHeartbeat: ({ elapsedMs, lastEventType, phase, busy }) => {
             console.error(
-              `[agent-loop:opencode] still working session=${sessionId} elapsed=${Math.round(elapsedMs / 1000)}s lastEvent=${lastEventType ?? 'none'}`,
+              `[agent-loop:opencode] still working session=${sessionId} elapsed=${Math.round(elapsedMs / 1000)}s phase=${phase}${busy ? ' busy' : ''} lastEvent=${lastEventType ?? 'none'}`,
             )
           },
         })
