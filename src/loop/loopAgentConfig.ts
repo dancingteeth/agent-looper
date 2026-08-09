@@ -51,8 +51,8 @@ export const DEFAULT_CLINE_PASS_ESCALATE_MODEL: ClinePassLoopModel = 'cline-pass
 
 /** Default OpenRouter-style id for Cline credits (usage-billing). https://docs.cline.bot/api/models */
 export const DEFAULT_CLINE_CREDITS_LOOP_MODEL = 'deepseek/deepseek-chat'
-/** Mid-tier escalate recommendation for credits (cheaper than Sonnet for loop cost discipline). */
-export const DEFAULT_CLINE_CREDITS_ESCALATE_MODEL = 'google/gemini-2.5-pro'
+/** Mid-tier escalate recommendation for credits (Qwen coder — avoid Gemini in the default stack). */
+export const DEFAULT_CLINE_CREDITS_ESCALATE_MODEL = 'qwen/qwen3-coder-plus'
 
 /**
  * OpenCode Go curated slugs — https://opencode.ai/docs/go/
@@ -80,7 +80,7 @@ export const DEFAULT_OPENCODE_GO_ESCALATE_MODEL: OpencodeGoLoopModel = 'opencode
 
 /** Default Pi worker — OpenRouter DeepSeek (same shape as Cline credits). */
 export const DEFAULT_PI_LOOP_MODEL = 'openrouter/deepseek/deepseek-chat'
-export const DEFAULT_PI_ESCALATE_MODEL = 'openrouter/google/gemini-2.5-flash'
+export const DEFAULT_PI_ESCALATE_MODEL = 'openrouter/qwen/qwen3-coder-plus'
 
 /** OpenRouter-style `provider/model` (Cline usage-billing / API). */
 const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/

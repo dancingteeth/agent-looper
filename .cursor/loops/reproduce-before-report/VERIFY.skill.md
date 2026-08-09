@@ -1,6 +1,6 @@
 ---
 name: loop-verify-reproduce-before-report
-description: Verify M2 reproduce-before-report phase 2a for agent-loop dogfood.
+description: Verify M2 reproduce-before-report phase 2a for Agent Looper dogfood.
 ---
 
 # Verify — reproduce-before-report

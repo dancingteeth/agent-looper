@@ -3,7 +3,7 @@ tags:
   - documentation
   - agents
 ---
-# AGENTS.md — agent-loop (harness)
+# AGENTS.md — Agent Looper (harness)
 
 Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 
@@ -11,7 +11,7 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 
 - Prefer small, test-backed changes. Run focused vitest paths before broadening.
 - Do not edit `GOAL.md` mid-loop.
-- Taskwarrior: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`), never numeric ID alone.
+- Taskwarrior: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`) when linking a TW goal task — never numeric ID alone.
 - Cursor-only dogfood: worker `composer-2.5`, judge `grok-4.5` via `reviewModel` (default `reviewRuntime: cursor`).
 - Optional peers: `@cursor/sdk` required for cursor runtime; `@cline/sdk` only for Cline paths; `@opencode-ai/sdk` + `opencode-ai` CLI for OpenCode; `@earendil-works/pi-coding-agent` for `runtime: pi` (all dynamic import / PATH). Primary judge can use any of those via `reviewRuntime`.
 - **Prompt diet on model bumps:** when upgrading worker/judge models, *delete* deterministic instructions from `AGENTS.md`, skills, and loop prompts before adding new ones. Stronger models need fewer hard rules (Claude Code cut ~80% of system prompt for this reason). Same for `REVIEWS.md` Project-specific laws: retire ones the worker stops failing.
@@ -23,7 +23,7 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 
 - `src/loop/` — harness orchestration
 - `src/review/` — quality review, verdicts, prompts (incl. multi-runtime `reviewAgentRun`)
-- `src/agents/` — Cursor / Cline / OpenCode / Pi runners
+- `src/agents/` — agent SDK runners (one module per `runtime`)
 - `src/plugins/` — Agent Plugins skills-only loader
 - `plugins/agent-looper/` — Cursor marketplace companion (skills / rules / commands)
 - `templates/` — init scaffolds

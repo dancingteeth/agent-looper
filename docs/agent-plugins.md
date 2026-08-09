@@ -11,7 +11,7 @@ Agent Looper implements a **skills-only** [Agent Plugins](https://agent-plugins.
 - Loads a plugin directory with root `plugin.json`
 - Validates the **1.0.0** manifest locally (`$schema` must be the canonical id — never fetched)
 - Discovers immediate `skills/*/SKILL.md` entries and inlines them into worker prompts
-- Ignores `mcp.json` — MCP stays with the worker runtime (Cursor / Cline / OpenCode / Pi)
+- Ignores `mcp.json` — MCP stays with the worker agent SDK (`runtime`)
 
 Conformance: a client must support **skills or MCP**; skills alone is enough.
 

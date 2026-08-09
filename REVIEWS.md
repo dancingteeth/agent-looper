@@ -3,7 +3,7 @@ tags:
   - documentation
   - reviews
 ---
-# REVIEWS.md — agent-loop
+# REVIEWS.md — Agent Looper
 
 Portable overlay for this dogfood repo. Keep short — inlined into quality-review prompts.
 
@@ -38,7 +38,7 @@ Compressed from UCR — Lite only in the gate:
 2b. **Always** — open cited callee before gating blockers; live path or
    `[latent_contract]`
 2c. **Call-edge Lite** — shared helpers only (below)
-3. **Operational laws** — Taskwarrior UUID below
+3. **Operational laws** — linked-task UUID (when used) below
 4. **Structure** — code judo
 5. **Verdict** — PASS | ADVISORY | BLOCKERS
 
@@ -95,5 +95,9 @@ If the changed-files set is empty, the filter is skipped (blockers stay gating).
 
 ## Task traceability
 
-- Cite Taskwarrior **UUID** in GOAL / `taskwarriorUuid` / commits — never numeric ID alone.
+When this repo links a Taskwarrior (or similar) goal task:
+
+- Cite **UUID** in GOAL / `taskwarriorUuid` / commits — never numeric ID alone.
 - Gaps without UUID on non-trivial agent work → **ADVISORY** unless elevated here.
+
+HITL checkpoints are separate (`hitlProvider` — see `docs/hitl-providers.md`); do not assume Taskwarrior.

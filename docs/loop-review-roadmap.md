@@ -30,7 +30,7 @@ Research context and citations live in the patterns doc. This file is the
 | Failure domain logging | `failure-domains.ndjson` |
 | Meta-loop inject hook | `injectFailureContext` |
 
-Open Taskwarrior project: **`agent-loop`**. Use **UUID** in docs and `loop.json`
+Open Taskwarrior project for **Agent Looper** (slug **`agent-loop`**). Use **UUID** in docs and `loop.json`
 (numeric IDs are recycled). Related consumer experiment: `loops` task
 `314` / UUID from your sync (Maxin meta-loop smoke).
 
@@ -44,7 +44,7 @@ Open Taskwarrior project: **`agent-loop`**. Use **UUID** in docs and `loop.json`
 | M4 | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | Verification-as-skill |
 | M5 | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | Cross-loop meta-review CLI |
 
-Other `agent-loop` backlog: `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` (extract review-gate) — **done**,
+Other Agent Looper backlog: `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` (extract review-gate) — **done**,
 `de4144f2-9e6a-4cf6-8943-81efc49d4c5c` (loopRisk profiles) — **shipped**,
 `f3280589-70a0-463e-a472-6feccb622a70` (pricing drift check) — **shipped**,
 `a774c5d7-5900-4d87-9092-dd0e8ba1cc38` (`--trust-config`) — **shipped**.
@@ -164,7 +164,7 @@ shares confabulation bias with the original reviewer.
 
 **Phase 2b — independent verify agent:**
 
-- Fresh Cursor (or later Cline) session with **no** prior review transcript.
+- Fresh agent SDK session (`reviewRuntime`) with **no** prior review transcript.
 - Prompt: “Reproduce only these candidate blockers; cite evidence or DROP.”
 - Non-reproducing candidates dropped silently (AgentPatterns).
 
@@ -316,15 +316,15 @@ adversarial judge (patterns doc §8). Consumer spike already tracked as
 
 | Area | Work |
 | --- | --- |
-| CLI | `agent-loop meta-review <batch-or-glob>` |
+| CLI | `agent-loop-meta-review <batch-or-glob>` |
 | Config | `loop-batch.json` / meta profile |
 | Prompt | Bounded residual only — see [`meta-review-prompt.md`](./meta-review-prompt.md) |
-| HITL | Open tasks into `taskwarriorProject` for human closure |
+| HITL | Optional checkpoints for human closure (`hitlProvider` — Taskwarrior, file, GitHub, Linear, command, …) |
 
 ### Acceptance criteria
 
 - [x] Reads N completed loop artifacts without re-running implement workers.
-- [x] Emits a single report + optional Taskwarrior tasks.
+- [x] Emits a single report + optional HITL follow-ups (`--hitl`).
 - [x] Explicitly does not flip per-loop `complete` flags.
 
 ### Depends on
@@ -364,7 +364,7 @@ PR that lands #1.
 ### M6–M8 context (2026-07 competitive session)
 
 Industry converged on goal + loop + judge (Claude Code `/goal`, Mastra Factory/Goals,
-Kilo self-test, Strands steering, Cursor Router). agent-loop’s **non-negotiable wedge**:
+Kilo self-test, Strands steering, Cursor Router). Agent Looper’s **non-negotiable wedge**:
 shell exit `0` + fresh context per iteration — not LLM-as-sole-exit, not thread memory,
 not issue→prod factory UI.
 

@@ -20,7 +20,7 @@ this harness does **not** yet expose:
    `auto-balance`) without breaking dogfood pinning.
 2. A **routed model id** on the run result (which underlying model actually ran).
 
-Without (2), Auto is unsafe for agent-loop: `failure-domains.ndjson`, usage
+Without (2), Auto is unsafe for Agent Looper: `failure-domains.ndjson`, usage
 estimates, and reviewGate forensics would lose which model produced the work.
 
 ## Dogfood default (unchanged)

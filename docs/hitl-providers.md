@@ -1,6 +1,8 @@
 # HITL checkpoint providers
 
-Human-in-the-loop (HITL) checkpoints are **create-only** and **non-blocking**: the harness tries to open a durable record for a human, logs a warning on failure, and continues. The opaque id returned (when any) is stored as `hitlCheckTaskUuid` on loop results — it may be a Taskwarrior UUID, file path, GitHub issue URL, Linear issue URL, or command stdout.
+Human-in-the-loop (HITL) checkpoints are **create-only** and **non-blocking**: the harness tries to open a durable record for a human, logs a warning on failure, and continues. The opaque id returned (when any) is stored as `hitlCheckTaskUuid` on loop results — e.g. a Taskwarrior UUID, file path, GitHub/Linear issue URL, or `command` stdout.
+
+**Taskwarrior is the default `hitlProvider`.** Prefer `file`, `github`, `linear`, or `command` when you do not run TW. Completion alerts (Telegram, webhook, PR comment, `notifyCommand`) are separate — see below.
 
 Triggers:
 
@@ -29,7 +31,7 @@ Set defaults in `.cursor/agent-loop.repo.json`; optional per-loop overrides in `
 
 ### `taskwarrior` (default)
 
-Same behavior as before: `task add` with `+hitl` and `+manual` tags. Requires resolvable `taskwarriorProject`.
+Example / legacy default: `task add` with `+hitl` and `+manual` tags. Requires resolvable `taskwarriorProject`. Switch `hitlProvider` if you do not use Taskwarrior.
 
 ### `file`
 
@@ -81,12 +83,14 @@ Example:
 
 ## Completion notify without Telegram (`notifyCommand` / webhook / PR)
 
-Optional shell in `.cursor/agent-loop.repo.json` or per-loop / per-batch `notifyCommand`. Runs on every CLI exit with `LOOP_*` env. Non-blocking; shell-trust gated.
-
-Prefer for Cloud Agents:
+Completion **alerts** are not HITL checkpoints. Prefer for Cloud Agents / CI:
 
 - **`notifyWebhook`** + `AGENT_LOOP_NOTIFY_WEBHOOK_URL` (JSON POST)
-- **`notifyPrComment: true`** — comments on the open PR after the loop
+- **`notifyPrComment: true`** — `gh pr comment` on the open PR after the loop
+- **`notifyCommand`** — optional shell with `LOOP_*` env (non-blocking; shell-trust gated)
+- **Telegram** — still supported; failure to deliver can open HITL (`notify_failed`)
+
+Optional shell in `.cursor/agent-loop.repo.json` or per-loop / per-batch `notifyCommand`. Runs on every CLI exit with `LOOP_*` env.
 
 ## Export packs
 

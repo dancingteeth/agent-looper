@@ -28,9 +28,9 @@ with these invariants:
 4. **Failure is observable.** Every iteration leaves a structured log line in
    `log.ndjson`. Stagnation, model exhaustion, and review-gate failures are written to
    `failure-domains.ndjson`.
-5. **Human-in-the-loop (HITL) is optional but built-in.** Taskwarrior integration and
-   `--pause-after-iteration` let a human watch, gate, or intervene without breaking the
-   loop contract.
+5. **Human-in-the-loop (HITL) is optional but built-in.** Checkpoints, pause modes, and
+   notify fallbacks let a human watch, gate, or intervene without breaking the loop
+   contract (providers and triggers: [`docs/hitl-providers.md`](./docs/hitl-providers.md)).
 
 ---
 
@@ -42,8 +42,8 @@ with these invariants:
 │                                                                 │
 │  ┌─────────┐   ┌──────────────┐   ┌───────────┐   ┌─────────┐ │
 │  │ GOAL.md │──▶│ Prompt build │──▶│ Agent SDK │──▶│ Verify  │ │
-│  │ loop.json│   │ (per iter)   │   │ (cursor/  │   │ shell   │ │
-│  │ git snap│   │              │   │  cline)   │   │ cmd     │ │
+│  │ loop.json│   │ (per iter)   │   │           │   │ shell   │ │
+│  │ git snap│   │              │   │           │   │ cmd     │ │
 │  │ prior   │   │              │   │           │   │         │ │
 │  │ failures│   │              │   │           │   │         │ │
 │  └─────────┘   └──────────────┘   └───────────┘   └────┬────┘ │
@@ -140,12 +140,13 @@ iteration count, not by identical-failure signature, so it climbs reliably even 
 effort changes the agent's approach. Cursor loops are pinned to `composer-2.5` and ignore
 `reasoningEffort`.
 
-**Step 5 — Agent run:** The prompt is sent to the agent SDK. ClinePass reports token
-usage via `getAccumulatedUsage()`; Cursor SDK does not expose per-run token data yet.
+**Step 5 — Agent run:** The prompt is sent to the configured agent SDK (`runtime` /
+`reviewRuntime`). Token and cost reporting vary by provider (e.g. ClinePass via
+`getAccumulatedUsage()`; Cursor may not expose per-run token data).
 
 **Step 6 — Inner agent status:** `resolveInnerAgentStatus(text, runtime)` detects
-whether the inner Cline session hit its 25-iteration cap. When it does, the outer loop
-continues — the verifier is the final judge.
+provider-specific inner-loop exhaustion (e.g. Cline’s session iteration cap). When
+that fires, the outer harness continues — the verifier is still the final judge.
 
 **Step 7 — Verifier:** `runVerifyCommand()` runs via `spawnSync` with `shell: true`.
 Exit code 0 = pass. Output truncated at 64KB.
@@ -167,7 +168,8 @@ Otherwise: loop.
 If review runs: check review gate. If gate blocks: inject blockers into next prompt,
 restart (up to `maxReviewCycles`). Otherwise: success. Preview: `agent-loop-review-preview`.
 
-**Step 10 — Success cleanup:** Mark TW task done, create HITL task, run `syncCommand`.
+**Step 10 — Success cleanup:** Optional linked-task completion (e.g. Taskwarrior
+`done`), HITL checkpoint via `hitlProvider`, then `syncCommand`.
 
 **Step 10b — Run report (default on):** When `exportRunReport` is true, write
 `run-report.md` (human timeline: models, verify, session IDs, tool counts, review summary).

@@ -1,6 +1,6 @@
 ---
 name: loop-verify
-description: Run the measurable verification checklist for an agent-loop task. Use when implementing or fixing work under .cursor/loops/ and before declaring the loop complete. Never hand back partially verified work.
+description: Run the measurable verification checklist for an Agent Looper task. Use when implementing or fixing work under .cursor/loops/ and before declaring the loop complete. Never hand back partially verified work.
 ---
 
 # Loop verification skill
@@ -55,7 +55,7 @@ pnpm exec tsc --noEmit
 
 ### Step 4 — Run the loop verifier
 
-From the **repository root** (same cwd agent-loop uses):
+From the **repository root** (same cwd Agent Looper uses):
 
 ```bash
 bash .cursor/loops/<loop-name>/verify.sh

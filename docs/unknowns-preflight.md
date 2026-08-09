@@ -50,7 +50,7 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
 
 ## Relation to meta-loop
 
-`agent-loop` meta probe→fix injects `failure-context.md` *after* a probe fails.
+Agent Looper meta probe→fix injects `failure-context.md` *after* a probe fails.
 Unknowns preflight is the *before* cousin: cheaper to discover Whisper/verify edge
 cases up front than thrash iterations.
 

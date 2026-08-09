@@ -119,7 +119,7 @@ describe('loopConfigSchema', () => {
       verify: 'true',
       runtime: 'cline',
       model: 'minimax/minimax-m2.5',
-      escalateModel: 'google/gemini-2.5-pro',
+      escalateModel: 'qwen/qwen3-coder-plus',
     })
     expect(resolveLoopAgent(parsed).model).toBe('minimax/minimax-m2.5')
   })

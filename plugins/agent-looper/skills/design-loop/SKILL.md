@@ -3,7 +3,7 @@ name: design-loop
 description: >-
   Design a measurable Agent Looper cycle — frozen GOAL.md, verify.sh finish line,
   unknowns preflight, and scope limits. Use when creating or tightening a loop
-  before running agent-loop.
+  before running Agent Looper.
 ---
 
 # Design a loop
@@ -31,7 +31,8 @@ Agent Looper owns the grind; the human (or this chat) owns the finish line.
 - One clear **Goal** paragraph with canonical paths
 - **Acceptance criteria** tied to the verifier (not agent self-assessment)
 - **Constraints** + **Out of scope**
-- Taskwarrior **UUID** (never numeric ID alone) when HITL is used
+- HITL via `hitlProvider` when humans must close residual work ([`docs/hitl-providers.md`](https://github.com/dancingteeth/agent-looper/blob/main/docs/hitl-providers.md))
+- Taskwarrior **UUID** (never numeric ID alone) only when linking a TW goal task
 
 ## verify.sh must be measurable
 

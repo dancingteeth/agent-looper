@@ -1,6 +1,6 @@
 ---
 name: loop-verify-post-success-review
-description: Verify extract post-success review refactor for agent-loop.
+description: Verify extract post-success review refactor for Agent Looper.
 ---
 
 # Verify — post-success-review extract

@@ -26,7 +26,7 @@ Auth also lives in `~/.pi/agent/auth.json` after `pi` /connect.
 | Field | Default |
 | --- | --- |
 | `model` | `openrouter/deepseek/deepseek-chat` |
-| `escalateModel` | `openrouter/google/gemini-2.5-flash` |
+| `escalateModel` | `openrouter/qwen/qwen3-coder-plus` |
 
 Use `provider/model` ids from Pi’s catalog (`getModel` / pi TUI). **Do not** use `opencode-go/*` on this runtime — use `runtime: opencode` for OpenCode Go.
 

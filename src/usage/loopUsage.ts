@@ -38,8 +38,8 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'cline-pass/qwen3.7-max': { input: 0.25, output: 0.5 },
   'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
   'openrouter/deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
-  'google/gemini-2.5-pro': { input: 1.25, output: 5.0 },
-  'openrouter/google/gemini-2.5-flash': { input: 0.1, output: 0.4 },
+  'qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
+  'openrouter/qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
   // OpenCode Go — rates from https://opencode.ai/docs/go/ (subscription quota; estimates for costUsd)
   'opencode-go/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'opencode-go/mimo-v2.5': { input: 0.14, output: 0.28 },

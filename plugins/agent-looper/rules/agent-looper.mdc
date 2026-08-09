@@ -7,7 +7,7 @@ alwaysApply: false
 
 - Prefer small, test-backed changes. Measurable `verify.sh` is the finish line — not agent self-assessment.
 - Do not edit `GOAL.md` mid-loop. Design → freeze → run.
-- Taskwarrior: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`), never numeric ID alone.
+- When linking a Taskwarrior goal: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`), never numeric ID alone. HITL checkpoints use `hitlProvider` (TW is only one option).
 - `AGENTS.md` = worker runtime; `REVIEWS.md` = judge standard — do not conflate.
 - Prompt diet on model bumps: delete deterministic instructions workers stop failing before adding new ones.
 - Harness package is `@dancingteeth/agent-looper` (npm); GitHub repo is `dancingteeth/agent-looper`.

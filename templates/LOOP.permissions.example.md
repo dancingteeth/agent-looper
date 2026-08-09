@@ -22,7 +22,7 @@ for anything outside the frozen goal.
 | MCP / extra tools | **Deny** (opt-in per loop) | Name each server/tool if enabled |
 | Browser / computer-use | **Deny** | Opt-in via `RUN_UI=1` + computer-use GOAL |
 | `reviewGate` | Off unless risk warrants | Residual *quality* only — not a sandbox |
-| HITL (`reviewGateHitl` / Taskwarrior) | Off | When gate exhaust needs a human |
+| HITL (`reviewGateHitl` / `hitlProvider`) | Off | When gate exhaust needs a human |
 | Secrets / `.env` / credentials | **Deny** read+write | Secret manager / ephemeral tokens; never leave persistent secrets in the agent env |
 
 ## External / tool default-deny

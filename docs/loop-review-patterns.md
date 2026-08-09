@@ -5,7 +5,7 @@ tags:
 ---
 # Loop Review Patterns to Steal
 
-Patterns from how mainstream agent-loop / coding-agent frameworks handle review
+Patterns from how mainstream Agent Looper / coding-agent frameworks handle review
 gates, false-positive blockers, human-in-the-loop (HITL), and meta-loops — as of
 2026. Grounded in OpenHands, VNX (Codex+Gemini), Anthropic managed Code Review,
 AgentPatterns, and the "Specification as Quality Gate" paper.

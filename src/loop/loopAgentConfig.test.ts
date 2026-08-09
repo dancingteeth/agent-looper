@@ -167,12 +167,12 @@ describe('resolveIterationAgent reasoning effort', () => {
       verify: 'true',
       runtime: 'cline',
       model: 'deepseek/deepseek-chat',
-      escalateModel: 'google/gemini-2.5-pro',
+      escalateModel: 'qwen/qwen3-coder-plus',
       escalateAfterStagnation: 2,
     })
     const agent = resolveIterationAgent(config, 1, 2)
     expect(agent.runtime).toBe('cline')
-    expect(agent.model).toBe('google/gemini-2.5-pro')
+    expect(agent.model).toBe('qwen/qwen3-coder-plus')
   })
 
   it('escalates reasoning one tier per BLOCKERS fix round', () => {

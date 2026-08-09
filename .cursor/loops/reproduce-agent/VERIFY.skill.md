@@ -1,6 +1,6 @@
 ---
 name: loop-verify-reproduce-agent
-description: Verify M2b fresh-context reproduce agent for agent-loop dogfood.
+description: Verify M2b fresh-context reproduce agent for Agent Looper dogfood.
 ---
 
 # Verify — reproduce-agent (M2b)

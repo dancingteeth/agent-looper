@@ -1,6 +1,6 @@
 ---
 name: loop-verify-meta-review
-description: Verify M5 cross-loop meta-review CLI for agent-loop dogfood.
+description: Verify M5 cross-loop meta-review CLI for Agent Looper dogfood.
 ---
 
 # Verify — meta-review (M5)

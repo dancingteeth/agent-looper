@@ -6,7 +6,7 @@ tags:
 ---
 # REVIEWS.md
 
-Portable review overlay for agent-loop consumers. Keep this file **short** — the
+Portable review overlay for Agent Looper consumers. Keep this file **short** — the
 harness inlines it into every quality-review prompt.
 
 **Specs ≠ prompts:** `AGENTS.md` steers the *worker* at runtime. This file is the
@@ -91,7 +91,7 @@ Default cosmetic / style / nits → `severity: warning impact: none`.
 Strands-aligned vocabulary for how review interacts with the loop. Verifier remains
 the hard gate; these modes describe *review residual judgment* only.
 
-| Mode | agent-loop meaning |
+| Mode | Agent Looper meaning |
 | --- | --- |
 | **Proceed** | PASS / ADVISORY, or BLOCKERS with only warning/`none` impact — loop completes |
 | **Guide** | `reviewGate` continue — worker gets **Guide packets** (reason + required change) |

@@ -1,6 +1,6 @@
 ---
 name: loop-verify-verify-mode
-description: Verify M4 Track B verifyMode harness for agent-loop dogfood.
+description: Verify M4 Track B verifyMode harness for Agent Looper dogfood.
 ---
 
 # Verify — verify-mode (M4 Track B)

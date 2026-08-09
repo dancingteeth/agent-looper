@@ -15,7 +15,7 @@ Merge canvas: `session-steal-decisions` under the workspace canvases dir.
 
 ## Wedge (never trade)
 
-| Axis | agent-loop | Do not adopt |
+| Axis | Agent Looper | Do not adopt |
 | --- | --- | --- |
 | Exit | Shell `verify` exit `0` | LLM judge 1/0 as sole exit (Mastra Goals / Linear Loops) |
 | State | Fresh context + git/files | Accumulating thread / summarizers (Strands); prior-run memory as spine (Linear) |
@@ -90,7 +90,7 @@ Execution / Recovery), aimed at trajectory judges — **not** runtime prompts.
 | Sparse standing standards + retire when models hold | Docs | **Shipped** — prompt-diet extended in `AGENTS.md` + sparse note in template | Delete laws the worker stops failing |
 | true / false / NA per law | Docs only | **Shipped** — NA language in `templates/REVIEWS.md` | Cousin of warning/`none` + reproduce filter |
 
-**Better home for deeper steals:** [unified-code-review](https://github.com/dancingteeth/unified-code-review) (sensor for agent-authored process on diffs). Keep agent-loop thin.
+**Better home for deeper steals:** [unified-code-review](https://github.com/dancingteeth/unified-code-review) (sensor for agent-authored process on diffs). Keep Agent Looper thin.
 
 ### Explicit skips (Agent Behavior)
 
@@ -123,7 +123,7 @@ Sources:
 ### Explicit skips (NVIDIA / T3)
 
 - NeMo Guardrails / NIM self-host stack as harness dependency (wrong layer; consumers wire IDE proxy)
-- OpenShell / enterprise sandbox runtime inside agent-loop (host/platform concern)
+- OpenShell / enterprise sandbox runtime inside Agent Looper (host/platform concern)
 - Replacing shell verify with LLM-as-judge for security
 - T3 / Linear-style schedule·PR·issue triggers as core harness (factories compose the loop; same skip as P3)
 

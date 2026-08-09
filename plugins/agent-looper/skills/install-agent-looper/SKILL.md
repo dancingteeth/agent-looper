@@ -30,7 +30,7 @@ pnpm exec agent-loop-init
 
 Then edit:
 
-- `.cursor/agent-loop.repo.json` — `taskwarriorProject`, `syncCommand`, `defaultBranch`, …
+- `.cursor/agent-loop.repo.json` — `hitlProvider`, notify hooks, `syncCommand`, `defaultBranch`, …
 - `.cursor/loops/example-fix/` — replace with a real GOAL + verify
 
 ## Scripts (recommended)

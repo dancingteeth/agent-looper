@@ -7,7 +7,7 @@ tags:
 ---
 # Agent Looper — a loop harness that actually finishes the job
 
-**Fix-until-green for Cursor (and Cline / OpenCode / Pi):** one frozen goal, a cheap worker that edits the repo, a shell check that decides “done,” optional smarter review that can send the worker back — until the check is green or you stop it.
+**Fix-until-green with a pluggable agent SDK:** one frozen goal, a cheap worker that edits the repo, a shell check that decides “done,” optional smarter review that can send the worker back — until the check is green or you stop it.
 
 Software is becoming a hierarchy of loops. The highest-value human work is **deciding which loops to create** — writing a measurable `GOAL.md` + `verify.sh`. The harness owns the grind; you own the finish line. (Models will keep changing; this system compounds across them.)
 
@@ -29,7 +29,7 @@ A single chat agent will often:
 
 You are still the loop — you re-prompt, paste failures, hope.
 
-**agent-loop** makes the computer own that cycle:
+**Agent Looper** makes the computer own that cycle:
 
 ```text
 GOAL (frozen) → WORKER edits code → VERIFY (shell exit 0?) → if fail, new fresh worker with the failure → repeat
@@ -45,7 +45,7 @@ That’s the product. Everything else is cost control and false-positive control
 
 Agents collapsed the cost of personalizing tools: start from source, keep a rebase loop, bend the harness when the product’s hooks don’t fit. Closed coding agents wall that off — you get their extension surface or you leave.
 
-**agent-loop is the open spine, not the rented brain.** The models stay whoever you already pay (Cursor, Cline, OpenCode Go, …). What you own and can rewrite is the loop: frozen `GOAL.md`, measurable `verify.sh`, sparse `REVIEWS.md` / `AGENTS.md`, and the orchestration that keeps workers fresh and spend bounded. Customize those surfaces — or the harness itself — instead of hoping a vendor’s hooks match how you finish work.
+**Agent Looper is the open spine, not the rented brain.** The models stay whoever you already pay (Cursor, OpenCode Go, OpenRouter, …). What you own and can rewrite is the loop: frozen `GOAL.md`, measurable `verify.sh`, sparse `REVIEWS.md` / `AGENTS.md`, and the orchestration that keeps workers fresh and spend bounded. Customize those surfaces — or the harness itself — instead of hoping a vendor’s hooks match how you finish work.
 
 We don’t claim “no config.” An honest finish line (`verify`) and a frozen goal *are* the config. The bet is that an inspectable, MIT harness compounds across model swaps better than renting a sealed agent and fighting its personalization wall.
 
@@ -66,10 +66,10 @@ flowchart LR
 
 | Role | Who | Job |
 | --- | --- | --- |
-| **Worker** | Coding agent (Cursor or Cline SDK) | Implement / fix toward `GOAL.md`. **New session every iteration** — progress lives in git + files, not chat memory. |
+| **Worker** | Coding agent via `runtime` (pluggable agent SDK) | Implement / fix toward `GOAL.md`. **New session every iteration** — progress lives in git + files, not chat memory. |
 | **Verifier** | Your shell command (`verify.sh`) | The only thing that can say “complete.” Exit `0` = green. Not vibes. |
-| **Judge** | Coding agent on `reviewRuntime` (default **cursor**) | After verify passes, write `review.md`. With `reviewGate`, only **error + impact** findings reopen the worker. |
-| **You** | Human | Write the goal and the verify script. Escalate when the gate is stuck (`reviewGateHitl` / Taskwarrior). |
+| **Judge** | Same agent families on `reviewRuntime` (default **cursor**) | After verify passes, write `review.md`. With `reviewGate`, only **error + impact** findings reopen the worker. |
+| **You** | Human | Write the goal and the verify script. Escalate when the gate is stuck (`reviewGateHitl` / HITL checkpoints — [`docs/hitl-providers.md`](./docs/hitl-providers.md)). |
 
 **Specs ≠ prompts:** `AGENTS.md` (and skills / optional [Agent Plugins](./docs/agent-plugins.md)) tell the *worker* how to act. `REVIEWS.md` tells the *judge* what good residual behavior looks like after verify — it is not runtime prompt text. Keep both sparse; delete laws when models stop failing them.
 
@@ -79,22 +79,30 @@ flowchart LR
 
 ## Worker vs judge by runtime
 
-**Worker** = `runtime` + `model`. **Judge** = optional `reviewRuntime` + `reviewModel` (defaults to **cursor** + Grok on cursor workers, Composer on other workers). Set `reviewRuntime` to `pi`, `opencode`, `cline-pass`, etc. to keep the judge off Cursor quota.
+Two independent knobs:
 
-| `runtime` | Worker (implement) | Judge (default) | When to use |
-| --- | --- | --- | --- |
-| **`cursor`** (default) | **Composer 2.5** | **Grok 4.5** (`reviewModel`) | Cursor-only dogfood; no `@cline/sdk` required |
-| **`cline-pass`** | Cline SDK · **ClinePass** · default `cline-pass/deepseek-v4-flash` (escalate → `qwen3.7-plus`) | Cursor **Composer 2.5** unless you set `reviewModel` / `reviewRuntime` | Subscription quota; cheap implement loops |
-| **`cline`** | Cline SDK · **Credits** · default `deepseek/deepseek-chat` (escalate → `gemini-2.5-pro`) | Same as above | Pass quota exhausted; pay-as-you-go |
-| **`pi`** | Pi SDK · default `openrouter/deepseek/deepseek-chat` (escalate → `openrouter/google/gemini-2.5-flash`) | Cursor judge (or `reviewRuntime: "pi"` for cheap Pi+Pi) | Open MIT agent; BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
-| **`opencode`** | OpenCode SDK · default **Go** `opencode-go/deepseek-v4-flash` (escalate → `qwen3.7-plus`) · or BYOK e.g. `openrouter/…`, `ollama/…` | Cursor judge (or match worker via `reviewRuntime`) | Cheap workers — [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
+| Role | Config | Does |
+| --- | --- | --- |
+| **Worker** | `runtime` + `model` | Edit the repo until verify is green |
+| **Judge** | `reviewRuntime` + `reviewModel` | After verify, write `review.md` (optional `reviewGate`) |
 
-Cline: same package (`@cline/sdk`) with two billing modes — ClinePass vs Credits — not two different products.
-OpenCode: `@opencode-ai/sdk` + `opencode-ai` CLI on PATH. Go uses `OPENCODE_API_KEY`; OpenRouter uses `OPENROUTER_API_KEY`; other providers via env or `opencode /connect`.
+They do not have to match. A non-Cursor worker can still use a Cursor judge — and that is the default if you leave `reviewRuntime` unset (so you still need `@cursor/sdk` unless you point the judge elsewhere).
 
-Never use Composer **Fast** as the judge. Worker on Cursor is always Composer 2.5 (not Fast).
+### Worker defaults
 
-Future runtimes and cost-minmax roadmap (Pi, OpenCode BYOK, what to skip): [`docs/runtime-map.md`](./docs/runtime-map.md).
+| `runtime` | Default worker model (escalate →) | Notes |
+| --- | --- | --- |
+| **`cursor`** | `composer-2.5` | Default path; Cursor-only dogfood |
+| **`cline-pass`** | `cline-pass/deepseek-v4-flash` → `qwen3.7-plus` | ClinePass subscription (`@cline/sdk`) |
+| **`cline`** | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Cline Credits (same SDK, different billing) |
+| **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
+| **`pi`** | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
+
+### Judge defaults
+
+Unset `reviewRuntime` → **`cursor`**. Unset `reviewModel` on that Cursor judge → **`grok-4.5`** when the worker is also `cursor`, else **`composer-2.5`**.
+
+To keep the judge off Cursor quota, set `reviewRuntime` (and usually `reviewModel`) to match a peer you already pay for — e.g. `"reviewRuntime": "pi"` or `"opencode"`. Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md).
 
 ---
 
@@ -206,7 +214,7 @@ Once the basic loop is boringly reliable:
 | `agent-loop-batch` / meta-loop | Probe → fix → re-probe |
 | `agent-loop-meta-review` | Read-only report across N finished loops |
 | `--trust-config` / `trustConfig` | Ack reviewed shell commands; optional strict gate |
-| Telegram + Taskwarrior UUID | Completion pings; auto-`task done` |
+| HITL + completion notify | Checkpoints (`hitlProvider`), Telegram / webhook / `notifyCommand` / PR comment; optional Taskwarrior UUID auto-`done` |
 
 Reference (flags, CLIs, threat model): [`README.md`](./README.md).
 

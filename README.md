@@ -7,18 +7,18 @@ tags:
 
 Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
 
-Supports **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), and **Pi** workers. The primary **judge** defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
+Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**. Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 
-New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Cost-minmax runtime map: [`docs/runtime-map.md`](./docs/runtime-map.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md). npm releases: [`docs/releasing.md`](./docs/releasing.md).
+New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
 ## Features at a glance
 
 | Layer | What it does | Blocks completion? |
 | --- | --- | --- |
-| **Worker** | Fresh Cursor / Cline / OpenCode / Pi session each iteration; implements toward `GOAL.md` | — (does the work) |
+| **Worker** | Fresh agent SDK session each iteration (`runtime`); implements toward `GOAL.md` | — (does the work) |
 | **Verifier** | Shell `verify` / `finalVerify` (exit `0`). Optional `verifyMode: skill` runs a verify agent first (`VERIFY_RESULT: PASS/FAIL`), then shell. | **Yes** — hard gate |
 | **Review** | Post-success LLM quality review → `review.md` (primary judge via `reviewRuntime`, default cursor). Optional `reviewGate` re-opens the fix loop on **gating** findings only. | Only with `reviewGate: true` |
-| **Human** | `reviewGateHitl`, `hitlCheck`, `hitlOnFailure`, Telegram (+ HITL fallback if notify fails) | Closure / alerts |
+| **Human** | HITL checkpoints (`hitlProvider`), `reviewGateHitl` / `hitlCheck` / `hitlOnFailure`, completion notify (Telegram / webhook / `notifyCommand` / PR comment) | Closure / alerts |
 
 **Review stack** (opt-in unless noted):
 
@@ -362,7 +362,7 @@ GOAL.md + loop.json
   → repeat
 ```
 
-Post-success (when `postQualityReview` runs): Cursor quality review → `review.md` using the repo `REVIEWS.md` overlay. With `reviewGate: true`, only **gating** blockers re-enter the fix loop; completion requires **PASS** or **ADVISORY** with no gating blockers. Then: optional Taskwarrior `done` → `hitlCheck` (via configured `hitlProvider`) → `syncCommand`.
+Post-success (when `postQualityReview` runs): quality review → `review.md` using the repo `REVIEWS.md` overlay. With `reviewGate: true`, only **gating** blockers re-enter the fix loop; completion requires **PASS** or **ADVISORY** with no gating blockers. Then: optional linked-task completion (e.g. Taskwarrior `done`) → `hitlCheck` (via `hitlProvider`) → `syncCommand`.
 
 Stderr prints token totals and estimated USD (ClinePass may include cached-input counts).
 
@@ -427,7 +427,7 @@ Optional second message: attach `review.md` as a document. Opt out with `"telegr
 
 ## Background runs in Cursor (chat wake-up)
 
-When a **local** Cursor Agent starts `agent-loop` in a **background shell**, the chat can wake on completion without Telegram:
+When a **local** Cursor Agent starts Agent Looper (`agent-loop`) in a **background shell**, the chat can wake on completion without Telegram:
 
 1. Background the run with a long `block_until_ms` (or `0`) and **`notify_on_output`** on pattern `^AGENT_LOOP_DONE `.
 2. On wake, read the JSON on that stdout line (`complete`, `exitCode`, `reason`, `bundle`, optional `runReport`) and/or open `run-report.md`.

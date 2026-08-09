@@ -1,6 +1,6 @@
 ---
 name: loop-verify-secondary-judge
-description: Verify M3 multi-family secondary review judge for agent-loop dogfood.
+description: Verify M3 multi-family secondary review judge for Agent Looper dogfood.
 ---
 
 # Verify — secondary-judge (M3)
