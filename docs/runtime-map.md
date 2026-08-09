@@ -60,9 +60,9 @@ Use Cursor worker when you want one bill and IDE-native dogfood; use another `ru
 
 | Rank | Candidate | API shape | Harness fit | Effort | Verdict |
 | --- | --- | --- | --- | --- | --- |
-| **1** | **Goose** | `@aaif/goose-sdk` + CLI, ACP | Programmatic agent; more process surface than Pi | **M–L** | **Next** — local / OpenRouter paths |
-| **2** | **Codex SDK** | `@openai/codex-sdk` | Strong thread API (`run` / `runStreamed`, cwd) | **M** | **Later, narrow** — only if you already pay OpenAI/ChatGPT |
-| **3** | **Aider** | CLI (`aider --message`); no stable Node peer | Spawn adapter; watch auto-commit vs harness git | **M** (CLI) / **L** (first-class) | **Later** — cheap models, awkward fit |
+| **1** | **Codex SDK** | `@openai/codex-sdk` | Strong thread API (`run` / `runStreamed`, cwd) | **M** | **Next** — real demand (ChatGPT/Codex users); BYO OpenAI stack — [`codex-runtime-roadmap.md`](./codex-runtime-roadmap.md) |
+| **2** | **Aider** | CLI (`aider --message`); no stable Node peer | Spawn adapter; watch auto-commit vs harness git | **M** (CLI) / **L** (first-class) | **Later** — cheap models, awkward fit |
+| **3** | **Goose** | `@aaif/goose-sdk` + CLI, ACP | Programmatic agent; more process surface than Pi | **M–L** | **Later / low demand** — fine if someone needs it; not a wedge |
 
 Keep this file and `README.intro.md` / `README.md` worker–judge tables in sync when a runtime ships.
 
