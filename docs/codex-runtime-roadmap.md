@@ -101,7 +101,7 @@ Discover before coding (see [`unknowns-preflight.md`](./unknowns-preflight.md)):
 
 - [x] `npm` package version bumped for Codex surface (`0.2.0`)
 - [x] CONSUMERS / install skill document optional `@openai/codex-sdk`
-- [ ] `npm view @dancingteeth/agent-looper version` shows the bump (after publish)
+- [x] `npm view @dancingteeth/agent-looper version` shows the bump (`0.2.0`)
 - [x] README + runtime-map list Codex as shipped
 
 ## File touch list (expected)
