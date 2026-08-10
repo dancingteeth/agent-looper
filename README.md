@@ -7,7 +7,7 @@ tags:
 
 Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
 
-Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**. Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
+Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**. Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 
 New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
@@ -45,6 +45,7 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 pnpm add -D @cline/sdk                                    # Cline Pass / Credits
 pnpm add -D @opencode-ai/sdk opencode-ai                  # OpenCode Go / BYOK
 pnpm add -D @earendil-works/pi-coding-agent               # Pi BYOK
+pnpm add -D @openai/codex-sdk                             # Codex (ChatGPT / OpenAI)
 ```
 
 Use CLIs via `pnpm exec` (or `npx`) so you do not need a global install:
@@ -87,6 +88,11 @@ export OPENROUTER_API_KEY=…
 pnpm exec agent-check pi
 pnpm exec agent-loop run .cursor/loops/my-task --runtime pi
 pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-runtime pi --review-gate
+
+# Codex (needs `codex` CLI from @openai/codex via the SDK)
+export CODEX_API_KEY=…   # or OPENAI_API_KEY / ChatGPT login
+pnpm exec agent-check codex
+pnpm exec agent-loop run .cursor/loops/my-task --runtime codex
 ```
 
 Target another checkout:
@@ -165,8 +171,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi`. See [`docs/runtime-map.md`](./docs/runtime-map.md). |
-| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi: after threshold; Cline: after reasoning ceiling). |
+| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex`. See [`docs/runtime-map.md`](./docs/runtime-map.md). |
+| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi/Codex: after threshold; Cline: after reasoning ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
@@ -198,7 +204,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `loopRiskProfile` | — | Per-loop keyword merge for risk inference (`high` / `medium` / `low` arrays) |
 | `reviewGate` | `false` | When `true`, gating blockers re-enter the fix loop (up to `maxReviewCycles`) |
 | `reviewRuntime` | `cursor` | Primary judge runtime (same enum as `runtime`). Unset → cursor. |
-| `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.5` when worker is `cursor`, else `composer-2.5`. Non-cursor judges use that runtime’s default model. Never Composer Fast on cursor. |
+| `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.5` when worker is `cursor`, else `composer-2.5`. Codex judge (`reviewRuntime: "codex"`) defaults to **`gpt-5.6-sol`** (worker stays Luna). Other non-cursor judges use that runtime’s worker default. Never Composer Fast on cursor. |
 | `maxReviewCycles` | `2` | Review-triggered fix rounds when `reviewGate` is on |
 | `reviewGateHitl` | `false` | On gate exhaust, open a HITL checkpoint (`hitlProvider`) instead of hard-fail only |
 | `unparseableReviewRetries` | `2` | Retries when verdict cannot be parsed |
@@ -341,7 +347,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | --- | --- |
 | `agent-loop run <dir>` | Single loop |
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
-| `agent-check cursor\|cline\|opencode` | SDK + API key smoke |
+| `agent-check cursor\|cline\|opencode\|pi\|codex` | SDK + API key smoke |
 | `agent-loop-init` | Scaffold templates |
 | `agent-loop-doctor` | Validate install / `dist/` integrity; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
@@ -396,6 +402,7 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 | `CLINE_API_KEY` | Cline SDK auth (optional peer runtime / secondary judge) |
 | `OPENCODE_API_KEY` | OpenCode Go auth (optional peer; https://opencode.ai/go) |
 | `OPENROUTER_API_KEY` | OpenRouter BYOK for OpenCode / Pi workers and judges |
+| `CODEX_API_KEY` / `OPENAI_API_KEY` | Codex SDK auth (optional; else ChatGPT CLI login) |
 | `AGENT_LOOP_VERBOSE` | `1` / `true` — extra stderr stream detail |
 | `AGENT_LOOP_CURSOR_TIMEOUT_MS` | Cursor run timeout in milliseconds (default **2700000** = 45m). Must be a positive number; validated before `Agent.create` so a bad value fails without burning a paid run. On timeout the harness cancels the remote run. |
 | `AGENT_LOOP_TRUST_CONFIG` | `1` — treat shell config as reviewed/trusted |

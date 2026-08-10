@@ -151,6 +151,29 @@ describe('resolveIterationAgent reasoning effort', () => {
     })
   })
 
+  it('resolveReviewAgent defaults Codex judge to Sol when reviewRuntime is codex', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'codex',
+      reviewRuntime: 'codex',
+    })
+    expect(resolveReviewAgent(config)).toEqual({
+      runtime: 'codex',
+      model: 'gpt-5.6-sol',
+    })
+  })
+
+  it('escalates Codex model on stagnation', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'codex',
+      escalateModel: 'gpt-5.6-terra',
+      escalateAfterStagnation: 2,
+    })
+    expect(resolveIterationAgent(config, 1, undefined).model).toBe('gpt-5.6-luna')
+    expect(resolveIterationAgent(config, 3, 2).model).toBe('gpt-5.6-terra')
+  })
+
   it('rejects reviewModel incompatible with reviewRuntime', () => {
     expect(() =>
       loopConfigSchema.parse({

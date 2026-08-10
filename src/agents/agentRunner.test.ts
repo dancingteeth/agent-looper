@@ -6,6 +6,7 @@ const runCursorAgentPrompt = vi.fn()
 const createClineLoopSession = vi.fn()
 const createOpencodeLoopSession = vi.fn()
 const createPiLoopSession = vi.fn()
+const createCodexLoopSession = vi.fn()
 
 vi.mock('./cursorAgent.js', () => ({
   runCursorAgentPrompt,
@@ -21,6 +22,10 @@ vi.mock('./opencodeAgent.js', () => ({
 
 vi.mock('./piAgent.js', () => ({
   createPiLoopSession,
+}))
+
+vi.mock('./codexAgent.js', () => ({
+  createCodexLoopSession,
 }))
 
 const testCtx = {
@@ -44,6 +49,10 @@ describe('createLoopAgentSession', () => {
       runPrompt: vi.fn().mockResolvedValue({ text: 'pi-ok' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     })
+    createCodexLoopSession.mockResolvedValue({
+      runPrompt: vi.fn().mockResolvedValue({ text: 'codex-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    })
   })
 
   it('dispatches cursor runtime to runCursorAgentPrompt', async () => {
@@ -62,6 +71,7 @@ describe('createLoopAgentSession', () => {
     expect(createClineLoopSession).not.toHaveBeenCalled()
     expect(createOpencodeLoopSession).not.toHaveBeenCalled()
     expect(createPiLoopSession).not.toHaveBeenCalled()
+    expect(createCodexLoopSession).not.toHaveBeenCalled()
     await session.dispose()
   })
 
@@ -72,6 +82,7 @@ describe('createLoopAgentSession', () => {
     expect(createClineLoopSession).not.toHaveBeenCalled()
     expect(createOpencodeLoopSession).not.toHaveBeenCalled()
     expect(createPiLoopSession).not.toHaveBeenCalled()
+    expect(createCodexLoopSession).not.toHaveBeenCalled()
   })
 
   it('dispatches cline-pass runtime to Cline session', async () => {
@@ -185,5 +196,34 @@ describe('createLoopAgentSession', () => {
       }),
     )
     await session.dispose()
+  })
+
+  it('dispatches codex runtime to Codex session', async () => {
+    const { createLoopAgentSession } = await import('./agentRunner.js')
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'codex' })
+    const codexSession = {
+      runPrompt: vi.fn().mockResolvedValue({ text: 'codex-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    }
+    createCodexLoopSession.mockResolvedValue(codexSession)
+
+    const session = await createLoopAgentSession(config, testCtx)
+    const result = await session.runIterationPrompt(
+      'prompt',
+      { runtime: 'codex', model: 'gpt-5.6-luna' },
+      { assistantOutput: 'none' },
+    )
+
+    expect(result.text).toBe('codex-ok')
+    expect(createCodexLoopSession).toHaveBeenCalledOnce()
+    expect(createClineLoopSession).not.toHaveBeenCalled()
+    expect(codexSession.runPrompt).toHaveBeenCalledWith(
+      'prompt',
+      expect.objectContaining({
+        modelId: 'gpt-5.6-luna',
+      }),
+    )
+    await session.dispose()
+    expect(codexSession.dispose).toHaveBeenCalledOnce()
   })
 })

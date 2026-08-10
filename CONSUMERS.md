@@ -20,6 +20,7 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 # pnpm add -D @cline/sdk
 # pnpm add -D @opencode-ai/sdk opencode-ai
 # pnpm add -D @earendil-works/pi-coding-agent
+# pnpm add -D @openai/codex-sdk
 ```
 
 Or in `package.json`:

@@ -2,6 +2,7 @@ import {
   CURSOR_REVIEW_MODELS,
   CURSOR_WORKER_MODEL,
   isClineSdkRuntime,
+  isCodexRuntime,
   isCursorSdkModel,
   isOpencodeRuntime,
   isPiRuntime,
@@ -40,7 +41,10 @@ export function assertLoopModelAllowed(runtime: LoopRuntime, model: string): voi
   }
 
   if (
-    (isClineSdkRuntime(runtime) || isOpencodeRuntime(runtime) || isPiRuntime(runtime)) &&
+    (isClineSdkRuntime(runtime) ||
+      isOpencodeRuntime(runtime) ||
+      isPiRuntime(runtime) ||
+      isCodexRuntime(runtime)) &&
     isBannedCursorLoopModel(model)
   ) {
     throw new Error(

@@ -143,6 +143,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 Need Cline? Add `@cline/sdk`, set `CLINE_API_KEY`, use `--runtime cline-pass` or `cline`.
 Need OpenCode Go? Add `@opencode-ai/sdk` + `opencode-ai`, set `OPENCODE_API_KEY`, use `--runtime opencode`.
 Need Pi BYOK? Add `@earendil-works/pi-coding-agent`, set provider keys (e.g. `OPENROUTER_API_KEY`), use `--runtime pi`.
+Need Codex? Add `@openai/codex-sdk`, set `CODEX_API_KEY` / `OPENAI_API_KEY` (or ChatGPT login), use `--runtime codex`.
 
 Cloud agents: same `pnpm add` — no local checkout of this repo required.
 

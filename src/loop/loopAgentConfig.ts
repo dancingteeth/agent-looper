@@ -9,6 +9,8 @@ export const LOOP_RUNTIME_CLINE = 'cline' as const
 export const LOOP_RUNTIME_OPENCODE = 'opencode' as const
 /** Pi coding agent (`@earendil-works/pi-coding-agent`) — BYOK `provider/model` (not opencode-go). */
 export const LOOP_RUNTIME_PI = 'pi' as const
+/** OpenAI Codex (`@openai/codex-sdk`) — Codex CLI model slugs (e.g. gpt-5.6-luna). */
+export const LOOP_RUNTIME_CODEX = 'codex' as const
 
 export type LoopRuntime =
   | typeof LOOP_RUNTIME_CURSOR
@@ -16,6 +18,7 @@ export type LoopRuntime =
   | typeof LOOP_RUNTIME_CLINE
   | typeof LOOP_RUNTIME_OPENCODE
   | typeof LOOP_RUNTIME_PI
+  | typeof LOOP_RUNTIME_CODEX
 
 export const CURSOR_LOOP_MODEL = 'composer-2.5' as const
 /** Alias — Cursor SDK worker for implement iterations (never Composer Fast). */
@@ -82,6 +85,15 @@ export const DEFAULT_OPENCODE_GO_ESCALATE_MODEL: OpencodeGoLoopModel = 'opencode
 export const DEFAULT_PI_LOOP_MODEL = 'openrouter/deepseek/deepseek-chat'
 export const DEFAULT_PI_ESCALATE_MODEL = 'openrouter/qwen/qwen3-coder-plus'
 
+/** Default Codex worker — Luna (cheap); escalate to Terra (balanced). Catalog: openai/codex models.json */
+export const DEFAULT_CODEX_LOOP_MODEL = 'gpt-5.6-luna'
+export const DEFAULT_CODEX_ESCALATE_MODEL = 'gpt-5.6-terra'
+/** Default Codex judge — Sol (frontier agentic coding). */
+export const DEFAULT_CODEX_REVIEW_MODEL = 'gpt-5.6-sol'
+
+/** Codex CLI model slug (not provider/model). */
+const CODEX_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/
+
 /** OpenRouter-style `provider/model` (Cline usage-billing / API). */
 const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
 
@@ -115,6 +127,11 @@ export type ResolvedLoopAgent =
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
+  | {
+      runtime: typeof LOOP_RUNTIME_CODEX
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
 
 export function isClineSdkRuntime(
   runtime: LoopRuntime,
@@ -132,6 +149,10 @@ export function isPiRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTIM
   return runtime === LOOP_RUNTIME_PI
 }
 
+export function isCodexRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTIME_CODEX {
+  return runtime === LOOP_RUNTIME_CODEX
+}
+
 export function defaultModelForRuntime(runtime: LoopRuntime): string {
   switch (runtime) {
     case LOOP_RUNTIME_CLINE_PASS:
@@ -142,6 +163,8 @@ export function defaultModelForRuntime(runtime: LoopRuntime): string {
       return DEFAULT_OPENCODE_GO_LOOP_MODEL
     case LOOP_RUNTIME_PI:
       return DEFAULT_PI_LOOP_MODEL
+    case LOOP_RUNTIME_CODEX:
+      return DEFAULT_CODEX_LOOP_MODEL
     case LOOP_RUNTIME_CURSOR:
       return CURSOR_LOOP_MODEL
     default: {
@@ -182,6 +205,11 @@ export type ResolvedReviewAgent =
     }
   | {
       runtime: typeof LOOP_RUNTIME_PI
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_CODEX
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
@@ -250,6 +278,15 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
     }
     return model
   }
+  if (runtime === LOOP_RUNTIME_CODEX) {
+    if (!isCodexLoopModel(model)) {
+      throw new Error(
+        `Invalid reviewModel "${model}" for reviewRuntime "codex". Expected a Codex CLI slug ` +
+          `(e.g. "${DEFAULT_CODEX_REVIEW_MODEL}") — https://github.com/openai/codex`,
+      )
+    }
+    return model
+  }
   const _exhaustive: never = runtime
   return _exhaustive
 }
@@ -260,6 +297,9 @@ function defaultReviewModel(
 ): string {
   if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
     return workerRuntime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL
+  }
+  if (reviewRuntime === LOOP_RUNTIME_CODEX) {
+    return DEFAULT_CODEX_REVIEW_MODEL
   }
   return defaultModelForRuntime(reviewRuntime)
 }
@@ -297,6 +337,9 @@ export function resolveReviewAgent(
   }
   if (reviewRuntime === LOOP_RUNTIME_PI) {
     return { runtime: reviewRuntime, model: assertPiLoopModel(model, 'model') }
+  }
+  if (reviewRuntime === LOOP_RUNTIME_CODEX) {
+    return { runtime: reviewRuntime, model: assertCodexLoopModel(model, 'model') }
   }
   return {
     runtime: LOOP_RUNTIME_CLINE_PASS,
@@ -373,6 +416,14 @@ export function isPiLoopModel(model: string): boolean {
   return true
 }
 
+/** Valid `loop.json` model for runtime `codex` (Codex CLI slug). */
+export function isCodexLoopModel(model: string): boolean {
+  if (!CODEX_MODEL_RE.test(model)) return false
+  if (model.includes('/')) return false
+  if (model.toLowerCase().includes('fast')) return false
+  return true
+}
+
 /** Valid `loop.json` model for runtime `opencode`. */
 export function isOpencodeLoopModel(model: string): boolean {
   if (!isOpencodeLoopModelShape(model)) return false
@@ -397,6 +448,8 @@ export function modelCompatibleWithRuntime(
       return isOpencodeLoopModel(model)
     case LOOP_RUNTIME_PI:
       return isPiLoopModel(model)
+    case LOOP_RUNTIME_CODEX:
+      return isCodexLoopModel(model)
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -547,6 +600,16 @@ function assertPiLoopModel(model: string, field: 'model' | 'escalateModel'): str
   return model
 }
 
+function assertCodexLoopModel(model: string, field: 'model' | 'escalateModel'): string {
+  if (!isCodexLoopModel(model)) {
+    throw new Error(
+      `Invalid Codex ${field} "${model}". Expected a Codex CLI slug ` +
+        `(e.g. "${DEFAULT_CODEX_LOOP_MODEL}") — https://github.com/openai/codex`,
+    )
+  }
+  return model
+}
+
 function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'): string {
   if (!isOpencodeLoopModel(model)) {
     const { providerID } = (() => {
@@ -599,6 +662,13 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
     return {
       runtime,
       model: assertPiLoopModel(model, 'model'),
+    }
+  }
+
+  if (runtime === LOOP_RUNTIME_CODEX) {
+    return {
+      runtime,
+      model: assertCodexLoopModel(model, 'model'),
     }
   }
 
@@ -666,9 +736,14 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
     return
   }
 
+  if (runtime === LOOP_RUNTIME_CODEX) {
+    assertCodexLoopModel(config.escalateModel, 'escalateModel')
+    return
+  }
+
   if (config.escalateModel !== CURSOR_LOOP_MODEL) {
     throw new Error(
-      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", or "pi" ` +
+      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", "pi", or "codex" ` +
         `(got runtime "cursor" and escalateModel "${config.escalateModel}")`,
     )
   }
@@ -758,6 +833,25 @@ export function resolveIterationAgent(
     return {
       runtime: LOOP_RUNTIME_PI,
       model: assertPiLoopModel(base.model, 'model'),
+    }
+  }
+
+  if (isCodexRuntime(base.runtime)) {
+    const threshold = config.escalateAfterStagnation ?? 2
+    if (
+      config.escalateModel &&
+      escalationRepeatCount !== undefined &&
+      escalationRepeatCount >= threshold
+    ) {
+      assertLoopModelAllowed(base.runtime, config.escalateModel)
+      return {
+        runtime: LOOP_RUNTIME_CODEX,
+        model: assertCodexLoopModel(config.escalateModel, 'escalateModel'),
+      }
+    }
+    return {
+      runtime: LOOP_RUNTIME_CODEX,
+      model: assertCodexLoopModel(base.model, 'model'),
     }
   }
 

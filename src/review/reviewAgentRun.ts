@@ -4,6 +4,7 @@ import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
 import {
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
@@ -16,7 +17,7 @@ export type ReviewAgentPromptOptions = {
 
 /**
  * Run a single primary-judge prompt on the configured review runtime
- * (cursor | cline-pass | cline | opencode | pi).
+ * (cursor | cline-pass | cline | opencode | pi | codex).
  */
 export async function runReviewAgentPrompt(
   ctx: RepoContext,
@@ -76,6 +77,20 @@ export async function runReviewAgentPrompt(
         })
       } finally {
         await pi.dispose()
+      }
+    }
+    case LOOP_RUNTIME_CODEX: {
+      const { createCodexLoopSession } = await import('../agents/codexAgent.js')
+      const codex = await createCodexLoopSession(ctx)
+      try {
+        return await codex.runPrompt(prompt, {
+          verbose: options.verbose,
+          modelId: agent.model,
+          assistantOutput: 'none',
+          phase: 'review',
+        })
+      } finally {
+        await codex.dispose()
       }
     }
     default: {

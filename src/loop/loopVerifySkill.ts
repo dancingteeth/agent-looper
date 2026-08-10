@@ -5,6 +5,7 @@ import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
 import {
   isClineSdkRuntime,
+  isCodexRuntime,
   isOpencodeRuntime,
   isPiRuntime,
   LOOP_RUNTIME_CURSOR,
@@ -105,6 +106,20 @@ async function defaultSkillVerifyAgentRun(input: {
       })
     } finally {
       await pi.dispose()
+    }
+  }
+  if (isCodexRuntime(agent.runtime)) {
+    const { createCodexLoopSession } = await import('../agents/codexAgent.js')
+    const codex = await createCodexLoopSession(input.ctx)
+    try {
+      return await codex.runPrompt(input.prompt, {
+        verbose: input.verbose,
+        modelId: agent.model,
+        assistantOutput: 'none',
+        phase: 'verify',
+      })
+    } finally {
+      await codex.dispose()
     }
   }
   if (!isClineSdkRuntime(agent.runtime)) {

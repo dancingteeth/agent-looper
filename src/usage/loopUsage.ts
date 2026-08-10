@@ -2,7 +2,7 @@ export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
 export type LoopUsageRecord = {
   phase: AgentRunPhase
-  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode' | 'pi'
+  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode' | 'pi' | 'codex'
   model: string
   inputTokens: number
   outputTokens: number
@@ -53,6 +53,10 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'opencode-go/qwen3.7-max': { input: 2.5, output: 7.5 },
   'opencode-go/gpt-5.6-luna': { input: 0.2, output: 1.2 },
   'opencode-go/grok-4.5': { input: 2.0, output: 6.0 },
+  // Codex — estimates for costUsd when provider cost is absent (Luna cheap / Terra mid)
+  'gpt-5.6-luna': { input: 0.25, output: 2.0 },
+  'gpt-5.6-terra': { input: 1.25, output: 10.0 },
+  'gpt-5.6-sol': { input: 2.5, output: 15.0 },
 }
 
 const TOKENS_PER_MILLION = 1_000_000

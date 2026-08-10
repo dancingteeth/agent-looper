@@ -9,7 +9,7 @@ tags:
 
 Audience: indie builders and small teams who want **fix-until-green** without frontier-model spend. The harness stays the same: shell verify is law; most tokens go to a **cheap worker**; the **judge** runs selectively after green verify.
 
-Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped runtimes in [Worker vs judge](../README.intro.md#worker-vs-judge-by-runtime). Detail: [`opencode-providers.md`](./opencode-providers.md), [`pi-runtime.md`](./pi-runtime.md).
+Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped runtimes in [Worker vs judge](../README.intro.md#worker-vs-judge-by-runtime). Detail: [`opencode-providers.md`](./opencode-providers.md), [`pi-runtime.md`](./pi-runtime.md), [`codex-runtime.md`](./codex-runtime.md).
 
 ## Shipped today
 
@@ -20,6 +20,7 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 | `cline` | `@cline/sdk` | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Same | Credits when Pass quota is gone |
 | `opencode` | `@opencode-ai/sdk` + `opencode` CLI | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`; **or** BYOK e.g. `openrouter/…`, `ollama/…` | Cursor judge, or `reviewRuntime: opencode` | [OpenCode Go](https://opencode.ai/go) **and** OpenRouter / other providers — [`opencode-providers.md`](./opencode-providers.md) |
 | `pi` | `@earendil-works/pi-coding-agent` | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | Cursor judge, or `reviewRuntime: pi` | BYOK OpenRouter-class — [`pi-runtime.md`](./pi-runtime.md) |
+| `codex` | `@openai/codex-sdk` + `codex` CLI | `gpt-5.6-luna` → `gpt-5.6-terra` | Cursor judge, or `reviewRuntime: codex` (default judge `gpt-5.6-sol`) | ChatGPT / OpenAI BYO — [`codex-runtime.md`](./codex-runtime.md) |
 
 Philosophy: **cheap worker iterations, selective judge, never LLM-as-verify.**
 
@@ -35,6 +36,8 @@ Primary judge is independent: unset `reviewRuntime` → Cursor SDK. Set `reviewR
 | **OpenCode Go + Cursor** | `runtime: opencode` (Go model), default judge | Go worker quota; familiar Cursor judge |
 | **OpenCode OpenRouter + OpenCode judge** | `runtime: opencode`, `model: openrouter/…`, `reviewRuntime: opencode` | Full BYOK off Cursor — same OpenRouter key for worker and judge |
 | **OpenCode Go + Pi judge** | `runtime: opencode`, `reviewRuntime: pi` | Mix Go implement with Pi BYOK review |
+| **Codex + Codex** | `runtime: codex`, `reviewRuntime: codex` (judge defaults to Sol) | ChatGPT / OpenAI stack; cheap Luna worker, frontier Sol judge |
+| **Codex worker + Cursor judge** | `runtime: codex`, omit `reviewRuntime` | Codex implement; Cursor subscription for review |
 
 ## Default stack (“people like us”)
 
@@ -54,15 +57,15 @@ Use Cursor worker when you want one bill and IDE-native dogfood; use another `ru
 | OpenCode Go worker | Shipped |
 | OpenCode BYOK (`openrouter/…`, `ollama/…`, …) | Shipped — [`opencode-providers.md`](./opencode-providers.md) |
 | Pi `WorkerRuntime` | Shipped — [`pi-runtime.md`](./pi-runtime.md) |
+| Codex `WorkerRuntime` | Shipped — [`codex-runtime.md`](./codex-runtime.md) |
 | Variable primary judge (`reviewRuntime` + `reviewModel`) | Shipped |
 
 ## Roadmap — integrate next (ranked)
 
 | Rank | Candidate | API shape | Harness fit | Effort | Verdict |
 | --- | --- | --- | --- | --- | --- |
-| **1** | **Codex SDK** | `@openai/codex-sdk` | Strong thread API (`run` / `runStreamed`, cwd) | **M** | **Next** — real demand (ChatGPT/Codex users); BYO OpenAI stack — [`codex-runtime-roadmap.md`](./codex-runtime-roadmap.md) |
-| **2** | **Aider** | CLI (`aider --message`); no stable Node peer | Spawn adapter; watch auto-commit vs harness git | **M** (CLI) / **L** (first-class) | **Later** — cheap models, awkward fit |
-| **3** | **Goose** | `@aaif/goose-sdk` + CLI, ACP | Programmatic agent; more process surface than Pi | **M–L** | **Later / low demand** — fine if someone needs it; not a wedge |
+| **1** | **Aider** | CLI (`aider --message`); no stable Node peer | Spawn adapter; watch auto-commit vs harness git | **M** (CLI) / **L** (first-class) | **Later** — cheap models, awkward fit |
+| **2** | **Goose** | `@aaif/goose-sdk` + CLI, ACP | Programmatic agent; more process surface than Pi | **M–L** | **Later / low demand** — fine if someone needs it; not a wedge |
 
 Keep this file and `README.intro.md` / `README.md` worker–judge tables in sync when a runtime ships.
 

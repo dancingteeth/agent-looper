@@ -1,7 +1,7 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.1.11",
-  "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi; configurable reviewRuntime judge)",
+  "version": "0.2.0",
+  "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
   "author": "Paul Zgordan",
@@ -48,6 +48,7 @@
     "agent:check:cline": "doppler run --project agent-looper --config dev -- node dist/cli/check.js cline",
     "agent:check:opencode": "doppler run --project agent-looper --config dev -- node dist/cli/check.js opencode",
     "agent:check:pi": "doppler run --project agent-looper --config dev -- node dist/cli/check.js pi",
+    "agent:check:codex": "doppler run --project agent-looper --config dev -- node dist/cli/check.js codex",
     "agent:doctor": "doppler run --project agent-looper --config dev -- node dist/cli/doctor.js",
     "test:cursor-plugin": "node scripts/validate-cursor-plugin.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
@@ -59,6 +60,7 @@
     "@cline/sdk": ">=0.0.55",
     "@cursor/sdk": ">=1.0.18",
     "@earendil-works/pi-coding-agent": ">=0.84.0",
+    "@openai/codex-sdk": ">=0.147.0",
     "@opencode-ai/sdk": ">=1.18.0",
     "opencode-ai": ">=1.18.0"
   },
@@ -77,6 +79,9 @@
     },
     "@earendil-works/pi-coding-agent": {
       "optional": true
+    },
+    "@openai/codex-sdk": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -84,6 +89,7 @@
     "@cursor/sdk": "^1.0.18",
     "@earendil-works/pi-ai": "0.84.1",
     "@earendil-works/pi-coding-agent": "0.84.1",
+    "@openai/codex-sdk": "^0.147.0",
     "@opencode-ai/sdk": "^1.18.15",
     "@types/node": "^22.15.0",
     "@vitest/coverage-v8": "^4.1.9",

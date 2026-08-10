@@ -3,10 +3,12 @@ import { runCursorAgentPrompt } from './cursorAgent.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import {
   isClineSdkRuntime,
+  isCodexRuntime,
   isOpencodeRuntime,
   isPiRuntime,
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
@@ -17,6 +19,7 @@ import {
 import type { LoopConfig } from '../loop/loopConfig.js'
 // Type-only — erased at emit; keeps Cursor-only installs free of optional SDKs.
 import type { ClineLoopSession } from './clineAgent.js'
+import type { CodexLoopSession } from './codexAgent.js'
 import type { OpencodeLoopSession } from './opencodeAgent.js'
 import type { PiLoopSession } from './piAgent.js'
 
@@ -112,6 +115,21 @@ function createPiRunner(pi: PiLoopSession): PromptRunner {
   }
 }
 
+function createCodexRunner(codex: CodexLoopSession): PromptRunner {
+  return (prompt, agent, options) => {
+    if (!isCodexRuntime(agent.runtime)) {
+      throw new Error('Codex runner invoked for non-codex agent')
+    }
+    return codex.runPrompt(prompt, {
+      verbose: options.verbose,
+      modelId: agent.model,
+      assistantOutput: options.assistantOutput,
+      phase: options.phase ?? 'implement',
+      collector: options.collector,
+    })
+  }
+}
+
 export async function createLoopAgentSession(
   config: LoopConfig,
   ctx: RepoContext,
@@ -153,6 +171,16 @@ export async function createLoopAgentSession(
     }
   }
 
+  if (runtime === LOOP_RUNTIME_CODEX) {
+    const { createCodexLoopSession } = await import('./codexAgent.js')
+    const codex = await createCodexLoopSession(ctx)
+    const runner = createCodexRunner(codex)
+    return {
+      runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),
+      dispose: () => codex.dispose(),
+    }
+  }
+
   // Dynamic import: @cline/sdk is an optional peer. Cursor-only consumers must not
   // load clineAgent (and thus @cline/sdk) at module evaluation time.
   const { createClineLoopSession } = await import('./clineAgent.js')
@@ -176,6 +204,8 @@ export function loopRuntimeLabel(runtime: LoopRuntime): string {
       return 'opencode'
     case LOOP_RUNTIME_PI:
       return 'pi'
+    case LOOP_RUNTIME_CODEX:
+      return 'codex'
     default: {
       const _exhaustive: never = runtime
       return _exhaustive

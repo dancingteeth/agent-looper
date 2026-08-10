@@ -4,6 +4,7 @@ tags:
   - runtimes
   - roadmap
   - codex
+  - agents
 ---
 # Codex SDK integration roadmap
 
@@ -58,18 +59,19 @@ Discover before coding (see [`unknowns-preflight.md`](./unknowns-preflight.md)):
 
 ### Acceptance
 
-- [ ] `runtime: "codex"` runs one implement iteration against mocked SDK in unit tests
-- [ ] Live smoke: `pnpm agent:loop run .cursor/loops/codex-smoke --runtime codex` (manual)
-- [ ] Cursor-only install still typechecks / tests without `@openai/codex-sdk`
-- [ ] Missing peer → clear error pointing at `pnpm add -D @openai/codex-sdk`
+- [x] `runtime: "codex"` runs one implement iteration against mocked SDK in unit tests
+- [ ] Live smoke: `pnpm agent:loop run .cursor/loops/codex-smoke --runtime codex` (manual; operator)
+- [x] Cursor-only install still typechecks / tests without loading Codex at module eval (dynamic import)
+- [x] Missing peer → clear error pointing at `pnpm add -D @openai/codex-sdk`
+- [x] `skipGitRepoCheck: true` + Sol default judge documented
 
 ### Suggested defaults (revise after phase 0)
 
 | Field | Tentative |
 | --- | --- |
-| `model` | Cheap Codex / GPT coding slug from SDK docs |
-| `escalateModel` | Stronger Codex slug (not Gemini) |
-| Auth | `OPENAI_API_KEY` and/or Codex CLI auth path |
+| `model` | `gpt-5.6-luna` (cheap; from Codex models.json) |
+| `escalateModel` | `gpt-5.6-terra` |
+| Auth | `CODEX_API_KEY` / `OPENAI_API_KEY` and/or Codex CLI ChatGPT login |
 
 ## Phase 2 — Judge + verify skill
 
@@ -82,8 +84,8 @@ Discover before coding (see [`unknowns-preflight.md`](./unknowns-preflight.md)):
 
 ### Acceptance
 
-- [ ] `reviewRuntime: "codex"` + `reviewGate` works in a dogfood loop
-- [ ] Default judge remains Cursor when `reviewRuntime` unset
+- [x] `reviewRuntime: "codex"` wired in `reviewAgentRun` / meta-review / verify skill
+- [x] Default judge remains Cursor when `reviewRuntime` unset
 
 ## Phase 3 — Docs + npm release
 
@@ -97,8 +99,10 @@ Discover before coding (see [`unknowns-preflight.md`](./unknowns-preflight.md)):
 
 ### Acceptance
 
-- [ ] `npm view @dancingteeth/agent-looper version` shows the bump
-- [ ] CONSUMERS install line documents optional `@openai/codex-sdk`
+- [x] `npm` package version bumped for Codex surface (`0.2.0`)
+- [x] CONSUMERS / install skill document optional `@openai/codex-sdk`
+- [ ] `npm view @dancingteeth/agent-looper version` shows the bump (after publish)
+- [x] README + runtime-map list Codex as shipped
 
 ## File touch list (expected)
 

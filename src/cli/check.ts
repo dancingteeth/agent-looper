@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
-type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi'
+type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex'
 
 function usage(): string {
-  return `Usage: agent-check <cursor|cline|opencode|pi>
+  return `Usage: agent-check <cursor|cline|opencode|pi|codex>
 
 Verifies SDK install and API key env var. Does not call remote APIs.`
 }
@@ -16,7 +16,13 @@ if (!target || target === '--help' || target === '-h') {
   process.exit(target ? 0 : 1)
 }
 
-if (target !== 'cursor' && target !== 'cline' && target !== 'opencode' && target !== 'pi') {
+if (
+  target !== 'cursor' &&
+  target !== 'cline' &&
+  target !== 'opencode' &&
+  target !== 'pi' &&
+  target !== 'codex'
+) {
   console.error(usage())
   process.exit(1)
 }
@@ -123,6 +129,53 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     await assertPosixShell()
     console.log('[agent-check] @earendil-works/pi-coding-agent OK — createAgentSession:', typeof createAgentSession)
     console.log('[agent-check] provider keys present:', present.join(', '))
+    console.log('[agent-check] shell preflight OK')
+    return
+  }
+
+  if (runtime === 'codex') {
+    const nodeMajor = Number(process.versions.node.split('.')[0] ?? 0)
+    if (nodeMajor < 18) {
+      console.error(
+        `[agent-check] Node.js 18+ required for @openai/codex-sdk (current: ${process.versions.node})`,
+      )
+      process.exit(1)
+    }
+
+    let Codex: unknown
+    try {
+      ;({ Codex } = await import('@openai/codex-sdk'))
+    } catch {
+      console.error('[agent-check] @openai/codex-sdk is not installed (pnpm add -D @openai/codex-sdk)')
+      process.exit(1)
+    }
+
+    await assertPosixShell()
+
+    const { spawnSync } = await import('node:child_process')
+    const which = spawnSync('codex', ['--version'], { encoding: 'utf8' })
+    if (which.error || which.status !== 0) {
+      console.error(
+        '[agent-check] `codex` CLI not on PATH. Installing @openai/codex-sdk should pull @openai/codex;\n' +
+          '  ensure its bin is linked (pnpm add -D @openai/codex-sdk).',
+      )
+      process.exit(1)
+    }
+
+    const codexKey = process.env.CODEX_API_KEY?.trim()
+    const openAiKey = process.env.OPENAI_API_KEY?.trim()
+    if (codexKey) {
+      console.log('[agent-check] CODEX_API_KEY present (prefix):', `${codexKey.slice(0, 4)}…`)
+    } else if (openAiKey) {
+      console.log('[agent-check] OPENAI_API_KEY present (prefix):', `${openAiKey.slice(0, 4)}…`)
+    } else {
+      console.log(
+        '[agent-check] no CODEX_API_KEY/OPENAI_API_KEY — will rely on Codex CLI ChatGPT login (~/.codex)',
+      )
+    }
+
+    console.log('[agent-check] @openai/codex-sdk OK — Codex:', typeof Codex)
+    console.log('[agent-check] codex CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
     console.log('[agent-check] shell preflight OK')
     return
   }

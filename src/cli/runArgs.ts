@@ -10,8 +10,8 @@ export type RunCliOptions = {
   qualityReview?: boolean | 'off'
   reviewGate?: boolean
   skipSync?: boolean
-  runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi'
-  reviewRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi'
+  runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex'
+  reviewRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex'
   model?: string
   reviewModel?: string
   escalateModel?: string
@@ -46,9 +46,9 @@ ${printRepoRootHelp()}
   --review-gate                   Require review verdict != BLOCKERS to complete
   --no-review-gate                Disable review gate (default from loop.json)
   --skip-sync                     Do not run repo profile syncCommand
-  --runtime <cursor|cline-pass|cline|opencode|pi>  Override loop.json runtime
+  --runtime <cursor|cline-pass|cline|opencode|pi|codex>  Override loop.json runtime
   --model <id>                    Override loop.json worker model
-  --review-runtime <cursor|cline-pass|cline|opencode|pi>  Override loop.json reviewRuntime (judge)
+  --review-runtime <cursor|cline-pass|cline|opencode|pi|codex>  Override loop.json reviewRuntime (judge)
   --review-model <id>             Override loop.json reviewModel (judge model)
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
@@ -154,9 +154,13 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
         value !== 'cline-pass' &&
         value !== 'cline' &&
         value !== 'opencode' &&
-        value !== 'pi'
+        value !== 'pi' &&
+        value !== 'codex'
       ) {
-        return { kind: 'error', message: '--runtime must be cursor, cline-pass, cline, opencode, or pi' }
+        return {
+          kind: 'error',
+          message: '--runtime must be cursor, cline-pass, cline, opencode, pi, or codex',
+        }
       }
       runtime = value
       continue
@@ -172,11 +176,12 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
         value !== 'cline-pass' &&
         value !== 'cline' &&
         value !== 'opencode' &&
-        value !== 'pi'
+        value !== 'pi' &&
+        value !== 'codex'
       ) {
         return {
           kind: 'error',
-          message: '--review-runtime must be cursor, cline-pass, cline, opencode, or pi',
+          message: '--review-runtime must be cursor, cline-pass, cline, opencode, pi, or codex',
         }
       }
       reviewRuntime = value

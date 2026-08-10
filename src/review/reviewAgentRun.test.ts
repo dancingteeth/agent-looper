@@ -7,11 +7,13 @@ const {
   createClineLoopSession,
   createOpencodeLoopSession,
   createPiLoopSession,
+  createCodexLoopSession,
 } = vi.hoisted(() => ({
   runCursorAgentPrompt: vi.fn(),
   createClineLoopSession: vi.fn(),
   createOpencodeLoopSession: vi.fn(),
   createPiLoopSession: vi.fn(),
+  createCodexLoopSession: vi.fn(),
 }))
 
 vi.mock('../agents/cursorAgent.js', () => ({
@@ -28,6 +30,10 @@ vi.mock('../agents/opencodeAgent.js', () => ({
 
 vi.mock('../agents/piAgent.js', () => ({
   createPiLoopSession,
+}))
+
+vi.mock('../agents/codexAgent.js', () => ({
+  createCodexLoopSession,
 }))
 
 const testCtx = {
@@ -49,6 +55,10 @@ describe('runReviewAgentPrompt', () => {
     })
     createPiLoopSession.mockResolvedValue({
       runPrompt: vi.fn().mockResolvedValue({ text: 'pi-review' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    })
+    createCodexLoopSession.mockResolvedValue({
+      runPrompt: vi.fn().mockResolvedValue({ text: 'codex-review' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     })
   })
@@ -126,6 +136,26 @@ describe('runReviewAgentPrompt', () => {
       'review me',
       expect.objectContaining({
         modelId: 'openrouter/deepseek/deepseek-chat',
+        phase: 'review',
+      }),
+    )
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches codex judge and disposes the session', async () => {
+    const dispose = vi.fn().mockResolvedValue(undefined)
+    const runPrompt = vi.fn().mockResolvedValue({ text: 'codex-review' })
+    createCodexLoopSession.mockResolvedValue({ runPrompt, dispose })
+
+    const result = await runReviewAgentPrompt(testCtx, 'review me', {
+      runtime: 'codex',
+      model: 'gpt-5.6-luna',
+    })
+    expect(result.text).toBe('codex-review')
+    expect(runPrompt).toHaveBeenCalledWith(
+      'review me',
+      expect.objectContaining({
+        modelId: 'gpt-5.6-luna',
         phase: 'review',
       }),
     )

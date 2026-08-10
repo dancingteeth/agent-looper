@@ -13,7 +13,7 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 - Do not edit `GOAL.md` mid-loop.
 - Taskwarrior: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`) when linking a TW goal task — never numeric ID alone.
 - Cursor-only dogfood: worker `composer-2.5`, judge `grok-4.5` via `reviewModel` (default `reviewRuntime: cursor`).
-- Optional peers: `@cursor/sdk` required for cursor runtime; `@cline/sdk` only for Cline paths; `@opencode-ai/sdk` + `opencode-ai` CLI for OpenCode; `@earendil-works/pi-coding-agent` for `runtime: pi` (all dynamic import / PATH). Primary judge can use any of those via `reviewRuntime`.
+- Optional peers: `@cursor/sdk` required for cursor runtime; `@cline/sdk` only for Cline paths; `@opencode-ai/sdk` + `opencode-ai` CLI for OpenCode; `@earendil-works/pi-coding-agent` for `runtime: pi`; `@openai/codex-sdk` for `runtime: codex` (all dynamic import / PATH). Primary judge can use any of those via `reviewRuntime`.
 - **Prompt diet on model bumps:** when upgrading worker/judge models, *delete* deterministic instructions from `AGENTS.md`, skills, and loop prompts before adding new ones. Stronger models need fewer hard rules (Claude Code cut ~80% of system prompt for this reason). Same for `REVIEWS.md` Project-specific laws: retire ones the worker stops failing.
 - `AGENTS.md` = worker runtime; `REVIEWS.md` = judge standard — do not conflate (see `templates/REVIEWS.md`).
 - Before freezing a new loop, prefer an [unknowns preflight](./docs/unknowns-preflight.md) when verify/deps are unfamiliar. Design in chat → freeze; do not edit `GOAL.md` mid-run. Optional [permissions matrix](./templates/LOOP.permissions.example.md) (tools/MCP default-deny).

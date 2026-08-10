@@ -4,6 +4,7 @@ import { resolveRepoContext } from '../context/repoContext.js'
 import {
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
@@ -26,7 +27,7 @@ Options:
   --out-dir <path>        Directory for meta-review.md (default: cwd)
   --hitl                  Create HITL checkpoints from ### HITL follow-ups bullets
   --project <name>        Taskwarrior project for --hitl (default: repo profile)
-  --review-runtime <id>   Judge runtime: cursor|cline-pass|cline|opencode|pi (default: cursor)
+  --review-runtime <id>   Judge runtime: cursor|cline-pass|cline|opencode|pi|codex (default: cursor)
   --review-model <id>     Judge model (default depends on runtime)
   --verbose, -v
 ${printRepoRootHelp()}
@@ -52,6 +53,7 @@ function parseReviewRuntime(value: string): LoopRuntime {
     LOOP_RUNTIME_CLINE,
     LOOP_RUNTIME_OPENCODE,
     LOOP_RUNTIME_PI,
+    LOOP_RUNTIME_CODEX,
   ] as const
   if ((allowed as readonly string[]).includes(value)) {
     return value as LoopRuntime
