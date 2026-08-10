@@ -45,7 +45,7 @@ That’s the product. Everything else is cost control and false-positive control
 
 Agents collapsed the cost of personalizing tools: start from source, keep a rebase loop, bend the harness when the product’s hooks don’t fit. Closed coding agents wall that off — you get their extension surface or you leave.
 
-**Agent Looper is the open spine, not the rented brain.** The models stay whoever you already pay (Cursor, OpenCode Go, OpenRouter, …). What you own and can rewrite is the loop: frozen `GOAL.md`, measurable `verify.sh`, sparse `REVIEWS.md` / `AGENTS.md`, and the orchestration that keeps workers fresh and spend bounded. Customize those surfaces — or the harness itself — instead of hoping a vendor’s hooks match how you finish work.
+**Agent Looper is the open spine, not the rented brain.** The models stay whoever you already pay (Cursor, OpenCode Go, OpenRouter, Codex / ChatGPT, …). What you own and can rewrite is the loop: frozen `GOAL.md`, measurable `verify.sh`, sparse `REVIEWS.md` / `AGENTS.md`, and the orchestration that keeps workers fresh and spend bounded. Customize those surfaces — or the harness itself — instead of hoping a vendor’s hooks match how you finish work.
 
 We don’t claim “no config.” An honest finish line (`verify`) and a frozen goal *are* the config. The bet is that an inspectable, MIT harness compounds across model swaps better than renting a sealed agent and fighting its personalization wall.
 
@@ -97,12 +97,13 @@ They do not have to match. A non-Cursor worker can still use a Cursor judge — 
 | **`cline`** | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Cline Credits (same SDK, different billing) |
 | **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 | **`pi`** | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
+| **`codex`** | `gpt-5.6-luna` → `gpt-5.6-terra` | ChatGPT / OpenAI — [`docs/codex-runtime.md`](./docs/codex-runtime.md) |
 
 ### Judge defaults
 
 Unset `reviewRuntime` → **`cursor`**. Unset `reviewModel` on that Cursor judge → **`grok-4.5`** when the worker is also `cursor`, else **`composer-2.5`**.
 
-To keep the judge off Cursor quota, set `reviewRuntime` (and usually `reviewModel`) to match a peer you already pay for — e.g. `"reviewRuntime": "pi"` or `"opencode"`. Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md).
+To keep the judge off Cursor quota, set `reviewRuntime` (and usually `reviewModel`) to match a peer you already pay for — e.g. `"reviewRuntime": "pi"`, `"opencode"`, or `"codex"` (Codex judge defaults to **`gpt-5.6-sol`**). Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md).
 
 ---
 
