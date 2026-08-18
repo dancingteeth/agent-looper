@@ -16,6 +16,10 @@ describe('parseProviderModel', () => {
       providerID: 'openrouter',
       modelID: 'deepseek/deepseek-chat',
     })
+    expect(parseProviderModel('vercel/anthropic/claude-sonnet-4')).toEqual({
+      providerID: 'vercel',
+      modelID: 'anthropic/claude-sonnet-4',
+    })
   })
 
   it('rejects malformed ids', () => {
@@ -28,6 +32,7 @@ describe('isOpencodeLoopModel', () => {
   it('accepts Go curated slugs and BYOK provider/model', () => {
     expect(isOpencodeLoopModel('opencode-go/deepseek-v4-flash')).toBe(true)
     expect(isOpencodeLoopModel('openrouter/deepseek/deepseek-chat')).toBe(true)
+    expect(isOpencodeLoopModel('vercel/anthropic/claude-sonnet-4')).toBe(true)
     expect(isOpencodeLoopModel('ollama/llama3.2')).toBe(true)
   })
 

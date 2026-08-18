@@ -29,7 +29,7 @@ New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works,
 
 **Factory scale:** `agent-loop-batch` (sequential + meta-loop probe→fix), `agent-loop-meta-review` (read-only cross-loop report over N bundles).
 
-**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `OPENROUTER_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
+**Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `OPENROUTER_API_KEY`, `AI_GATEWAY_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
 
 Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md).
 
@@ -79,7 +79,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cline
 
 # OpenCode (needs `opencode` on PATH from opencode-ai)
-export OPENCODE_API_KEY=…   # and/or OPENROUTER_API_KEY for BYOK
+export OPENCODE_API_KEY=…   # and/or OPENROUTER_API_KEY / AI_GATEWAY_API_KEY for BYOK
 pnpm exec agent-check opencode
 pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode
 
@@ -402,6 +402,7 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 | `CLINE_API_KEY` | Cline SDK auth (optional peer runtime / secondary judge) |
 | `OPENCODE_API_KEY` | OpenCode Go auth (optional peer; https://opencode.ai/go) |
 | `OPENROUTER_API_KEY` | OpenRouter BYOK for OpenCode / Pi workers and judges |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway BYOK for OpenCode (`vercel/…` models; harness `auth.set`) |
 | `CODEX_API_KEY` / `OPENAI_API_KEY` | Codex SDK auth (optional; else ChatGPT CLI login) |
 | `AGENT_LOOP_VERBOSE` | `1` / `true` — extra stderr stream detail |
 | `AGENT_LOOP_CURSOR_TIMEOUT_MS` | Cursor run timeout in milliseconds (default **2700000** = 45m). Must be a positive number; validated before `Agent.create` so a bad value fails without burning a paid run. On timeout the harness cancels the remote run. |

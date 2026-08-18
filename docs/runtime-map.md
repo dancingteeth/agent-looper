@@ -4,6 +4,9 @@ tags:
   - runtimes
   - cost
   - roadmap
+  - agentic_ai
+  - agents
+  - loops
 ---
 # Runtime map — cost-minmax workers and future SDKs
 
@@ -18,7 +21,7 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 | `cursor` | `@cursor/sdk` | `composer-2.5` | Grok 4.5 when worker is `cursor`, else Composer 2.5 | IDE subscription; dogfood default |
 | `cline-pass` | `@cline/sdk` | `cline-pass/deepseek-v4-flash` → `qwen3.7-plus` | Cursor Composer 2.5 (unless `reviewRuntime` set) | Quota / subscription implement loops |
 | `cline` | `@cline/sdk` | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Same | Credits when Pass quota is gone |
-| `opencode` | `@opencode-ai/sdk` + `opencode` CLI | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`; **or** BYOK e.g. `openrouter/…`, `ollama/…` | Cursor judge, or `reviewRuntime: opencode` | [OpenCode Go](https://opencode.ai/go) **and** OpenRouter / other providers — [`opencode-providers.md`](./opencode-providers.md) |
+| `opencode` | `@opencode-ai/sdk` + `opencode` CLI | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`; **or** BYOK e.g. `openrouter/…`, `vercel/…`, `ollama/…` | Cursor judge, or `reviewRuntime: opencode` | [OpenCode Go](https://opencode.ai/go) **and** OpenRouter / Vercel AI Gateway / other providers — [`opencode-providers.md`](./opencode-providers.md) |
 | `pi` | `@earendil-works/pi-coding-agent` | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | Cursor judge, or `reviewRuntime: pi` | BYOK OpenRouter-class — [`pi-runtime.md`](./pi-runtime.md) |
 | `codex` | `@openai/codex-sdk` + `codex` CLI | `gpt-5.6-luna` → `gpt-5.6-terra` | Cursor judge, or `reviewRuntime: codex` (default judge `gpt-5.6-sol`) | ChatGPT / OpenAI BYO — [`codex-runtime.md`](./codex-runtime.md) |
 
@@ -35,6 +38,7 @@ Primary judge is independent: unset `reviewRuntime` → Cursor SDK. Set `reviewR
 | **Pi worker + Cursor judge** | `runtime: pi`, omit `reviewRuntime` (defaults to cursor) | Cheap implement; Cursor subscription for review |
 | **OpenCode Go + Cursor** | `runtime: opencode` (Go model), default judge | Go worker quota; familiar Cursor judge |
 | **OpenCode OpenRouter + OpenCode judge** | `runtime: opencode`, `model: openrouter/…`, `reviewRuntime: opencode` | Full BYOK off Cursor — same OpenRouter key for worker and judge |
+| **OpenCode Vercel + OpenCode judge** | `runtime: opencode`, `model: vercel/…`, `reviewRuntime: opencode` | Full BYOK off Cursor — Vercel AI Gateway (`AI_GATEWAY_API_KEY`, list price) |
 | **OpenCode Go + Pi judge** | `runtime: opencode`, `reviewRuntime: pi` | Mix Go implement with Pi BYOK review |
 | **Codex + Codex** | `runtime: codex`, `reviewRuntime: codex` (judge defaults to Sol) | ChatGPT / OpenAI stack; cheap Luna worker, frontier Sol judge |
 | **Codex worker + Cursor judge** | `runtime: codex`, omit `reviewRuntime` | Codex implement; Cursor subscription for review |
@@ -43,7 +47,7 @@ Primary judge is independent: unset `reviewRuntime` → Cursor SDK. Set `reviewR
 
 | Role | Pick | Notes |
 | --- | --- | --- |
-| **Worker** | OpenCode Go, OpenCode OpenRouter, ClinePass Flash-class, or Pi | Escalate on stagnation only |
+| **Worker** | OpenCode Go, OpenCode OpenRouter or Vercel AI Gateway, ClinePass Flash-class, or Pi | Escalate on stagnation only |
 | **Verify** | Your `verify.sh` | Hard gate; exit `0` |
 | **Judge** | Cursor (default), or same runtime as worker via `reviewRuntime` | `postQualityReview: "auto"` + `reviewGate` so nits don’t thrash |
 | **Escalate worker** | `qwen3.7-plus` / `qwen3-coder-plus` / DeepSeek Pro tier | Not frontier Opus/GPT as default worker; skip Gemini |
@@ -55,7 +59,7 @@ Use Cursor worker when you want one bill and IDE-native dogfood; use another `ru
 | Item | Status |
 | --- | --- |
 | OpenCode Go worker | Shipped |
-| OpenCode BYOK (`openrouter/…`, `ollama/…`, …) | Shipped — [`opencode-providers.md`](./opencode-providers.md) |
+| OpenCode BYOK (`openrouter/…`, `vercel/…`, `ollama/…`, …) | Shipped — [`opencode-providers.md`](./opencode-providers.md) |
 | Pi `WorkerRuntime` | Shipped — [`pi-runtime.md`](./pi-runtime.md) |
 | Codex `WorkerRuntime` | Shipped — [`codex-runtime.md`](./codex-runtime.md) |
 | Variable primary judge (`reviewRuntime` + `reviewModel`) | Shipped |
@@ -76,7 +80,7 @@ Keep this file and `README.intro.md` / `README.md` worker–judge tables in sync
 | **Continue `@continuedev/sdk`** | Hub chat / OpenAI-compat — not a repo-editing agent runtime |
 | **Roo Code / IDE-only agents** | No stable programmatic worker API for the harness |
 | **`@openrouter/agent` alone** | Primitives only; you rebuild the coding agent (**L**, overlaps OpenCode/Pi) |
-| **Vercel AI SDK alone** | LLM client ≠ agentic edit/bash loop |
+| **Vercel AI SDK alone** | LLM client ≠ agentic edit/bash loop. Vercel **AI Gateway** as an OpenCode provider (`vercel/…`) is the supported path — [`opencode-providers.md`](./opencode-providers.md) |
 | **Claude Code / sealed agents as default worker** | Closed personalization wall; hook-only extension |
 | **Frontier Opus / GPT-class as default worker** | Wrong economics for grind loops; judge-only if ever |
 | **Gemini (Flash / Pro) as worker or judge** | Weak relative to DeepSeek / Qwen / Composer / Grok on fix-until-green; keep out of defaults — opt in only if you insist |

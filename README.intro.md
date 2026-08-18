@@ -100,7 +100,7 @@ They do not have to match. A non-Cursor worker can still use a Cursor judge — 
 | **`cursor`** | `composer-2.5` | Default path; Cursor-only dogfood |
 | **`cline-pass`** | `cline-pass/deepseek-v4-flash` → `qwen3.7-plus` | ClinePass subscription (`@cline/sdk`) |
 | **`cline`** | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Cline Credits (same SDK, different billing) |
-| **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
+| **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `vercel/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 | **`pi`** | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
 | **`codex`** | `gpt-5.6-luna` → `gpt-5.6-terra` | ChatGPT / OpenAI — [`docs/codex-runtime.md`](./docs/codex-runtime.md) |
 

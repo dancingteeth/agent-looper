@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { OPENCODE_PROVIDER_API_KEY_ENV } from '../agents/opencodeAuth.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
 type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex'
@@ -51,11 +52,14 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       process.exit(1)
     }
 
-    const goKey = process.env.OPENCODE_API_KEY?.trim()
-    const openRouterKey = process.env.OPENROUTER_API_KEY?.trim()
-    if (!goKey && !openRouterKey) {
+    const presentKeys = Object.entries(OPENCODE_PROVIDER_API_KEY_ENV).flatMap(([, envName]) => {
+      const key = process.env[envName]?.trim()
+      return key ? [{ envName, key }] : []
+    })
+    if (presentKeys.length === 0) {
+      const envList = [...new Set(Object.values(OPENCODE_PROVIDER_API_KEY_ENV))].join(' / ')
       console.error(
-        '[agent-check] Set OPENCODE_API_KEY (Go) and/or OPENROUTER_API_KEY (BYOK), ' +
+        `[agent-check] Set ${envList} (Go / OpenRouter / Vercel AI Gateway), ` +
           'or use local Ollama via opencode /connect — https://opencode.ai/docs/providers/',
       )
       process.exit(1)
@@ -83,11 +87,8 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
 
     console.log('[agent-check] @opencode-ai/sdk OK — createOpencode:', typeof createOpencode)
     console.log('[agent-check] opencode CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
-    if (goKey) {
-      console.log('[agent-check] OPENCODE_API_KEY present (prefix):', `${goKey.slice(0, 4)}…`)
-    }
-    if (openRouterKey) {
-      console.log('[agent-check] OPENROUTER_API_KEY present (prefix):', `${openRouterKey.slice(0, 4)}…`)
+    for (const { envName, key } of presentKeys) {
+      console.log(`[agent-check] ${envName} present (prefix):`, `${key.slice(0, 4)}…`)
     }
     console.log('[agent-check] shell preflight OK')
     return

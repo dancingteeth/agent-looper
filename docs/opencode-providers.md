@@ -4,8 +4,11 @@ tags:
   - runtimes
   - opencode
   - cost
+  - agentic_ai
+  - agents
+  - loops
 ---
-# OpenCode worker — Go, OpenRouter, Ollama
+# OpenCode worker — Go, BYOK gateways, Ollama
 
 `runtime: opencode` uses `@opencode-ai/sdk` + the `opencode` CLI. The harness starts a local OpenCode server per loop session, wires API keys from env when present, and passes `provider/model` from `loop.json` to each worker iteration.
 
@@ -27,10 +30,12 @@ Any other OpenCode provider id is allowed in `provider/model` form, for example:
 | Example `model` | Auth |
 | --- | --- |
 | `openrouter/deepseek/deepseek-chat` | `OPENROUTER_API_KEY` (harness calls `auth.set`; CLI also reads env) |
+| `vercel/anthropic/claude-sonnet-4` | `AI_GATEWAY_API_KEY` (Vercel AI Gateway — same `auth.set` path) |
+| `cloudflare-workers-ai/…` | OpenCode `/connect` (account id + API token) or `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_KEY`. Cloudflare GPU inference — not AI Gateway. Not a harness env alias. |
 | `ollama/llama3.2` | Local Ollama — no key; use `opencode /connect` or host config |
 | `anthropic/claude-sonnet-4-20250514` | Provider env or `~/.local/share/opencode/auth.json` from `/connect` |
 
-The harness wires `OPENCODE_API_KEY` / `OPENROUTER_API_KEY` into the ephemeral server when present. For those providers, each iteration **fails fast** if the key is missing and `~/.local/share/opencode/auth.json` has no entry (override path via `OPENCODE_AUTH_JSON`). Other providers (e.g. Ollama) are left to OpenCode’s own config.
+The harness wires `OPENCODE_API_KEY` / `OPENROUTER_API_KEY` / `AI_GATEWAY_API_KEY` into the ephemeral server when present. For those providers, each iteration **fails fast** if the key is missing and `~/.local/share/opencode/auth.json` has no entry (override path via `OPENCODE_AUTH_JSON`). Other providers (Ollama, Cloudflare Workers AI, …) are left to OpenCode’s own config.
 
 Curated Go list + pricing estimates: `OPENCODE_GO_LOOP_MODELS` in code. BYOK models use provider-reported cost when available; otherwise `costUsd` may be `0` in logs.
 
@@ -58,12 +63,37 @@ OpenCode Go worker + Cursor Grok judge (default `reviewRuntime`):
 }
 ```
 
+Vercel AI Gateway (list price, no markup) — OpenCode’s native `vercel` provider:
+
+```json
+{
+  "runtime": "opencode",
+  "model": "vercel/anthropic/claude-sonnet-4",
+  "reviewRuntime": "opencode",
+  "reviewModel": "vercel/anthropic/claude-sonnet-4",
+  "verify": "bash .cursor/loops/my-task/verify.sh"
+}
+```
+
 ## Check
 
 ```bash
-export OPENROUTER_API_KEY=…   # and/or OPENCODE_API_KEY for Go
+export OPENROUTER_API_KEY=…   # and/or OPENCODE_API_KEY (Go) and/or AI_GATEWAY_API_KEY (Vercel)
 agent-check opencode
 ```
+
+## Other OpenAI-compatible gateways
+
+The harness does **not** add a new runtime for LLM proxies. Point OpenCode at any OpenAI-compatible endpoint yourself, then pass `provider/model` in `loop.json`. Fail-fast env wiring stays limited to Go / OpenRouter / Vercel.
+
+| Gateway | How |
+| --- | --- |
+| **OrcaRouter** | Custom provider in `opencode.json` (`npm`: `@ai-sdk/openai-compatible`, `baseURL` `https://api.orcarouter.ai/v1`). Then `orcarouter/…` in `loop.json`. |
+| **LiteLLM** (self-hosted) | Same custom-provider shape, or OpenCode’s community LiteLLM plugin if you already run a proxy. |
+| **Portkey** (Prisma AIRS) | Custom OpenAI-compatible `baseURL`. Enterprise governance — not a harness default. |
+| **Cloudflare AI Gateway** | Native OpenCode `/connect` (account id + gateway id + token). Proxy in front of providers — distinct from **Workers AI** inference in the table above. |
+
+See [OpenCode custom providers](https://opencode.ai/docs/providers/#custom-provider).
 
 ## Transport failures (`fetch failed` / hang)
 

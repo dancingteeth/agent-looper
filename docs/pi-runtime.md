@@ -4,6 +4,9 @@ tags:
   - runtimes
   - pi
   - cost
+  - agentic_ai
+  - agents
+  - loops
 ---
 # Pi worker runtime
 
@@ -29,6 +32,19 @@ Auth also lives in `~/.pi/agent/auth.json` after `pi` /connect.
 | `escalateModel` | `openrouter/qwen/qwen3-coder-plus` |
 
 Use `provider/model` ids from Pi’s catalog (`getModel` / pi TUI). **Do not** use `opencode-go/*` on this runtime — use `runtime: opencode` for OpenCode Go.
+
+## Custom OpenAI-compatible gateways
+
+Pi has **no** native Vercel / OrcaRouter catalog. Defaults stay OpenRouter. To use another OpenAI-compatible endpoint, register it in `~/.pi/agent/models.json` (`api: "openai-completions"`, your `baseUrl` + env key name), then set `model` to `provider/model` in `loop.json`.
+
+| Gateway | Typical use |
+| --- | --- |
+| **OrcaRouter** | Custom provider `baseUrl` `https://api.orcarouter.ai/v1` |
+| **LiteLLM** | Point `baseUrl` at your proxy if you already run one |
+| **Portkey** | Custom OpenAI-compatible `baseUrl` |
+| **Vercel AI Gateway** | Prefer `runtime: opencode` + `vercel/…` (native). On Pi, same custom-provider recipe. |
+
+See [Pi custom providers](https://pi.dev/docs).
 
 ## Example
 

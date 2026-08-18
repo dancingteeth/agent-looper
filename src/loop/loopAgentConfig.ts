@@ -5,7 +5,7 @@ export const LOOP_RUNTIME_CURSOR = 'cursor' as const
 export const LOOP_RUNTIME_CLINE_PASS = 'cline-pass' as const
 /** Cline usage-billing (pay-as-you-go credits). Same SDK/API key as ClinePass. */
 export const LOOP_RUNTIME_CLINE = 'cline' as const
-/** OpenCode worker (`provider/model` — Go subscription, OpenRouter BYOK, Ollama, …). */
+/** OpenCode worker (`provider/model` — Go subscription, OpenRouter / Vercel BYOK, Ollama, …). */
 export const LOOP_RUNTIME_OPENCODE = 'opencode' as const
 /** Pi coding agent (`@earendil-works/pi-coding-agent`) — BYOK `provider/model` (not opencode-go). */
 export const LOOP_RUNTIME_PI = 'pi' as const
@@ -257,7 +257,7 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
     if (!isOpencodeLoopModel(model)) {
       throw new Error(
         `Invalid reviewModel "${model}" for reviewRuntime "opencode". Expected provider/model ` +
-          `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, ollama/… — ` +
+          `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, vercel/…, ollama/… — ` +
           `https://opencode.ai/docs/providers/).`,
       )
     }
@@ -627,7 +627,7 @@ function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'
     }
     throw new Error(
       `Invalid OpenCode ${field} "${model}". Expected provider/model ` +
-        `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, ollama/… — ` +
+        `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, vercel/…, ollama/… — ` +
         `https://opencode.ai/docs/providers/).`,
     )
   }

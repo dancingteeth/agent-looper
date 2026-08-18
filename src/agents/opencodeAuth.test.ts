@@ -6,12 +6,16 @@ import {
   assertOpencodeProviderAuthReady,
   formatOpencodeAuthHint,
   hasOpencodeAuthJsonProvider,
+  OPENCODE_PROVIDER_API_KEY_ENV,
+  OPENCODE_VERCEL_PROVIDER_ID,
 } from './opencodeAuth.js'
 
 describe('opencodeAuth', () => {
-  it('formatOpencodeAuthHint names Go and OpenRouter env vars', () => {
+  it('formatOpencodeAuthHint names Go, OpenRouter, and Vercel env vars', () => {
     expect(formatOpencodeAuthHint()).toMatch(/OPENCODE_API_KEY/)
     expect(formatOpencodeAuthHint()).toMatch(/OPENROUTER_API_KEY/)
+    expect(formatOpencodeAuthHint()).toMatch(/AI_GATEWAY_API_KEY/)
+    expect(OPENCODE_PROVIDER_API_KEY_ENV[OPENCODE_VERCEL_PROVIDER_ID]).toBe('AI_GATEWAY_API_KEY')
   })
 
   it('hasOpencodeAuthJsonProvider reads provider entries without exposing keys', () => {
@@ -56,6 +60,42 @@ describe('opencodeAuth', () => {
       else process.env.OPENCODE_API_KEY = prev
       if (prevAuth === undefined) delete process.env.OPENCODE_AUTH_JSON
       else process.env.OPENCODE_AUTH_JSON = prevAuth
+    }
+  })
+
+  it('assertOpencodeProviderAuthReady throws when vercel is unwired and env/auth missing', () => {
+    const prev = process.env.AI_GATEWAY_API_KEY
+    const prevAuth = process.env.OPENCODE_AUTH_JSON
+    delete process.env.AI_GATEWAY_API_KEY
+    process.env.OPENCODE_AUTH_JSON = path.join(os.tmpdir(), 'agent-loop-no-such-auth.json')
+    try {
+      expect(() =>
+        assertOpencodeProviderAuthReady({
+          providerID: OPENCODE_VERCEL_PROVIDER_ID,
+          wiredProviders: [],
+        }),
+      ).toThrow(/not authenticated/)
+    } finally {
+      if (prev === undefined) delete process.env.AI_GATEWAY_API_KEY
+      else process.env.AI_GATEWAY_API_KEY = prev
+      if (prevAuth === undefined) delete process.env.OPENCODE_AUTH_JSON
+      else process.env.OPENCODE_AUTH_JSON = prevAuth
+    }
+  })
+
+  it('assertOpencodeProviderAuthReady accepts vercel when AI_GATEWAY_API_KEY is set', () => {
+    const prev = process.env.AI_GATEWAY_API_KEY
+    process.env.AI_GATEWAY_API_KEY = 'test-gateway-key'
+    try {
+      expect(() =>
+        assertOpencodeProviderAuthReady({
+          providerID: OPENCODE_VERCEL_PROVIDER_ID,
+          wiredProviders: [],
+        }),
+      ).not.toThrow()
+    } finally {
+      if (prev === undefined) delete process.env.AI_GATEWAY_API_KEY
+      else process.env.AI_GATEWAY_API_KEY = prev
     }
   })
 })

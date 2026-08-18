@@ -3,6 +3,8 @@ tags:
   - documentation
   - loops
   - dogfood
+  - agentic_ai
+  - agents
 ---
 # Dogfooding Agent Looper on itself
 
@@ -31,7 +33,7 @@ pnpm agent:loop run .cursor/loops/opencode-smoke --runtime opencode
 pnpm agent:loop run .cursor/loops/pi-smoke --runtime pi
 ```
 
-OpenCode OpenRouter BYOK / Pi+Pi judge examples: [`opencode-providers.md`](./opencode-providers.md),
+OpenCode OpenRouter / Vercel AI Gateway BYOK / Pi+Pi judge examples: [`opencode-providers.md`](./opencode-providers.md),
 [`pi-runtime.md`](./pi-runtime.md), [`runtime-map.md`](./runtime-map.md).
 
 ## Workflow

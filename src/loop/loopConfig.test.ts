@@ -93,6 +93,15 @@ describe('loopConfigSchema', () => {
     expect(resolveLoopAgent(parsed).model).toBe('openrouter/deepseek/deepseek-chat')
   })
 
+  it('accepts Vercel AI Gateway opencode worker models', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      model: 'vercel/anthropic/claude-sonnet-4',
+    })
+    expect(resolveLoopAgent(parsed).model).toBe('vercel/anthropic/claude-sonnet-4')
+  })
+
   it('rejects ClinePass slugs for cline credits runtime', () => {
     expect(() =>
       loopConfigSchema.parse({

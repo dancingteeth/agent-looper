@@ -5,10 +5,14 @@ import type { OpencodeClient } from '@opencode-ai/sdk'
 
 export const OPENCODE_GO_PROVIDER_ID = 'opencode-go'
 
+/** OpenCode native Vercel AI Gateway provider id (`vercel/…` model slugs). */
+export const OPENCODE_VERCEL_PROVIDER_ID = 'vercel'
+
 /** Provider ids the harness can wire via `auth.set` from env. */
 export const OPENCODE_PROVIDER_API_KEY_ENV: Readonly<Record<string, string>> = {
   [OPENCODE_GO_PROVIDER_ID]: 'OPENCODE_API_KEY',
   openrouter: 'OPENROUTER_API_KEY',
+  [OPENCODE_VERCEL_PROVIDER_ID]: 'AI_GATEWAY_API_KEY',
 }
 
 function unwrapAuthSet(
@@ -82,8 +86,8 @@ export function formatOpencodeAuthHint(): string {
 }
 
 /**
- * Fail fast for harness-managed providers (Go / OpenRouter) when neither env nor auth.json
- * can authenticate the provider used by this iteration's model.
+ * Fail fast for harness-managed providers (Go / OpenRouter / Vercel AI Gateway)
+ * when neither env nor auth.json can authenticate the provider used by this iteration's model.
  */
 export function assertOpencodeProviderAuthReady(input: {
   providerID: string
