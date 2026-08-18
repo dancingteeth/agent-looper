@@ -71,6 +71,11 @@ flowchart LR
 | **Judge** | Same agent families on `reviewRuntime` (default **cursor**) | After verify passes, write `review.md`. With `reviewGate`, only **error + impact** findings reopen the worker. |
 | **You** | Human | Write the goal and the verify script. Escalate when the gate is stuck (`reviewGateHitl` / HITL checkpoints — [`docs/hitl-providers.md`](./docs/hitl-providers.md)). |
 
+The worker **is** the loop. The harness around it is a small **graph** so the author of
+the change is not also the only referee (verify = code on the edge; judge = fresh
+session). That is control-flow, not a knowledge graph, and not a multi-agent mesh
+inside one iteration — see [`ARCHITECTURE.md`](./ARCHITECTURE.md) §1.1.
+
 **Specs ≠ prompts:** `AGENTS.md` (and skills / optional [Agent Plugins](./docs/agent-plugins.md)) tell the *worker* how to act. `REVIEWS.md` tells the *judge* what good residual behavior looks like after verify — it is not runtime prompt text. Keep both sparse; delete laws when models stop failing them.
 
 **Important:** “Risk: HIGH” in a review ≠ failed loop. Risk is blast radius of the *change*. Completion is verify + (optional) gating blockers.

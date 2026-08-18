@@ -32,6 +32,31 @@ with these invariants:
    notify fallbacks let a human watch, gate, or intervene without breaking the loop
    contract (providers and triggers: [`docs/hitl-providers.md`](./docs/hitl-providers.md)).
 
+### 1.1 Shape: a small graph, a loop inside one node
+
+“Graph engineering” in 2026 names two different objects. This harness is the
+**control-flow** one: who runs, who checks, what may reopen the job. It is **not** a
+knowledge graph (no entity store, no GraphRAG) and **not** a multi-agent mesh inside
+one iteration (invariant 3).
+
+The Ralph loop lives **inside the worker node**. Around it the harness is already a
+small directed graph:
+
+| Node | Job | Why it is a separate node |
+| --- | --- | --- |
+| **Worker** | Implement toward frozen `GOAL.md` | Fresh session every visit — context rot stays in one node |
+| **Verify** | Shell `verify` / `finalVerify`, exit `0` | Deterministic edge. Models do not mark their own exam |
+| **Judge** | Residual `review.md` after green verify | Athlete ≠ referee. Optional `reviewGate` is the only edge back to the worker |
+| **Human** | HITL when the gate is stuck | Slow path; not a fourth LLM |
+
+Edges carry **files and git**, not chat stew: prior verifier output, Guide packets,
+`review.md`, `log.ndjson`. Frozen `GOAL.md` + `verify.sh` + permissions are the
+slow-changing **role graph** (who may finish, who may reopen). Iteration order is the
+**work graph** (retries allowed; rewriting the finish line is not).
+
+Fan-out is `agent-loop-batch` / meta-review — a sequence of loops, not nested
+orchestrator-workers inside one `GOAL.md`.
+
 ---
 
 ## 2. High-Level Data Flow
