@@ -36,8 +36,8 @@ Stdout is the last assistant message. Exit non-zero fails the iteration. On the 
 
 **Live (manual, later)**
 
-- One-iteration smoke: freeze a tiny loop in *this* checkout (`runtime: dsh`, `reviewGate: false`), `agent-loop run` from a host shell on Node 22.15+
-- Do not use `agentic_everything` as cwd — `workspace-write` is rooted at the session repo
+- One-iteration smoke: freeze a tiny loop in the same git checkout the worker must edit (`runtime: dsh`, `reviewGate: false`), then `agent-loop run` from a host shell on Node 22.15+
+- Headless `workspace-write` is rooted at that session cwd — pasting another repo path does not retarget writes
 - Cost-bench token/$ for DSH waits until headless returns usage into `loopUsage`
 
 ## Install
