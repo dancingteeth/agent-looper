@@ -4,12 +4,14 @@ import type { AgentRunResult } from './agentRunResult.js'
 import {
   isClineSdkRuntime,
   isCodexRuntime,
+  isDshRuntime,
   isOpencodeRuntime,
   isPiRuntime,
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_DSH,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   resolveLoopAgent,
@@ -20,6 +22,7 @@ import type { LoopConfig } from '../loop/loopConfig.js'
 // Type-only — erased at emit; keeps Cursor-only installs free of optional SDKs.
 import type { ClineLoopSession } from './clineAgent.js'
 import type { CodexLoopSession } from './codexAgent.js'
+import type { DshLoopSession } from './dshAgent.js'
 import type { OpencodeLoopSession } from './opencodeAgent.js'
 import type { PiLoopSession } from './piAgent.js'
 
@@ -115,6 +118,21 @@ function createPiRunner(pi: PiLoopSession): PromptRunner {
   }
 }
 
+function createDshRunner(dsh: DshLoopSession): PromptRunner {
+  return (prompt, agent, options) => {
+    if (!isDshRuntime(agent.runtime)) {
+      throw new Error('DSH runner invoked for non-dsh agent')
+    }
+    return dsh.runPrompt(prompt, {
+      verbose: options.verbose,
+      modelId: agent.model,
+      assistantOutput: options.assistantOutput,
+      phase: options.phase ?? 'implement',
+      collector: options.collector,
+    })
+  }
+}
+
 function createCodexRunner(codex: CodexLoopSession): PromptRunner {
   return (prompt, agent, options) => {
     if (!isCodexRuntime(agent.runtime)) {
@@ -181,6 +199,16 @@ export async function createLoopAgentSession(
     }
   }
 
+  if (runtime === LOOP_RUNTIME_DSH) {
+    const { createDshLoopSession } = await import('./dshAgent.js')
+    const dsh = await createDshLoopSession(ctx)
+    const runner = createDshRunner(dsh)
+    return {
+      runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),
+      dispose: () => dsh.dispose(),
+    }
+  }
+
   // Dynamic import: @cline/sdk is an optional peer. Cursor-only consumers must not
   // load clineAgent (and thus @cline/sdk) at module evaluation time.
   const { createClineLoopSession } = await import('./clineAgent.js')
@@ -206,6 +234,8 @@ export function loopRuntimeLabel(runtime: LoopRuntime): string {
       return 'pi'
     case LOOP_RUNTIME_CODEX:
       return 'codex'
+    case LOOP_RUNTIME_DSH:
+      return 'dsh'
     default: {
       const _exhaustive: never = runtime
       return _exhaustive

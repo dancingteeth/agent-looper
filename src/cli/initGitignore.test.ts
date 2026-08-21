@@ -16,6 +16,7 @@ describe('ensureLoopGitignoreBlock', () => {
     expect(content).toContain(LOOP_GITIGNORE_MARKER)
     expect(content).toContain('.cursor/loops/**/run-report.md')
     expect(content).toContain('.cursor/loops/**/transcript.ndjson')
+    expect(content).toContain('.cursor/loops/**/verify-logs/')
     expect(content).toContain('.cursor/loops/**/log.ndjson')
     expect(content).toContain('.cursor/sdk-runs/')
   })

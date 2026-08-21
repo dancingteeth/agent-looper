@@ -1,0 +1,41 @@
+{
+  "name": "@dancingteeth/dsh-agent-looper",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness companion — teaches and scaffolds Agent Looper (GOAL.md + verify.sh + agent-loop CLI)",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "skills",
+    "cordis.patch.yml"
+  ],
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "agent-looper",
+    "agentic-ai",
+    "loops"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  }
+}

@@ -12,7 +12,7 @@ tags:
 
 `runtime: opencode` uses `@opencode-ai/sdk` + the `opencode` CLI. The harness starts a local OpenCode server per loop session, wires API keys from env when present, and passes `provider/model` from `loop.json` to each worker iteration.
 
-Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime` to `opencode` or `pi` to match a BYOK judge.
+Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "opencode"` to judge on Go (defaults to **`opencode-go/deepseek-v4-pro`**, not Flash). BYOK OpenCode judges still need an explicit `reviewModel`.
 
 ## Defaults (cost-minmax)
 
@@ -20,6 +20,7 @@ Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime` to `open
 | --- | --- |
 | `model` | `opencode-go/deepseek-v4-flash` |
 | `escalateModel` | `opencode-go/qwen3.7-plus` (after stagnation) |
+| `reviewModel` (when `reviewRuntime: "opencode"`) | `opencode-go/deepseek-v4-pro` (not Flash) |
 
 Go slugs must appear in `OPENCODE_GO_LOOP_MODELS` (see [OpenCode Go docs](https://opencode.ai/docs/go/)).
 
@@ -56,7 +57,20 @@ OpenCode Go worker + Cursor Grok judge (default `reviewRuntime`):
 {
   "runtime": "opencode",
   "model": "opencode-go/deepseek-v4-flash",
-  "reviewModel": "grok-4.5",
+  "reviewModel": "grok-4.6",
+  "verify": "bash .cursor/loops/my-task/verify.sh",
+  "postQualityReview": "auto",
+  "reviewGate": true
+}
+```
+
+OpenCode Go worker + OpenCode V4 Pro judge (omit `reviewModel`):
+
+```json
+{
+  "runtime": "opencode",
+  "model": "opencode-go/deepseek-v4-flash",
+  "reviewRuntime": "opencode",
   "verify": "bash .cursor/loops/my-task/verify.sh",
   "postQualityReview": "auto",
   "reviewGate": true
@@ -117,6 +131,10 @@ Harness behavior (0.1.11+):
 Cloud poll tip: match `EXIT:` / `finished complete=` / `Verifier passed` — **not** `layer=transport` (that’s a retry, not done).
 
 If all retries still stall at TTFB: check Go gateway / network, try `escalateModel` or a BYOK slug, re-run later.
+
+## Dangling `~/.agents/skills`
+
+OpenCode loads global skills at session create. A `SKILL.md` symlink whose Cursor plugin-cache target was purged fails with `ENOENT` and shows up as `UnknownError`. `agent-check opencode` and `runtime: opencode` now fail fast and name the link. Relink to the current cache `SKILL.md`, or `rm` the dangling link.
 
 ## See also
 

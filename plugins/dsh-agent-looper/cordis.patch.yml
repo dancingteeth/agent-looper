@@ -1,0 +1,3 @@
+- insert:
+    - id: agent-looper
+      name: '@dancingteeth/dsh-agent-looper'

@@ -1,0 +1,18 @@
+{
+  "runtime": "dsh",
+  "model": "deepseek-official/deepseek-v4-flash",
+  "escalateModel": "deepseek-official/deepseek-v4-pro",
+  "reviewRuntime": "dsh",
+  "maxIterations": 8,
+  "verify": "bash .cursor/loops/cli-setup-wizard/verify.sh",
+  "postQualityReview": true,
+  "reviewGate": true,
+  "maxReviewCycles": 2,
+  "reviewReproduce": false,
+  "syncOnSuccess": false,
+  "stagnationThreshold": 3,
+  "mode": "forward",
+  "notifyTelegram": false,
+  "delayMs": 0,
+  "trustConfig": true
+}

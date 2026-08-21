@@ -3,6 +3,9 @@ tags:
   - documentation
   - releasing
   - npm
+  - agentic_ai
+  - agents
+  - loops
 ---
 # Releasing Agent Looper (`@dancingteeth/agent-looper`)
 

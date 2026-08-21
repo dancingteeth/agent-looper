@@ -6,6 +6,7 @@ import type { AgentRunResult } from '../agents/agentRunResult.js'
 import {
   isClineSdkRuntime,
   isCodexRuntime,
+  isDshRuntime,
   isOpencodeRuntime,
   isPiRuntime,
   LOOP_RUNTIME_CURSOR,
@@ -120,6 +121,20 @@ async function defaultSkillVerifyAgentRun(input: {
       })
     } finally {
       await codex.dispose()
+    }
+  }
+  if (isDshRuntime(agent.runtime)) {
+    const { createDshLoopSession } = await import('../agents/dshAgent.js')
+    const dsh = await createDshLoopSession(input.ctx)
+    try {
+      return await dsh.runPrompt(input.prompt, {
+        verbose: input.verbose,
+        modelId: agent.model,
+        assistantOutput: 'none',
+        phase: 'verify',
+      })
+    } finally {
+      await dsh.dispose()
     }
   }
   if (!isClineSdkRuntime(agent.runtime)) {

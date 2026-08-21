@@ -1,6 +1,11 @@
 ---
 name: loop-scaffold
 description: Scaffold a new Agent Looper bundle (GOAL, verify, loop.json) in the current repo.
+tags:
+  - agentic_ai
+  - agents
+  - documentation
+  - loops
 ---
 
 # /loop-scaffold

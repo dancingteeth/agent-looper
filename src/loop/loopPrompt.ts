@@ -22,7 +22,7 @@ export type LoopPromptInput = {
   reviewBlockers?: string[]
   /** Structured Guide feedback from reviewGate continue (preferred over reviewBlockers). */
   guidePackets?: GuidePacket[]
-  /** Inlined epic skill runbooks (from GOAL / loop.json). */
+  /** Skill index or inlined runbooks (from GOAL / loop.json / plugins). */
   skillsSection?: string
   /** Per-batch fan-out rubric (prompt-only; does not rewrite GOAL.md). */
   batchRubric?: string

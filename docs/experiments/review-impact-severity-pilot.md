@@ -3,6 +3,8 @@ tags:
   - documentation
   - experiments
   - loops
+  - agentic_ai
+  - agents
 ---
 # Review impact-severity pilot
 

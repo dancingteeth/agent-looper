@@ -17,5 +17,6 @@
   "injectFailureContext": false,
   "notifyTelegram": true,
   "verifyLogMode": "inline",
+  "skillDisclosure": "index",
   "plugins": ["templates/agent-plugin.example"]
 }

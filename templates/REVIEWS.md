@@ -3,6 +3,9 @@ tags:
   - documentation
   - reviews
   - template
+  - agentic_ai
+  - agents
+  - loops
 ---
 # REVIEWS.md
 

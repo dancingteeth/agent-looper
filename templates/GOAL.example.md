@@ -9,6 +9,19 @@ Describe what the agent should fix or implement.
 
 **UUID:** `<taskwarrior-uuid>` (optional — for TW auto-complete via `loop.json`)
 
+## Finish line (four parts)
+
+| Part | This loop |
+| --- | --- |
+| **Outcome** | (one sentence) |
+| **Scoreboard** | `verify.sh` exit `0` |
+| **Permission** | `loop.json` `maxIterations` / `stagnationThreshold` |
+| **Budget** | Stop when further work is not worth it — not "until perfect" |
+
+## Golden (optional)
+
+Path to a screenshot, fixture, or baseline to hold the result against. Omit if verify is enough.
+
 ## Acceptance criteria
 
 Success is determined only by the verifier in `loop.json`, not by your assessment.

@@ -629,7 +629,7 @@ describe('runAgentLoop', () => {
     expect(runPostLoopBlockerRecheck).not.toHaveBeenCalled()
   })
 
-  it('forwards resolveReviewModel (grok-4.5) for cursor review-gate', async () => {
+  it('forwards resolveReviewModel (grok-4.6) for cursor review-gate', async () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
@@ -644,7 +644,7 @@ describe('runAgentLoop', () => {
       expect.any(String),
       expect.anything(),
       expect.objectContaining({
-        reviewAgent: { runtime: 'cursor', model: 'grok-4.5' },
+        reviewAgent: { runtime: 'cursor', model: 'grok-4.6' },
       }),
     )
   })

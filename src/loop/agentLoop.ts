@@ -37,6 +37,7 @@ import {
   runPostVerifierExtensionHooks,
   siblingReposForIterationLog,
   validateLoopExtensionPreflight,
+  SKILL_DISCLOSURE_INLINE,
   type SiblingRepoRef,
   type VerifyLogRefs,
 } from './loopExtensions.js'
@@ -235,8 +236,13 @@ function persistVerifyResultsForLog(
     verifyLog: persisted.verifyLog,
     ...(finalVerify
       ? {
-          finalVerifyForLog: persistVerifyOutput(loopDir, iteration, finalVerify, verifyLogMode)
-            .verify,
+          finalVerifyForLog: persistVerifyOutput(
+            loopDir,
+            iteration,
+            finalVerify,
+            verifyLogMode,
+            'final',
+          ).verify,
         }
       : {}),
   }
@@ -300,9 +306,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     ...pluginLoad.skillRelativePaths,
     ...(config.skills ?? []),
   ])
-  const skillsSection = loadLoopSkillSection(repoRoot, skillPaths)
+  const skillsSection = loadLoopSkillSection(repoRoot, skillPaths, config.skillDisclosure)
   if (skillsSection) {
-    console.error(`[agent-loop] inlined ${skillPaths.length} skill runbook(s) into iteration prompts`)
+    const how =
+      config.skillDisclosure === SKILL_DISCLOSURE_INLINE ? 'inlined' : 'indexed (Read on demand)'
+    console.error(`[agent-loop] ${how} ${skillPaths.length} skill runbook(s) into iteration prompts`)
   }
   const agentSession = await createLoopAgentSession(config, ctx)
   const baseAgent = resolveLoopAgent(config)

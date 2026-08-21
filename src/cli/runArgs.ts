@@ -10,8 +10,8 @@ export type RunCliOptions = {
   qualityReview?: boolean | 'off'
   reviewGate?: boolean
   skipSync?: boolean
-  runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex'
-  reviewRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex'
+  runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
+  reviewRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
   model?: string
   reviewModel?: string
   escalateModel?: string
@@ -46,9 +46,9 @@ ${printRepoRootHelp()}
   --review-gate                   Require review verdict != BLOCKERS to complete
   --no-review-gate                Disable review gate (default from loop.json)
   --skip-sync                     Do not run repo profile syncCommand
-  --runtime <cursor|cline-pass|cline|opencode|pi|codex>  Override loop.json runtime
+  --runtime <cursor|cline-pass|cline|opencode|pi|codex|dsh>  Override loop.json runtime
   --model <id>                    Override loop.json worker model
-  --review-runtime <cursor|cline-pass|cline|opencode|pi|codex>  Override loop.json reviewRuntime (judge)
+  --review-runtime <cursor|cline-pass|cline|opencode|pi|codex|dsh>  Override loop.json reviewRuntime (judge)
   --review-model <id>             Override loop.json reviewModel (judge model)
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
@@ -62,7 +62,7 @@ ${printRepoRootHelp()}
 
 Cursor-only hackathon tip:
   --runtime cursor --review-gate
-  # worker = composer-2.5, judge = grok-4.5 (no Cline / 3rd-party)
+  # worker = composer-2.5, judge = grok-4.6 (no Cline / 3rd-party)
 
 Each iteration: fresh agent → shell verifier → append log.ndjson`
 }
@@ -155,11 +155,12 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
         value !== 'cline' &&
         value !== 'opencode' &&
         value !== 'pi' &&
-        value !== 'codex'
+        value !== 'codex' &&
+        value !== 'dsh'
       ) {
         return {
           kind: 'error',
-          message: '--runtime must be cursor, cline-pass, cline, opencode, pi, or codex',
+          message: '--runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
         }
       }
       runtime = value
@@ -177,11 +178,12 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
         value !== 'cline' &&
         value !== 'opencode' &&
         value !== 'pi' &&
-        value !== 'codex'
+        value !== 'codex' &&
+        value !== 'dsh'
       ) {
         return {
           kind: 'error',
-          message: '--review-runtime must be cursor, cline-pass, cline, opencode, pi, or codex',
+          message: '--review-runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
         }
       }
       reviewRuntime = value

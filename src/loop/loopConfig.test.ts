@@ -8,6 +8,7 @@ describe('loopConfigSchema', () => {
     expect(parsed.maxIterations).toBe(8)
     expect(parsed.delayMs).toBe(1500)
     expect(parsed.verifyLogMode).toBe('inline')
+    expect(parsed.skillDisclosure).toBe('index')
   })
 
   it('defaults syncOnSuccess to true', () => {

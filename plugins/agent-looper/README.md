@@ -1,3 +1,10 @@
+---
+tags:
+  - agentic_ai
+  - agents
+  - documentation
+  - loops
+---
 # Agent Looper (Cursor companion plugin)
 
 Guidance for designing and wiring **[Agent Looper](https://www.npmjs.com/package/@dancingteeth/agent-looper)** — the fix-until-green harness. This plugin does **not** install the CLI; it teaches the IDE agent how to use it.
@@ -33,13 +40,15 @@ Submit the **repository** URL at [cursor.com/marketplace/publish](https://cursor
 
 ## Harness dogfood
 
-In this repo, loops can inline these skills via:
+In this repo, loops can attach these skills via:
 
 ```json
 {
   "plugins": ["plugins/agent-looper"]
 }
 ```
+
+The worker prompt indexes name + description by default (`skillDisclosure: "index"`).
 
 ## Runtime install
 

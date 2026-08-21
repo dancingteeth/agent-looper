@@ -37,8 +37,11 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
 
 ## Checklist
 
-1. **Finish line** — Write the shell assertion first (`verify.sh` exit `0`). If you
-   cannot name it, you do not have a `/goal`-ready loop yet.
+1. **Finish line** — Four parts: outcome, scoreboard (`verify.sh` exit `0`),
+   permission (`maxIterations` / stagnation), budget (stop when further work is
+   not worth it). Optional **golden** artifact (screenshot, fixture, baseline).
+   Metric loops: revert if worse than baseline. If you cannot name the shell
+   assertion, you do not have a loop yet.
 2. **Failure modes** — Ask an agent (or yourself): how can this verify lie, flake,
    or miss the real bug? List unknowns (auth, clocks, network, fixture drift).
 3. **Human read** — Read the failure-mode list yourself. Do not trust a one-shot plan.

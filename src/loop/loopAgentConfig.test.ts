@@ -100,9 +100,9 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(agent.reasoningEffort).toBe('high')
   })
 
-  it('defaults reviewModel to grok-4.5 for cursor runtime', () => {
+  it('defaults reviewModel to grok-4.6 for cursor runtime', () => {
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
-    expect(resolveReviewModel(config)).toBe('grok-4.5')
+    expect(resolveReviewModel(config)).toBe('grok-4.6')
   })
 
   it('defaults reviewModel to composer-2.5 for cline-pass runtime', () => {
@@ -129,9 +129,9 @@ describe('resolveIterationAgent reasoning effort', () => {
     ).toThrow(/reviewModel/)
   })
 
-  it('resolveReviewAgent defaults cursor judge to grok-4.5 on cursor worker', () => {
+  it('resolveReviewAgent defaults cursor judge to grok-4.6 on cursor worker', () => {
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
-    expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'grok-4.5' })
+    expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'grok-4.6' })
   })
 
   it('resolveReviewAgent defaults cursor judge to composer-2.5 on cline-pass worker', () => {
@@ -149,6 +149,52 @@ describe('resolveIterationAgent reasoning effort', () => {
       runtime: 'pi',
       model: 'openrouter/deepseek/deepseek-chat',
     })
+  })
+
+  it('resolveReviewAgent defaults OpenCode judge to DeepSeek V4 Pro when reviewRuntime is opencode', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      reviewRuntime: 'opencode',
+    })
+    expect(resolveReviewAgent(config)).toEqual({
+      runtime: 'opencode',
+      model: 'opencode-go/deepseek-v4-pro',
+    })
+  })
+
+  it('resolveReviewAgent defaults DSH judge to V4 Pro when reviewRuntime is dsh', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'dsh',
+      reviewRuntime: 'dsh',
+    })
+    expect(resolveReviewAgent(config)).toEqual({
+      runtime: 'dsh',
+      model: 'deepseek-official/deepseek-v4-pro',
+    })
+  })
+
+  it('resolveLoopAgent defaults DSH worker to official Flash', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'dsh',
+    })
+    expect(resolveLoopAgent(config)).toEqual({
+      runtime: 'dsh',
+      model: 'deepseek-official/deepseek-v4-flash',
+    })
+  })
+
+  it('escalates DSH model on stagnation', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'dsh',
+      escalateModel: 'deepseek-official/deepseek-v4-pro',
+      escalateAfterStagnation: 2,
+    })
+    expect(resolveIterationAgent(config, 3, 2).model).toBe('deepseek-official/deepseek-v4-pro')
+    expect(resolveIterationAgent(config, 3, 1).model).toBe('deepseek-official/deepseek-v4-flash')
   })
 
   it('resolveReviewAgent defaults Codex judge to Sol when reviewRuntime is codex', () => {

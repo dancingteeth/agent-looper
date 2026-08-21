@@ -10,7 +10,10 @@ tags:
 Decisions from evaluating Strands, Cursor Router, Kilo Speed, Thariq/Claude Code,
 Mastra Factory/Goals, AI Maker (Wyndo), [Linear Loops](https://linear.app/docs/loops),
 [Agent Behavior](https://agentbehavior.dev/) / Braintrust+Basis, NVIDIA Red Team /
-NeMo validated-assistant posts, and T3 Code automations (Aug 2026).
+NeMo validated-assistant posts, T3 Code automations,
+[TrueForge](https://github.com/truefoundry/trueforge),
+[Nouri’s production harness notes](https://www.linkedin.com/pulse/production-ready-enterprise-ai-agent-coding-harness-steve-nouri-1x92c/),
+and [Simmons / Cherny ultraprompting](https://blockbuster.thoughtleader.school/p/ultraprompting-how-the-worlds-top) (Aug 2026).
 Merge canvas: `session-steal-decisions` under the workspace canvases dir.
 
 ## Wedge (never trade)
@@ -127,12 +130,69 @@ Sources:
 - Replacing shell verify with LLM-as-judge for security
 - T3 / Linear-style schedule·PR·issue triggers as core harness (factories compose the loop; same skip as P3)
 
+## P6 — TrueForge lean-context steals (Aug 2026)
+
+Source: [truefoundry/trueforge](https://github.com/truefoundry/trueforge) + [trueforge.dev](https://trueforge.dev)
+(intro / harness capabilities / large tool responses / benchmarking, 2026-08).
+TrueForge is a competing **agent platform** (sessions, MCP, Daytona sandbox, chat UI), not a
+coding-agent SDK. Steal **leaner outer-loop context**, not the inner harness.
+
+Do not add `runtime: trueforge`. See [`runtime-map.md`](./runtime-map.md) skip row.
+
+| Item | Adopt as | Deliverable | Notes |
+| --- | --- | --- | --- |
+| Sidecar verify logs | Harness | **Shipped** — `verifyLogMode: "sidecar"` | Analog of large-tool offload: worker prompt gets preview + path; full stdout/stderr under `<loop-dir>/verify-logs/`. Default remains `inline`. |
+| Progressive skill disclosure | Harness + docs | **Shipped** — `skillDisclosure: "index"` (default) | Worker prompt gets name + description + path; **Read** the `SKILL.md` on demand. `"skillDisclosure": "inline"` pastes full bodies for tiny loops. MCP schemas stay worker-owned. |
+| Same-task runtime cost bench | Docs | **Shipped (docs)** — [`docs/runtime-cost-bench.md`](./runtime-cost-bench.md) | Method only: frozen bundle, n≥3, change one of `runtime` / `model` / `reviewRuntime`, compare `run-report.md`. Dogfood n≥3 numbers still **planned**. Replay one frozen run and change one variable (Nouri evals). Judge is residual quality, never the exit. |
+
+### Explicit skips (TrueForge)
+
+- `runtime: trueforge` / nesting their loop inside this one (wrong shape; competing harness)
+- Sandbox-as-tool / Daytona / Code Mode (programmatic tool calling) — worker owns tools; host/platform skip already in P5
+- Context compaction / accumulating session summarizers — wedge: fresh context + git/files
+- Harness-level subagents — outer loop already isolates iterations; inner `Task` stays with the worker
+- Deferred MCP tool loading — same skip as semantic tool retrieval (wrong layer)
+- Chat UI / Generative UI / Agents library — factory-UI scope
+- Approvals, in-chat OAuth, hosted Postgres/Redis / AI Gateway — product, not a fix-until-green spine
+
+## P7 — Nouri / ultraprompt authoring (Aug 2026)
+
+Sources:
+[Production-ready enterprise AI agent coding harness](https://www.linkedin.com/pulse/production-ready-enterprise-ai-agent-coding-harness-steve-nouri-1x92c/)
+(Steve Nouri, citing Lovejoy / Marquez), and
+[Ultraprompting](https://blockbuster.thoughtleader.school/p/ultraprompting-how-the-worlds-top)
+(Michael Simmons on Boris Cherny / Claude Code).
+
+The ultraprompt (goal + check + permission) **is** this harness: `GOAL.md` + `verify.sh` + `maxIterations`.
+Steal **authoring discipline**, not Claude `/goal` `/loop` or swarm workflows.
+Nouri’s coding half is mostly already shipped (measurable verify, `AGENTS.md`, permissions, worker≠judge, `escalateModel`).
+
+| Item | Adopt as | Deliverable | Notes |
+| --- | --- | --- | --- |
+| Revert condition | Docs / template | **Shipped** — `templates/GOAL.metric.template.md` + `templates/verify.metric.example.sh` (`BASELINE_MS`) + design-loop | If measured worse than baseline, fail with revert — do not keep a regression. |
+| Four-part finish line | Docs / template | **Shipped** — `templates/GOAL.template.md` + `GOAL.example.md` + design-loop (Cursor + DSH) | Outcome, scoreboard, permission, **budget**. "Don't stop until perfect" is a demo, not a rule. |
+| Optional golden artifact | Docs / template | **Shipped** — **Golden** section on `GOAL.template.md` / `GOAL.example.md` / computer-use template | Path to screenshot, fixture, or baseline. Builder ≠ critic stays worker / `reviewGate`. |
+
+Replay-one-variable evals fold into **P6** cost bench (same frozen bundle, swap `runtime` / `model`, compare `run-report.md`). No new event-sourcing layer — `log.ndjson` is the replay surface.
+
+### Explicit skips (Nouri / ultraprompt)
+
+- Immutable enterprise event log + sensitive data in object storage (wrong product; P3 audit surface is enough)
+- Humans and LLMs as interchangeable workflow actors beyond existing HITL `waiting`
+- Confidence-threshold escalation as the HITL model
+- Thousands of subagents / Claude “use a workflow” as harness (swarm skip)
+- Claude Code `/loop` routines on Anthropic servers (schedule-trigger skip, same as P3)
+- "Don't stop until utterly perfect" as a default stopping rule
+- Ultraprompting skill that writes more prompt (anti prompt-diet)
+
 ## Verify this backlog
 
 ```bash
 bash scripts/check-steal-backlog.sh
 ```
 
-Asserts P3/P4 files + key phrases, then runs focused vitest for review embedding,
-run-report, and risk-profile hooks. Docs/templates are not runtime-enforced
-(permissions matrix is governance docs; `REVIEWS.md` laws are judge prompt text).
+Asserts P3–P7 sections + shipped P3/P4/P5 artifacts and shipped P6/P7 docs
+(cost-bench method, four-part GOAL, revert, golden). P6 sidecar and progressive
+skills are shipped (dogfood n≥3 cost numbers still planned). Then runs focused vitest for review embedding, run-report,
+and risk-profile hooks. Docs/templates are not runtime-enforced (permissions
+matrix is governance docs; `REVIEWS.md` laws are judge prompt text).

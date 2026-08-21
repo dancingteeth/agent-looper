@@ -12,6 +12,8 @@ Start here:
 - docs/verification-as-skill.md — measurable verify.sh + VERIFY.skill.md
 - docs/unknowns-preflight.md — remove unknowns before freezing GOAL
 - docs/competitive-steal-backlog.md — what we steal vs skip from the ecosystem
+- docs/runtime-map.md — worker/judge cost presets
+- docs/runtime-cost-bench.md — same-task runtime cost method (n≥3, change one variable)
 - docs/cursor-auto-router.md — Auto/Router opt-in blocked until SDK logs routed model id
 - docs/loop-review-roadmap.md — M1–M8 milestones
 
@@ -37,8 +39,8 @@ Worker default: composer-2.5. Judge default: grok-4.5 (`reviewModel`).
 
 ## Templates
 
-- templates/GOAL.template.md
-- templates/GOAL.metric.template.md — perf grind until threshold
+- templates/GOAL.template.md — four-part finish line + optional golden
+- templates/GOAL.metric.template.md — perf grind until threshold; revert if worse than baseline
 - templates/GOAL.computer-use.template.md — visible UI verify + shell floor (headless CI default)
 - templates/verify.example.sh
 - templates/verify.metric.example.sh

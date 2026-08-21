@@ -6,6 +6,7 @@ import {
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_DSH,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   LOOP_REASONING_EFFORTS,
@@ -33,6 +34,7 @@ export const loopRuntimeSchema = z.enum([
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   LOOP_RUNTIME_CODEX,
+  LOOP_RUNTIME_DSH,
 ])
 
 export const loopVerifyModeSchema = z.enum(['command', 'skill']).default('command')

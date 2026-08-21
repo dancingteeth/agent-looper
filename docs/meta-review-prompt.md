@@ -3,6 +3,8 @@ tags:
   - documentation
   - loops
   - roadmap
+  - agentic_ai
+  - agents
 ---
 # Meta-review prompt outline (M5)
 

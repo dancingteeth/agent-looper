@@ -69,7 +69,7 @@ export async function waitForCursorRun<T>(
 export type CursorAgentRunOptions = {
   verbose?: boolean
   /**
-   * Worker defaults to composer-2.5; review/judge may use grok-4.5.
+   * Worker defaults to composer-2.5; review/judge may use grok-4.6.
    * Never Composer Fast / Grok Fast.
    */
   modelId?: CursorSdkModel

@@ -1,9 +1,11 @@
 ---
 name: install-agent-looper
-description: >-
-  Install and wire @dancingteeth/agent-looper in a consumer repo — dependency,
-  agent-loop-init, scripts, and first dogfood run. Use when adding the harness
-  or debugging why the CLI is missing.
+description: Install and wire @dancingteeth/agent-looper in a consumer repo — dependency, agent-loop-init, scripts, and first dogfood run. Use when adding the harness or debugging why the CLI is missing.
+tags:
+  - agentic_ai
+  - agents
+  - documentation
+  - loops
 ---
 
 # Install Agent Looper

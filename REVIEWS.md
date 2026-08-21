@@ -2,6 +2,9 @@
 tags:
   - documentation
   - reviews
+  - agentic_ai
+  - agents
+  - loops
 ---
 # REVIEWS.md — Agent Looper
 

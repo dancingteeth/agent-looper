@@ -13,6 +13,7 @@ const LOOP_GITIGNORE_LINES: readonly string[] = [
   '.cursor/loops/**/review.*.md',
   '.cursor/loops/**/run-report.md',
   '.cursor/loops/**/transcript.ndjson',
+  '.cursor/loops/**/verify-logs/',
 ]
 
 /**

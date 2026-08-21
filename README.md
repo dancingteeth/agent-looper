@@ -7,7 +7,7 @@ tags:
 
 Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
 
-Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**. Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
+Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 
 New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
@@ -31,7 +31,7 @@ New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works,
 
 **Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `OPENROUTER_API_KEY`, `AI_GATEWAY_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
 
-Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md).
+Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md). Freeze a **four-part finish line** (outcome, scoreboard, permission, budget) plus optional **golden** artifact — [`templates/GOAL.template.md`](./templates/GOAL.template.md). Metric loops: revert if worse than baseline — [`templates/GOAL.metric.template.md`](./templates/GOAL.metric.template.md).
 
 ## Install
 
@@ -93,6 +93,11 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-runtime pi 
 export CODEX_API_KEY=…   # or OPENAI_API_KEY / ChatGPT login
 pnpm exec agent-check codex
 pnpm exec agent-loop run .cursor/loops/my-task --runtime codex
+
+# DeepSeek Harness (needs `dsh` on PATH; Node ≥ 22.15)
+export DEEPSEEK_API_KEY=…   # or DSH credentials-local
+pnpm exec agent-check dsh
+pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh
 ```
 
 Target another checkout:
@@ -145,13 +150,14 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 
 ```text
 .cursor/loops/my-task/
-  GOAL.md                  # frozen spec
+  GOAL.md                  # frozen spec (four-part finish line + optional golden)
   loop.json                # verify, runtime, optional taskwarriorUuid
   verify.sh                # measurable shell checks (exit 0 = pass)
   VERIFY.skill.md          # agent-readable verify procedure (optional; required for verifyMode: skill)
   log.ndjson               # append-only iteration log (runtime)
   run-report.md            # human-readable run summary (when exportRunReport)
   transcript.ndjson        # tool timeline (when exportTranscript)
+  verify-logs/             # optional — sidecar verify stdout/stderr (`verifyLogMode`)
   failure-domains.ndjson   # optional — stagnation / max iterations / gate exhaust
   failure-context.md       # optional — written by meta-loop probe for fix loop
 ```
@@ -164,6 +170,9 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 | `verifyMode` | `command` | `command` = shell only. `skill` = verify agent reads `verifySkill`, emits `VERIFY_RESULT: PASS/FAIL`, then runs shell `verify` on PASS. |
 | `verifySkill` | — | Path to `VERIFY.skill.md` (required when `verifyMode` is `skill`). |
 | `finalVerify` | — | Stricter outer check after inner `verify` passes. |
+| `verifyLogMode` | `inline` | How verify stdout/stderr reach the next worker. `inline` pastes the capture. `sidecar` is **optional**: write `<loop-dir>/verify-logs/` and put a ~600-character preview + path in the prompt. Leave unset / `inline` when verify is short. |
+
+Default stays **`inline`**. Use `"verifyLogMode": "sidecar"` only when verify dumps are large (full vitest / Playwright / compiler walls) and would otherwise repeat in every later prompt. Sidecar does not change the verifier; capture is still capped (~64KB) before anything is written to disk.
 
 Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
@@ -171,8 +180,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex`. See [`docs/runtime-map.md`](./docs/runtime-map.md). |
-| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi/Codex: after threshold; Cline: after reasoning ceiling). |
+| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`. See [`docs/runtime-map.md`](./docs/runtime-map.md). Same-task cost method: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). |
+| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi/Codex/DSH: after threshold; Cline: after reasoning ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
@@ -192,7 +201,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
 | `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling) |
-| `skills` | — | Explicit `…/SKILL.md` paths inlined into worker prompts (merged with GOAL refs) |
+| `skills` | — | Explicit `…/SKILL.md` paths (merged with GOAL refs). Default prompt is an **index** (name, description, path) — worker **Read**s the file when needed. |
+| `skillDisclosure` | `index` | `index` = progressive disclosure. `inline` = paste full SKILL.md bodies (tiny loops). |
 | `plugins` | — | Agent Plugins package dirs — discovers `skills/*/SKILL.md` ([`docs/agent-plugins.md`](./docs/agent-plugins.md)) |
 
 ### loop.json — review & quality
@@ -204,7 +214,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `loopRiskProfile` | — | Per-loop keyword merge for risk inference (`high` / `medium` / `low` arrays) |
 | `reviewGate` | `false` | When `true`, gating blockers re-enter the fix loop (up to `maxReviewCycles`) |
 | `reviewRuntime` | `cursor` | Primary judge runtime (same enum as `runtime`). Unset → cursor. |
-| `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.5` when worker is `cursor`, else `composer-2.5`. Codex judge (`reviewRuntime: "codex"`) defaults to **`gpt-5.6-sol`** (worker stays Luna). Other non-cursor judges use that runtime’s worker default. Never Composer Fast on cursor. |
+| `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.6` when worker is `cursor`, else `composer-2.5`. OpenCode judge (`reviewRuntime: "opencode"`) defaults to **`opencode-go/deepseek-v4-pro`** (worker stays Flash). DSH judge (`reviewRuntime: "dsh"`) defaults to **`deepseek-official/deepseek-v4-pro`**. Codex judge (`reviewRuntime: "codex"`) defaults to **`gpt-5.6-sol`** (worker stays Luna). Pi / Cline judges use that runtime’s worker default. Never Composer Fast on cursor. |
 | `maxReviewCycles` | `2` | Review-triggered fix rounds when `reviewGate` is on |
 | `reviewGateHitl` | `false` | On gate exhaust, open a HITL checkpoint (`hitlProvider`) instead of hard-fail only |
 | `unparseableReviewRetries` | `2` | Retries when verdict cannot be parsed |
@@ -230,7 +240,6 @@ library calls) when they are configured — do not rely on them gating anything:
 | `smokeScripts` | reserved — post-verifier hook not implemented |
 | `siblingRepos` | partially wired — recorded in `log.ndjson`; cross-repo verify not implemented |
 | `verifyPreflight` | reserved — not implemented |
-| `verifyLogMode: "sidecar"` | reserved — falls back to inline verify output |
 
 ### `postQualityReview: "auto"` and loop risk
 

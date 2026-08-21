@@ -7,6 +7,7 @@ const createClineLoopSession = vi.fn()
 const createOpencodeLoopSession = vi.fn()
 const createPiLoopSession = vi.fn()
 const createCodexLoopSession = vi.fn()
+const createDshLoopSession = vi.fn()
 
 vi.mock('./cursorAgent.js', () => ({
   runCursorAgentPrompt,
@@ -26,6 +27,10 @@ vi.mock('./piAgent.js', () => ({
 
 vi.mock('./codexAgent.js', () => ({
   createCodexLoopSession,
+}))
+
+vi.mock('./dshAgent.js', () => ({
+  createDshLoopSession,
 }))
 
 const testCtx = {
@@ -53,6 +58,10 @@ describe('createLoopAgentSession', () => {
       runPrompt: vi.fn().mockResolvedValue({ text: 'codex-ok' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     })
+    createDshLoopSession.mockResolvedValue({
+      runPrompt: vi.fn().mockResolvedValue({ text: 'dsh-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    })
   })
 
   it('dispatches cursor runtime to runCursorAgentPrompt', async () => {
@@ -72,6 +81,7 @@ describe('createLoopAgentSession', () => {
     expect(createOpencodeLoopSession).not.toHaveBeenCalled()
     expect(createPiLoopSession).not.toHaveBeenCalled()
     expect(createCodexLoopSession).not.toHaveBeenCalled()
+    expect(createDshLoopSession).not.toHaveBeenCalled()
     await session.dispose()
   })
 
@@ -83,6 +93,7 @@ describe('createLoopAgentSession', () => {
     expect(createOpencodeLoopSession).not.toHaveBeenCalled()
     expect(createPiLoopSession).not.toHaveBeenCalled()
     expect(createCodexLoopSession).not.toHaveBeenCalled()
+    expect(createDshLoopSession).not.toHaveBeenCalled()
   })
 
   it('dispatches cline-pass runtime to Cline session', async () => {
@@ -225,5 +236,34 @@ describe('createLoopAgentSession', () => {
     )
     await session.dispose()
     expect(codexSession.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches dsh runtime to DSH session', async () => {
+    const { createLoopAgentSession } = await import('./agentRunner.js')
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'dsh' })
+    const dshSession = {
+      runPrompt: vi.fn().mockResolvedValue({ text: 'dsh-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    }
+    createDshLoopSession.mockResolvedValue(dshSession)
+
+    const session = await createLoopAgentSession(config, testCtx)
+    const result = await session.runIterationPrompt(
+      'prompt',
+      { runtime: 'dsh', model: 'deepseek-official/deepseek-v4-flash' },
+      { assistantOutput: 'none' },
+    )
+
+    expect(result.text).toBe('dsh-ok')
+    expect(createDshLoopSession).toHaveBeenCalledOnce()
+    expect(createCodexLoopSession).not.toHaveBeenCalled()
+    expect(dshSession.runPrompt).toHaveBeenCalledWith(
+      'prompt',
+      expect.objectContaining({
+        modelId: 'deepseek-official/deepseek-v4-flash',
+      }),
+    )
+    await session.dispose()
+    expect(dshSession.dispose).toHaveBeenCalledOnce()
   })
 })

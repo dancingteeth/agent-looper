@@ -1,6 +1,11 @@
 ---
 name: hello-verify
 description: Tiny example skill discovered via Agent Plugins skills/ layout.
+tags:
+  - agentic_ai
+  - agents
+  - documentation
+  - loops
 ---
 
 # Hello verify

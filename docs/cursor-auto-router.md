@@ -29,7 +29,7 @@ estimates, and reviewGate forensics would lose which model produced the work.
 CURSOR_LOOP_MODEL = 'composer-2.5'
 ```
 
-Judge remains `grok-4.5` via `reviewModel`. Do **not** make Auto the default
+Judge remains `grok-4.6` via `reviewModel`. Do **not** make Auto the default
 worker or judge.
 
 ## Required SDK surface (to unblock)

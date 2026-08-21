@@ -1,6 +1,11 @@
 ---
 name: loop-verify
 description: Run the measurable verification checklist for an Agent Looper task. Use when implementing or fixing work under .cursor/loops/ and before declaring the loop complete. Never hand back partially verified work.
+tags:
+  - agentic_ai
+  - agents
+  - documentation
+  - loops
 ---
 
 # Loop verification skill

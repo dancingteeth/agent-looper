@@ -4,6 +4,9 @@ tags:
   - plugins
   - cursor
   - marketplace
+  - agentic_ai
+  - agents
+  - loops
 ---
 # Cursor marketplace companion plugin
 
@@ -52,3 +55,7 @@ Expected: **Validation passed.** Missing `hooks/` / `mcp.json` warnings are fine
 ```
 
 Loads the Agent Plugins `plugin.json` + `skills/*/SKILL.md` into worker prompts (see [`docs/agent-plugins.md`](./agent-plugins.md)).
+
+## DeepSeek Harness twin
+
+The same three skills and a `loop-scaffold` command ship as a DSH Cordis bundle at [`plugins/dsh-agent-looper/`](../plugins/dsh-agent-looper/) — see [`docs/dsh-plugin.md`](./dsh-plugin.md).

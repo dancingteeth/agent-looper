@@ -14,6 +14,7 @@
     "agent-loop-batch": "./dist/cli/run-batch.js",
     "agent-check": "./dist/cli/check.js",
     "agent-loop-init": "./dist/cli/init.js",
+    "agent-loop-setup": "./dist/cli/setup.js",
     "agent-loop-review-run": "./dist/cli/review-run.js",
     "agent-loop-review-preview": "./dist/cli/review-preview.js",
     "agent-loop-meta-review": "./dist/cli/meta-review.js",
@@ -49,6 +50,7 @@
     "agent:check:opencode": "doppler run --project agent-looper --config dev -- node dist/cli/check.js opencode",
     "agent:check:pi": "doppler run --project agent-looper --config dev -- node dist/cli/check.js pi",
     "agent:check:codex": "doppler run --project agent-looper --config dev -- node dist/cli/check.js codex",
+    "agent:check:dsh": "doppler run --project agent-looper --config dev -- node dist/cli/check.js dsh",
     "agent:doctor": "doppler run --project agent-looper --config dev -- node dist/cli/doctor.js",
     "test:cursor-plugin": "node scripts/validate-cursor-plugin.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"

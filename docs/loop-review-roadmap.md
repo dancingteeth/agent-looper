@@ -3,6 +3,8 @@ tags:
   - documentation
   - loops
   - roadmap
+  - agentic_ai
+  - agents
 ---
 # Loop review next-step roadmap
 

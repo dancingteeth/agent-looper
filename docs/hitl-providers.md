@@ -1,3 +1,10 @@
+---
+tags:
+  - agentic_ai
+  - agents
+  - documentation
+  - loops
+---
 # HITL checkpoint providers
 
 Human-in-the-loop (HITL) checkpoints are **create-only** and **non-blocking**: the harness tries to open a durable record for a human, logs a warning on failure, and continues. The opaque id returned (when any) is stored as `hitlCheckTaskUuid` on loop results — e.g. a Taskwarrior UUID, file path, GitHub/Linear issue URL, or `command` stdout.

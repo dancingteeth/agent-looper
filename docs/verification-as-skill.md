@@ -3,6 +3,8 @@ tags:
   - documentation
   - loops
   - verification
+  - agentic_ai
+  - agents
 ---
 # Verification-as-skill
 
@@ -70,6 +72,14 @@ commit numeric ID alone in `loop.json`.
 
 `finalVerify` is optional — stricter outer gate (deploy + smoke) after inner `verify`.
 
+### Verify log mode (optional)
+
+Default is **`inline`**: the next worker prompt includes the captured verify stdout/stderr. Omit the field unless you need the other mode.
+
+Set `"verifyLogMode": "sidecar"` when verify is noisy (full-suite dumps, Playwright traces, compiler walls). The harness writes `<loop-dir>/verify-logs/iter-N.{verify,final}.{stdout,stderr}.txt` and puts a ~600-character preview plus path in the prompt. The worker can `Read` the file if the preview is not enough. Sidecar does not change pass/fail; the shell capture is still capped (~64KB) before write.
+
+Keep `inline` when `verify.sh` prints a few lines — then the extra file hop is only friction.
+
 ## Authoring verify.sh
 
 - `set -euo pipefail` at the top.
@@ -77,8 +87,22 @@ commit numeric ID alone in `loop.json`.
 - Prefer **narrow** commands (one test file, one script) over whole-suite runs when
   iterating — keep `finalVerify` for the heavy path.
 - Exit non-zero on any failed assertion; the loop will not complete.
+- Metric loops (lower-is-better): pair with [`templates/verify.metric.example.sh`](../templates/verify.metric.example.sh).
+  Set `BASELINE_MS` so a result **worse than baseline** fails (revert signal) even if
+  you have not hit the threshold yet. See [`templates/GOAL.metric.template.md`](../templates/GOAL.metric.template.md).
 
 ## GOAL.md tips
+
+Name a **four-part finish line** before freeze (see [`templates/GOAL.template.md`](../templates/GOAL.template.md)):
+
+| Part | Where |
+| --- | --- |
+| Outcome | Goal paragraph |
+| Scoreboard | `verify.sh` exit `0` |
+| Permission | `loop.json` `maxIterations` / `stagnationThreshold` |
+| Budget | stop when further work is not worth it — not "until perfect" |
+
+Optional **Golden**: path to a screenshot, fixture, or baseline the critic / verify holds against.
 
 Under **Acceptance criteria**, link the verifier explicitly:
 
@@ -86,6 +110,8 @@ Under **Acceptance criteria**, link the verifier explicitly:
 - Success is determined **only** by `loop.json` `verify` (exit `0`).
 - Measurable checks live in `verify.sh` and `VERIFY.skill.md`.
 ```
+
+Metric grind: if measured is worse than the recorded baseline, that is a **revert**, not a candidate to keep.
 
 Preflight warns when GOAL.md does not mention measurable verify artifacts.
 

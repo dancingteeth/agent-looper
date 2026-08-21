@@ -1,9 +1,11 @@
 ---
 name: review-gate
-description: >-
-  Configure Agent Looper post-verify quality review and reviewGate — Proceed /
-  Guide / Deny / Confirm, impact-severity gating, and when not to thrash another
-  iteration. Use when writing REVIEWS.md or tuning postQualityReview.
+description: Configure Agent Looper post-verify quality review and reviewGate — Proceed / Guide / Deny / Confirm, impact-severity gating, and when not to thrash another iteration. Use when writing REVIEWS.md or tuning postQualityReview.
+tags:
+  - agentic_ai
+  - agents
+  - documentation
+  - loops
 ---
 
 # Review gate
@@ -34,7 +36,9 @@ Proceed / Guide / Deny / Confirm — Guide packets feed the next worker when the
 ## Judge runtime
 
 - Default judge: Cursor (`reviewRuntime` unset → `cursor`)
-- Set `reviewRuntime` + `reviewModel` to keep the judge off Cursor quota (Pi, OpenCode, Cline, …)
+- `reviewRuntime: opencode` without `reviewModel` → `opencode-go/deepseek-v4-pro` (do not copy the Flash worker slug)
+- `reviewRuntime: dsh` without `reviewModel` → `deepseek-official/deepseek-v4-pro`
+- Set `reviewRuntime` + `reviewModel` to keep the judge off Cursor quota (Pi, OpenCode BYOK, Cline, DSH, …)
 - Never use Composer Fast as the judge
 
 ## Reproduce filters (opt-in)

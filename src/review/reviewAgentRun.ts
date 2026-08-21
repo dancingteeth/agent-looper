@@ -6,6 +6,7 @@ import {
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_DSH,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   type ResolvedReviewAgent,
@@ -17,7 +18,7 @@ export type ReviewAgentPromptOptions = {
 
 /**
  * Run a single primary-judge prompt on the configured review runtime
- * (cursor | cline-pass | cline | opencode | pi | codex).
+ * (cursor | cline-pass | cline | opencode | pi | codex | dsh).
  */
 export async function runReviewAgentPrompt(
   ctx: RepoContext,
@@ -91,6 +92,20 @@ export async function runReviewAgentPrompt(
         })
       } finally {
         await codex.dispose()
+      }
+    }
+    case LOOP_RUNTIME_DSH: {
+      const { createDshLoopSession } = await import('../agents/dshAgent.js')
+      const dsh = await createDshLoopSession(ctx)
+      try {
+        return await dsh.runPrompt(prompt, {
+          verbose: options.verbose,
+          modelId: agent.model,
+          assistantOutput: 'none',
+          phase: 'review',
+        })
+      } finally {
+        await dsh.dispose()
       }
     }
     default: {

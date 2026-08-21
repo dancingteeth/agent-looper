@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { OPENCODE_PROVIDER_API_KEY_ENV } from '../agents/opencodeAuth.js'
+import { assertOpencodeAgentSkillsReadable } from '../agents/opencodeSkillPreflight.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
-type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex'
+type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
 
 function usage(): string {
-  return `Usage: agent-check <cursor|cline|opencode|pi|codex>
+  return `Usage: agent-check <cursor|cline|opencode|pi|codex|dsh>
 
 Verifies SDK install and API key env var. Does not call remote APIs.`
 }
@@ -22,7 +23,8 @@ if (
   target !== 'cline' &&
   target !== 'opencode' &&
   target !== 'pi' &&
-  target !== 'codex'
+  target !== 'codex' &&
+  target !== 'dsh'
 ) {
   console.error(usage())
   process.exit(1)
@@ -74,6 +76,12 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     }
 
     await assertPosixShell()
+    try {
+      assertOpencodeAgentSkillsReadable()
+    } catch (err) {
+      console.error('[agent-check]', err instanceof Error ? err.message : err)
+      process.exit(1)
+    }
 
     const { spawnSync } = await import('node:child_process')
     const which = spawnSync('opencode', ['--version'], { encoding: 'utf8' })
@@ -91,6 +99,7 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       console.log(`[agent-check] ${envName} present (prefix):`, `${key.slice(0, 4)}…`)
     }
     console.log('[agent-check] shell preflight OK')
+    console.log('[agent-check] ~/.agents/skills SKILL.md links OK')
     return
   }
 
@@ -177,6 +186,42 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
 
     console.log('[agent-check] @openai/codex-sdk OK — Codex:', typeof Codex)
     console.log('[agent-check] codex CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
+    console.log('[agent-check] shell preflight OK')
+    return
+  }
+
+  if (runtime === 'dsh') {
+    const { nodeMeetsDshMinimum, DSH_MIN_NODE_MAJOR, DSH_MIN_NODE_MINOR } = await import(
+      '../agents/dshAgent.js'
+    )
+    if (!nodeMeetsDshMinimum()) {
+      console.error(
+        `[agent-check] Node.js ${DSH_MIN_NODE_MAJOR}.${DSH_MIN_NODE_MINOR}+ required for DSH headless (current: ${process.versions.node})`,
+      )
+      process.exit(1)
+    }
+
+    await assertPosixShell()
+    const { spawnSync } = await import('node:child_process')
+    const which = spawnSync('dsh', ['--version'], { encoding: 'utf8' })
+    if (which.error || which.status !== 0) {
+      console.error(
+        '[agent-check] `dsh` CLI not on PATH. Install DeepSeek Harness (`npx @deepseek-ai/dsh`). ' +
+          'The Agent Looper package does not depend on `@deepseek-ai/dsh`.',
+      )
+      process.exit(1)
+    }
+
+    const key = process.env.DEEPSEEK_API_KEY?.trim()
+    if (key) {
+      console.log('[agent-check] DEEPSEEK_API_KEY present (prefix):', `${key.slice(0, 4)}…`)
+    } else {
+      console.log(
+        '[agent-check] no DEEPSEEK_API_KEY — will rely on DSH credentials (`dsh` settings / credentials-local)',
+      )
+    }
+
+    console.log('[agent-check] dsh CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
     console.log('[agent-check] shell preflight OK')
     return
   }

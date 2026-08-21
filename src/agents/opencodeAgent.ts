@@ -12,6 +12,7 @@ import {
   parseProviderModel,
 } from '../loop/loopAgentConfig.js'
 import { bootstrapOpencodeProviderAuth, assertOpencodeProviderAuthReady } from './opencodeAuth.js'
+import { assertOpencodeAgentSkillsReadable, opencodeDanglingSkillHint } from './opencodeSkillPreflight.js'
 import { formatErrorChain, isTransportAgentError } from './errorFormat.js'
 import {
   OPENCODE_SESSION_TIMEOUT_MS,
@@ -135,14 +136,16 @@ function wrapOpencodePromptError(
     isTransportAgentError(err) || /\[layer=transport\]/i.test(chain)
       ? ' [layer=transport — provider/TLS/reset or wedged local OpenCode server; not a verifier failure]'
       : ''
+  const skillHint = opencodeDanglingSkillHint(chain)
   return new Error(
-    `OpenCode session.prompt failed (provider=${ctx.providerID} model=${ctx.modelId} session=${ctx.sessionId}): ${chain}${transportHint}`,
+    `OpenCode session.prompt failed (provider=${ctx.providerID} model=${ctx.modelId} session=${ctx.sessionId}): ${chain}${transportHint}${skillHint}`,
     { cause: err instanceof Error ? err : undefined },
   )
 }
 
 export async function createOpencodeLoopSession(ctx: RepoContext): Promise<OpencodeLoopSession> {
   await assertPosixShell()
+  assertOpencodeAgentSkillsReadable()
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const directory = ctx.repoRoot
 
@@ -294,7 +297,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
               ? String(assistantInfo.error.message)
               : errName
           throw new Error(
-            `OpenCode assistant error (${errName}) (provider=${providerID} model=${options.modelId} session=${sessionId}): ${errMsg}`,
+            `OpenCode assistant error (${errName}) (provider=${providerID} model=${options.modelId} session=${sessionId}): ${errMsg}${opencodeDanglingSkillHint(errMsg)}`,
           )
         }
 

@@ -4,6 +4,7 @@ import {
   isClineSdkRuntime,
   isCodexRuntime,
   isCursorSdkModel,
+  isDshRuntime,
   isOpencodeRuntime,
   isPiRuntime,
   LOOP_RUNTIME_CURSOR,
@@ -16,6 +17,7 @@ export const BANNED_CURSOR_LOOP_MODELS = new Set([
   'composer-fast',
   'composer-2-fast',
   'grok-4.5-fast',
+  'grok-4.6-fast',
   'grok-fast',
 ])
 
@@ -44,7 +46,8 @@ export function assertLoopModelAllowed(runtime: LoopRuntime, model: string): voi
     (isClineSdkRuntime(runtime) ||
       isOpencodeRuntime(runtime) ||
       isPiRuntime(runtime) ||
-      isCodexRuntime(runtime)) &&
+      isCodexRuntime(runtime) ||
+      isDshRuntime(runtime)) &&
     isBannedCursorLoopModel(model)
   ) {
     throw new Error(

@@ -1,0 +1,20 @@
+{
+  "runtime": "cursor",
+  "model": "composer-2.5",
+  "reviewModel": "grok-4.5",
+  "maxIterations": 10,
+  "verify": "bash .cursor/loops/dsh-plugin/verify.sh",
+  "postQualityReview": true,
+  "reviewGate": true,
+  "reviewReproduce": true,
+  "reviewReproduceAgent": false,
+  "maxReviewCycles": 2,
+  "reviewBlockerRecheck": true,
+  "syncOnSuccess": false,
+  "stagnationThreshold": 3,
+  "mode": "forward",
+  "notifyTelegram": true,
+  "delayMs": 0,
+  "trustConfig": true,
+  "plugins": ["plugins/agent-looper"]
+}

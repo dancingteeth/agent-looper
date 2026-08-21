@@ -8,12 +8,14 @@ const {
   createOpencodeLoopSession,
   createPiLoopSession,
   createCodexLoopSession,
+  createDshLoopSession,
 } = vi.hoisted(() => ({
   runCursorAgentPrompt: vi.fn(),
   createClineLoopSession: vi.fn(),
   createOpencodeLoopSession: vi.fn(),
   createPiLoopSession: vi.fn(),
   createCodexLoopSession: vi.fn(),
+  createDshLoopSession: vi.fn(),
 }))
 
 vi.mock('../agents/cursorAgent.js', () => ({
@@ -34,6 +36,10 @@ vi.mock('../agents/piAgent.js', () => ({
 
 vi.mock('../agents/codexAgent.js', () => ({
   createCodexLoopSession,
+}))
+
+vi.mock('../agents/dshAgent.js', () => ({
+  createDshLoopSession,
 }))
 
 const testCtx = {
@@ -156,6 +162,26 @@ describe('runReviewAgentPrompt', () => {
       'review me',
       expect.objectContaining({
         modelId: 'gpt-5.6-luna',
+        phase: 'review',
+      }),
+    )
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches dsh judge and disposes the session', async () => {
+    const dispose = vi.fn().mockResolvedValue(undefined)
+    const runPrompt = vi.fn().mockResolvedValue({ text: 'dsh-review' })
+    createDshLoopSession.mockResolvedValue({ runPrompt, dispose })
+
+    const result = await runReviewAgentPrompt(testCtx, 'review me', {
+      runtime: 'dsh',
+      model: 'deepseek-official/deepseek-v4-pro',
+    })
+    expect(result.text).toBe('dsh-review')
+    expect(runPrompt).toHaveBeenCalledWith(
+      'review me',
+      expect.objectContaining({
+        modelId: 'deepseek-official/deepseek-v4-pro',
         phase: 'review',
       }),
     )

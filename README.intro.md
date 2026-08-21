@@ -9,7 +9,12 @@ tags:
 
 **Fix-until-green with a pluggable agent SDK:** one frozen goal, a cheap worker that edits the repo, a shell check that decides “done,” optional smarter review that can send the worker back — until the check is green or you stop it.
 
-Software is becoming a hierarchy of loops. The highest-value human work is **deciding which loops to create** — writing a measurable `GOAL.md` + `verify.sh`. The harness owns the grind; you own the finish line. (Models will keep changing; this system compounds across them.)
+Software is becoming a hierarchy of loops. The highest-value human work is
+**deciding which loops to create** — a four-part finish line: outcome, scoreboard
+(`verify.sh`), permission (`maxIterations`), and a **budget** (not “until perfect”).
+See [`templates/GOAL.template.md`](./templates/GOAL.template.md). The harness owns
+the grind; you own the finish line. (Models will keep changing; this system
+compounds across them.)
 
 If you’ve heard “stop prompting, start looping” and you’re hunting GitHub for a non-theater implementation — this is that: **small, measurable, opt-in complexity**, default path is Cursor-only and relatively cheap.
 
@@ -103,12 +108,13 @@ They do not have to match. A non-Cursor worker can still use a Cursor judge — 
 | **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `vercel/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 | **`pi`** | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
 | **`codex`** | `gpt-5.6-luna` → `gpt-5.6-terra` | ChatGPT / OpenAI — [`docs/codex-runtime.md`](./docs/codex-runtime.md) |
+| **`dsh`** | `deepseek-official/deepseek-v4-flash` → `deepseek-official/deepseek-v4-pro` | Headless DSH CLI — [`docs/dsh-runtime.md`](./docs/dsh-runtime.md) |
 
 ### Judge defaults
 
-Unset `reviewRuntime` → **`cursor`**. Unset `reviewModel` on that Cursor judge → **`grok-4.5`** when the worker is also `cursor`, else **`composer-2.5`**.
+Unset `reviewRuntime` → **`cursor`**. Unset `reviewModel` on that Cursor judge → **`grok-4.6`** when the worker is also `cursor`, else **`composer-2.5`**.
 
-To keep the judge off Cursor quota, set `reviewRuntime` (and usually `reviewModel`) to match a peer you already pay for — e.g. `"reviewRuntime": "pi"`, `"opencode"`, or `"codex"` (Codex judge defaults to **`gpt-5.6-sol`**). Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md).
+To keep the judge off Cursor quota, set `reviewRuntime` to a peer you already pay for — e.g. `"reviewRuntime": "pi"`, `"opencode"` (defaults to **`opencode-go/deepseek-v4-pro`**), `"dsh"` (defaults to **`deepseek-official/deepseek-v4-pro`**), or `"codex"` (defaults to **`gpt-5.6-sol`**). Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). Measure a pick on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md).
 
 ---
 
@@ -128,7 +134,7 @@ If a README promises “autonomous digital employees,” walk away. This one pro
 
 After each run (default `exportRunReport: true`), the bundle also gets **`run-report.md`** — a human-readable timeline (models, verify, session IDs, tool counts) plus optional **`transcript.ndjson`**. Regenerate anytime with `agent-loop-export-run <loop-dir>`. Treat **`run-report.md`** as the default post-run audit surface (Linear-style run history); dig into `log.ndjson` / the agent only when you need failure detail.
 
-Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md). Optional scope matrix: [`templates/LOOP.permissions.example.md`](./templates/LOOP.permissions.example.md) (MCP / tools / path writes / installs default-deny until named; model ≠ security control plane). For AI-touched dep/secret risk, copy steps from [`templates/verify.ai-assisted.example.sh`](./templates/verify.ai-assisted.example.sh).
+Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md). Optional scope matrix: [`templates/LOOP.permissions.example.md`](./templates/LOOP.permissions.example.md) (MCP / tools / path writes / installs default-deny until named; model ≠ security control plane). For AI-touched dep/secret risk, copy steps from [`templates/verify.ai-assisted.example.sh`](./templates/verify.ai-assisted.example.sh). To compare runtimes on one frozen task: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md).
 
 ---
 
@@ -161,7 +167,7 @@ Cloud agents: same `pnpm add` — no local checkout of this repo required.
 {
   "runtime": "cursor",
   "model": "composer-2.5",
-  "reviewModel": "grok-4.5",
+  "reviewModel": "grok-4.6",
   "maxIterations": 6,
   "verify": "bash .cursor/loops/my-task/verify.sh",
   "postQualityReview": "auto",
@@ -170,7 +176,7 @@ Cloud agents: same `pnpm add` — no local checkout of this repo required.
 }
 ```
 
-Omit `reviewRuntime` to keep the default Cursor judge. For a cheap BYOK stack set `"reviewRuntime": "pi"` (or `"opencode"`) with a matching `reviewModel` — see [`docs/runtime-map.md`](./docs/runtime-map.md#judge-presets-reviewruntime--reviewmodel).
+Omit `reviewRuntime` to keep the default Cursor judge. For a cheap BYOK stack set `"reviewRuntime": "pi"` (or `"opencode"` with an explicit `reviewModel` for non-Go providers) — see [`docs/runtime-map.md`](./docs/runtime-map.md#judge-presets-reviewruntime--reviewmodel).
 
 `postQualityReview: "auto"` (the default) runs the judge only when inferred risk is **not low** — docs/harness-only loops skip review and save judge tokens. Set `"postQualityReview": true` when you always want `review.md`.
 

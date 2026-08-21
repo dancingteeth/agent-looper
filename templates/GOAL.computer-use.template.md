@@ -28,6 +28,11 @@ and wire your product's UI driver beside `verify.sh`.
 Success is **only** `verify` exit `0`. The shell floor must pass even when UI hooks
 are skipped (no `$DISPLAY`, `SKIP_UI=1`).
 
+## Golden (optional)
+
+Path to a reference screenshot or recording the visible-UI layer diffs against.
+The shell floor must still pass without it.
+
 ## Acceptance criteria
 
 - Success is determined **only** by `loop.json` `verify` (exit `0`), not the agent's claim.

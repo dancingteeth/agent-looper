@@ -11,6 +11,8 @@ export const LOOP_RUNTIME_OPENCODE = 'opencode' as const
 export const LOOP_RUNTIME_PI = 'pi' as const
 /** OpenAI Codex (`@openai/codex-sdk`) — Codex CLI model slugs (e.g. gpt-5.6-luna). */
 export const LOOP_RUNTIME_CODEX = 'codex' as const
+/** DeepSeek Harness worker — spawn `dsh --profile headless` (PATH CLI, no npm dep). */
+export const LOOP_RUNTIME_DSH = 'dsh' as const
 
 export type LoopRuntime =
   | typeof LOOP_RUNTIME_CURSOR
@@ -19,6 +21,7 @@ export type LoopRuntime =
   | typeof LOOP_RUNTIME_OPENCODE
   | typeof LOOP_RUNTIME_PI
   | typeof LOOP_RUNTIME_CODEX
+  | typeof LOOP_RUNTIME_DSH
 
 export const CURSOR_LOOP_MODEL = 'composer-2.5' as const
 /** Alias — Cursor SDK worker for implement iterations (never Composer Fast). */
@@ -27,9 +30,9 @@ export const CURSOR_WORKER_MODEL = CURSOR_LOOP_MODEL
  * Cursor SDK judge for post-loop / review-gate runs.
  * Confirm via `Cursor.models.list()` if your account uses a different id.
  */
-export const CURSOR_REVIEW_MODEL = 'grok-4.5' as const
+export const CURSOR_REVIEW_MODEL = 'grok-4.6' as const
 
-export const CURSOR_REVIEW_MODELS = [CURSOR_REVIEW_MODEL, CURSOR_WORKER_MODEL] as const
+export const CURSOR_REVIEW_MODELS = [CURSOR_REVIEW_MODEL, 'grok-4.5', CURSOR_WORKER_MODEL] as const
 export type CursorReviewModel = (typeof CURSOR_REVIEW_MODELS)[number]
 export type CursorSdkModel = typeof CURSOR_WORKER_MODEL | CursorReviewModel
 
@@ -80,6 +83,8 @@ export type OpencodeGoLoopModel = (typeof OPENCODE_GO_LOOP_MODELS)[number]
 
 export const DEFAULT_OPENCODE_GO_LOOP_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-flash'
 export const DEFAULT_OPENCODE_GO_ESCALATE_MODEL: OpencodeGoLoopModel = 'opencode-go/qwen3.7-plus'
+/** Default OpenCode judge — DeepSeek V4 Pro (Go has Grok 4.5 only; not Flash). */
+export const DEFAULT_OPENCODE_GO_REVIEW_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-pro'
 
 /** Default Pi worker — OpenRouter DeepSeek (same shape as Cline credits). */
 export const DEFAULT_PI_LOOP_MODEL = 'openrouter/deepseek/deepseek-chat'
@@ -90,6 +95,12 @@ export const DEFAULT_CODEX_LOOP_MODEL = 'gpt-5.6-luna'
 export const DEFAULT_CODEX_ESCALATE_MODEL = 'gpt-5.6-terra'
 /** Default Codex judge — Sol (frontier agentic coding). */
 export const DEFAULT_CODEX_REVIEW_MODEL = 'gpt-5.6-sol'
+
+/** Default DSH worker — official DeepSeek Flash (headless `agent-default-model`). */
+export const DEFAULT_DSH_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash'
+export const DEFAULT_DSH_ESCALATE_MODEL = 'deepseek-official/deepseek-v4-pro'
+/** Default DSH judge — V4 Pro (same split as Flash worker / Pro judge). */
+export const DEFAULT_DSH_REVIEW_MODEL = 'deepseek-official/deepseek-v4-pro'
 
 /** Codex CLI model slug (not provider/model). */
 const CODEX_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/
@@ -132,6 +143,11 @@ export type ResolvedLoopAgent =
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
+  | {
+      runtime: typeof LOOP_RUNTIME_DSH
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
 
 export function isClineSdkRuntime(
   runtime: LoopRuntime,
@@ -153,6 +169,10 @@ export function isCodexRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUN
   return runtime === LOOP_RUNTIME_CODEX
 }
 
+export function isDshRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTIME_DSH {
+  return runtime === LOOP_RUNTIME_DSH
+}
+
 export function defaultModelForRuntime(runtime: LoopRuntime): string {
   switch (runtime) {
     case LOOP_RUNTIME_CLINE_PASS:
@@ -165,6 +185,8 @@ export function defaultModelForRuntime(runtime: LoopRuntime): string {
       return DEFAULT_PI_LOOP_MODEL
     case LOOP_RUNTIME_CODEX:
       return DEFAULT_CODEX_LOOP_MODEL
+    case LOOP_RUNTIME_DSH:
+      return DEFAULT_DSH_LOOP_MODEL
     case LOOP_RUNTIME_CURSOR:
       return CURSOR_LOOP_MODEL
     default: {
@@ -210,6 +232,11 @@ export type ResolvedReviewAgent =
     }
   | {
       runtime: typeof LOOP_RUNTIME_CODEX
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_DSH
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
@@ -287,6 +314,15 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
     }
     return model
   }
+  if (runtime === LOOP_RUNTIME_DSH) {
+    if (!isDshLoopModel(model)) {
+      throw new Error(
+        `Invalid reviewModel "${model}" for reviewRuntime "dsh". Expected provider/model ` +
+          `(e.g. "${DEFAULT_DSH_REVIEW_MODEL}").`,
+      )
+    }
+    return model
+  }
   const _exhaustive: never = runtime
   return _exhaustive
 }
@@ -295,18 +331,29 @@ function defaultReviewModel(
   reviewRuntime: LoopRuntime,
   workerRuntime: LoopRuntime,
 ): string {
-  if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
-    return workerRuntime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL
+  switch (reviewRuntime) {
+    case LOOP_RUNTIME_CURSOR:
+      return workerRuntime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL
+    case LOOP_RUNTIME_CODEX:
+      return DEFAULT_CODEX_REVIEW_MODEL
+    case LOOP_RUNTIME_OPENCODE:
+      return DEFAULT_OPENCODE_GO_REVIEW_MODEL
+    case LOOP_RUNTIME_DSH:
+      return DEFAULT_DSH_REVIEW_MODEL
+    case LOOP_RUNTIME_CLINE_PASS:
+    case LOOP_RUNTIME_CLINE:
+    case LOOP_RUNTIME_PI:
+      return defaultModelForRuntime(reviewRuntime)
+    default: {
+      const _exhaustive: never = reviewRuntime
+      return _exhaustive
+    }
   }
-  if (reviewRuntime === LOOP_RUNTIME_CODEX) {
-    return DEFAULT_CODEX_REVIEW_MODEL
-  }
-  return defaultModelForRuntime(reviewRuntime)
 }
 
 /**
  * Resolve the primary judge agent (reviewRuntime + reviewModel).
- * Default reviewRuntime is cursor. Model defaults follow worker runtime when unset.
+ * Default reviewRuntime is cursor. OpenCode/Codex judges default to V4 Pro/Sol, not the cheap worker.
  */
 export function resolveReviewAgent(
   config: Pick<LoopConfig, 'runtime' | 'reviewRuntime' | 'reviewModel'>,
@@ -340,6 +387,9 @@ export function resolveReviewAgent(
   }
   if (reviewRuntime === LOOP_RUNTIME_CODEX) {
     return { runtime: reviewRuntime, model: assertCodexLoopModel(model, 'model') }
+  }
+  if (reviewRuntime === LOOP_RUNTIME_DSH) {
+    return { runtime: reviewRuntime, model: assertDshLoopModel(model, 'model') }
   }
   return {
     runtime: LOOP_RUNTIME_CLINE_PASS,
@@ -424,6 +474,13 @@ export function isCodexLoopModel(model: string): boolean {
   return true
 }
 
+/** Valid `loop.json` model for runtime `dsh` (`provider/model` for headless agent-default-model). */
+export function isDshLoopModel(model: string): boolean {
+  if (!isOpencodeLoopModelShape(model)) return false
+  if (model.startsWith('opencode-go/') || model.startsWith('cline-pass/')) return false
+  return true
+}
+
 /** Valid `loop.json` model for runtime `opencode`. */
 export function isOpencodeLoopModel(model: string): boolean {
   if (!isOpencodeLoopModelShape(model)) return false
@@ -450,6 +507,8 @@ export function modelCompatibleWithRuntime(
       return isPiLoopModel(model)
     case LOOP_RUNTIME_CODEX:
       return isCodexLoopModel(model)
+    case LOOP_RUNTIME_DSH:
+      return isDshLoopModel(model)
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -610,6 +669,16 @@ function assertCodexLoopModel(model: string, field: 'model' | 'escalateModel'): 
   return model
 }
 
+function assertDshLoopModel(model: string, field: 'model' | 'escalateModel'): string {
+  if (!isDshLoopModel(model)) {
+    throw new Error(
+      `Invalid DSH ${field} "${model}". Expected provider/model ` +
+        `(e.g. "${DEFAULT_DSH_LOOP_MODEL}") for headless agent-default-model.`,
+    )
+  }
+  return model
+}
+
 function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'): string {
   if (!isOpencodeLoopModel(model)) {
     const { providerID } = (() => {
@@ -669,6 +738,13 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
     return {
       runtime,
       model: assertCodexLoopModel(model, 'model'),
+    }
+  }
+
+  if (runtime === LOOP_RUNTIME_DSH) {
+    return {
+      runtime,
+      model: assertDshLoopModel(model, 'model'),
     }
   }
 
@@ -741,9 +817,14 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
     return
   }
 
+  if (runtime === LOOP_RUNTIME_DSH) {
+    assertDshLoopModel(config.escalateModel, 'escalateModel')
+    return
+  }
+
   if (config.escalateModel !== CURSOR_LOOP_MODEL) {
     throw new Error(
-      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", "pi", or "codex" ` +
+      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", "pi", "codex", or "dsh" ` +
         `(got runtime "cursor" and escalateModel "${config.escalateModel}")`,
     )
   }
@@ -852,6 +933,25 @@ export function resolveIterationAgent(
     return {
       runtime: LOOP_RUNTIME_CODEX,
       model: assertCodexLoopModel(base.model, 'model'),
+    }
+  }
+
+  if (isDshRuntime(base.runtime)) {
+    const threshold = config.escalateAfterStagnation ?? 2
+    if (
+      config.escalateModel &&
+      escalationRepeatCount !== undefined &&
+      escalationRepeatCount >= threshold
+    ) {
+      assertLoopModelAllowed(base.runtime, config.escalateModel)
+      return {
+        runtime: LOOP_RUNTIME_DSH,
+        model: assertDshLoopModel(config.escalateModel, 'escalateModel'),
+      }
+    }
+    return {
+      runtime: LOOP_RUNTIME_DSH,
+      model: assertDshLoopModel(base.model, 'model'),
     }
   }
 
