@@ -1,7 +1,7 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.3.0",
-  "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex; configurable reviewRuntime judge)",
+  "version": "0.4.0",
+  "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
   "author": "Paul Zgordan",

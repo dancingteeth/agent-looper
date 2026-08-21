@@ -1,0 +1,15 @@
+{
+  "runtime": "dsh",
+  "model": "deepseek-official/deepseek-v4-flash",
+  "escalateModel": "deepseek-official/deepseek-v4-pro",
+  "maxIterations": 2,
+  "verify": "bash .cursor/loops/dsh-smoke/verify.sh",
+  "postQualityReview": false,
+  "reviewGate": false,
+  "syncOnSuccess": false,
+  "stagnationThreshold": 2,
+  "mode": "forward",
+  "notifyTelegram": false,
+  "delayMs": 0,
+  "trustConfig": true
+}

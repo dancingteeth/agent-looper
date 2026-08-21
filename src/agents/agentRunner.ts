@@ -128,7 +128,6 @@ function createDshRunner(dsh: DshLoopSession): PromptRunner {
       modelId: agent.model,
       assistantOutput: options.assistantOutput,
       phase: options.phase ?? 'implement',
-      collector: options.collector,
     })
   }
 }

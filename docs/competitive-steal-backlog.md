@@ -142,7 +142,7 @@ Do not add `runtime: trueforge`. See [`runtime-map.md`](./runtime-map.md) skip r
 | Item | Adopt as | Deliverable | Notes |
 | --- | --- | --- | --- |
 | Sidecar verify logs | Harness | **Shipped** — `verifyLogMode: "sidecar"` | Analog of large-tool offload: worker prompt gets preview + path; full stdout/stderr under `<loop-dir>/verify-logs/`. Default remains `inline`. |
-| Progressive skill disclosure | Harness + docs | **Shipped** — `skillDisclosure: "index"` (default) | Worker prompt gets name + description + path; **Read** the `SKILL.md` on demand. `"skillDisclosure": "inline"` pastes full bodies for tiny loops. MCP schemas stay worker-owned. |
+| Progressive skill disclosure | Harness + docs | **Shipped** — `skillDisclosure: "index"` (default) | Worker prompt gets name + description + path; **Read** the `SKILL.md` on demand. `"skillDisclosure": "inline"` pastes full bodies (0.3.0 always inlined). Pin the field on any loop that must keep in-prompt runbooks. MCP schemas stay worker-owned. |
 | Same-task runtime cost bench | Docs | **Shipped (docs)** — [`docs/runtime-cost-bench.md`](./runtime-cost-bench.md) | Method only: frozen bundle, n≥3, change one of `runtime` / `model` / `reviewRuntime`, compare `run-report.md`. Dogfood n≥3 numbers still **planned**. Replay one frozen run and change one variable (Nouri evals). Judge is residual quality, never the exit. |
 
 ### Explicit skips (TrueForge)

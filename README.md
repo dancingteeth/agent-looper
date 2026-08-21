@@ -202,7 +202,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
 | `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling) |
 | `skills` | — | Explicit `…/SKILL.md` paths (merged with GOAL refs). Default prompt is an **index** (name, description, path) — worker **Read**s the file when needed. |
-| `skillDisclosure` | `index` | `index` = progressive disclosure. `inline` = paste full SKILL.md bodies (tiny loops). |
+| `skillDisclosure` | `index` | `index` = progressive disclosure (0.4.0 default; 0.3.0 always inlined). `inline` = paste full SKILL.md bodies. Pin the field on any loop that must keep the old in-prompt runbook. |
 | `plugins` | — | Agent Plugins package dirs — discovers `skills/*/SKILL.md` ([`docs/agent-plugins.md`](./docs/agent-plugins.md)) |
 
 ### loop.json — review & quality
@@ -356,8 +356,9 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | --- | --- |
 | `agent-loop run <dir>` | Single loop |
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
-| `agent-check cursor\|cline\|opencode\|pi\|codex` | SDK + API key smoke |
+| `agent-check cursor\|cline\|opencode\|pi\|codex\|dsh` | SDK + API key smoke (`dsh`: PATH CLI + Node ≥ 22.15) |
 | `agent-loop-init` | Scaffold templates |
+| `agent-loop-setup` | Interactive / `--answers` wizard that writes `loop.json` |
 | `agent-loop-doctor` | Validate install / `dist/` integrity; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
 | `agent-loop-review-run` | Post-loop quality review for one bundle |

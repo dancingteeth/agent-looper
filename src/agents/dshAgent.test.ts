@@ -116,6 +116,40 @@ describe('spawnDshHeadless', () => {
     child.emit('close', 0)
     await expect(run).resolves.toMatchObject({ stdout: 'assistant done', exitCode: 0 })
   })
+
+  it('ignores exit until close so piped stdout can drain', async () => {
+    const child = new EventEmitter() as EventEmitter & {
+      pid: number
+      stdout: PassThrough
+      stderr: PassThrough
+    }
+    child.pid = 1
+    child.stdout = new PassThrough()
+    child.stderr = new PassThrough()
+
+    const run = spawnDshHeadless({
+      repoRoot: '/repo',
+      patchPath: '/tmp/p.yml',
+      task: 'hi',
+      timeoutMs: 5_000,
+      spawnImpl: () => child as unknown as ChildProcess,
+      killGroup: () => {
+        throw new Error('should not kill')
+      },
+    })
+
+    child.stdout.write('late chunk')
+    child.emit('exit', 0)
+    const early = await Promise.race([
+      run.then(() => 'resolved' as const),
+      new Promise<'pending'>((resolve) => {
+        setTimeout(() => resolve('pending'), 25)
+      }),
+    ])
+    expect(early).toBe('pending')
+    child.emit('close', 0)
+    await expect(run).resolves.toMatchObject({ stdout: 'late chunk', exitCode: 0 })
+  })
 })
 
 describe('loop.json runtime dsh', () => {

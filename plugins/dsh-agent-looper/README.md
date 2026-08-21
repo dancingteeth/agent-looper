@@ -19,7 +19,7 @@ Guidance for designing and wiring **[Agent Looper](https://www.npmjs.com/package
 | Skill `review-gate` | `postQualityReview` / `reviewGate` without thrash |
 | Skill `run-loop-in-dsh` | After freeze, start `agent-loop` as bash `run_in_background: true` |
 | Command `loop-scaffold` | Guided GOAL + verify scaffold (direct UI — not sent to the model) |
-| Prompt + bash guard | Always-on routing; block *foreground* `agent-loop run`; allow background jobs |
+| Prompt + bash guard | Always-on routing; block *foreground* `agent-loop run`; allow background jobs. `runtime: dsh` grinds need **Full Access** (nested headless writes `~/.dsh/profiles/headless/`). |
 
 Shell **`verify`** (via `agent-loop run`) remains the finish line. DSH built-in `/loop` and `/goal` are not the exit wedge.
 

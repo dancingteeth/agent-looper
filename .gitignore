@@ -18,4 +18,5 @@ coverage/
 .cursor/loops/**/transcript.ndjson
 .cursor/loops/opencode-smoke/probe.txt
 .cursor/loops/pi-smoke/probe.txt
+.cursor/loops/dsh-smoke/probe.txt
 .cursor/loops/**/verify-logs/

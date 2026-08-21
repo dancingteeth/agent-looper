@@ -29,6 +29,7 @@ Smoke peers (after `pnpm build`):
 ```bash
 pnpm agent:check:opencode
 pnpm agent:check:pi
+pnpm agent:check:dsh
 pnpm agent:loop run .cursor/loops/opencode-smoke --runtime opencode
 pnpm agent:loop run .cursor/loops/pi-smoke --runtime pi
 ```

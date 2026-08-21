@@ -13,7 +13,7 @@ Agent Looper implements a **skills-only** [Agent Plugins](https://agent-plugins.
 
 - Loads a plugin directory with root `plugin.json`
 - Validates the **1.0.0** manifest locally (`$schema` must be the canonical id — never fetched)
-- Discovers immediate `skills/*/SKILL.md` entries and puts **name + description + path** in the worker prompt (`skillDisclosure: "index"`, default). Set `"skillDisclosure": "inline"` to paste full bodies (tiny loops).
+- Discovers immediate `skills/*/SKILL.md` entries and puts **name + description + path** in the worker prompt (`skillDisclosure: "index"`, default). Set `"skillDisclosure": "inline"` to paste full bodies (tiny loops / 0.3.0 behavior). Loops that omit the field now get the index, not inlined runbooks.
 - Ignores `mcp.json` — MCP stays with the worker agent SDK (`runtime`)
 
 Conformance: a client must support **skills or MCP**; skills alone is enough.

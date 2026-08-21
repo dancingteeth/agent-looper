@@ -61,6 +61,7 @@ describe('dsh-agent-looper plugin', () => {
     expect(sections[0]?.name).toBe(AGENT_LOOPER_PROMPT_NAME)
     expect(sections[0]?.text).toBe(agentLooperPromptSection)
     expect(sections[0]?.text).not.toMatch(/\{\{/)
+    expect(sections[0]?.text).toMatch(/danger-full-access/)
 
     expect(ctx.tools.guard).toHaveBeenCalledTimes(1)
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'agent-loop run .cursor/loops/x' } })).toMatch(
@@ -100,6 +101,7 @@ describe('dsh-agent-looper plugin', () => {
     expect(result.text).toContain('verify.sh')
     expect(result.text).toContain('my-loop')
     expect(result.text).toMatch(/run_in_background/)
+    expect(result.text).toMatch(/Full Access/)
     expect(result.text).toMatch(/--project/)
   })
 

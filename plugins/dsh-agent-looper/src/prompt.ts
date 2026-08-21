@@ -10,5 +10,6 @@ export const agentLooperPromptSection = [
   'Human command: /loop-scaffold. DSH /loop and /goal are not the finish line.',
   'Freeze the bundle in this session workspace (pwd). Pasting another repo path does not change cwd.',
   'After freeze, start the grind with bash `run_in_background: true` (`agent-loop run …`). Foreground bash times out. Track the job id; use job_output / job_kill. Do not start a second grind while one is running.',
+  'A runtime:dsh grind from this GUI must use Full Access: session preset, or bash sandbox_permissions: danger-full-access on the first grind (writes ~/.dsh/profiles/headless/cordis.yml). Workspace-write EPERM on that path is expected — retry once, do not work around it.',
   'Do not copy this GUI\'s opencode-go model into loop.json. Native DeepSeek grind is `runtime: dsh` (omit model, or deepseek-official/…).',
 ].join('\n')

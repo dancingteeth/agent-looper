@@ -114,3 +114,28 @@ SECRET_RUNBOOK_LINE_SHOULD_NOT_LEAK
     expect(section).toContain('skills/gone/SKILL.md')
   })
 })
+
+describe('shipboard loops', () => {
+  it('pins skillDisclosure when plugins or skills are loaded', () => {
+    const loopsRoot = path.join(process.cwd(), '.cursor', 'loops')
+    const names = fs.readdirSync(loopsRoot)
+    const missing: string[] = []
+    for (const name of names) {
+      const loopPath = path.join(loopsRoot, name, 'loop.json')
+      if (!fs.existsSync(loopPath)) continue
+      const raw = JSON.parse(fs.readFileSync(loopPath, 'utf8')) as {
+        plugins?: unknown
+        skills?: unknown
+        skillDisclosure?: unknown
+      }
+      const loadsSkills =
+        (Array.isArray(raw.plugins) && raw.plugins.length > 0) ||
+        (Array.isArray(raw.skills) && raw.skills.length > 0)
+      if (!loadsSkills) continue
+      if (raw.skillDisclosure !== SKILL_DISCLOSURE_INDEX && raw.skillDisclosure !== SKILL_DISCLOSURE_INLINE) {
+        missing.push(name)
+      }
+    }
+    expect(missing).toEqual([])
+  })
+})

@@ -44,7 +44,22 @@ run_in_background: true
 
 Prefer `runtime: dsh` in loop.json so the worker is headless DSH (this session’s DeepSeek credits / credentials-local). Unset `reviewRuntime` still judges on Cursor unless you set `"reviewRuntime": "dsh"`. Do **not** set `runtime: opencode` + `opencode-go/…` — that model is DSH-private and standalone OpenCode cannot load it.
 
-From **`dsh web`**, headless boot writes under `~/.dsh/profiles/headless/` (outside the consumer workspace). If bash reports `[sandbox: file access denied]`, retry the **same** grind command once with `sandbox_permissions: danger-full-access` and a one-sentence justification. Do not grep credentials files. Host-terminal grinds do not need that escalation.
+From **`dsh web`**, nested headless writes `~/.dsh/profiles/headless/cordis.yml` (outside the workspace). **Do not start the grind on workspace-write.** Either:
+
+1. Ask the human to switch the session permission to **Full Access**, then start the grind, **or**
+2. Start the grind bash on the **first** call with `sandbox_permissions: danger-full-access` and a one-sentence justification (headless must write that profile).
+
+Example (schema fields, not a host terminal):
+
+```text
+command: pnpm exec agent-loop run .cursor/loops/<name>
+description: Agent Looper grind for <name>
+run_in_background: true
+sandbox_permissions: danger-full-access
+justification: Nested dsh --profile headless writes ~/.dsh/profiles/headless/ outside the workspace.
+```
+
+If the first attempt already failed with `EPERM` on `cordis.yml` or `[sandbox: file access denied]`, retry **once** the same way. Do not grep credentials files. Host-terminal grinds do not need this switch.
 
 ## Do not do this here
 

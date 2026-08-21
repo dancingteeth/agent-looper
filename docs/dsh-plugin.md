@@ -12,6 +12,8 @@ Agent Looper’s **DSH** companion lives at [`plugins/dsh-agent-looper/`](../plu
 
 It packages **skills, a human command, an always-on system-prompt section, and a bash guard** that teach DSH how to design loops and start the npm harness. It does **not** replace `@dancingteeth/agent-looper`, and it does **not** treat DSH’s built-in `/loop` / `/goal` as the finish line — shell `verify` via `agent-loop run` remains the wedge. After freeze, start the grind with bash **`run_in_background: true`** (stock DSH jobs: `job_output` / `job_kill`). Foreground `agent-loop run` is denied (~60s bash timeout). Prefer `runtime: dsh` so the worker is headless DSH — see [`dsh-runtime.md`](./dsh-runtime.md).
 
+From `dsh web`, switch the session to **Full Access** (or start the grind bash with `sandbox_permissions: danger-full-access`) so nested headless can write `~/.dsh/profiles/headless/cordis.yml`. Workspace-write on the web session EPERMs that path. Details: [`dsh-runtime.md` — Web session Full Access](./dsh-runtime.md#web-session-full-access).
+
 ## What it ships
 
 | Component | Purpose |
@@ -66,7 +68,7 @@ Offline (CI — no live `dsh web`):
 - `bash .cursor/loops/dsh-plugin/verify.sh` — bundle layout, named exports, skills, bash guard
 - `pnpm exec vitest run plugins/dsh-agent-looper/src/index.test.ts` — nested-run / secret-dump guards
 
-Live (manual): `pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json` then `dsh plugin --profile web add ./plugins/dsh-agent-looper`. Freeze loops in the **same** workspace as the product repo.
+Live (manual): `pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json` then `dsh plugin --profile web add ./plugins/dsh-agent-looper`. Freeze loops in the **same** workspace as the product repo. Start `dsh web` from that cwd. Before a `runtime: dsh` grind, set the session to **Full Access** (see runtime doc above).
 
 ## Related
 

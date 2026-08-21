@@ -16,5 +16,6 @@
   "notifyTelegram": true,
   "delayMs": 0,
   "trustConfig": true,
+  "skillDisclosure": "index",
   "plugins": ["plugins/agent-looper"]
 }

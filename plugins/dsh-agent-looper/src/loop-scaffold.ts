@@ -20,7 +20,7 @@ export function loopScaffoldGuidance(agentLoopBinary: string, rawInput: string):
     '5. Write **verify.sh** that exits `0` only on real success; keep it repo-local.',
     '6. Set **loop.json** `verify` to that script; choose `runtime` / optional `reviewGate`.',
     '7. Optionally point `plugins` at portable Agent Plugins packages.',
-    `8. After freeze, start the grind with bash \`run_in_background: true\` (not foreground — ~60s timeout): \`pnpm exec ${agentLoopBinary} run .cursor/loops/<name>\`. Then \`job_output\` / \`job_kill\`. Load skill **run-loop-in-dsh**. Bare \`doppler run --\` still needs --project/--config if you wrap the command.`,
+    `8. After freeze, switch the session to **Full Access** (or start bash with \`sandbox_permissions: danger-full-access\`) so nested headless can write \`~/.dsh/profiles/headless/\`. Then start the grind with bash \`run_in_background: true\` (not foreground — ~60s timeout): \`pnpm exec ${agentLoopBinary} run .cursor/loops/<name>\`. Then \`job_output\` / \`job_kill\`. Load skill **run-loop-in-dsh**. Bare \`doppler run --\` still needs --project/--config if you wrap the command.`,
     '',
     'Do not implement the product or dump secrets. Do not foreground-bash `agent-loop run`.',
   ].join('\n')

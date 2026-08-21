@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -8,7 +9,6 @@ import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import { parseProviderModel } from '../loop/loopAgentConfig.js'
-import type { StreamCollector } from '../stream/streamCollect.js'
 
 export const DSH_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 export const DSH_KILL_GRACE_MS = 3000
@@ -20,7 +20,6 @@ export type DshAgentRunOptions = {
   modelId: string
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
-  collector?: StreamCollector
 }
 
 export type DshLoopSession = {
@@ -183,6 +182,7 @@ export function spawnDshHeadless(input: {
       reject(new Error(`Failed to spawn dsh: ${message}`))
     })
 
+    // `close` (not `exit`): wait until piped stdout/stderr have drained.
     child.on('close', (code) => {
       finish(code)
     })
@@ -204,10 +204,7 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const assistantOutput = options.assistantOutput ?? 'stdout'
       const task = `${systemPrompt}\n\n---\n\n${prompt}`
-      const patchPath = path.join(
-        os.tmpdir(),
-        `agent-loop-dsh-${process.pid}-${Date.now()}.yml`,
-      )
+      const patchPath = path.join(os.tmpdir(), `agent-loop-dsh-${process.pid}-${randomUUID()}.yml`)
       fs.writeFileSync(patchPath, buildDshLoopPatchYaml(ctx.repoRoot, options.modelId), 'utf8')
 
       console.error(`[agent-loop:dsh] profile=headless model=${options.modelId}`)
@@ -241,8 +238,6 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
           text,
           innerAgent: resolveInnerAgentStatus(text, 'dsh'),
           sessionRef: { provider: 'dsh' },
-          toolSummary: options.collector?.toolSummary,
-          transcriptEvents: options.collector?.events,
         }
       } finally {
         try {
