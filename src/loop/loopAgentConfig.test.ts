@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CLINE_PASS_LOOP_MODELS,
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
   clearIncompatibleReviewFieldsOnRuntimeSwitch,
   resolveIterationAgent,
@@ -17,6 +18,19 @@ function clinePassConfig(overrides: Record<string, unknown> = {}) {
     ...overrides,
   })
 }
+
+describe('CLINE_PASS_LOOP_MODELS', () => {
+  it('includes current Pass lineup slugs (Kimi K3, GLM-5.3, Qwen3.8 Max)', () => {
+    expect(CLINE_PASS_LOOP_MODELS).toContain('cline-pass/kimi-k3')
+    expect(CLINE_PASS_LOOP_MODELS).toContain('cline-pass/glm-5.3')
+    expect(CLINE_PASS_LOOP_MODELS).toContain('cline-pass/qwen3.8-max')
+  })
+
+  it('accepts kimi-k3 as a worker model', () => {
+    const parsed = clinePassConfig({ model: 'cline-pass/kimi-k3' })
+    expect(resolveLoopAgent(parsed).model).toBe('cline-pass/kimi-k3')
+  })
+})
 
 describe('resolveIterationAgent reasoning effort', () => {
   it('carries base reasoningEffort at iteration 1', () => {
@@ -184,6 +198,17 @@ describe('resolveIterationAgent reasoning effort', () => {
       runtime: 'dsh',
       model: 'deepseek-official/deepseek-v4-flash',
     })
+  })
+
+  it('accepts DSH flash-vision-exp as a worker model', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'dsh',
+      model: 'deepseek-official/deepseek-v4-flash-vision-exp',
+    })
+    expect(resolveLoopAgent(config).model).toBe(
+      'deepseek-official/deepseek-v4-flash-vision-exp',
+    )
   })
 
   it('escalates DSH model on stagnation', () => {

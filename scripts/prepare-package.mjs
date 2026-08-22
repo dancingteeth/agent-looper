@@ -43,8 +43,9 @@ export function newestSourceMtimeMs(root) {
         if (child > newest) newest = child
       } else if (
         entry.isFile() &&
-        entry.name.endsWith('.ts') &&
-        !entry.name.endsWith('.test.ts')
+        (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) &&
+        !entry.name.endsWith('.test.ts') &&
+        !entry.name.endsWith('.test.tsx')
       ) {
         const mtime = statSync(full).mtimeMs
         if (mtime > newest) newest = mtime

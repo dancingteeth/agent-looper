@@ -33,8 +33,8 @@ pnpm exec agent-loop-init
 
 Then edit:
 
-- `.cursor/agent-loop.repo.json` — `hitlProvider`, notify hooks, `syncCommand`, `defaultBranch`, …
-- `.cursor/loops/example-fix/` — replace with a real GOAL + verify
+- `.cursor/agent-loop.repo.json` — HITL, notify, `syncCommand`, `defaultBranch`, and `defaults` (runtime/models/review). Humans: `pnpm exec agent-loop-setup` once; agents skip the TUI.
+- `.cursor/loops/example-fix/` — replace with a real GOAL + verify (`loop.json` only needs `verify` plus per-loop overrides)
 
 ## Scripts (recommended)
 

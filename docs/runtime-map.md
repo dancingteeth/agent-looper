@@ -24,7 +24,7 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 | `opencode` | `@opencode-ai/sdk` + `opencode` CLI | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`; **or** BYOK e.g. `openrouter/…`, `vercel/…`, `ollama/…` | Cursor judge, or `reviewRuntime: opencode` | [OpenCode Go](https://opencode.ai/go) **and** OpenRouter / Vercel AI Gateway / other providers — [`opencode-providers.md`](./opencode-providers.md) |
 | `pi` | `@earendil-works/pi-coding-agent` | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | Cursor judge, or `reviewRuntime: pi` | BYOK OpenRouter-class — [`pi-runtime.md`](./pi-runtime.md) |
 | `codex` | `@openai/codex-sdk` + `codex` CLI | `gpt-5.6-luna` → `gpt-5.6-terra` | Cursor judge, or `reviewRuntime: codex` (default judge `gpt-5.6-sol`) | ChatGPT / OpenAI BYO — [`codex-runtime.md`](./codex-runtime.md) |
-| `dsh` | `dsh` CLI (`--profile headless`) | `deepseek-official/deepseek-v4-flash` → `deepseek-official/deepseek-v4-pro` | Cursor judge, or `reviewRuntime: dsh` (default judge V4 Pro) | DeepSeek official — [`dsh-runtime.md`](./dsh-runtime.md) |
+| `dsh` | `dsh` CLI (`--profile headless`) | `deepseek-official/deepseek-v4-flash` (also `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Cursor judge, or `reviewRuntime: dsh` (default judge V4 Pro) | DeepSeek official — [`dsh-runtime.md`](./dsh-runtime.md) |
 
 Philosophy: **cheap worker iterations, selective judge, never LLM-as-verify.** To
 *measure* that, use [`runtime-cost-bench.md`](./runtime-cost-bench.md) (frozen GOAL,

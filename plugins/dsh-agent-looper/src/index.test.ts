@@ -103,6 +103,8 @@ describe('dsh-agent-looper plugin', () => {
     expect(result.text).toMatch(/run_in_background/)
     expect(result.text).toMatch(/Full Access/)
     expect(result.text).toMatch(/--project/)
+    expect(result.text).toMatch(/GOAL.visual.template.md/)
+    expect(result.text).toMatch(/postQualityReview/)
   })
 
   it('still guards secret dumps when blockNestedRun is false', () => {

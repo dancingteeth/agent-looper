@@ -8,7 +8,11 @@ import type { AgentRunResult } from './agentRunResult.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
-import { parseProviderModel } from '../loop/loopAgentConfig.js'
+import {
+  DEFAULT_DSH_ESCALATE_MODEL,
+  DEFAULT_DSH_LOOP_MODEL,
+  parseProviderModel,
+} from '../loop/loopAgentConfig.js'
 
 export const DSH_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 export const DSH_KILL_GRACE_MS = 3000
@@ -40,15 +44,60 @@ function yamlDoubleQuoted(value: string): string {
 /** Preset name that matches unattended workspace-write (approval never). */
 export const DSH_LOOP_PERMISSION_PRESET = 'workspace-write-never'
 
+/** DSH catalog omits `inputModalities` ⇒ text-only. Vision slugs need an explicit image row. */
+export function dshModelNeedsImageModalities(modelID: string): boolean {
+  return modelID.includes('vision')
+}
+
+function dshBareModelId(slug: string): string {
+  return parseProviderModel(slug).modelID
+}
+
+/**
+ * Advisory `llm-deepseek.models` overlay. Arrays replace wholesale, so keep Flash/Pro
+ * plus the selected vision id with `inputModalities: [text, image]`.
+ * `~/.dsh/settings.yaml` `llm-deepseek.models` still wins over this patch — that list
+ * must declare image on the vision row too, or GUI/headless both refuse `read_image`.
+ */
+export function dshVisionCatalogPatchLines(modelID: string): string[] {
+  const flash = dshBareModelId(DEFAULT_DSH_LOOP_MODEL)
+  const pro = dshBareModelId(DEFAULT_DSH_ESCALATE_MODEL)
+  const rows: Array<{ id: string; name: string; image: boolean }> = [
+    { id: flash, name: 'DeepSeek-V4-Flash', image: flash === modelID },
+    { id: pro, name: 'DeepSeek-V4-Pro', image: pro === modelID },
+  ]
+  if (!rows.some((row) => row.id === modelID)) {
+    rows.push({ id: modelID, name: modelID, image: true })
+  }
+  const lines = [
+    '- id: llm-deepseek',
+    "  name: '@deepseek-ai/dsh-llm-deepseek'",
+    '  config:',
+    '    models:',
+  ]
+  for (const row of rows) {
+    lines.push(`      - id: ${yamlDoubleQuoted(row.id)}`)
+    lines.push(`        name: ${yamlDoubleQuoted(row.name)}`)
+    if (row.image) {
+      lines.push('        inputModalities: [text, image]')
+    }
+  }
+  return lines
+}
+
 /** Headless overlay: model + unattended workspace-write. */
 export function buildDshLoopPatchYaml(repoRoot: string, modelId: string): string {
   const { providerID, modelID } = parseProviderModel(modelId)
+  const visionCatalog = dshModelNeedsImageModalities(modelID)
+    ? dshVisionCatalogPatchLines(modelID)
+    : []
   return [
     '- id: agent-default-model',
     "  name: '@deepseek-ai/dsh-agent-default-model'",
     '  config:',
     `    provider: ${yamlDoubleQuoted(providerID)}`,
     `    model: ${yamlDoubleQuoted(modelID)}`,
+    ...visionCatalog,
     '- id: approval',
     "  name: '@deepseek-ai/dsh-user-approval'",
     '  config:',

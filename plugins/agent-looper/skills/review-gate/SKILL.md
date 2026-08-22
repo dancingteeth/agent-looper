@@ -27,6 +27,8 @@ Keep both sparse; delete laws models stop failing.
 | `postQualityReview: auto` | Judge when inferred risk ≠ low |
 | `reviewGate: true` | Only **error + impact** findings reopen the worker (up to `maxReviewCycles`) |
 
+On homepage / mockup / screenshot-as-hero loops, `design-loop` should set `reviewGate: true` and must not copy `false` from `*-smoke`. This skill is the `REVIEWS.md` overlay, not the only way to turn the referee on.
+
 Cosmetic nits must not burn another iteration.
 
 ## Residual judgment vocabulary

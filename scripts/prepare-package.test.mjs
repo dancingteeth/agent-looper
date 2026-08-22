@@ -90,7 +90,19 @@ describe('prepare-package.mjs', () => {
     try {
       touch(join(root, 'src', 'loop', 'agentLoop.test.ts'), NEW)
       assert.equal(srcIsNewerThanDist(root), false)
+      touch(join(root, 'src', 'cli', 'setupTui.test.tsx'), NEW)
+      assert.equal(srcIsNewerThanDist(root), false)
       assert.equal(newestSourceMtimeMs(root), OLD.getTime())
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('detects tsx source edits (Ink wizard)', () => {
+    const root = makeFixtureRoot()
+    try {
+      touch(join(root, 'src', 'cli', 'setupTui.tsx'), NEW)
+      assert.equal(srcIsNewerThanDist(root), true)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

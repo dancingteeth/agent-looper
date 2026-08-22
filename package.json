@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
@@ -57,6 +57,8 @@
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
+    "ink": "^7.1.1",
+    "react": "^19.2.8",
     "zod": "^4.3.4"
   },
   "peerDependencies": {
@@ -95,7 +97,9 @@
     "@openai/codex-sdk": "^0.147.0",
     "@opencode-ai/sdk": "^1.18.15",
     "@types/node": "^22.15.0",
+    "@types/react": "^19.2.18",
     "@vitest/coverage-v8": "^4.1.9",
+    "ink-testing-library": "^4.0.0",
     "opencode-ai": "^1.18.15",
     "typescript": "^5.8.3",
     "vitest": "^4.0.16"

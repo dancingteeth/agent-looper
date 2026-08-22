@@ -69,6 +69,7 @@ function copyTemplate(name: string, dest: string, force: boolean): void {
 
 writeRepoProfile(path.join(ctx.repoRoot, REPO_PROFILE_RELATIVE_PATH), ctx.repoRoot, force)
 copyTemplate('GOAL.template.md', path.join(loopsDir, 'GOAL.template.md'), force)
+copyTemplate('GOAL.visual.template.md', path.join(loopsDir, 'GOAL.visual.template.md'), force)
 copyTemplate('REVIEWS.md', path.join(ctx.repoRoot, 'REVIEWS.md'), force)
 copyTemplate('loop.json.example', path.join(exampleDir, 'loop.json'), force)
 copyTemplate('GOAL.example.md', path.join(exampleDir, 'GOAL.md'), force)
@@ -88,7 +89,7 @@ console.error(
 )
 
 console.error(`[agent-loop-init] done — repo=${ctx.repoRoot}`)
-console.error(`[agent-loop-init] next: edit .cursor/agent-loop.repo.json and run:`)
+console.error(`[agent-loop-init] next: edit .cursor/agent-loop.repo.json (or agent-loop-setup for repo defaults) and run:`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cursor --review-gate`)
 console.error(`  # Cursor-only: composer-2.5 worker + grok-4.6 judge`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cline-pass`)

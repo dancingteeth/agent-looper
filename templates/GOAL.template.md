@@ -24,7 +24,7 @@ What to achieve in one paragraph. Link canonical modules and runbooks.
 
 ## Golden (optional)
 
-Path to a concrete example the critic / verify holds the work against (screenshot, fixture, baseline number, reference implementation). Omit when `verify.sh` is already the whole scoreboard. Computer-use loops: put the reference screenshot here.
+Path to a concrete example the critic / verify holds the work against (screenshot, fixture, baseline number, reference implementation). Omit when `verify.sh` is already the whole scoreboard. Computer-use loops: put the reference screenshot here. Visual / taste loops: [`GOAL.visual.template.md`](./GOAL.visual.template.md) (golden is a critic, not only `img src`).
 
 ## Budget
 

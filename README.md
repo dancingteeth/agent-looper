@@ -5,11 +5,26 @@ tags:
 ---
 # Agent Looper (`@dancingteeth/agent-looper`)
 
-Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
+**If you already loop in Cursor:** you start Composer, it says done, CI is still red, you paste the log, you open a new chat. You are the verify step.
+
+This package is that loop without you in the middle. Fresh Cursor worker each round. A `verify.sh` you already trust. Stop when it exits 0.
+
+```bash
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk
+export CURSOR_API_KEY=…   # or doppler run -- …
+
+pnpm exec agent-loop-init
+# edit GOAL.md
+# put the check you keep re-running in verify.sh
+
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor
+```
+
+Other workers, judges, and flags are below. You do not need them for a first green run.
+
+How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
 Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
-
-New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
 ## Features at a glance
 
@@ -31,7 +46,7 @@ New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works,
 
 **Ops:** stagnation detection, `failure-domains.ndjson`, Telegram completion reports, secrets via env / your secret manager (`CURSOR_API_KEY`, `CLINE_API_KEY`, `OPENCODE_API_KEY`, `OPENROUTER_API_KEY`, `AI_GATEWAY_API_KEY`, `AGENT_LOOP_TELEGRAM_*`, `AGENT_LOOP_CURSOR_TIMEOUT_MS`).
 
-Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md). Freeze a **four-part finish line** (outcome, scoreboard, permission, budget) plus optional **golden** artifact — [`templates/GOAL.template.md`](./templates/GOAL.template.md). Metric loops: revert if worse than baseline — [`templates/GOAL.metric.template.md`](./templates/GOAL.metric.template.md).
+Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verification-as-skill.md). Freeze a **four-part finish line** (outcome, scoreboard, permission, budget) plus optional **golden** artifact — [`templates/GOAL.template.md`](./templates/GOAL.template.md). Metric loops: revert if worse than baseline — [`templates/GOAL.metric.template.md`](./templates/GOAL.metric.template.md). Visual / taste loops (homepage, mockup, screenshot-as-hero): [`templates/GOAL.visual.template.md`](./templates/GOAL.visual.template.md).
 
 ## Install
 
@@ -63,8 +78,12 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 export CURSOR_API_KEY=…   # or wrap with your secret manager (Doppler, etc.)
 
 pnpm exec agent-loop-init
-# edit .cursor/agent-loop.repo.json
-# edit .cursor/loops/my-task/GOAL.md + loop.json + verify.sh
+# Humans: pnpm exec agent-loop-setup --out .cursor/loops/my-task
+#   writes repo defaults (runtime, models, review, notify) into
+#   .cursor/agent-loop.repo.json. Later sparse loop.json files inherit them;
+#   explicit loop.json keys win. Agents skip the TUI — use --answers or
+#   copy templates and set verify only.
+# edit .cursor/loops/my-task/GOAL.md + verify.sh
 
 pnpm exec agent-check cursor
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
@@ -358,7 +377,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
 | `agent-check cursor\|cline\|opencode\|pi\|codex\|dsh` | SDK + API key smoke (`dsh`: PATH CLI + Node ≥ 22.15) |
 | `agent-loop-init` | Scaffold templates |
-| `agent-loop-setup` | Interactive / `--answers` wizard that writes `loop.json` |
+| `agent-loop-setup` | Ink TUI / `--plain` / `--answers` wizard: repo `defaults` in `.cursor/agent-loop.repo.json` plus `loop.json` for `--out` |
 | `agent-loop-doctor` | Validate install / `dist/` integrity; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
 | `agent-loop-review-run` | Post-loop quality review for one bundle |

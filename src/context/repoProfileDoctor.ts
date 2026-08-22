@@ -5,6 +5,7 @@ import { defaultBranchRefExists } from './defaultBranch.js'
 import { resolveTelegramCredentials } from '../integrations/telegramNotify.js'
 import { parseLoopConfig } from '../loop/loopConfig.js'
 import { isTrivialVerifyCommand, trivialVerifyWarning } from '../loop/trivialVerify.js'
+import { applyLoopDefaults } from '../loop/loopDefaults.js'
 
 export type RepoProfileCheck = {
   ok: boolean
@@ -12,7 +13,10 @@ export type RepoProfileCheck = {
   warnings: string[]
 }
 
-function scanLoopConfigWarnings(repoRoot: string): string[] {
+function scanLoopConfigWarnings(
+  repoRoot: string,
+  defaults: Record<string, unknown> | undefined,
+): string[] {
   const loopsDir = path.join(repoRoot, '.cursor', 'loops')
   const warnings: string[] = []
 
@@ -31,7 +35,7 @@ function scanLoopConfigWarnings(repoRoot: string): string[] {
 
     try {
       const raw = JSON.parse(fs.readFileSync(loopJsonPath, 'utf8')) as unknown
-      const config = parseLoopConfig(raw)
+      const config = parseLoopConfig(applyLoopDefaults(raw, defaults))
       if (config.taskwarriorUuid && config.syncOnSuccess === false) {
         warnings.push(
           `${path.relative(repoRoot, loopJsonPath)}: taskwarriorUuid is set but syncOnSuccess=false — TW task will not auto-complete (enable reviewGate separately if review should block).`,
@@ -52,7 +56,7 @@ function scanLoopConfigWarnings(repoRoot: string): string[] {
 
 export function validateRepoProfile(ctx: RepoContext): RepoProfileCheck {
   const errors: string[] = []
-  const warnings: string[] = [...scanLoopConfigWarnings(ctx.repoRoot)]
+  const warnings: string[] = [...scanLoopConfigWarnings(ctx.repoRoot, ctx.profile.defaults)]
 
   const { defaultBranch } = ctx.profile
   if (!defaultBranchRefExists(ctx.repoRoot, defaultBranch)) {

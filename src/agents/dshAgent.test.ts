@@ -25,6 +25,20 @@ describe('dshAgent', () => {
     expect(yaml).toContain(`defaultPreset: ${DSH_LOOP_PERMISSION_PRESET}`)
     expect(yaml).toContain(`sandbox: workspace-write`)
     expect(yaml).toMatch(new RegExp(`${DSH_LOOP_PERMISSION_PRESET}:\\n\\s+sandbox: workspace-write\\n\\s+approval: never`))
+    expect(yaml).not.toContain('inputModalities')
+  })
+
+  it('declares image input on the vision catalog row for headless read_image', () => {
+    const yaml = buildDshLoopPatchYaml(
+      '/repo',
+      'deepseek-official/deepseek-v4-flash-vision-exp',
+    )
+    expect(yaml).toContain('id: llm-deepseek')
+    expect(yaml).toContain('model: "deepseek-v4-flash-vision-exp"')
+    expect(yaml).toContain('id: "deepseek-v4-flash-vision-exp"')
+    expect(yaml).toContain('inputModalities: [text, image]')
+    expect(yaml).toContain('id: "deepseek-v4-flash"')
+    expect(yaml).toContain('id: "deepseek-v4-pro"')
   })
 
   it('requires Node 22.15+', () => {

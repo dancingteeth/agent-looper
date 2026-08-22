@@ -24,8 +24,10 @@ import { hitlProviderSchema } from '../integrations/hitlConfig.js'
 import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.js'
 import { loopExtensionFieldsSchema } from './loopExtensions.js'
 import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
+import { applyLoopDefaults } from './loopDefaults.js'
 import { loopModeSchema } from './loopMode.js'
 import { isTrivialVerifyCommand, trivialVerifyWarning } from './trivialVerify.js'
+import { loadLoopDefaultsForDir } from '../context/repoProfile.js'
 
 export const loopRuntimeSchema = z.enum([
   LOOP_RUNTIME_CURSOR,
@@ -209,7 +211,10 @@ export function resolveLoopDir(loopDirArg: string, repoRoot: string): string {
   return path.resolve(resolved)
 }
 
-export function loadLoopBundle(loopDir: string): LoadedLoopBundle {
+export function loadLoopBundle(
+  loopDir: string,
+  options?: { defaults?: Record<string, unknown> },
+): LoadedLoopBundle {
   const goalPath = path.join(loopDir, 'GOAL.md')
   const configPath = path.join(loopDir, 'loop.json')
 
@@ -238,7 +243,9 @@ export function loadLoopBundle(loopDir: string): LoadedLoopBundle {
   }
 
   const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as unknown
-  const config = parseLoopConfig(raw)
+  const defaults =
+    options && 'defaults' in options ? options.defaults : loadLoopDefaultsForDir(loopDir)
+  const config = parseLoopConfig(applyLoopDefaults(raw, defaults))
 
   if (isTrivialVerifyCommand(config.verify)) {
     console.error(

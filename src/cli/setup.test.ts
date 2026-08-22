@@ -2,7 +2,14 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { pickLoopConfigFields, runWizard, usage } from './setup.js'
+import { parseArgs, pickLoopConfigFields, runWizard, usage } from './setup.js'
+import {
+  formatMenu,
+  judgeModelChoices,
+  parseMenuSelection,
+  workerModelChoices,
+  WORKER_RUNTIME_CHOICES,
+} from './setupMenus.js'
 
 const dirs: string[] = []
 
@@ -25,10 +32,72 @@ describe('agent-loop-setup', () => {
     expect(text).toMatch(/review/i)
     expect(text).toMatch(/notify|telegram/i)
     expect(text).toMatch(/git|pr|branch|comment/i)
+    expect(text).toMatch(/numbered|number|--plain/i)
+    expect(text).toMatch(/Ink|TUI/i)
+    expect(text).toMatch(/defaults/i)
+  })
+
+  it('parses --plain without treating it as unknown', () => {
+    expect(parseArgs(['--plain', '--out', '/tmp/loop']).plain).toBe(true)
+    expect(parseArgs(['--out', '/tmp/loop']).plain).toBe(false)
+  })
+
+  it('parses menu numbers and rejects typed slugs', () => {
+    expect(parseMenuSelection('', 7, 0)).toBe(0)
+    expect(parseMenuSelection('2', 7, 0)).toBe(1)
+    expect(parseMenuSelection('dsh', 7, 0)).toBeNull()
+    expect(parseMenuSelection('deepseek-official/deepseek-v4-pro', 7, 0)).toBeNull()
+    expect(parseMenuSelection('0', 7, 0)).toBeNull()
+    expect(parseMenuSelection('8', 7, 0)).toBeNull()
+  })
+
+  it('scopes cursor judge models away from DSH slugs', () => {
+    const values = judgeModelChoices('cursor', 'dsh').map((choice) => choice.value)
+    expect(values).toContain('grok-4.6')
+    expect(values).toContain('composer-2.5')
+    expect(values.some((value) => value.startsWith('deepseek-official/'))).toBe(false)
+    const menu = formatMenu(
+      'Judge runtime',
+      'Who writes residual review.md.',
+      WORKER_RUNTIME_CHOICES,
+      0,
+    )
+    expect(menu).toMatch(/1\) Cursor \(cursor\) \(default\)/)
+    expect(menu).toMatch(/DeepSeek Harness \(dsh\)/)
+    expect(menu).toMatch(/PATH `dsh --profile headless`/)
+    expect(menu).toMatch(/Pi coding agent \(pi\)/)
+  })
+
+  it('gives every catalog model a what/when description, not filler', () => {
+    const runtimes = ['cline-pass', 'opencode', 'dsh', 'codex', 'cursor', 'cline', 'pi'] as const
+    for (const runtime of runtimes) {
+      for (const choice of workerModelChoices(runtime)) {
+        if (choice.value === '' || choice.value === '__custom__') continue
+        expect(choice.description, choice.value).not.toMatch(/catalog slug/i)
+        expect(choice.description, choice.value).not.toMatch(/newer than/i)
+        expect(choice.description.length, choice.value).toBeGreaterThan(40)
+        expect(choice.description, choice.value).toMatch(/—/)
+      }
+    }
+  })
+
+  it('offers DSH vision-exp alongside Flash and Pro', () => {
+    const dsh = workerModelChoices('dsh').map((choice) => choice.value)
+    expect(dsh).toContain('deepseek-official/deepseek-v4-flash')
+    expect(dsh).toContain('deepseek-official/deepseek-v4-flash-vision-exp')
+    expect(dsh).toContain('deepseek-official/deepseek-v4-pro')
+  })
+
+  it('offers Kimi K3 on Cline Pass and OpenCode Go menus', () => {
+    const pass = workerModelChoices('cline-pass').map((choice) => choice.value)
+    const go = workerModelChoices('opencode').map((choice) => choice.value)
+    expect(pass).toContain('cline-pass/kimi-k3')
+    expect(go).toContain('opencode-go/kimi-k3')
   })
 
   it('writes a dsh worker+judge loop.json without a reviewModel key', () => {
     const outDir = tmpDir('agent-loop-setup-dsh-')
+    const repoRoot = tmpDir('agent-loop-setup-repo-')
     const code = runWizard(
       {
         runtime: 'dsh',
@@ -39,7 +108,7 @@ describe('agent-loop-setup', () => {
         verify: 'bash .cursor/loops/example/verify.sh',
       },
       outDir,
-      tmpDir('agent-loop-setup-repo-'),
+      repoRoot,
     )
     expect(code).toBe(0)
     const written = JSON.parse(fs.readFileSync(path.join(outDir, 'loop.json'), 'utf8')) as Record<
@@ -49,6 +118,12 @@ describe('agent-loop-setup', () => {
     expect(written.runtime).toBe('dsh')
     expect(written.reviewRuntime).toBe('dsh')
     expect(written).not.toHaveProperty('reviewModel')
+    const profile = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, '.cursor', 'agent-loop.repo.json'), 'utf8'),
+    ) as { defaults?: Record<string, unknown> }
+    expect(profile.defaults?.runtime).toBe('dsh')
+    expect(profile.defaults?.reviewRuntime).toBe('dsh')
+    expect(profile.defaults).not.toHaveProperty('verify')
   })
 
   it('round-trips notifyTelegram false and notifyPrComment true', () => {
@@ -74,8 +149,9 @@ describe('agent-loop-setup', () => {
     expect(written.notifyPrComment).toBe(true)
   })
 
-  it('rejects an unknown runtime and does not write loop.json', () => {
+  it('rejects an unknown runtime and does not write loop.json or profile', () => {
     const outDir = tmpDir('agent-loop-setup-bad-')
+    const repoRoot = tmpDir('agent-loop-setup-repo-')
     const code = runWizard(
       {
         runtime: 'banana',
@@ -83,10 +159,35 @@ describe('agent-loop-setup', () => {
         verify: 'bash .cursor/loops/example/verify.sh',
       },
       outDir,
-      tmpDir('agent-loop-setup-repo-'),
+      repoRoot,
     )
     expect(code).toBe(1)
     expect(fs.existsSync(path.join(outDir, 'loop.json'))).toBe(false)
+    expect(fs.existsSync(path.join(repoRoot, '.cursor', 'agent-loop.repo.json'))).toBe(false)
+  })
+
+  it('does not print next-steps after a rejected config', () => {
+    const outDir = tmpDir('agent-loop-setup-next-')
+    const logs: string[] = []
+    const origLog = console.log
+    console.log = (...args: unknown[]) => {
+      logs.push(args.map(String).join(' '))
+    }
+    try {
+      runWizard(
+        {
+          runtime: 'banana',
+          maxIterations: 5,
+          verify: 'bash .cursor/loops/example/verify.sh',
+        },
+        outDir,
+        tmpDir('agent-loop-setup-next-repo-'),
+      )
+    } finally {
+      console.log = origLog
+    }
+    expect(logs.join('\n')).not.toMatch(/Next steps/)
+    expect(logs.join('\n')).not.toMatch(/agent-loop run/)
   })
 
   it('rejects a Fast cursor review model and does not write loop.json', () => {

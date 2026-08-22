@@ -19,5 +19,10 @@
   "telegramNotify": {
     "onSuccess": true,
     "onFailure": true
+  },
+  "defaults": {
+    "runtime": "dsh",
+    "reviewRuntime": "dsh",
+    "maxIterations": 8
   }
 }

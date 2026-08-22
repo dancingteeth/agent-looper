@@ -85,6 +85,22 @@ pnpm exec agent-check dsh
 | `escalateModel` | `deepseek-official/deepseek-v4-pro` |
 | `reviewModel` (when `reviewRuntime: "dsh"`) | `deepseek-official/deepseek-v4-pro` |
 
+Setup also lists **`deepseek-official/deepseek-v4-flash-vision-exp`**. The official API accepts images on that id. DSH still **advertises text-only** unless the catalog row sets `inputModalities: [text, image]` (omission means text). `read_image` then errors `does not declare image input` — that is a local catalog gate, not a dead endpoint.
+
+Headless `--patch` adds that row when the worker slug contains `vision`. **`~/.dsh/settings.yaml` `llm-deepseek.models` replaces the catalog wholesale** and outranks the patch, so the GUI (and headless, if settings lists models) must declare image on the vision entry too:
+
+```yaml
+llm-deepseek:
+  models:
+    - id: deepseek-v4-flash
+      name: DeepSeek-V4-Flash
+    - id: deepseek-v4-pro
+      name: DeepSeek-V4-Pro
+    - id: deepseek-v4-flash-vision-exp
+      name: DeepSeek-V4-Flash-Vision-Exp
+      inputModalities: [text, image]
+```
+
 Slugs are `provider/model` for the headless `agent-default-model` row (`provider: deepseek-official`, `model: deepseek-v4-flash`).
 
 ## Example

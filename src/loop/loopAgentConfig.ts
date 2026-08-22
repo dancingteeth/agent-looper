@@ -42,11 +42,14 @@ export const CLINE_PASS_LOOP_MODELS = [
   'cline-pass/mimo-v2.5',
   'cline-pass/minimax-m3',
   'cline-pass/qwen3.7-plus',
+  'cline-pass/kimi-k3',
   'cline-pass/kimi-k2.7-code',
   'cline-pass/deepseek-v4-pro',
+  'cline-pass/glm-5.3',
   'cline-pass/glm-5.2',
   'cline-pass/kimi-k2.6',
   'cline-pass/mimo-v2.5-pro',
+  'cline-pass/qwen3.8-max',
   'cline-pass/qwen3.7-max',
 ] as const
 
@@ -69,11 +72,14 @@ export const OPENCODE_GO_LOOP_MODELS = [
   'opencode-go/mimo-v2.5',
   'opencode-go/minimax-m3',
   'opencode-go/qwen3.7-plus',
+  'opencode-go/kimi-k3',
   'opencode-go/kimi-k2.7-code',
   'opencode-go/deepseek-v4-pro',
+  'opencode-go/glm-5.3',
   'opencode-go/glm-5.2',
   'opencode-go/kimi-k2.6',
   'opencode-go/mimo-v2.5-pro',
+  'opencode-go/qwen3.8-max',
   'opencode-go/qwen3.7-max',
   'opencode-go/gpt-5.6-luna',
   'opencode-go/grok-4.5',
@@ -98,6 +104,8 @@ export const DEFAULT_CODEX_REVIEW_MODEL = 'gpt-5.6-sol'
 
 /** Default DSH worker — official DeepSeek Flash (headless `agent-default-model`). */
 export const DEFAULT_DSH_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash'
+/** Experimental vision Flash. DSH `read_image` works once the catalog row sets `inputModalities: [text, image]`. */
+export const DSH_VISION_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash-vision-exp'
 export const DEFAULT_DSH_ESCALATE_MODEL = 'deepseek-official/deepseek-v4-pro'
 /** Default DSH judge — V4 Pro (same split as Flash worker / Pro judge). */
 export const DEFAULT_DSH_REVIEW_MODEL = 'deepseek-official/deepseek-v4-pro'

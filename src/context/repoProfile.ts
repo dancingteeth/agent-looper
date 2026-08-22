@@ -3,6 +3,7 @@ import path from 'node:path'
 import { z } from 'zod'
 import { taskwarriorProjectSchema } from '../integrations/taskwarrior.js'
 import { hitlProfileFieldsSchema } from '../integrations/hitlConfig.js'
+import { pickLoopDefaults } from '../loop/loopDefaults.js'
 import { loopRiskProfileOverrideSchema } from '../loop/loopRiskProfile.js'
 
 export const REPO_PROFILE_RELATIVE_PATH = path.join('.cursor', 'agent-loop.repo.json')
@@ -55,6 +56,19 @@ export const repoProfileSchema = z
       attachReview: z.boolean().default(true),
     })
     .optional(),
+  /**
+   * Default loop.json fields for this repo (runtime, models, review, notify, …).
+   * Merged under each bundle’s loop.json at load; loop.json wins. Do not put
+   * verify / verifySkill / finalVerify / taskwarriorUuid here.
+   */
+  defaults: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined
+      const picked = pickLoopDefaults(value)
+      return Object.keys(picked).length > 0 ? picked : undefined
+    }),
   })
   .merge(hitlProfileFieldsSchema)
 
@@ -74,4 +88,29 @@ export function loadRepoProfile(repoRoot: string): RepoProfile {
 
   const raw = JSON.parse(fs.readFileSync(profilePath, 'utf8')) as unknown
   return repoProfileSchema.parse(raw)
+}
+
+/**
+ * Walk from `startDir` toward filesystem root. Use the first
+ * `.cursor/agent-loop.repo.json` found. Stop at a `.git` directory if no
+ * profile was found (do not inherit a parent repo or home profile).
+ */
+export function findRepoRootWithProfile(startDir: string): string | undefined {
+  let dir = path.resolve(startDir)
+  for (;;) {
+    if (fs.existsSync(repoProfilePath(dir))) return dir
+    if (fs.existsSync(path.join(dir, '.git'))) return undefined
+    const parent = path.dirname(dir)
+    if (parent === dir) return undefined
+    dir = parent
+  }
+}
+
+/** Profile `defaults` for a loop directory, or undefined when none apply. */
+export function loadLoopDefaultsForDir(loopDir: string): Record<string, unknown> | undefined {
+  const repoRoot = findRepoRootWithProfile(loopDir)
+  if (!repoRoot) return undefined
+  const defaults = loadRepoProfile(repoRoot).defaults
+  if (!defaults || Object.keys(defaults).length === 0) return undefined
+  return defaults
 }

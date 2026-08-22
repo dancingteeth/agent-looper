@@ -6,55 +6,14 @@ import readline from 'node:readline/promises'
 import { fileURLToPath } from 'node:url'
 import { repoProfilePath, repoProfileSchema } from '../context/repoProfile.js'
 import {
-  CURSOR_LOOP_MODEL,
-  CURSOR_REVIEW_MODEL,
-  CURSOR_WORKER_MODEL,
-  DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
-  DEFAULT_CLINE_PASS_ESCALATE_MODEL,
-  DEFAULT_CODEX_ESCALATE_MODEL,
-  DEFAULT_CODEX_REVIEW_MODEL,
-  DEFAULT_DSH_ESCALATE_MODEL,
-  DEFAULT_DSH_REVIEW_MODEL,
-  DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
-  DEFAULT_OPENCODE_GO_REVIEW_MODEL,
-  DEFAULT_PI_ESCALATE_MODEL,
-  LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
-  LOOP_RUNTIME_DSH,
-  LOOP_REASONING_EFFORTS,
-  defaultModelForRuntime,
-  type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
+import { pickLoopDefaults } from '../loop/loopDefaults.js'
 import { loopConfigSchema, parseLoopConfig } from '../loop/loopConfig.js'
-
-const WORKER_RUNTIMES = [
-  'cursor',
-  'cline-pass',
-  'cline',
-  'opencode',
-  'pi',
-  'codex',
-  'dsh',
-] as const
-
-const JUDGE_RUNTIMES = [
-  'cursor',
-  'cline-pass',
-  'cline',
-  'opencode',
-  'pi',
-  'codex',
-  'dsh',
-] as const
-
-const HITL_PROVIDERS = [
-  'taskwarrior',
-  'file',
-  'github',
-  'linear',
-  'command',
-] as const
+import { defaultIndexForValue, formatMenu, parseMenuSelection, type MenuChoice } from './setupMenus.js'
+import { collectSetupAnswers, type SetupPrompts } from './setupFlow.js'
+import { createInkPrompts } from './setupTui.js'
 
 const LOOP_CONFIG_KEYS = new Set(Object.keys(loopConfigSchema.shape))
 
@@ -62,15 +21,20 @@ type CliOptions = {
   answersPath?: string
   outDir: string
   repoRoot: string
+  plain: boolean
 }
 
 function usage(): string {
   return `Usage: agent-loop-setup [options]
 
-Interactive walkthrough that writes a valid loop.json for a new loop bundle
-(and optionally patches .cursor/agent-loop.repo.json), then prints the
-agent-check and agent-loop run commands (plus --review-runtime when a judge
-runtime is configured).
+Interactive walkthrough that writes repo loop defaults into
+.cursor/agent-loop.repo.json (runtime, models, review, notify, …) and a
+loop.json for --out (verify + this bundle’s snapshot). Later sparse
+loop.json files inherit those defaults; explicit loop.json keys win.
+Then prints agent-check and agent-loop run. Interactive mode is an Ink TUI
+(arrow keys + enter) on a TTY. Model lists are scoped to the runtime you
+just picked (a DSH slug is never offered as a Cursor judge).
+Pass --plain for numbered menus (CI / no TTY / screen readers).
 
 Worker runtimes: cursor | cline-pass | cline | opencode | pi | codex | dsh
 Judge (review): reviewRuntime (cursor | cline-pass | cline | opencode | pi | codex | dsh),
@@ -87,10 +51,12 @@ Git / PR / completion: notifyPrComment (gh pr comment), profile defaultBranch,
 
 Options:
   --answers <answers.json>  Non-interactive answers: JSON object mirroring loop.json
-                            fields (optional "profile" object patches the repo profile)
+                            fields (optional "profile" object patches telegram/branch;
+                            runtime/models always go to profile.defaults)
   --out <loop-dir>          Directory to write loop.json (default: current directory)
-  --repo-root <path>        Repo whose .cursor/agent-loop.repo.json gets patched
+  --repo-root <path>        Repo whose .cursor/agent-loop.repo.json gets defaults
                             (default: current directory)
+  --plain                   Numbered menus instead of the Ink TUI
   --help                    Show this help`
 }
 
@@ -99,7 +65,7 @@ function errMessage(err: unknown): string {
 }
 
 export function parseArgs(argv: string[]): CliOptions {
-  const options: CliOptions = { outDir: process.cwd(), repoRoot: process.cwd() }
+  const options: CliOptions = { outDir: process.cwd(), repoRoot: process.cwd(), plain: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     switch (arg) {
@@ -114,6 +80,9 @@ export function parseArgs(argv: string[]): CliOptions {
       case '--repo-root':
         options.repoRoot = argv[++i]
         if (!options.repoRoot) throw new Error('--repo-root requires a path')
+        break
+      case '--plain':
+        options.plain = true
         break
       default:
         throw new Error(`unknown option: ${arg}`)
@@ -136,24 +105,13 @@ export function pickLoopConfigFields(answers: Record<string, unknown>): Record<s
   return config
 }
 
-/** Judge default per reviewRuntime (mirrors the schema's resolveReviewAgent defaults). */
-function reviewModelHint(reviewRuntime: string, workerRuntime: string): string {
-  switch (reviewRuntime) {
-    case LOOP_RUNTIME_CURSOR:
-      return workerRuntime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL
-    case 'opencode':
-      return DEFAULT_OPENCODE_GO_REVIEW_MODEL
-    case LOOP_RUNTIME_DSH:
-      return DEFAULT_DSH_REVIEW_MODEL
-    case 'codex':
-      return DEFAULT_CODEX_REVIEW_MODEL
-    default:
-      return defaultModelForRuntime(reviewRuntime as LoopRuntime)
-  }
-}
-
-/** Print the agent-check / agent-loop run commands (step 8). Always printed. */
-function printNextSteps(config: Record<string, unknown>, outDir: string): void {
+/** Print the agent-check / agent-loop run commands after a successful write. */
+function printNextSteps(
+  config: Record<string, unknown>,
+  outDir: string,
+  repoRoot: string,
+  wroteProfile: boolean,
+): void {
   const runtime = typeof config.runtime === 'string' ? config.runtime : LOOP_RUNTIME_CURSOR
   const checkRuntime = runtime === LOOP_RUNTIME_CLINE_PASS ? 'cline' : runtime
   console.log('')
@@ -164,6 +122,9 @@ function printNextSteps(config: Record<string, unknown>, outDir: string): void {
     runCmd.push(`--review-runtime ${config.reviewRuntime}`)
   }
   console.log(`  ${runCmd.join(' ')}`)
+  if (wroteProfile) {
+    console.log(`  Repo defaults: ${repoProfilePath(repoRoot)}`)
+  }
 }
 
 function loadExistingProfile(repoRoot: string): Record<string, unknown> {
@@ -179,6 +140,12 @@ function mergeAndValidateProfile(
 ): Record<string, unknown> {
   const merged = { ...loadExistingProfile(repoRoot), ...patch }
   return repoProfileSchema.parse(merged) as Record<string, unknown>
+}
+
+function existingDefaultsRecord(existing: Record<string, unknown>): Record<string, unknown> {
+  const raw = existing.defaults
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  return { ...raw }
 }
 
 function writeProfile(repoRoot: string, profile: Record<string, unknown>): void {
@@ -200,11 +167,11 @@ export function runWizard(answers: Record<string, unknown>, outDir: string, repo
     parsed = parseLoopConfig(config)
   } catch (err) {
     console.error(`[agent-loop-setup] invalid loop config: ${errMessage(err)}`)
-    printNextSteps(config, outDir)
     return 1
   }
 
-  let profile: Record<string, unknown> | undefined
+  const defaults = pickLoopDefaults(config)
+  let profilePatch: Record<string, unknown> | undefined
   if (answers.profile !== undefined) {
     if (
       typeof answers.profile !== 'object' ||
@@ -212,14 +179,34 @@ export function runWizard(answers: Record<string, unknown>, outDir: string, repo
       Array.isArray(answers.profile)
     ) {
       console.error('[agent-loop-setup] invalid loop config: answers.profile must be a JSON object')
-      printNextSteps(config, outDir)
       return 1
     }
+    profilePatch = answers.profile as Record<string, unknown>
+  }
+
+  let profile: Record<string, unknown> | undefined
+  if (Object.keys(defaults).length > 0 || profilePatch !== undefined) {
     try {
-      profile = mergeAndValidateProfile(repoRoot, answers.profile as Record<string, unknown>)
+      const existing = loadExistingProfile(repoRoot)
+      profile = mergeAndValidateProfile(repoRoot, {
+        ...(profilePatch ?? {}),
+        defaults: {
+          ...existingDefaultsRecord(existing),
+          ...existingDefaultsRecord(profilePatch ?? {}),
+          ...defaults,
+        },
+      })
     } catch (err) {
       console.error(`[agent-loop-setup] invalid repo profile patch: ${errMessage(err)}`)
-      printNextSteps(config, outDir)
+      return 1
+    }
+  }
+
+  if (profile !== undefined) {
+    try {
+      writeProfile(repoRoot, profile)
+    } catch (err) {
+      console.error(`[agent-loop-setup] cannot patch repo profile: ${errMessage(err)}`)
       return 1
     }
   }
@@ -234,21 +221,12 @@ export function runWizard(answers: Record<string, unknown>, outDir: string, repo
   }
   console.error(`[agent-loop-setup] wrote ${loopJsonPath}`)
 
-  if (profile !== undefined) {
-    try {
-      writeProfile(repoRoot, profile)
-    } catch (err) {
-      console.error(`[agent-loop-setup] cannot patch repo profile: ${errMessage(err)}`)
-      return 1
-    }
-  }
-
   console.error(
     `[agent-loop-setup] configured runtime=${parsed.runtime} ` +
       `reviewRuntime=${parsed.reviewRuntime ?? '(unset → cursor)'} ` +
       `maxIterations=${parsed.maxIterations}`,
   )
-  printNextSteps(config, outDir)
+  printNextSteps(config, outDir, repoRoot, profile !== undefined)
   return 0
 }
 
@@ -267,171 +245,56 @@ function runAnswersMode(answersPath: string, outDir: string, repoRoot: string): 
   return runWizard(answers as Record<string, unknown>, outDir, repoRoot)
 }
 
-async function runInteractive(outDir: string, repoRoot: string): Promise<number> {
-  const rl = readline.createInterface({ input, output })
-  const answers: Record<string, unknown> = {}
-  const profile: Record<string, unknown> = {}
-
-  /** Rejects any pending prompt when stdin closes (EOF) so interactive mode aborts cleanly. */
+function createPlainPrompts(rl: readline.Interface): SetupPrompts {
   const stdinClosed = new Promise<never>((_, reject) => {
     rl.on('close', () => reject(new Error('stdin closed (EOF) — interactive setup aborted')))
   })
-  const ask = async (prompt: string, dflt?: string): Promise<string> => {
-    const suffix = dflt !== undefined ? ` [${dflt}]` : ''
-    const line = await Promise.race([
-      rl.question(`${prompt}${suffix} `),
-      stdinClosed,
-    ])
-    return line.trim() === '' && dflt !== undefined ? dflt : line.trim()
+  const readLine = async (prompt: string): Promise<string> =>
+    Promise.race([rl.question(prompt), stdinClosed])
+
+  return {
+    async select(heading, blurb, choices, defaultValue) {
+      const defaultIndex = defaultIndexForValue(choices, defaultValue)
+      for (;;) {
+        console.log(formatMenu(heading, blurb, choices, defaultIndex))
+        const line = await readLine('> ')
+        const selected = parseMenuSelection(line, choices.length, defaultIndex)
+        if (selected === null) {
+          console.log(`Type a number from 1 to ${choices.length}, or press Enter for the default.`)
+          continue
+        }
+        const choice: MenuChoice | undefined = choices[selected]
+        if (!choice) continue
+        return choice.value
+      }
+    },
+    async text(prompt, dflt) {
+      const suffix = dflt !== undefined ? ` [${dflt}]` : ''
+      const line = await readLine(`${prompt}${suffix} `)
+      return line.trim() === '' && dflt !== undefined ? dflt : line.trim()
+    },
   }
-  const askBool = async (prompt: string, dflt: boolean): Promise<boolean> => {
-    const line = await ask(`${prompt} (y/n)`, dflt ? 'y' : 'n')
-    if (/^y(es)?$/i.test(line)) return true
-    if (/^n(o)?$/i.test(line)) return false
-    return dflt
-  }
-  const askChoice = async (
-    prompt: string,
-    choices: readonly string[],
-    dflt: string,
-  ): Promise<string> => {
-    const line = await ask(prompt, dflt)
-    return choices.includes(line) ? line : dflt
-  }
-  const askNumber = async (
-    prompt: string,
-    dflt: number,
-    min: number,
-    max: number,
-  ): Promise<number> => {
-    const line = await ask(prompt, String(dflt))
-    const n = Number(line)
-    return Number.isInteger(n) && n >= min && n <= max ? n : dflt
+}
+
+function shouldUseTui(plain: boolean): boolean {
+  return !plain && Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY)
+}
+
+async function runInteractive(outDir: string, repoRoot: string, plain: boolean): Promise<number> {
+  if (shouldUseTui(plain)) {
+    const answers = await collectSetupAnswers(createInkPrompts(), outDir)
+    return runWizard(answers, outDir, repoRoot)
   }
 
+  const rl = readline.createInterface({ input, output })
   try {
-    console.log('agent-loop-setup — interactive loop bundle setup')
-    console.log('(press Enter to accept the default shown in brackets)')
-
-    // 1) Worker runtime + models
-    const runtime = await askChoice('Worker runtime', WORKER_RUNTIMES, 'cursor')
-    answers.runtime = runtime
-    const defaultModel = defaultModelForRuntime(runtime as LoopRuntime)
-    const model = await ask(`Worker model (Enter = ${defaultModel})`)
-    if (model !== '') answers.model = model
-
-    const escalateDefaults: Record<string, string> = {
-      'cline-pass': DEFAULT_CLINE_PASS_ESCALATE_MODEL,
-      cline: DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
-      opencode: DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
-      pi: DEFAULT_PI_ESCALATE_MODEL,
-      codex: DEFAULT_CODEX_ESCALATE_MODEL,
-      dsh: DEFAULT_DSH_ESCALATE_MODEL,
-      cursor: CURSOR_LOOP_MODEL,
-    }
-    if (runtime !== LOOP_RUNTIME_CURSOR) {
-      const escalateModel = await ask(
-        `Escalate model on stagnation (Enter = ${escalateDefaults[runtime] ?? defaultModel})`,
-      )
-      if (escalateModel !== '') answers.escalateModel = escalateModel
-    }
-    answers.escalateAfterStagnation = await askNumber('Escalate after N identical failures', 2, 1, 10)
-
-    if (runtime === LOOP_RUNTIME_CLINE_PASS || runtime === LOOP_RUNTIME_CLINE) {
-      const effort = await askChoice('Cline reasoning effort', LOOP_REASONING_EFFORTS, 'none')
-      if (effort !== 'none') answers.reasoningEffort = effort
-      const escalateEffort = await askChoice(
-        'Cline escalate reasoning effort',
-        LOOP_REASONING_EFFORTS,
-        'none',
-      )
-      if (escalateEffort !== 'none') answers.escalateReasoningEffort = escalateEffort
-    }
-
-    // 2) Judge
-    const reviewRuntime = await askChoice('Judge runtime (reviewRuntime)', JUDGE_RUNTIMES, 'cursor')
-    answers.reviewRuntime = reviewRuntime
-    const reviewModel = await ask(
-      `Judge model (Enter = default ${reviewModelHint(reviewRuntime, runtime)})`,
-    )
-    if (reviewModel !== '') answers.reviewModel = reviewModel
-    answers.reviewGate = await askBool('Enable review gate (reviewGate)', false)
-    answers.maxReviewCycles = await askNumber('Max review cycles (maxReviewCycles)', 2, 1, 5)
-    const pqr = await askChoice('Post-quality review (auto|true|false)', ['auto', 'true', 'false'], 'auto')
-    if (pqr === 'true') answers.postQualityReview = true
-    else if (pqr === 'false') answers.postQualityReview = false
-    else answers.postQualityReview = 'auto'
-    answers.reviewRisk = await askChoice(
-      'Review risk (auto|high|medium|low)',
-      ['auto', 'high', 'medium', 'low'],
-      'auto',
-    )
-    const secondary = await askChoice(
-      'Secondary review runtime (none|cline-pass|cline)',
-      ['none', 'cline-pass', 'cline'],
-      'none',
-    )
-    if (secondary !== 'none') answers.reviewSecondaryRuntime = secondary
-
-    // 3) Verify
-    let verify = ''
-    while (verify === '') {
-      verify = await ask('Verify command (required, e.g. bash .cursor/loops/<name>/verify.sh)')
-    }
-    answers.verify = verify
-    const verifyMode = await askChoice('Verify mode (command|skill)', ['command', 'skill'], 'command')
-    answers.verifyMode = verifyMode
-    if (verifyMode === 'skill') {
-      const verifySkill = await ask('Verify skill path (VERIFY.skill.md)')
-      if (verifySkill !== '') answers.verifySkill = verifySkill
-    }
-    const finalVerify = await ask('Final verify command (optional)')
-    if (finalVerify !== '') answers.finalVerify = finalVerify
-
-    // 4) Loop control
-    answers.maxIterations = await askNumber('Max iterations (maxIterations)', 8, 1, 50)
-    answers.stagnationThreshold = await askNumber('Stagnation threshold (identical failures)', 3, 0, 10)
-    answers.mode = await askChoice('Loop mode (forward|reverse)', ['forward', 'reverse'], 'forward')
-    answers.pauseAfterIteration = await askBool('Pause after each iteration', false)
-    answers.trustConfig = await askBool('Trust this loop.json (trustConfig)', false)
-
-    // 5) Notify / Telegram (token stays in env — never read or printed here)
-    answers.notifyTelegram = await askBool('Send completion report to Telegram', true)
-    answers.telegramAttachReview = await askBool('Attach latest review.md to Telegram', true)
-    answers.requireNotify = await askBool('Abort if Telegram preflight fails (requireNotify)', false)
-    const notifyCommand = await ask('Custom notifyCommand (optional)')
-    if (notifyCommand !== '') answers.notifyCommand = notifyCommand
-    const telegram: Record<string, unknown> = {}
-    const chatId = await ask('Telegram chatId (profile telegramNotify.chatId; optional)')
-    if (chatId !== '') telegram.chatId = chatId
-    telegram.onSuccess = await askBool('Telegram notify on success', true)
-    telegram.onFailure = await askBool('Telegram notify on failure', true)
-    telegram.attachReview = await askBool('Telegram attach review', true)
-    profile.telegramNotify = telegram
-
-    // 6) Git / PR / completion
-    const defaultBranch = await ask('Repo default branch (profile defaultBranch, diff base)', 'main')
-    if (defaultBranch !== '') profile.defaultBranch = defaultBranch
-    answers.notifyPrComment = await askBool('Comment on open PR after exit (notifyPrComment)', false)
-    answers.completionSignal = await askBool('Emit AGENT_LOOP_DONE on stdout', true)
-    answers.exportPack = await askBool('Export artifacts to .cursor/loop-exports', true)
-    answers.exportRunReport = await askBool('Write run-report.md', true)
-    answers.exportTranscript = await askBool('Record transcript.ndjson', true)
-    answers.syncOnSuccess = await askBool('Run profile syncCommand after success', true)
-
-    // 7) HITL
-    const hitlProvider = await askChoice('HITL provider', HITL_PROVIDERS, 'taskwarrior')
-    answers.hitlProvider = hitlProvider
-    answers.hitlOnFailure = await askBool('Open HITL checkpoint on incomplete loop', false)
-    answers.reviewGateHitl = await askBool('Escalate exhausted review gate to a human', false)
-    const uuid = await ask('Taskwarrior UUID (taskwarriorUuid; optional — UUID only)')
-    if (uuid !== '') answers.taskwarriorUuid = uuid
+    console.log('agent-loop-setup — numbered menus (--plain or no TTY)')
+    console.log('Type the number of an option (or press Enter for the default). Do not type slugs.')
+    const answers = await collectSetupAnswers(createPlainPrompts(rl), outDir)
+    return runWizard(answers, outDir, repoRoot)
   } finally {
     rl.close()
   }
-
-  if (Object.keys(profile).length > 0) answers.profile = profile
-  return runWizard(answers, outDir, repoRoot)
 }
 
 async function main(): Promise<void> {
@@ -453,7 +316,7 @@ async function main(): Promise<void> {
     process.exitCode = runAnswersMode(options.answersPath, options.outDir, options.repoRoot)
   } else {
     try {
-      process.exitCode = await runInteractive(options.outDir, options.repoRoot)
+      process.exitCode = await runInteractive(options.outDir, options.repoRoot, options.plain)
     } catch (err) {
       console.error(`[agent-loop-setup] ${errMessage(err)}`)
       process.exitCode = 1

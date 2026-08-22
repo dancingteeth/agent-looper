@@ -36,4 +36,5 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 
 Prefer measurable `verify.sh` + `VERIFY.skill.md` beside each loop (see `docs/verification-as-skill.md`).
 For perf loops, start from `templates/GOAL.metric.template.md` + `templates/verify.metric.example.sh`.
+For homepage / mockup / screenshot-as-hero loops, start from `templates/GOAL.visual.template.md` (do not copy smoke `reviewGate: false`).
 Review residual judgment uses Proceed / Guide / Deny / Confirm (`templates/REVIEWS.md`); Guide packets feed the next worker on `reviewGate` continue.

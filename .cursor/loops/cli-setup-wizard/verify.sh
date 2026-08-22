@@ -32,7 +32,8 @@ echo "$HELP" | grep -qiE '\bdsh\b' || fail "--help does not list the dsh runtime
 echo "$HELP" | grep -qiE 'review' || fail "--help has no review flag/prompt"
 echo "$HELP" | grep -qiE 'notify|telegram' || fail "--help has no notify/telegram flag/prompt"
 echo "$HELP" | grep -qiE 'git|pr|branch|comment' || fail "--help has no git/PR flag/prompt"
-echo "[verify] ok: --help lists dsh + review/notify/git"
+echo "$HELP" | grep -qiE 'ink|tui|--plain' || fail "--help does not mention the Ink TUI / --plain"
+echo "[verify] ok: --help lists dsh + review/notify/git + TUI"
 
 # validator: parse a written loop.json with the real schema from the checkout
 validate_loopjson() { # $1 = path to loop.json
@@ -51,8 +52,8 @@ validate_loopjson() { # $1 = path to loop.json
   " "$1" 2>&1
 }
 
-run_fixture() { # $1 = answers.json path, $2 = out dir → runs wizard, returns exit code
-  (cd "$ROOT" && node "$WIZARD" --answers "$1" --out "$2" >"$TMP/stdout.txt" 2>&1)
+run_fixture() { # $1 = answers.json path, $2 = out dir, $3 = repo root → runs wizard, returns exit code
+  (cd "$ROOT" && node "$WIZARD" --answers "$1" --out "$2" --repo-root "$3" >"$TMP/stdout.txt" 2>&1)
 }
 
 # ---- 2+3) fixture walk: dsh runtime + dsh reviewRuntime, NO reviewModel -------
@@ -66,18 +67,23 @@ cat > "$TMP/answers-dsh.json" <<'JSON'
   "verify": "bash .cursor/loops/example/verify.sh"
 }
 JSON
-mkdir -p "$TMP/out-dsh"
-if ! run_fixture "$TMP/answers-dsh.json" "$TMP/out-dsh"; then
+mkdir -p "$TMP/out-dsh" "$TMP/repo-dsh"
+if ! run_fixture "$TMP/answers-dsh.json" "$TMP/out-dsh" "$TMP/repo-dsh"; then
   echo "[verify] wizard fixture stdout:"
   cat "$TMP/stdout.txt" >&2
   fail "fixture walk (dsh) exited non-zero"
 fi
+cp "$TMP/stdout.txt" "$TMP/dsh-stdout.txt"
 [ -f "$TMP/out-dsh/loop.json" ] || fail "fixture walk (dsh) wrote no loop.json"
 RESULT="$(validate_loopjson "$TMP/out-dsh/loop.json")" || fail "dsh loop.json rejected by real loopConfigSchema.parse"
 echo "$RESULT" | grep -q '"runtime":"dsh"' || { echo "[verify] parsed: $RESULT"; fail "dsh fixture runtime != dsh"; }
 echo "$RESULT" | grep -q '"reviewRuntime":"dsh"' || { echo "[verify] parsed: $RESULT"; fail "dsh fixture reviewRuntime != dsh"; }
 echo "$RESULT" | grep -q '"reviewModel":null' || { echo "[verify] parsed: $RESULT"; fail "dsh fixture must not set reviewModel"; }
 grep -q '"reviewModel"' "$TMP/out-dsh/loop.json" && { echo "[verify] written loop.json:"; cat "$TMP/out-dsh/loop.json"; fail "written loop.json contains a reviewModel key"; }
+PROFILE="$TMP/repo-dsh/.cursor/agent-loop.repo.json"
+[ -f "$PROFILE" ] || fail "dsh fixture wrote no repo profile defaults"
+grep -q '"runtime": "dsh"' "$PROFILE" || { echo "[verify] profile:"; cat "$PROFILE"; fail "profile defaults.runtime != dsh"; }
+grep -q '"verify"' "$PROFILE" && { echo "[verify] profile:"; cat "$PROFILE"; fail "profile defaults must not include verify"; }
 echo "[verify] ok: dsh fixture writes schema-valid loop.json (runtime+reviewRuntime dsh, no reviewModel)"
 
 # ---- 4) fixture with notifyTelegram false / notifyPrComment true --------------
@@ -91,8 +97,8 @@ cat > "$TMP/answers-notify.json" <<'JSON'
   "verify": "bash .cursor/loops/example/verify.sh"
 }
 JSON
-mkdir -p "$TMP/out-notify"
-run_fixture "$TMP/answers-notify.json" "$TMP/out-notify" || fail "fixture walk (notify) exited non-zero"
+mkdir -p "$TMP/out-notify" "$TMP/repo-notify"
+run_fixture "$TMP/answers-notify.json" "$TMP/out-notify" "$TMP/repo-notify" || fail "fixture walk (notify) exited non-zero"
 [ -f "$TMP/out-notify/loop.json" ] || fail "fixture walk (notify) wrote no loop.json"
 RESULT="$(validate_loopjson "$TMP/out-notify/loop.json")" || fail "notify loop.json rejected by real schema"
 echo "$RESULT" | grep -q '"notifyTelegram":false' || { echo "[verify] parsed: $RESULT"; fail "written loop.json notifyTelegram != false"; }
@@ -107,12 +113,13 @@ cat > "$TMP/answers-bad.json" <<'JSON'
   "verify": "bash .cursor/loops/example/verify.sh"
 }
 JSON
-mkdir -p "$TMP/out-bad"
-if run_fixture "$TMP/answers-bad.json" "$TMP/out-bad"; then
+mkdir -p "$TMP/out-bad" "$TMP/repo-bad"
+if run_fixture "$TMP/answers-bad.json" "$TMP/out-bad" "$TMP/repo-bad"; then
   echo "[verify] fixture stdout:"; cat "$TMP/stdout.txt" >&2
   fail "wizard accepted unknown runtime 'banana' (should exit non-zero)"
 fi
 [ ! -f "$TMP/out-bad/loop.json" ] || fail "wizard wrote loop.json for unknown runtime"
+[ ! -f "$TMP/repo-bad/.cursor/agent-loop.repo.json" ] || fail "wizard wrote repo profile for unknown runtime"
 
 cat > "$TMP/answers-fast.json" <<'JSON'
 {
@@ -124,17 +131,19 @@ cat > "$TMP/answers-fast.json" <<'JSON'
   "verify": "bash .cursor/loops/example/verify.sh"
 }
 JSON
-mkdir -p "$TMP/out-fast"
-if run_fixture "$TMP/answers-fast.json" "$TMP/out-fast"; then
+mkdir -p "$TMP/out-fast" "$TMP/repo-fast"
+if run_fixture "$TMP/answers-fast.json" "$TMP/out-fast" "$TMP/repo-fast"; then
   echo "[verify] fixture stdout:"; cat "$TMP/stdout.txt" >&2
   fail "wizard accepted Fast cursor review model (should exit non-zero)"
 fi
 [ ! -f "$TMP/out-fast/loop.json" ] || fail "wizard wrote loop.json for Fast cursor review model"
 echo "[verify] ok: unknown runtime and Fast cursor review models rejected"
 
-# ---- 6) fixture stdout prints agent-check + agent-loop run --------------------
-grep -q 'agent-check' "$TMP/stdout.txt" || { echo "[verify] stdout:"; cat "$TMP/stdout.txt"; fail "wizard stdout lacks 'agent-check'"; }
-grep -q 'agent-loop run' "$TMP/stdout.txt" || { echo "[verify] stdout:"; cat "$TMP/stdout.txt"; fail "wizard stdout lacks 'agent-loop run'"; }
-echo "[verify] ok: wizard prints agent-check + agent-loop run"
+# ---- 6) successful fixture stdout prints agent-check + agent-loop run --------
+grep -q 'agent-check' "$TMP/dsh-stdout.txt" || { echo "[verify] dsh stdout:"; cat "$TMP/dsh-stdout.txt"; fail "wizard stdout lacks 'agent-check'"; }
+grep -q 'agent-loop run' "$TMP/dsh-stdout.txt" || { echo "[verify] dsh stdout:"; cat "$TMP/dsh-stdout.txt"; fail "wizard stdout lacks 'agent-loop run'"; }
+grep -q 'Repo defaults:' "$TMP/dsh-stdout.txt" || { echo "[verify] dsh stdout:"; cat "$TMP/dsh-stdout.txt"; fail "wizard stdout lacks repo defaults path"; }
+grep -q 'Next steps' "$TMP/stdout.txt" && { echo "[verify] last (reject) stdout:"; cat "$TMP/stdout.txt"; fail "rejected config must not print Next steps"; }
+echo "[verify] ok: wizard prints agent-check + agent-loop run on success only"
 
 echo "[verify] PASS: cli-setup-wizard CLI present, schema-valid fixtures, rejections enforced"

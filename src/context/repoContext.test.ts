@@ -18,6 +18,13 @@ describe('repoProfileSchema', () => {
       /spaces/i,
     )
   })
+
+  it('stores loop defaults without verify', () => {
+    const parsed = repoProfileSchema.parse({
+      defaults: { runtime: 'dsh', verify: 'bash verify.sh', maxIterations: 5 },
+    })
+    expect(parsed.defaults).toEqual({ runtime: 'dsh', maxIterations: 5 })
+  })
 })
 
 describe('resolveRepoContext', () => {

@@ -6,9 +6,10 @@ export default defineConfig({
     exclude: ['**/node_modules/**', 'scripts/**/*.test.mjs'],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
       exclude: [
         'src/**/*.test.ts',
+        'src/**/*.test.tsx',
         // CLI entrypoints are side-effecting wiring on import — their logic lives
         // in tested modules (runArgs, runBatchArgs, initGitignore, shared) and the
         // meta-review e2e spawns dist/ as a subprocess (not instrumentable).

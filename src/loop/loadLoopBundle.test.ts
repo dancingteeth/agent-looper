@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { loadLoopBundle } from './loopConfig.js'
 
@@ -67,5 +68,48 @@ describe('loadLoopBundle', () => {
   it('throws when GOAL.md fails preflight', () => {
     const loopDir = writeLoopDir({ goal: '# Goal\nFix things only.\n' })
     expect(() => loadLoopBundle(loopDir)).toThrow(/preflight failed/i)
+  })
+
+  it('merges explicit defaults under a sparse loop.json', () => {
+    const loopDir = writeLoopDir({ loopJson: { verify: 'true', delayMs: 0 } })
+    const bundle = loadLoopBundle(loopDir, { defaults: { runtime: 'dsh', reviewRuntime: 'dsh' } })
+    expect(bundle.config.runtime).toBe('dsh')
+    expect(bundle.config.reviewRuntime).toBe('dsh')
+    expect(bundle.config.verify).toBe('true')
+  })
+
+  it('lets loop.json runtime win over defaults', () => {
+    const loopDir = writeLoopDir({
+      loopJson: { verify: 'true', delayMs: 0, runtime: 'cursor' },
+    })
+    const bundle = loadLoopBundle(loopDir, { defaults: { runtime: 'dsh' } })
+    expect(bundle.config.runtime).toBe('cursor')
+  })
+
+  it('discovers profile defaults from a git repo ancestor', () => {
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-defaults-repo-'))
+    try {
+      execFileSync('git', ['init', '-b', 'main'], { cwd: repoRoot, stdio: 'ignore' })
+      const profileDir = path.join(repoRoot, '.cursor')
+      fs.mkdirSync(profileDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(profileDir, 'agent-loop.repo.json'),
+        JSON.stringify({ defaultBranch: 'main', defaults: { runtime: 'dsh' } }),
+        'utf8',
+      )
+      const loopDir = path.join(repoRoot, '.cursor', 'loops', 'sparse')
+      fs.mkdirSync(loopDir, { recursive: true })
+      fs.writeFileSync(path.join(loopDir, 'GOAL.md'), VALID_GOAL, 'utf8')
+      fs.writeFileSync(
+        path.join(loopDir, 'loop.json'),
+        JSON.stringify({ verify: 'true', delayMs: 0 }),
+        'utf8',
+      )
+
+      const bundle = loadLoopBundle(loopDir)
+      expect(bundle.config.runtime).toBe('dsh')
+    } finally {
+      fs.rmSync(repoRoot, { recursive: true, force: true })
+    }
   })
 })

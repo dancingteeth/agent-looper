@@ -11,6 +11,8 @@ export {
   loadRepoProfile,
   repoProfileSchema,
   REPO_PROFILE_RELATIVE_PATH,
+  findRepoRootWithProfile,
+  loadLoopDefaultsForDir,
 } from './context/repoProfile.js'
 
 export { runAgentLoop, deriveLoopRunStatus } from './loop/agentLoop.js'
@@ -77,6 +79,12 @@ export {
   loopConfigSchema,
 } from './loop/loopConfig.js'
 export type { LoopConfig, LoadedLoopBundle } from './loop/loopConfig.js'
+
+export {
+  applyLoopDefaults,
+  pickLoopDefaults,
+  LOOP_JSON_ONLY_KEYS,
+} from './loop/loopDefaults.js'
 
 export {
   LOOP_RUNTIME_CURSOR,
