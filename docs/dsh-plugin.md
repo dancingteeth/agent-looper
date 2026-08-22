@@ -65,8 +65,8 @@ Example profile patch override:
 
 Offline (CI — no live `dsh web`):
 
-- `bash .cursor/loops/dsh-plugin/verify.sh` — bundle layout, named exports, skills, bash guard
-- `pnpm exec vitest run plugins/dsh-agent-looper/src/index.test.ts` — nested-run / secret-dump guards
+- `bash .cursor/loops/dsh-plugin/verify.sh` — bundle layout, named exports, skills, bash guard (installs plugin deps via `pnpm test:dsh-plugin:deps` first)
+- `pnpm test:dsh-plugin:deps && pnpm exec vitest run plugins/dsh-agent-looper/src/index.test.ts` — nested-run / secret-dump guards (plugin `node_modules` are not part of the root install)
 
 Live (manual): `pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json` then `dsh plugin --profile web add ./plugins/dsh-agent-looper`. Freeze loops in the **same** workspace as the product repo. Start `dsh web` from that cwd. Before a `runtime: dsh` grind, set the session to **Full Access** (see runtime doc above).
 

@@ -92,6 +92,7 @@ grep -qi 'dsh plugin' "$DOCS" || grep -q 'dsh plugin --profile' "$DOCS" \
   || fail "$DOCS must document dsh plugin install"
 
 step "8 — unit tests (mocked ctx, no live dsh)"
+pnpm test:dsh-plugin:deps
 test_count="$(find "$PLUGIN_DIR" \( -name '*.test.ts' -o -name '*.test.js' -o -name '*.test.mjs' \) | wc -l | tr -d ' ')"
 [[ "$test_count" -gt 0 ]] || fail "need at least one unit test under $PLUGIN_DIR"
 pnpm exec vitest run "$PLUGIN_DIR"
