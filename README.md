@@ -5,11 +5,24 @@ tags:
 ---
 # Agent Looper (`@dancingteeth/agent-looper`)
 
-Repo-agnostic **fix-until-green** harness: a worker agent edits the repo, a shell verifier decides “done,” an optional judge can send the worker back — with a fresh context every iteration.
+**If you already loop in Cursor:** you start Composer, it says done, CI is still red, you paste the log, you open a new chat. You are the verify step.
 
-Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
+This package is that loop without you in the middle. Fresh Cursor worker each round. A `verify.sh` you already trust. Stop when it exits 0.
 
-New here? Start with [`README.intro.md`](./README.intro.md) (how the loop works, worker vs judge, why it’s shaped this way). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md).
+```bash
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk
+export CURSOR_API_KEY=…   # or doppler run -- …
+
+pnpm exec agent-loop-init
+# edit GOAL.md
+# put the check you keep re-running in verify.sh
+
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor
+```
+
+Other workers, judges, and flags are below. You do not need them for a first green run.
+
+How the loop is shaped: [`README.intro.md`](./README.intro.md). Full flags: keep scrolling.
 
 ## Features at a glance
 
