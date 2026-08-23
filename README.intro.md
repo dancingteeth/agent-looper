@@ -226,7 +226,7 @@ Once the basic loop is boringly reliable:
 | --- | --- |
 | `postQualityReview: "auto"` + `REVIEWS.md` risk keywords | Skip judge on low-risk loops; domain keywords in `## Loop risk inference` |
 | `reviewReproduce` / `reviewReproduceAgent` | Kill false blockers before they reopen the gate |
-| `reviewSecondaryRuntime` | Second-family judge via Cline SDK |
+| `reviewSecondaryRuntime` | Second residual judge (any runtime; unset = off) |
 | `verifyMode: skill` | Agent runs `VERIFY.skill.md`, then shell still wins |
 | `agent-loop-batch` / meta-loop | Probe → fix → re-probe |
 | `agent-loop-meta-review` | Read-only report across N finished loops |

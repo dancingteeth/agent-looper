@@ -8,6 +8,8 @@ import {
   resolveReviewAgent,
   resolveReviewModel,
   resolveSecondaryReviewAgent,
+  runtimeHonorsReasoningEffort,
+  toPiThinkingLevel,
 } from './loopAgentConfig.js'
 import { loopConfigSchema } from './loopConfig.js'
 
@@ -18,6 +20,26 @@ function clinePassConfig(overrides: Record<string, unknown> = {}) {
     ...overrides,
   })
 }
+
+describe('runtimeHonorsReasoningEffort', () => {
+  it('is true for Cline and Pi, false for the others', () => {
+    expect(runtimeHonorsReasoningEffort('cline')).toBe(true)
+    expect(runtimeHonorsReasoningEffort('cline-pass')).toBe(true)
+    expect(runtimeHonorsReasoningEffort('pi')).toBe(true)
+    expect(runtimeHonorsReasoningEffort('cursor')).toBe(false)
+    expect(runtimeHonorsReasoningEffort('opencode')).toBe(false)
+    expect(runtimeHonorsReasoningEffort('codex')).toBe(false)
+    expect(runtimeHonorsReasoningEffort('dsh')).toBe(false)
+  })
+})
+
+describe('toPiThinkingLevel', () => {
+  it('maps none to off and unset to the prior harness default', () => {
+    expect(toPiThinkingLevel(undefined)).toBe('low')
+    expect(toPiThinkingLevel('none')).toBe('off')
+    expect(toPiThinkingLevel('xhigh')).toBe('xhigh')
+  })
+})
 
 describe('CLINE_PASS_LOOP_MODELS', () => {
   it('includes current Pass lineup slugs (Kimi K3, GLM-5.3, Qwen3.8 Max)', () => {
@@ -103,7 +125,7 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(agent.reasoningEffort).toBeUndefined()
   })
 
-  it('does not escalate reasoning for cursor runtime', () => {
+  it('does not attach reasoningEffort for cursor runtime', () => {
     const config = loopConfigSchema.parse({
       verify: 'true',
       runtime: 'cursor',
@@ -111,7 +133,7 @@ describe('resolveIterationAgent reasoning effort', () => {
       escalateReasoningEffort: 'xhigh',
     })
     const agent = resolveIterationAgent(config, 5, undefined)
-    expect(agent.reasoningEffort).toBe('high')
+    expect(agent.reasoningEffort).toBeUndefined()
   })
 
   it('defaults reviewModel to grok-4.6 for cursor runtime', () => {
@@ -362,6 +384,20 @@ describe('clearIncompatibleReviewFieldsOnRuntimeSwitch', () => {
   })
 })
 
+describe('resolveIterationAgent pi', () => {
+  it('climbs the reasoning ladder like Cline', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'pi',
+      reasoningEffort: 'medium',
+      escalateReasoningEffort: 'xhigh',
+    })
+    expect(resolveIterationAgent(config, 1, undefined).reasoningEffort).toBe('medium')
+    expect(resolveIterationAgent(config, 2, undefined).reasoningEffort).toBe('high')
+    expect(resolveIterationAgent(config, 3, undefined).reasoningEffort).toBe('xhigh')
+  })
+})
+
 describe('resolveIterationAgent opencode', () => {
   it('does not attach reasoningEffort (OpenCode SDK path ignores it)', () => {
     const config = loopConfigSchema.parse({
@@ -407,5 +443,46 @@ describe('resolveSecondaryReviewAgent', () => {
       runtime: 'cline',
       model: 'deepseek/deepseek-chat',
     })
+  })
+
+  it('honors an explicit secondary model', () => {
+    expect(
+      resolveSecondaryReviewAgent({
+        reviewSecondaryRuntime: 'dsh',
+        reviewSecondaryModel: 'deepseek-official/deepseek-v4-flash',
+      }),
+    ).toEqual({
+      runtime: 'dsh',
+      model: 'deepseek-official/deepseek-v4-flash',
+    })
+  })
+
+  it('accepts cursor and dsh secondary judges with review defaults', () => {
+    expect(resolveSecondaryReviewAgent({ reviewSecondaryRuntime: 'cursor' })).toEqual({
+      runtime: 'cursor',
+      model: 'grok-4.6',
+    })
+    expect(resolveSecondaryReviewAgent({ reviewSecondaryRuntime: 'dsh' })).toEqual({
+      runtime: 'dsh',
+      model: 'deepseek-official/deepseek-v4-pro',
+    })
+  })
+
+  it('defaults Cursor secondary to composer-2.5 when the worker is not cursor', () => {
+    expect(
+      resolveSecondaryReviewAgent({
+        runtime: 'dsh',
+        reviewSecondaryRuntime: 'cursor',
+      }),
+    ).toEqual({ runtime: 'cursor', model: 'composer-2.5' })
+  })
+
+  it('names reviewSecondaryModel in validation errors', () => {
+    expect(() =>
+      resolveSecondaryReviewAgent({
+        reviewSecondaryRuntime: 'cline',
+        reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+      }),
+    ).toThrow(/reviewSecondaryModel/)
   })
 })

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { collectSetupAnswers, type SetupPrompts } from './setupFlow.js'
+import {
+  collectSetupAnswers,
+  SetupDeclinedError,
+  SETUP_GATE_QUIT,
+  SETUP_INTRO_HEADING,
+  TYPICAL_SETUP_STEPS,
+  type SetupPrompts,
+} from './setupFlow.js'
 import { MENU_OMIT } from './setupMenus.js'
 
 function defaultingPrompts(): SetupPrompts {
@@ -33,5 +40,171 @@ describe('collectSetupAnswers', () => {
     expect(answers.taskwarriorUuid).toBeUndefined()
     expect(answers.finalVerify).toBeUndefined()
     expect(MENU_OMIT).toBe('')
+  })
+
+  it('skips Telegram chatId and attach/preflight when notify is off', async () => {
+    const headings: string[] = []
+    const prompts: SetupPrompts = {
+      async select(heading, _blurb, _choices, defaultValue) {
+        headings.push(heading)
+        if (heading === 'Send completion report to Telegram') return 'n'
+        return defaultValue
+      },
+      async text(_prompt, dflt) {
+        return dflt ?? ''
+      },
+    }
+    const answers = await collectSetupAnswers(prompts, '/tmp/my-task')
+    expect(answers.notifyTelegram).toBe(false)
+    expect(answers.telegramAttachReview).toBeUndefined()
+    expect(answers.requireNotify).toBeUndefined()
+    expect(answers.profile).not.toHaveProperty('telegramNotify')
+    expect(headings).not.toContain('Telegram chatId')
+    expect(headings).not.toContain('Attach latest review.md to Telegram')
+    expect(headings).not.toContain('Abort if Telegram preflight fails (requireNotify)')
+    expect(headings).not.toContain('Telegram notify on success')
+    expect(headings).not.toContain('Telegram notify on failure')
+    expect(headings).not.toContain('Telegram attach review (profile)')
+    expect(headings).toContain('Custom notifyCommand')
+  })
+
+  it('asks Telegram chatId and attach/preflight when notify is on', async () => {
+    const headings: string[] = []
+    await collectSetupAnswers(
+      {
+        async select(heading, _blurb, _choices, defaultValue) {
+          headings.push(heading)
+          return defaultValue
+        },
+        async text(_prompt, dflt) {
+          return dflt ?? ''
+        },
+      },
+      '/tmp/my-task',
+    )
+    expect(headings).toContain('Telegram chatId')
+    expect(headings).toContain('Attach latest review.md to Telegram')
+  })
+
+  it('asks reasoning effort when the worker runtime honors it', async () => {
+    const headings: string[] = []
+    const prompts: SetupPrompts = {
+      async select(heading, _blurb, _choices, defaultValue) {
+        headings.push(heading)
+        if (heading === 'Worker runtime') return 'pi'
+        return defaultValue
+      },
+      async text(_prompt, dflt) {
+        return dflt ?? ''
+      },
+    }
+    await collectSetupAnswers(prompts, '/tmp/my-task')
+    expect(headings).toContain('Reasoning effort')
+    expect(headings).toContain('Escalate reasoning effort')
+    expect(headings).not.toContain('Cline reasoning effort')
+  })
+
+  it('skips reasoning effort when the worker runtime ignores it', async () => {
+    const headings: string[] = []
+    await collectSetupAnswers(
+      {
+        async select(heading, _blurb, _choices, defaultValue) {
+          headings.push(heading)
+          return defaultValue
+        },
+        async text(_prompt, dflt) {
+          return dflt ?? ''
+        },
+      },
+      '/tmp/my-task',
+    )
+    expect(headings).not.toContain('Reasoning effort')
+    expect(headings).not.toContain('Escalate reasoning effort')
+  })
+
+  it('skips the Taskwarrior UUID step when HITL is github', async () => {
+    const headings: string[] = []
+    const prompts: SetupPrompts = {
+      async select(heading, _blurb, _choices, defaultValue) {
+        headings.push(heading)
+        if (heading === 'HITL provider') return 'github'
+        return defaultValue
+      },
+      async text(_prompt, dflt) {
+        return dflt ?? ''
+      },
+    }
+    const answers = await collectSetupAnswers(prompts, '/tmp/my-task')
+    expect(answers.hitlProvider).toBe('github')
+    expect(answers.taskwarriorUuid).toBeUndefined()
+    expect(headings).not.toContain('Taskwarrior UUID')
+  })
+
+  it('asks for a secondary model once a secondary runtime is picked', async () => {
+    const headings: string[] = []
+    const prompts: SetupPrompts = {
+      async select(heading, _blurb, _choices, defaultValue) {
+        headings.push(heading)
+        if (heading === 'Secondary review runtime') return 'dsh'
+        if (heading === 'Secondary judge model (reviewSecondaryModel)') return 'deepseek-official/deepseek-v4-pro'
+        return defaultValue
+      },
+      async text(_prompt, dflt) {
+        return dflt ?? ''
+      },
+    }
+    const answers = await collectSetupAnswers(prompts, '/tmp/my-task')
+    expect(answers.reviewSecondaryRuntime).toBe('dsh')
+    expect(answers.reviewSecondaryModel).toBe('deepseek-official/deepseek-v4-pro')
+    expect(headings).toContain('Secondary judge model (reviewSecondaryModel)')
+  })
+
+  it('skips the secondary model prompt when secondary is none', async () => {
+    const headings: string[] = []
+    await collectSetupAnswers(
+      {
+        async select(heading, _blurb, _choices, defaultValue) {
+          headings.push(heading)
+          return defaultValue
+        },
+        async text(_prompt, dflt) {
+          return dflt ?? ''
+        },
+      },
+      '/tmp/my-task',
+    )
+    expect(headings).not.toContain('Secondary judge model (reviewSecondaryModel)')
+  })
+
+  it('stops when the intro gate is quit', async () => {
+    const headings: string[] = []
+    const prompts: SetupPrompts = {
+      async select(heading, _blurb, _choices, defaultValue) {
+        headings.push(heading)
+        if (heading === SETUP_INTRO_HEADING) return SETUP_GATE_QUIT
+        return defaultValue
+      },
+      async text(_prompt, dflt) {
+        return dflt ?? ''
+      },
+    }
+    await expect(collectSetupAnswers(prompts, '/tmp/my-task')).rejects.toBeInstanceOf(SetupDeclinedError)
+    expect(headings).toEqual([SETUP_INTRO_HEADING])
+  })
+
+  it('keeps TYPICAL_SETUP_STEPS aligned with the default Cursor path', async () => {
+    let n = 0
+    const prompts: SetupPrompts = {
+      async select(_heading, _blurb, _choices, defaultValue) {
+        n += 1
+        return defaultValue
+      },
+      async text(_prompt, dflt) {
+        n += 1
+        return dflt ?? ''
+      },
+    }
+    await collectSetupAnswers(prompts, '/tmp/my-task')
+    expect(n).toBe(TYPICAL_SETUP_STEPS)
   })
 })

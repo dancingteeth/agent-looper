@@ -32,6 +32,26 @@ describe('parseRunArgs', () => {
     })
   })
 
+  it('parses --review-secondary-runtime and --review-secondary-model', () => {
+    expect(
+      expectRun([
+        'x',
+        '--review-secondary-runtime',
+        'dsh',
+        '--review-secondary-model',
+        'deepseek-official/deepseek-v4-pro',
+      ]),
+    ).toMatchObject({
+      reviewSecondaryRuntime: 'dsh',
+      reviewSecondaryModel: 'deepseek-official/deepseek-v4-pro',
+    })
+    expect(parseRunArgs(['x', '--review-secondary-runtime', 'bogus'])).toEqual({
+      kind: 'error',
+      message:
+        '--review-secondary-runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
+    })
+  })
+
   it('captures value flags', () => {
     const options = expectRun([
       'loops/fix',

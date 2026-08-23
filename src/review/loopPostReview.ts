@@ -5,12 +5,11 @@ import type { RepoContext } from '../context/repoContext.js'
 import { defaultBranchRefExists } from '../context/defaultBranch.js'
 import { runReviewAgentPrompt } from './reviewAgentRun.js'
 import {
-  defaultModelForRuntime,
   LOOP_RUNTIME_CURSOR,
   resolveReviewAgent,
+  resolveSecondaryReviewAgent,
   type LoopRuntime,
   type ResolvedReviewAgent,
-  type SecondaryReviewRuntime,
 } from '../loop/loopAgentConfig.js'
 import { buildQualityReviewPrompt, buildBlockerRecheckPrompt, buildReproduceCandidatesPrompt } from './reviewPrompt.js'
 import {
@@ -114,9 +113,9 @@ export type PostLoopReviewOptions = {
    * gating blockers; DROP unevidenced candidates (roadmap M2 phase 2b).
    */
   reviewReproduceAgent?: boolean
-  /** Optional second-family review runtime. Unset = disabled (M3). */
-  reviewSecondaryRuntime?: SecondaryReviewRuntime
-  /** Cline model for secondary review. Defaults per reviewSecondaryRuntime. */
+  /** Optional second residual judge runtime. Unset = disabled. Same ids as reviewRuntime. */
+  reviewSecondaryRuntime?: LoopRuntime
+  /** Judge model for secondary review. Defaults per reviewSecondaryRuntime. */
   reviewSecondaryModel?: string
 }
 
@@ -248,30 +247,6 @@ function shouldSkipSecondaryReview(
   return { skip: false }
 }
 
-async function runSecondaryReviewPrompt(
-  ctx: RepoContext,
-  prompt: string,
-  runtime: SecondaryReviewRuntime,
-  model: string,
-  options: Pick<PostLoopReviewOptions, 'verbose'>,
-): Promise<{ text: string; usage?: LoopUsageRecord }> {
-  // Dynamic import: @cline/sdk is optional — Cursor-only installs must not load it unless enabled.
-  const { createClineLoopSession } = await import('../agents/clineAgent.js')
-  const cline = await createClineLoopSession(ctx)
-  try {
-    const run = await cline.runPrompt(prompt, {
-      verbose: options.verbose,
-      modelId: model,
-      providerId: runtime,
-      assistantOutput: 'none',
-      phase: 'review',
-    })
-    return { text: run.text, usage: run.usage }
-  } finally {
-    await cline.dispose()
-  }
-}
-
 async function maybeRunSecondaryReview(
   parsed: ParsedReview,
   text: string,
@@ -294,17 +269,23 @@ async function maybeRunSecondaryReview(
     return { parsed, text, secondaryOnlyCount: 0, skippedReason: skip.reason }
   }
 
-  const runtime = options.reviewSecondaryRuntime!
-  const model = options.reviewSecondaryModel ?? defaultModelForRuntime(runtime)
+  const agent = resolveSecondaryReviewAgent({
+    runtime: options.workerRuntime ?? LOOP_RUNTIME_CURSOR,
+    reviewSecondaryRuntime: options.reviewSecondaryRuntime,
+    reviewSecondaryModel: options.reviewSecondaryModel,
+  })
+  if (!agent) {
+    return { parsed, text, secondaryOnlyCount: 0, skippedReason: 'disabled' }
+  }
   const prompt = buildPostLoopQualityReviewPrompt(ctx, goal)
   console.error(
-    `[agent-loop] secondary review: running (${runtime}, model=${model}, gating=${blockingBlockers(parsed).length})`,
+    `[agent-loop] secondary review: running (${agent.runtime}, model=${agent.model}, gating=${blockingBlockers(parsed).length})`,
   )
-  const run = await runSecondaryReviewPrompt(ctx, prompt, runtime, model, options)
+  const run = await runReviewAgentPrompt(ctx, prompt, agent, { verbose: options.verbose })
   const secondaryParsed = parseReviewMarkdown(run.text)
   const merged = mergePrimarySecondaryReviews(parsed, secondaryParsed)
   const mergeFooter = formatSecondaryMergeFooter(merged.secondaryOnly)
-  const secondarySection = `\n\n### Secondary review (${model})\n${run.text.trim()}\n`
+  const secondarySection = `\n\n### Secondary review (${agent.runtime}/${agent.model})\n${run.text.trim()}\n`
   const mergedText = `${text.trim()}${secondarySection}${mergeFooter}`
   if (merged.secondaryOnly.length > 0) {
     console.error(
@@ -317,7 +298,7 @@ async function maybeRunSecondaryReview(
     parsed: merged.parsed,
     text: mergedText,
     secondaryOnlyCount: merged.secondaryOnly.length,
-    secondaryModel: model,
+    secondaryModel: agent.model,
     usage: run.usage,
   }
 }

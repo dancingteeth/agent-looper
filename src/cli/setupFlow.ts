@@ -1,8 +1,7 @@
 import path from 'node:path'
 import {
-  LOOP_RUNTIME_CLINE,
-  LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
+  runtimeHonorsReasoningEffort,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
 import {
@@ -11,6 +10,7 @@ import {
   MENU_CUSTOM,
   MENU_OMIT,
   REASONING_EFFORT_CHOICES,
+  SECONDARY_REVIEW_RUNTIME_CHOICES,
   WORKER_RUNTIME_CHOICES,
   escalateAfterChoices,
   escalateModelChoices,
@@ -22,6 +22,24 @@ import {
   yesNoChoices,
   type MenuChoice,
 } from './setupMenus.js'
+
+export const SETUP_INTRO_HEADING = 'Setup wizard'
+
+export const SETUP_INTRO =
+  'Consider this a one-time setup to set defaults and feel in control. You can always ask the harness to adjust a loop without running setup again.'
+
+export const SETUP_GATE_CONTINUE = 'continue'
+export const SETUP_GATE_QUIT = 'quit'
+
+/** Select+text prompts on the all-defaults Cursor path, including the intro gate. */
+export const TYPICAL_SETUP_STEPS = 38
+
+export class SetupDeclinedError extends Error {
+  readonly name = 'SetupDeclinedError'
+  constructor() {
+    super('setup declined')
+  }
+}
 
 export type SetupPrompts = {
   select: (
@@ -66,9 +84,28 @@ export async function collectSetupAnswers(
     return picked
   }
 
+  const gate = await askSelect(
+    SETUP_INTRO_HEADING,
+    SETUP_INTRO,
+    [
+      {
+        value: SETUP_GATE_CONTINUE,
+        title: 'got it, let me set this stuff up anyway',
+        description: 'Walk the wizard. Writes repo defaults and this bundle’s loop.json.',
+      },
+      {
+        value: SETUP_GATE_QUIT,
+        title: "ok, quit, I'll just ask my agent",
+        description: 'Leave now. An agent can patch loop.json and repo defaults without this wizard.',
+      },
+    ],
+    SETUP_GATE_CONTINUE,
+  )
+  if (gate === SETUP_GATE_QUIT) throw new SetupDeclinedError()
+
   const runtime = await askSelect(
     'Worker runtime',
-    'The SDK/CLI that implements GOAL.md each iteration. This is not the judge.',
+    'Who implements GOAL.md each iteration. The judge is a later step.',
     WORKER_RUNTIME_CHOICES,
     LOOP_RUNTIME_CURSOR,
   )
@@ -77,7 +114,7 @@ export async function collectSetupAnswers(
 
   const model = await askOptionalSlug(
     'Worker model',
-    'Catalog is scoped to the worker runtime you just picked. Prefer omit unless you need a non-default slug.',
+    `Models for ${workerRuntime}. Omit unless you want a non-default.`,
     workerModelChoices(workerRuntime),
     'Custom worker model slug',
   )
@@ -86,7 +123,7 @@ export async function collectSetupAnswers(
   if (runtime !== LOOP_RUNTIME_CURSOR) {
     const escalateModel = await askOptionalSlug(
       'Escalate model',
-      'Used after N identical verify failures (escalateAfterStagnation). Omit to take the runtime escalate default.',
+      `Stronger ${workerRuntime} model after repeated identical verify failures. Omit for the default.`,
       escalateModelChoices(workerRuntime),
       'Custom escalate model slug',
     )
@@ -95,23 +132,23 @@ export async function collectSetupAnswers(
   answers.escalateAfterStagnation = Number(
     await askSelect(
       'Escalate after N identical failures',
-      'How many identical verify failures before switching to escalateModel (after reasoning-effort ceiling).',
+      'How many identical verify failures before switching to a stronger model.',
       escalateAfterChoices(),
       '2',
     ),
   )
 
-  if (runtime === LOOP_RUNTIME_CLINE_PASS || runtime === LOOP_RUNTIME_CLINE) {
+  if (runtimeHonorsReasoningEffort(workerRuntime)) {
     const effort = await askSelect(
-      'Cline reasoning effort',
-      'Cline SDK only. Skip-equivalent is "none" (field omitted).',
+      'Reasoning effort',
+      'How hard the worker thinks per turn. none omits the field (runtime default).',
       REASONING_EFFORT_CHOICES,
       'none',
     )
     if (effort !== 'none') answers.reasoningEffort = effort
     const escalateEffort = await askSelect(
-      'Cline escalate reasoning effort',
-      'Raised before a model switch when Cline is the worker.',
+      'Escalate reasoning effort',
+      'Ceiling before switching to a stronger model when verify keeps failing.',
       REASONING_EFFORT_CHOICES,
       'none',
     )
@@ -120,36 +157,36 @@ export async function collectSetupAnswers(
 
   const reviewRuntime = await askSelect(
     'Judge runtime (reviewRuntime)',
-    'Who writes residual quality review.md. Not the worker. Pick DeepSeek Harness (dsh) if the judge should be headless DSH — do not type a model slug.',
+    'Who writes residual review.md after verify. Independent of the worker.',
     JUDGE_RUNTIME_CHOICES,
     LOOP_RUNTIME_CURSOR,
   )
   answers.reviewRuntime = reviewRuntime
   const reviewModel = await askOptionalSlug(
     'Judge model (reviewModel)',
-    `Allowed slugs for reviewRuntime="${reviewRuntime}" only. Prefer omit so the schema default applies (DeepSeek Harness → V4 Pro, Cursor worker → grok-4.6).`,
+    `Models for ${reviewRuntime}. Omit for its default.`,
     judgeModelChoices(reviewRuntime as LoopRuntime, workerRuntime),
     'Custom judge model slug',
   )
   if (reviewModel !== undefined) answers.reviewModel = reviewModel
   answers.reviewGate = await askBool(
     'Enable review gate (reviewGate)',
-    'When on, a deny/guide verdict can trigger another implement cycle. Shell verify is still the exit.',
+    'When on, a blocking review can trigger another implement cycle. Shell verify is still the exit.',
     false,
-    'Block or continue from residual review (Proceed / Guide / Deny). Costs extra judge runs.',
-    'Off. One post-loop review at most; verify.sh still decides green.',
+    'Gate the loop on residual review. Costs extra judge runs.',
+    'Off. At most one post-loop review; verify.sh still decides green.',
   )
   answers.maxReviewCycles = Number(
     await askSelect(
       'Max review cycles (maxReviewCycles)',
-      'Cap on review-triggered fix rounds. Ignored when reviewGate is off.',
+      'Cap on review-triggered fix rounds. Only used if the review gate is on.',
       maxReviewCyclesChoices(),
       '2',
     ),
   )
   const pqr = await askSelect(
     'Post-quality review',
-    'Whether to run a residual quality review after verify. auto follows reviewRisk.',
+    'Whether to run residual review after verify. auto uses the risk setting on the next step.',
     [
       {
         value: 'auto',
@@ -201,27 +238,20 @@ export async function collectSetupAnswers(
   )
   const secondary = await askSelect(
     'Secondary review runtime',
-    'Optional second residual pass (Cline only). none is the usual choice.',
-    [
-      {
-        value: 'none',
-        title: 'none',
-        description: 'Default. One judge runtime is enough.',
-      },
-      {
-        value: 'cline-pass',
-        title: 'cline-pass',
-        description: 'Second residual review on Cline Pass quota.',
-      },
-      {
-        value: 'cline',
-        title: 'cline',
-        description: 'Second residual review on Cline credits.',
-      },
-    ],
+    'Optional second review after the primary judge. Same runtimes as the judge step. none is the usual choice.',
+    SECONDARY_REVIEW_RUNTIME_CHOICES,
     'none',
   )
-  if (secondary !== 'none') answers.reviewSecondaryRuntime = secondary
+  if (secondary !== 'none') {
+    answers.reviewSecondaryRuntime = secondary
+    const secondaryModel = await askOptionalSlug(
+      'Secondary judge model (reviewSecondaryModel)',
+      `Models for ${secondary}. Omit for its default.`,
+      judgeModelChoices(secondary as LoopRuntime, workerRuntime),
+      'Custom secondary judge model slug',
+    )
+    if (secondaryModel !== undefined) answers.reviewSecondaryModel = secondaryModel
+  }
 
   const suggestedVerify = `bash ${path.join(outDir, 'verify.sh')}`
   const verifyPick = await askSelect(
@@ -357,7 +387,7 @@ export async function collectSetupAnswers(
   )
   answers.trustConfig = await askBool(
     'Trust this loop.json (trustConfig)',
-    'When true, skip some untrusted-config warnings for this bundle.',
+    'Skip some untrusted-config warnings for this bundle.',
     false,
     'Mark this loop.json as trusted on this machine.',
     'Leave untrusted (default). Safer for copied bundles.',
@@ -370,28 +400,34 @@ export async function collectSetupAnswers(
     'Send the completion report (default).',
     'Do not send Telegram on exit.',
   )
-  answers.telegramAttachReview = await askBool(
-    'Attach latest review.md to Telegram',
-    'Only if a residual review file exists.',
-    true,
-    'Attach review.md when present (default).',
-    'Text-only Telegram message.',
-  )
-  answers.requireNotify = await askBool(
-    'Abort if Telegram preflight fails (requireNotify)',
-    'When on, a missing token/chatId fails the loop instead of skipping notify.',
-    false,
-    'Fail the run if Telegram cannot send.',
-    'Warn and continue if notify is not configured (default).',
-  )
+  if (answers.notifyTelegram) {
+    answers.telegramAttachReview = await askBool(
+      'Attach latest review.md to Telegram',
+      'Only if a residual review file exists.',
+      true,
+      'Attach review.md when present (default).',
+      'Text-only Telegram message.',
+    )
+    answers.requireNotify = await askBool(
+      'Abort if Telegram preflight fails (requireNotify)',
+      'When on, a missing token/chatId fails the loop instead of skipping notify.',
+      false,
+      'Fail the run if Telegram cannot send.',
+      'Warn and continue if notify is not configured (default).',
+    )
+  }
   const notifyCommandPick = await askSelect(
     'Custom notifyCommand',
-    'Optional shell command instead of the built-in Telegram sender.',
+    answers.notifyTelegram
+      ? 'Optional shell command in addition to, or instead of, the built-in Telegram sender.'
+      : 'Optional shell command to run on loop exit (webhook, Slack, email, …).',
     [
       {
         value: MENU_OMIT,
-        title: 'None (built-in Telegram)',
-        description: 'Default. Use loop.json notifyTelegram + env token.',
+        title: answers.notifyTelegram ? 'None (built-in Telegram)' : 'None',
+        description: answers.notifyTelegram
+          ? 'Default. Use loop.json notifyTelegram + env token.'
+          : 'Default. No extra shell command on exit.',
       },
       {
         value: MENU_CUSTOM,
@@ -405,54 +441,56 @@ export async function collectSetupAnswers(
     const notifyCommand = await askText('Custom notifyCommand')
     if (notifyCommand !== '') answers.notifyCommand = notifyCommand
   }
-  const telegram: Record<string, unknown> = {}
-  const chatIdPick = await askSelect(
-    'Telegram chatId',
-    'Numeric chat id for profile telegramNotify.chatId. Token stays in env.',
-    [
-      {
-        value: MENU_OMIT,
-        title: 'Skip (use existing profile / env)',
-        description: 'Do not patch chatId. Keep whatever is already in .cursor/agent-loop.repo.json.',
-      },
-      {
-        value: MENU_CUSTOM,
-        title: 'Set chatId',
-        description: 'Type the numeric chat id next (e.g. 123456789).',
-      },
-    ],
-    MENU_OMIT,
-  )
-  if (chatIdPick === MENU_CUSTOM) {
-    const chatId = await askText('Telegram chatId')
-    if (chatId !== '') telegram.chatId = chatId
+  if (answers.notifyTelegram) {
+    const telegram: Record<string, unknown> = {}
+    const chatIdPick = await askSelect(
+      'Telegram chatId',
+      'Numeric chat id stored in the repo profile. Token stays in env.',
+      [
+        {
+          value: MENU_OMIT,
+          title: 'Skip (use existing profile / env)',
+          description: 'Do not patch chatId. Keep whatever is already in .cursor/agent-loop.repo.json.',
+        },
+        {
+          value: MENU_CUSTOM,
+          title: 'Set chatId',
+          description: 'Type the numeric chat id next (e.g. 123456789).',
+        },
+      ],
+      MENU_OMIT,
+    )
+    if (chatIdPick === MENU_CUSTOM) {
+      const chatId = await askText('Telegram chatId')
+      if (chatId !== '') telegram.chatId = chatId
+    }
+    telegram.onSuccess = await askBool(
+      'Telegram notify on success',
+      'Send when the loop exits complete.',
+      true,
+      'Notify on success (default).',
+      'Skip success messages.',
+    )
+    telegram.onFailure = await askBool(
+      'Telegram notify on failure',
+      'Send when the loop exits incomplete / error.',
+      true,
+      'Notify on failure (default).',
+      'Skip failure messages.',
+    )
+    telegram.attachReview = await askBool(
+      'Telegram attach review (profile)',
+      'Attach review.md after the completion message. The loop can still override this.',
+      true,
+      'Attach review.md at the profile layer (default).',
+      'Do not attach from the profile default.',
+    )
+    profile.telegramNotify = telegram
   }
-  telegram.onSuccess = await askBool(
-    'Telegram notify on success',
-    'Send when the loop exits complete.',
-    true,
-    'Notify on success (default).',
-    'Skip success messages.',
-  )
-  telegram.onFailure = await askBool(
-    'Telegram notify on failure',
-    'Send when the loop exits incomplete / error.',
-    true,
-    'Notify on failure (default).',
-    'Skip failure messages.',
-  )
-  telegram.attachReview = await askBool(
-    'Telegram attach review (profile)',
-    'Repo-profile default for attaching review.md. Loop json telegramAttachReview can still override.',
-    true,
-    'Attach review.md at the profile layer (default).',
-    'Do not attach from the profile default.',
-  )
-  profile.telegramNotify = telegram
 
   const defaultBranch = await askSelect(
     'Repo default branch (diff base)',
-    'profile defaultBranch — merge-base for diffs and some git helpers.',
+    'Git branch used as the merge-base for diffs.',
     [
       { value: 'main', title: 'main', description: 'Default. Most repos.' },
       { value: 'master', title: 'master', description: 'Legacy default branch name.' },
@@ -468,7 +506,7 @@ export async function collectSetupAnswers(
     defaultBranch === MENU_CUSTOM ? await askText('Default branch name', 'main') : defaultBranch
   answers.notifyPrComment = await askBool(
     'Comment on open PR after exit (notifyPrComment)',
-    'gh pr comment on the open PR / AGENT_LOOP_PR_NUMBER.',
+    'Post a completion comment with gh when a pull request is open.',
     false,
     'Post a completion comment on the PR.',
     'Do not comment on a PR (default).',
@@ -517,38 +555,40 @@ export async function collectSetupAnswers(
   )
   answers.hitlOnFailure = await askBool(
     'Open HITL checkpoint on incomplete loop',
-    'When the grind stops without complete:true.',
+    'When the loop stops without a green verify.',
     false,
     'Open a HITL task/issue on incomplete.',
     'Do not open HITL on incomplete (default).',
   )
   answers.reviewGateHitl = await askBool(
     'Escalate exhausted review gate to a human',
-    'When reviewGate burns maxReviewCycles without Proceed.',
+    'When the review gate uses up its cycles without a proceed.',
     false,
     'Open HITL after the gate is exhausted.',
     'Do not escalate the gate to a human (default).',
   )
-  const uuidPick = await askSelect(
-    'Taskwarrior UUID',
-    'Optional loop.json taskwarriorUuid. UUID only — never a numeric Taskwarrior ID.',
-    [
-      {
-        value: MENU_OMIT,
-        title: 'None',
-        description: 'Default. No TW goal link on this bundle.',
-      },
-      {
-        value: MENU_CUSTOM,
-        title: 'Set UUID',
-        description: 'Paste a UUID next (8-4-4-4-12). Numeric IDs are rejected.',
-      },
-    ],
-    MENU_OMIT,
-  )
-  if (uuidPick === MENU_CUSTOM) {
-    const uuid = await askText('Taskwarrior UUID')
-    if (uuid !== '') answers.taskwarriorUuid = uuid
+  if (answers.hitlProvider === 'taskwarrior') {
+    const uuidPick = await askSelect(
+      'Taskwarrior UUID',
+      'Optional loop.json link to a Taskwarrior goal. UUID only — never a numeric ID.',
+      [
+        {
+          value: MENU_OMIT,
+          title: 'None',
+          description: 'Default. No TW goal link on this bundle.',
+        },
+        {
+          value: MENU_CUSTOM,
+          title: 'Set UUID',
+          description: 'Paste a UUID next (8-4-4-4-12). Numeric IDs are rejected.',
+        },
+      ],
+      MENU_OMIT,
+    )
+    if (uuidPick === MENU_CUSTOM) {
+      const uuid = await askText('Taskwarrior UUID')
+      if (uuid !== '') answers.taskwarriorUuid = uuid
+    }
   }
 
   if (Object.keys(profile).length > 0) answers.profile = profile

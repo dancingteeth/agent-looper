@@ -116,9 +116,18 @@ const CODEX_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/
 /** OpenRouter-style `provider/model` (Cline usage-billing / API). */
 const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
 
-/** Reasoning-effort dial for Cline SDK models (mirrors @cline/core ProviderConfig.reasoningEffort). */
+/** Reasoning-effort dial (`low`…`xhigh` | `none`). Honored by runtimes in {@link runtimeHonorsReasoningEffort}. */
 export const LOOP_REASONING_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'none'] as const
 export type LoopReasoningEffort = (typeof LOOP_REASONING_EFFORTS)[number]
+
+/** Pi `thinkingLevel` values we map onto (off is `none`; unset keeps the prior harness default `low`). */
+export type PiThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
+export function toPiThinkingLevel(effort: LoopReasoningEffort | undefined): PiThinkingLevel {
+  if (effort === undefined) return 'low'
+  if (effort === 'none') return 'off'
+  return effort
+}
 
 export type ResolvedLoopAgent =
   | {
@@ -179,6 +188,29 @@ export function isCodexRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUN
 
 export function isDshRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTIME_DSH {
   return runtime === LOOP_RUNTIME_DSH
+}
+
+/**
+ * Whether the worker runner actually sends `reasoningEffort` to the provider.
+ * Wizard, resolveLoopAgent, and the iteration ladder all use this — do not
+ * special-case Cline in those call sites.
+ */
+export function runtimeHonorsReasoningEffort(runtime: LoopRuntime): boolean {
+  switch (runtime) {
+    case LOOP_RUNTIME_CLINE:
+    case LOOP_RUNTIME_CLINE_PASS:
+    case LOOP_RUNTIME_PI:
+      return true
+    case LOOP_RUNTIME_CURSOR:
+    case LOOP_RUNTIME_OPENCODE:
+    case LOOP_RUNTIME_CODEX:
+    case LOOP_RUNTIME_DSH:
+      return false
+    default: {
+      const _exhaustive: never = runtime
+      return _exhaustive
+    }
+  }
 }
 
 export function defaultModelForRuntime(runtime: LoopRuntime): string {
@@ -249,7 +281,7 @@ export type ResolvedReviewAgent =
       reasoningEffort?: LoopReasoningEffort
     }
 
-function assertCursorReviewModel(model: string, field: 'reviewModel'): CursorSdkModel {
+function assertCursorReviewModel(model: string, field: string): CursorSdkModel {
   if (!isCursorSdkModel(model)) {
     throw new Error(
       `Unknown ${field} "${model}" for reviewRuntime "cursor". Allowed: ${CURSOR_REVIEW_MODELS.join(', ')}`,
@@ -261,14 +293,19 @@ function assertCursorReviewModel(model: string, field: 'reviewModel'): CursorSdk
   return model
 }
 
-function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): string {
+function assertReviewModelForRuntime(
+  runtime: LoopRuntime,
+  model: string,
+  modelField = 'reviewModel',
+  runtimeField = 'reviewRuntime',
+): string {
   if (runtime === LOOP_RUNTIME_CURSOR) {
-    return assertCursorReviewModel(model, 'reviewModel')
+    return assertCursorReviewModel(model, modelField)
   }
   if (runtime === LOOP_RUNTIME_CLINE_PASS) {
     if (!isClinePassModel(model)) {
       throw new Error(
-        `Unknown reviewModel "${model}" for reviewRuntime "cline-pass". Use a slug from CLINE_PASS_LOOP_MODELS`,
+        `Unknown ${modelField} "${model}" for ${runtimeField} "cline-pass". Use a slug from CLINE_PASS_LOOP_MODELS`,
       )
     }
     return model
@@ -276,13 +313,13 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
   if (runtime === LOOP_RUNTIME_CLINE) {
     if (model.startsWith('cline-pass/')) {
       throw new Error(
-        `reviewModel "${model}" is not valid for reviewRuntime "cline" (credits). ` +
+        `${modelField} "${model}" is not valid for ${runtimeField} "cline" (credits). ` +
           `Use an OpenRouter-style id such as "${DEFAULT_CLINE_CREDITS_LOOP_MODEL}".`,
       )
     }
     if (!isClineCreditsModelShape(model)) {
       throw new Error(
-        `Invalid reviewModel "${model}" for reviewRuntime "cline". Expected provider/model ` +
+        `Invalid ${modelField} "${model}" for ${runtimeField} "cline". Expected provider/model ` +
           `(e.g. "${DEFAULT_CLINE_CREDITS_LOOP_MODEL}").`,
       )
     }
@@ -291,7 +328,7 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
   if (runtime === LOOP_RUNTIME_OPENCODE) {
     if (!isOpencodeLoopModel(model)) {
       throw new Error(
-        `Invalid reviewModel "${model}" for reviewRuntime "opencode". Expected provider/model ` +
+        `Invalid ${modelField} "${model}" for ${runtimeField} "opencode". Expected provider/model ` +
           `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, vercel/…, ollama/… — ` +
           `https://opencode.ai/docs/providers/).`,
       )
@@ -302,12 +339,12 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
     if (!isPiLoopModel(model)) {
       if (model.startsWith('opencode-go/')) {
         throw new Error(
-          `reviewModel "${model}" is not valid for reviewRuntime "pi". ` +
-            `Use BYOK provider/model (e.g. "${DEFAULT_PI_LOOP_MODEL}") or reviewRuntime "opencode".`,
+          `${modelField} "${model}" is not valid for ${runtimeField} "pi". ` +
+            `Use BYOK provider/model (e.g. "${DEFAULT_PI_LOOP_MODEL}") or ${runtimeField} "opencode".`,
         )
       }
       throw new Error(
-        `Invalid reviewModel "${model}" for reviewRuntime "pi". Expected provider/model ` +
+        `Invalid ${modelField} "${model}" for ${runtimeField} "pi". Expected provider/model ` +
           `(e.g. "${DEFAULT_PI_LOOP_MODEL}") — https://pi.dev/docs`,
       )
     }
@@ -316,7 +353,7 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
   if (runtime === LOOP_RUNTIME_CODEX) {
     if (!isCodexLoopModel(model)) {
       throw new Error(
-        `Invalid reviewModel "${model}" for reviewRuntime "codex". Expected a Codex CLI slug ` +
+        `Invalid ${modelField} "${model}" for ${runtimeField} "codex". Expected a Codex CLI slug ` +
           `(e.g. "${DEFAULT_CODEX_REVIEW_MODEL}") — https://github.com/openai/codex`,
       )
     }
@@ -325,7 +362,7 @@ function assertReviewModelForRuntime(runtime: LoopRuntime, model: string): strin
   if (runtime === LOOP_RUNTIME_DSH) {
     if (!isDshLoopModel(model)) {
       throw new Error(
-        `Invalid reviewModel "${model}" for reviewRuntime "dsh". Expected provider/model ` +
+        `Invalid ${modelField} "${model}" for ${runtimeField} "dsh". Expected provider/model ` +
           `(e.g. "${DEFAULT_DSH_REVIEW_MODEL}").`,
       )
     }
@@ -359,17 +396,25 @@ function defaultReviewModel(
   }
 }
 
+export type ReviewAgentFieldLabels = {
+  modelField?: string
+  runtimeField?: string
+}
+
 /**
  * Resolve the primary judge agent (reviewRuntime + reviewModel).
  * Default reviewRuntime is cursor. OpenCode/Codex judges default to V4 Pro/Sol, not the cheap worker.
  */
 export function resolveReviewAgent(
   config: Pick<LoopConfig, 'runtime' | 'reviewRuntime' | 'reviewModel'>,
+  labels: ReviewAgentFieldLabels = {},
 ): ResolvedReviewAgent {
+  const modelField = labels.modelField ?? 'reviewModel'
+  const runtimeField = labels.runtimeField ?? 'reviewRuntime'
   const workerRuntime = config.runtime ?? LOOP_RUNTIME_CURSOR
   const reviewRuntime = config.reviewRuntime ?? LOOP_RUNTIME_CURSOR
   const model = config.reviewModel
-    ? assertReviewModelForRuntime(reviewRuntime, config.reviewModel)
+    ? assertReviewModelForRuntime(reviewRuntime, config.reviewModel, modelField, runtimeField)
     : defaultReviewModel(reviewRuntime, workerRuntime)
 
   if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
@@ -379,7 +424,7 @@ export function resolveReviewAgent(
   }
 
   if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
-    return { runtime: reviewRuntime, model: assertCursorReviewModel(model, 'reviewModel') }
+    return { runtime: reviewRuntime, model: assertCursorReviewModel(model, modelField) }
   }
   if (reviewRuntime === LOOP_RUNTIME_CLINE) {
     return {
@@ -598,11 +643,15 @@ export function clearIncompatibleReviewFieldsOnRuntimeSwitch(input: {
   nextReviewRuntime: LoopRuntime
   reviewModel?: string
   reviewModelOverridden: boolean
+  runtimeField?: string
+  modelField?: string
 }): {
   reviewModel?: string
   warnings: string[]
 } {
   const { previousReviewRuntime, nextReviewRuntime } = input
+  const runtimeField = input.runtimeField ?? 'reviewRuntime'
+  const modelField = input.modelField ?? 'reviewModel'
   if (previousReviewRuntime === nextReviewRuntime) {
     return { reviewModel: input.reviewModel, warnings: [] }
   }
@@ -616,8 +665,8 @@ export function clearIncompatibleReviewFieldsOnRuntimeSwitch(input: {
     !reviewModelCompatibleWithRuntime(nextReviewRuntime, reviewModel)
   ) {
     warnings.push(
-      `cleared reviewModel "${reviewModel}" after switching reviewRuntime ${previousReviewRuntime} → ${nextReviewRuntime}; ` +
-        `using default judge model for ${nextReviewRuntime}. Pass --review-model to set an explicit id.`,
+      `cleared ${modelField} "${reviewModel}" after switching ${runtimeField} ${previousReviewRuntime} → ${nextReviewRuntime}; ` +
+        `using default judge model for ${nextReviewRuntime}. Pass --${modelField.replace(/[A-Z]/g, (ch) => `-${ch.toLowerCase()}`)} to set an explicit id.`,
     )
     reviewModel = undefined
   }
@@ -717,7 +766,7 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
   assertLoopModelAllowed(runtime, model)
 
   if (runtime === LOOP_RUNTIME_CURSOR) {
-    return { runtime, model: CURSOR_LOOP_MODEL, reasoningEffort: config.reasoningEffort }
+    return { runtime, model: CURSOR_LOOP_MODEL }
   }
 
   if (runtime === LOOP_RUNTIME_CLINE) {
@@ -739,6 +788,7 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
     return {
       runtime,
       model: assertPiLoopModel(model, 'model'),
+      reasoningEffort: config.reasoningEffort,
     }
   }
 
@@ -763,32 +813,25 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
   }
 }
 
-export type SecondaryReviewRuntime =
-  | typeof LOOP_RUNTIME_CLINE_PASS
-  | typeof LOOP_RUNTIME_CLINE
-
-export type ResolvedSecondaryReviewAgent = {
-  runtime: SecondaryReviewRuntime
-  model: string
-}
+export type SecondaryReviewRuntime = LoopRuntime
+export type ResolvedSecondaryReviewAgent = ResolvedReviewAgent
 
 /**
- * Resolve optional second-family review agent (M3). Unset reviewSecondaryRuntime → disabled.
+ * Resolve optional second residual judge. Unset reviewSecondaryRuntime → disabled.
+ * Same runtimes and default models as the primary judge (`resolveReviewAgent`).
  */
 export function resolveSecondaryReviewAgent(
-  config: Pick<LoopConfig, 'reviewSecondaryRuntime' | 'reviewSecondaryModel'>,
+  config: Partial<Pick<LoopConfig, 'runtime' | 'reviewSecondaryRuntime' | 'reviewSecondaryModel'>>,
 ): ResolvedSecondaryReviewAgent | undefined {
   if (!config.reviewSecondaryRuntime) return undefined
-
-  const runtime = config.reviewSecondaryRuntime
-  const model = config.reviewSecondaryModel ?? defaultModelForRuntime(runtime)
-  assertLoopModelAllowed(runtime, model)
-
-  if (runtime === LOOP_RUNTIME_CLINE_PASS) {
-    return { runtime, model: assertClinePassModel(model, 'model') }
-  }
-
-  return { runtime, model: assertClineCreditsModel(model, 'model') }
+  return resolveReviewAgent(
+    {
+      runtime: config.runtime ?? LOOP_RUNTIME_CURSOR,
+      reviewRuntime: config.reviewSecondaryRuntime,
+      reviewModel: config.reviewSecondaryModel,
+    },
+    { modelField: 'reviewSecondaryModel', runtimeField: 'reviewSecondaryRuntime' },
+  )
 }
 
 /** Parse-time validation for loop.json (model + escalateModel + review agent). */
@@ -887,129 +930,55 @@ export function resolveIterationAgent(
     return base
   }
 
-  if (isOpencodeRuntime(base.runtime)) {
+  if (runtimeHonorsReasoningEffort(base.runtime)) {
+    const step = config.reasoningEscalationStep ?? 1
+    const tier = resolveReasoningTier(
+      config.reasoningEffort,
+      config.escalateReasoningEffort,
+      step,
+      iteration,
+      reviewCycleEscalation,
+    )
+
+    let agent: ResolvedLoopAgent = { ...base, reasoningEffort: tier }
+
+    // Model switch (expensive lever) is sequenced AFTER the cheap lever is exhausted:
+    // only once reasoning has reached its ceiling AND hard stagnation (identical
+    // consecutive verifier failures) persists past the threshold. When no reasoning
+    // ladder is configured, model escalation keeps its prior stagnation-gated behavior.
+    const reasoningConfigured =
+      config.reasoningEffort !== undefined && config.reasoningEffort !== 'none'
+    const atCeiling =
+      !reasoningConfigured || tier === (config.escalateReasoningEffort ?? tier)
     const threshold = config.escalateAfterStagnation ?? 2
+
     if (
       config.escalateModel &&
+      atCeiling &&
       escalationRepeatCount !== undefined &&
       escalationRepeatCount >= threshold
     ) {
       assertLoopModelAllowed(base.runtime, config.escalateModel)
-      return {
-        runtime: LOOP_RUNTIME_OPENCODE,
-        model: assertOpencodeLoopModel(config.escalateModel, 'escalateModel'),
+      const reasoningEffort = config.escalateModelReasoningEffort ?? tier
+      agent = {
+        ...resolveLoopAgent({ ...config, model: config.escalateModel }),
+        reasoningEffort,
       }
     }
-    return {
-      runtime: LOOP_RUNTIME_OPENCODE,
-      model: assertOpencodeLoopModel(base.model, 'model'),
-    }
+
+    return agent
   }
 
-  if (isPiRuntime(base.runtime)) {
-    const threshold = config.escalateAfterStagnation ?? 2
-    if (
-      config.escalateModel &&
-      escalationRepeatCount !== undefined &&
-      escalationRepeatCount >= threshold
-    ) {
-      assertLoopModelAllowed(base.runtime, config.escalateModel)
-      return {
-        runtime: LOOP_RUNTIME_PI,
-        model: assertPiLoopModel(config.escalateModel, 'escalateModel'),
-      }
-    }
-    return {
-      runtime: LOOP_RUNTIME_PI,
-      model: assertPiLoopModel(base.model, 'model'),
-    }
-  }
-
-  if (isCodexRuntime(base.runtime)) {
-    const threshold = config.escalateAfterStagnation ?? 2
-    if (
-      config.escalateModel &&
-      escalationRepeatCount !== undefined &&
-      escalationRepeatCount >= threshold
-    ) {
-      assertLoopModelAllowed(base.runtime, config.escalateModel)
-      return {
-        runtime: LOOP_RUNTIME_CODEX,
-        model: assertCodexLoopModel(config.escalateModel, 'escalateModel'),
-      }
-    }
-    return {
-      runtime: LOOP_RUNTIME_CODEX,
-      model: assertCodexLoopModel(base.model, 'model'),
-    }
-  }
-
-  if (isDshRuntime(base.runtime)) {
-    const threshold = config.escalateAfterStagnation ?? 2
-    if (
-      config.escalateModel &&
-      escalationRepeatCount !== undefined &&
-      escalationRepeatCount >= threshold
-    ) {
-      assertLoopModelAllowed(base.runtime, config.escalateModel)
-      return {
-        runtime: LOOP_RUNTIME_DSH,
-        model: assertDshLoopModel(config.escalateModel, 'escalateModel'),
-      }
-    }
-    return {
-      runtime: LOOP_RUNTIME_DSH,
-      model: assertDshLoopModel(base.model, 'model'),
-    }
-  }
-
-  if (!isClineSdkRuntime(base.runtime)) {
-    return base
-  }
-
-  const step = config.reasoningEscalationStep ?? 1
-  const tier = resolveReasoningTier(
-    config.reasoningEffort,
-    config.escalateReasoningEffort,
-    step,
-    iteration,
-    reviewCycleEscalation,
-  )
-
-  let agent: ResolvedLoopAgent = { ...base, reasoningEffort: tier }
-
-  // Model switch (expensive lever) is sequenced AFTER the cheap lever is exhausted:
-  // only once reasoning has reached its ceiling AND hard stagnation (identical
-  // consecutive verifier failures) persists past the threshold. When no reasoning
-  // ladder is configured, model escalation keeps its prior stagnation-gated behavior.
-  const reasoningConfigured =
-    config.reasoningEffort !== undefined && config.reasoningEffort !== 'none'
-  const atCeiling =
-    !reasoningConfigured || tier === (config.escalateReasoningEffort ?? tier)
   const threshold = config.escalateAfterStagnation ?? 2
-
-  if (
+  const switchModel =
     config.escalateModel &&
-    atCeiling &&
     escalationRepeatCount !== undefined &&
     escalationRepeatCount >= threshold
-  ) {
-    assertLoopModelAllowed(base.runtime, config.escalateModel)
-    const reasoningEffort = config.escalateModelReasoningEffort ?? tier
-    if (base.runtime === LOOP_RUNTIME_CLINE) {
-      agent = {
-        runtime: LOOP_RUNTIME_CLINE,
-        model: assertClineCreditsModel(config.escalateModel, 'escalateModel'),
-        reasoningEffort,
-      }
-    } else {
-      agent = {
-        runtime: LOOP_RUNTIME_CLINE_PASS,
-        model: assertClinePassModel(config.escalateModel, 'escalateModel'),
-        reasoningEffort,
-      }
-    }
+      ? config.escalateModel
+      : undefined
+  if (switchModel) {
+    assertLoopModelAllowed(base.runtime, switchModel)
+    return resolveLoopAgent({ ...config, model: switchModel })
   }
-
-  return agent
+  return base
 }

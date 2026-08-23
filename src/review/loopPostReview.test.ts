@@ -286,35 +286,27 @@ describe('loopPostReview', () => {
     runReviewAgentPrompt.mockResolvedValueOnce({
       text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', `- ${primaryBlocker}`].join('\n'),
     })
-    clineRunPrompt.mockResolvedValueOnce({
+    runReviewAgentPrompt.mockResolvedValueOnce({
       text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', `- ${secondaryOnlyBlocker}`].join('\n'),
     })
 
     const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const result = await runPostLoopQualityReview(loopDir, 'goal', ctx, {
-      reviewSecondaryRuntime: 'cline-pass',
-      reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+      reviewSecondaryRuntime: 'dsh',
+      reviewSecondaryModel: 'deepseek-official/deepseek-v4-pro',
     })
 
-    expect(createClineLoopSession).toHaveBeenCalledTimes(1)
-    expect(clineRunPrompt).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        modelId: 'cline-pass/deepseek-v4-flash',
-        providerId: 'cline-pass',
-        phase: 'review',
-        assistantOutput: 'none',
-      }),
-    )
+    expect(runReviewAgentPrompt).toHaveBeenCalledTimes(2)
+    expect(createClineLoopSession).not.toHaveBeenCalled()
     expect(blockingBlockers(result.parsed)).toHaveLength(2)
     expect(result.secondaryOnlyBlockersCount).toBe(1)
     expect(result.parsed.verdict).toBe('BLOCKERS')
 
     const reviewMd = fs.readFileSync(path.join(loopDir, 'review.md'), 'utf8')
     expect(reviewMd).toContain('Primary judge:')
-    expect(reviewMd).toContain('Secondary model: cline-pass/deepseek-v4-flash')
-    expect(reviewMd).toContain('### Secondary review (cline-pass/deepseek-v4-flash)')
+    expect(reviewMd).toContain('Secondary model: deepseek-official/deepseek-v4-pro')
+    expect(reviewMd).toContain('### Secondary review (dsh/deepseek-official/deepseek-v4-pro)')
     expect(reviewMd).toContain('### Secondary merge')
     expect(reviewMd).toContain('Verify gap')
 
@@ -322,6 +314,37 @@ describe('loopPostReview', () => {
     expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('merged 1 secondary-only gating blocker'))).toBe(
       true,
     )
+
+    stderrSpy.mockRestore()
+  })
+
+  it('defaults Cursor secondary to composer-2.5 when worker is not cursor', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    const primaryBlocker =
+      'severity: error impact: false-closure [must-fix] **Docs** — src/cli/init.ts:10 still missing'
+    runReviewAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', `- ${primaryBlocker}`].join('\n'),
+    })
+    runReviewAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**PASS**', '', '### Blockers', '- none'].join('\n'),
+    })
+
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      workerRuntime: 'dsh',
+      reviewSecondaryRuntime: 'cursor',
+    })
+
+    expect(runReviewAgentPrompt).toHaveBeenCalledTimes(2)
+    expect(runReviewAgentPrompt.mock.calls[1]![2]).toEqual({
+      runtime: 'cursor',
+      model: 'composer-2.5',
+    })
 
     stderrSpy.mockRestore()
   })

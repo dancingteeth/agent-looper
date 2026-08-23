@@ -43,44 +43,37 @@ export const WORKER_RUNTIME_CHOICES: readonly MenuChoice[] = [
   {
     value: LOOP_RUNTIME_CURSOR,
     title: 'Cursor (cursor)',
-    description:
-      'Cursor SDK. Default dogfood worker (Composer 2.5). Needs CURSOR_API_KEY. Composer Fast is rejected.',
+    description: 'Cursor SDK. Default worker. Needs CURSOR_API_KEY.',
   },
   {
     value: LOOP_RUNTIME_DSH,
     title: 'DeepSeek Harness (dsh)',
-    description:
-      'Official DeepSeek Harness. Spawns PATH `dsh --profile headless` (not an npm dependency). Node ≥ 22.15. From dsh web, use Full Access so nested headless can write ~/.dsh/profiles/headless/.',
+    description: 'DeepSeek’s official harness. Needs `dsh` on PATH.',
   },
   {
     value: LOOP_RUNTIME_OPENCODE,
     title: 'OpenCode (opencode)',
-    description:
-      'OpenCode CLI — Go subscription slugs (opencode-go/…) or BYOK (openrouter/…, vercel/…). Do not paste a DSH-web-only model onto a standalone OpenCode install.',
+    description: 'OpenCode CLI. Subscription (Go) or your own API key.',
   },
   {
     value: LOOP_RUNTIME_PI,
     title: 'Pi coding agent (pi)',
-    description:
-      'Pi (`@earendil-works/pi-coding-agent`). BYOK OpenRouter-class provider/model. Not opencode-go slugs.',
+    description: 'Pi coding agent. Bring-your-own provider/model.',
   },
   {
     value: LOOP_RUNTIME_CODEX,
     title: 'Codex (codex)',
-    description:
-      'OpenAI Codex CLI. ChatGPT login or CODEX_API_KEY / OPENAI_API_KEY. Luna worker, Sol judge.',
+    description: 'OpenAI Codex CLI. ChatGPT login or an OpenAI API key.',
   },
   {
     value: LOOP_RUNTIME_CLINE_PASS,
-    title: 'Cline Pass (cline-pass)',
-    description:
-      'Cline Pass subscription quota (`cline-pass/…` slugs). Same CLINE_API_KEY as Cline credits.',
+    title: 'Cline (cline-pass)',
+    description: 'Cline Pass subscription. Uses cline-pass/ model slugs.',
   },
   {
     value: LOOP_RUNTIME_CLINE,
-    title: 'Cline credits (cline)',
-    description:
-      'Cline usage-billing (pay-as-you-go). OpenRouter-style provider/model. Not cline-pass/ slugs.',
+    title: 'Cline (credits)',
+    description: 'Cline usage billing. OpenRouter-style slugs, not cline-pass/.',
   },
 ]
 
@@ -88,45 +81,56 @@ export const JUDGE_RUNTIME_CHOICES: readonly MenuChoice[] = [
   {
     value: LOOP_RUNTIME_CURSOR,
     title: 'Cursor (cursor)',
-    description:
-      'Cursor SDK judge. Default when unset. Grok 4.6 if the worker is also Cursor; otherwise Composer 2.5. Residual quality — shell verify is still the exit.',
+    description: 'Cursor SDK judge. Default. Verify.sh still decides green.',
   },
   {
     value: LOOP_RUNTIME_DSH,
     title: 'DeepSeek Harness (dsh)',
-    description:
-      'Headless DeepSeek Harness judge. Default model V4 Pro. Keeps residual review off Cursor quota. Same Full Access note as the worker.',
+    description: 'DeepSeek Harness judge. Default V4 Pro.',
   },
   {
     value: LOOP_RUNTIME_OPENCODE,
     title: 'OpenCode (opencode)',
-    description:
-      'OpenCode judge. Default opencode-go/deepseek-v4-pro (not Flash). Residual review — shell verify is still the exit.',
+    description: 'OpenCode judge. Default V4 Pro on Go (not the Flash worker).',
   },
   {
     value: LOOP_RUNTIME_PI,
     title: 'Pi coding agent (pi)',
-    description:
-      'Pi judge. Defaults to the Pi worker model unless you pick another BYOK slug. Not opencode-go.',
+    description: 'Pi judge. Same default as the Pi worker unless you pick another.',
   },
   {
     value: LOOP_RUNTIME_CODEX,
     title: 'Codex (codex)',
-    description:
-      'Codex judge. Default gpt-5.6-sol (frontier), not the cheap Luna worker.',
+    description: 'Codex judge. Default gpt-5.6-sol.',
   },
   {
     value: LOOP_RUNTIME_CLINE_PASS,
-    title: 'Cline Pass (cline-pass)',
-    description:
-      'Cline Pass judge. Pick a Pass catalog slug; omit uses the Pass worker default.',
+    title: 'Cline (cline-pass)',
+    description: 'Cline Pass judge.',
   },
   {
     value: LOOP_RUNTIME_CLINE,
-    title: 'Cline credits (cline)',
-    description:
-      'Cline credits judge. OpenRouter-style slug, not cline-pass/.',
+    title: 'Cline (credits)',
+    description: 'Cline credits judge. OpenRouter-style slugs, not cline-pass/.',
   },
+]
+
+const CLINE_JUDGE_CHOICES = JUDGE_RUNTIME_CHOICES.filter(
+  (choice) => choice.value === LOOP_RUNTIME_CLINE_PASS || choice.value === LOOP_RUNTIME_CLINE,
+)
+const OTHER_JUDGE_CHOICES = JUDGE_RUNTIME_CHOICES.filter(
+  (choice) => choice.value !== LOOP_RUNTIME_CLINE_PASS && choice.value !== LOOP_RUNTIME_CLINE,
+)
+
+/** Secondary review: keep both Cline families, then the rest of the judge list. */
+export const SECONDARY_REVIEW_RUNTIME_CHOICES: readonly MenuChoice[] = [
+  {
+    value: 'none',
+    title: 'none',
+    description: 'Default. One judge runtime is enough.',
+  },
+  ...CLINE_JUDGE_CHOICES,
+  ...OTHER_JUDGE_CHOICES,
 ]
 
 export const HITL_PROVIDER_CHOICES: readonly MenuChoice[] = [
@@ -162,15 +166,15 @@ export const REASONING_EFFORT_CHOICES: readonly MenuChoice[] = LOOP_REASONING_EF
   title: effort,
   description:
     effort === 'none'
-      ? 'Omit reasoningEffort (Cline default). Skip for cursor/dsh/opencode/pi/codex.'
-      : `Cline SDK reasoningEffort="${effort}". Higher is slower and more expensive.`,
+      ? 'Omit the field. The runtime uses its default thinking level.'
+      : `Higher is slower and more expensive (${effort}).`,
 }))
 
 function omitChoice(defaultSlug: string): MenuChoice {
   return {
     value: MENU_OMIT,
-    title: 'Runtime default (omit from loop.json)',
-    description: `Do not write the field. Schema default: ${defaultSlug}.`,
+    title: 'Default (omit)',
+    description: `Use this runtime’s default: ${defaultSlug}.`,
   }
 }
 
@@ -194,17 +198,17 @@ function catalogId(slug: string): string {
  */
 const MODEL_BLURBS: Record<string, string> = {
   'composer-2.5':
-    'Composer 2.5 — only allowed Cursor worker. Also the Cursor judge when the worker is not Cursor. Composer Fast is rejected.',
+    'Composer 2.5 — Cursor coding model. Composer Fast is rejected.',
   'grok-4.6':
-    'xAI Grok 4.6 — preferred Cursor judge when the worker is also Cursor.',
+    'xAI Grok 4.6 — usual Cursor judge when the worker is Cursor.',
   'grok-4.5':
-    'xAI Grok 4.5 — allowed Cursor judge; also on OpenCode Go. Weaker than Grok 4.6 on Cursor.',
+    'xAI Grok 4.5 — allowed Cursor judge. Weaker than Grok 4.6 on Cursor.',
   'deepseek-v4-flash':
-    'DeepSeek V4 Flash — cheap, fast implement iterations. Usual worker default on Pass, Go, and DeepSeek Harness.',
+    'DeepSeek V4 Flash — cheap, fast implement iterations. Common worker default.',
   'deepseek-v4-flash-vision-exp':
-    'DeepSeek V4 Flash Vision (exp) — image-capable official API. Catalog must set inputModalities [text, image] (settings.yaml + headless patch); a vision name alone stays text-only.',
+    'DeepSeek V4 Flash Vision (experimental) — image-capable Flash.',
   'deepseek-v4-pro':
-    'DeepSeek V4 Pro — large diffs and residual review. Usual judge on DeepSeek Harness and OpenCode Go.',
+    'DeepSeek V4 Pro — large diffs and residual review. Common judge default.',
   'mimo-v2.5':
     'Xiaomi MiMo V2.5 — high-volume cheap edits. Same cost class as Flash.',
   'mimo-v2.5-pro':
@@ -228,15 +232,15 @@ const MODEL_BLURBS: Record<string, string> = {
   'glm-5.2':
     'Z.ai GLM-5.2 — deep reasoning at lower quota than 5.3.',
   'gpt-5.6-luna':
-    'GPT 5.6 Luna — cheap OpenAI-class worker. Usual Codex worker; also on OpenCode Go.',
+    'GPT 5.6 Luna — cheap OpenAI-class worker.',
   'gpt-5.6-terra':
-    'GPT 5.6 Terra — balanced Codex escalate when Luna stalls.',
+    'GPT 5.6 Terra — balanced escalate when Luna stalls.',
   'gpt-5.6-sol':
-    'GPT 5.6 Sol — frontier Codex judge. Do not use as a cheap worker.',
+    'GPT 5.6 Sol — frontier judge. Do not use as a cheap worker.',
   'deepseek-chat':
-    'DeepSeek Chat — cheap OpenRouter-style worker (Cline credits / Pi). Not a Cline Pass slug.',
+    'DeepSeek Chat — cheap OpenRouter-style worker. Not a Cline Pass slug.',
   'qwen3-coder-plus':
-    'Qwen3 Coder Plus — usual credits/Pi escalate when Chat stalls. Avoid Gemini in this stack.',
+    'Qwen3 Coder Plus — usual escalate when Chat stalls.',
 }
 
 export function modelChoiceDescription(slug: string): string {
@@ -405,7 +409,7 @@ export function escalateAfterChoices(): MenuChoice[] {
     {
       value: '2',
       title: '2',
-      description: 'Default. Switch escalateModel after two identical verify failures (after reasoning ceiling).',
+      description: 'Default. Switch models after two identical verify failures.',
     },
     {
       value: '1',

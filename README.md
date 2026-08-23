@@ -40,7 +40,7 @@ Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`
 1. **Impact-severity** — only `severity: error` + recognized `impact` tags gate (`data-loss`, `security-boundary`, `false-closure`, `cross-dispatch`, `verify-bypass`). Cosmetic findings stay advisory.
 2. **Reproduce-before-report** — `reviewReproduce`: drop error+impact blockers without a citeable path in the changed-files set.
 3. **Fresh reproduce agent** — `reviewReproduceAgent`: second judge session KEEP/DROP on remaining gating blockers (same `reviewRuntime` as primary).
-4. **Secondary-family judge** — `reviewSecondaryRuntime` on Cline SDK (`cline-pass` or `cline`): union gating blockers with primary; skips when primary is PASS/ADVISORY with zero gates.
+4. **Secondary judge** — `reviewSecondaryRuntime` (any worker/judge runtime): union gating blockers with primary; skips when primary is PASS/ADVISORY with zero gates.
 
 **Factory scale:** `agent-loop-batch` (sequential + meta-loop probe→fix), `agent-loop-meta-review` (read-only cross-loop report over N bundles).
 
@@ -215,8 +215,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `notifyCommand` | — | Override repo profile `notifyCommand` for this loop |
 | `exportPack` | `true` | Copy curated artifacts to `.cursor/loop-exports/<slug>/` (commit-friendly) |
 | `notifyPrComment` | — | Override profile `notifyPrComment` for this loop |
-| `reasoningEffort` | — | Cline: `low` \| `medium` \| `high` \| `xhigh` \| `none`. Cursor ignores. |
-| `escalateReasoningEffort` | — | Cline reasoning ladder ceiling |
+| `reasoningEffort` | — | `low` \| `medium` \| `high` \| `xhigh` \| `none` when the worker honors it (Cline, Pi). Cursor / OpenCode / Codex / DSH ignore it. |
+| `escalateReasoningEffort` | — | Reasoning ladder ceiling (same runtimes as `reasoningEffort`) |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
 | `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling) |
@@ -240,8 +240,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reviewBlockerRecheck` | `true` | On BLOCKERS fix rounds, lighter scope-limited re-check |
 | `reviewReproduce` | `false` | Path filter on error+impact blockers (changed-files set) |
 | `reviewReproduceAgent` | `false` | Fresh KEEP/DROP session on gating blockers (needs `reviewReproduce`; uses primary `reviewRuntime`) |
-| `reviewSecondaryRuntime` | (unset) | Cline SDK second-family judge (`cline-pass` or `cline`); unset = off |
-| `reviewSecondaryModel` | (default) | Cline model for secondary review |
+| `reviewSecondaryRuntime` | (unset) | Second residual judge (`cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`); unset = off |
+| `reviewSecondaryModel` | (default) | Model for secondary review (defaults per that runtime) |
 | `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate) |
 | `exportRunReport` | `true` | Write `run-report.md` when the loop finishes |
 | `exportTranscript` | `true` | Record tool events in `transcript.ndjson` and per-iteration tool counts in `log.ndjson` |
@@ -303,7 +303,7 @@ Example per-loop override (`loop.json`):
 }
 ```
 
-CLI overrides: `--mode reverse`, `--pause-after-iteration`, `--review-gate`, `--no-telegram`, `--review-runtime <id>`, `--review-model <id>`.
+CLI overrides: `--mode reverse`, `--pause-after-iteration`, `--review-gate`, `--no-telegram`, `--review-runtime <id>`, `--review-model <id>`, `--review-secondary-runtime <id>`, `--review-secondary-model <id>`.
 
 ## Review gate flow
 
@@ -313,7 +313,7 @@ When `reviewGate: true` and verify passes:
 primary review (reviewRuntime + reviewModel; default cursor)
   → optional reviewReproduce path filter
   → optional reviewReproduceAgent KEEP/DROP
-  → optional reviewSecondaryRuntime merge (Cline-only)
+  → optional reviewSecondaryRuntime merge
   → gating blockers remain? → fix iteration (up to maxReviewCycles)
   → else PASS / ADVISORY → complete
 ```

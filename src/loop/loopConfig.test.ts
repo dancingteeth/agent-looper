@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveLoopAgent, resolveReviewAgent } from './loopAgentConfig.js'
+import { resolveLoopAgent, resolveReviewAgent, resolveSecondaryReviewAgent } from './loopAgentConfig.js'
 import { loopConfigSchema, mergeLoopConfig, parseLoopConfig } from './loopConfig.js'
 
 describe('loopConfigSchema', () => {
@@ -229,7 +229,7 @@ describe('loopConfigSchema', () => {
     ).toBe(true)
   })
 
-  it('leaves reviewSecondaryRuntime unset by default and accepts cline-pass secondary', () => {
+  it('leaves reviewSecondaryRuntime unset by default and accepts any review runtime', () => {
     expect(loopConfigSchema.parse({ verify: 'true' }).reviewSecondaryRuntime).toBeUndefined()
     const parsed = loopConfigSchema.parse({
       verify: 'true',
@@ -238,6 +238,12 @@ describe('loopConfigSchema', () => {
     })
     expect(parsed.reviewSecondaryRuntime).toBe('cline-pass')
     expect(parsed.reviewSecondaryModel).toBe('cline-pass/deepseek-v4-flash')
+    expect(
+      loopConfigSchema.parse({ verify: 'true', reviewSecondaryRuntime: 'cursor' }).reviewSecondaryRuntime,
+    ).toBe('cursor')
+    expect(
+      loopConfigSchema.parse({ verify: 'true', reviewSecondaryRuntime: 'dsh' }).reviewSecondaryRuntime,
+    ).toBe('dsh')
   })
 
   it('rejects ClinePass slug for cline secondary runtime', () => {
@@ -248,6 +254,17 @@ describe('loopConfigSchema', () => {
         reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
       }),
     ).toThrow(/credits/)
+  })
+
+  it('puts invalid reviewSecondaryModel on Zod path reviewSecondaryModel', () => {
+    const result = loopConfigSchema.safeParse({
+      verify: 'true',
+      reviewSecondaryRuntime: 'cline',
+      reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+    })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error.issues.some((issue) => issue.path.join('.') === 'reviewSecondaryModel')).toBe(true)
   })
 
   it('defaults unparseableReviewRetries to 2 and reviewBlockerRecheck to true', () => {
@@ -372,6 +389,22 @@ describe('mergeLoopConfig', () => {
     expect(resolveReviewAgent(merged)).toEqual({
       runtime: 'pi',
       model: 'openrouter/deepseek/deepseek-chat',
+    })
+  })
+
+  it('clears leftover secondary model when switching reviewSecondaryRuntime without an explicit model', () => {
+    const base = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'dsh',
+      reviewSecondaryRuntime: 'cline-pass',
+      reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+    })
+    const merged = mergeLoopConfig(base, { reviewSecondaryRuntime: 'cursor' })
+    expect(merged.reviewSecondaryRuntime).toBe('cursor')
+    expect(merged.reviewSecondaryModel).toBeUndefined()
+    expect(resolveSecondaryReviewAgent(merged)).toEqual({
+      runtime: 'cursor',
+      model: 'composer-2.5',
     })
   })
 })

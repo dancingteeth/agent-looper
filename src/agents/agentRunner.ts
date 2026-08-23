@@ -114,6 +114,7 @@ function createPiRunner(pi: PiLoopSession): PromptRunner {
       assistantOutput: options.assistantOutput,
       phase: options.phase ?? 'implement',
       collector: options.collector,
+      reasoningEffort: agent.reasoningEffort,
     })
   }
 }

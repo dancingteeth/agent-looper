@@ -645,6 +645,7 @@ describe('runAgentLoop', () => {
       expect.anything(),
       expect.objectContaining({
         reviewAgent: { runtime: 'cursor', model: 'grok-4.6' },
+        workerRuntime: 'cursor',
       }),
     )
   })
@@ -665,6 +666,7 @@ describe('runAgentLoop', () => {
       expect.anything(),
       expect.objectContaining({
         reviewAgent: { runtime: 'cursor', model: 'composer-2.5' },
+        workerRuntime: 'cline-pass',
       }),
     )
   })
@@ -719,6 +721,7 @@ describe('runAgentLoop', () => {
       expect.objectContaining({
         reviewSecondaryRuntime: 'cline-pass',
         reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
+        workerRuntime: 'cursor',
       }),
     )
   })

@@ -142,6 +142,8 @@ try {
       model: cli.model,
       reviewRuntime: cli.reviewRuntime,
       reviewModel: cli.reviewModel,
+      reviewSecondaryRuntime: cli.reviewSecondaryRuntime,
+      reviewSecondaryModel: cli.reviewSecondaryModel,
       escalateModel: cli.escalateModel,
       mode: cli.mode,
       pauseAfterIteration: cli.pauseAfterIteration,
@@ -178,6 +180,12 @@ try {
   console.error(
     `[agent-loop] runtime=${bundle.config.runtime} model=${bundle.config.model ?? '(default)'}`,
   )
+  if (bundle.config.reviewSecondaryRuntime) {
+    console.error(
+      `[agent-loop] reviewSecondaryRuntime=${bundle.config.reviewSecondaryRuntime} ` +
+        `reviewSecondaryModel=${bundle.config.reviewSecondaryModel ?? '(default)'}`,
+    )
+  }
   console.error(`[agent-loop] maxIterations=${bundle.config.maxIterations}`)
   if (bundle.config.mode !== 'forward') {
     console.error(`[agent-loop] mode=${bundle.config.mode}`)

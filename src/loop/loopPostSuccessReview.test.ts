@@ -237,6 +237,12 @@ describe('runPostSuccessReviewPhase', () => {
 
     expect(result.outcome.action).toBe('success')
     expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
+    expect(runPostLoopQualityReview).toHaveBeenCalledWith(
+      '/tmp/loop',
+      'Goal text',
+      expect.anything(),
+      expect.objectContaining({ workerRuntime: 'cursor' }),
+    )
     expect(runPostLoopBlockerRecheck).not.toHaveBeenCalled()
   })
 
@@ -256,7 +262,37 @@ describe('runPostSuccessReviewPhase', () => {
     })
 
     expect(runPostLoopBlockerRecheck).toHaveBeenCalledOnce()
+    expect(runPostLoopBlockerRecheck).toHaveBeenCalledWith(
+      '/tmp/loop',
+      'Goal text',
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ workerRuntime: 'cursor' }),
+    )
     expect(runPostLoopQualityReview).not.toHaveBeenCalled()
+  })
+
+  it('forwards the worker runtime into post-loop quality review', async () => {
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
+
+    await runPostSuccessReviewPhase({
+      config: baseConfig({ runtime: 'dsh' }),
+      goal: 'Goal text',
+      ctx: { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) },
+      loopDir: '/tmp/loop',
+      reviewBlockers: undefined,
+      reviewCyclesUsed: 0,
+      reviewAgent: cursorJudge(),
+      usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
+      reasoningEffort: 'default',
+    })
+
+    expect(runPostLoopQualityReview).toHaveBeenCalledWith(
+      '/tmp/loop',
+      'Goal text',
+      expect.anything(),
+      expect.objectContaining({ workerRuntime: 'dsh' }),
+    )
   })
 
   it('stops without iteration log when gated review throws', async () => {

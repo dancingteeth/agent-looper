@@ -14,6 +14,8 @@ export type RunCliOptions = {
   reviewRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
   model?: string
   reviewModel?: string
+  reviewSecondaryRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
+  reviewSecondaryModel?: string
   escalateModel?: string
   mode?: 'forward' | 'reverse'
   pauseAfterIteration?: boolean
@@ -50,6 +52,8 @@ ${printRepoRootHelp()}
   --model <id>                    Override loop.json worker model
   --review-runtime <cursor|cline-pass|cline|opencode|pi|codex|dsh>  Override loop.json reviewRuntime (judge)
   --review-model <id>             Override loop.json reviewModel (judge model)
+  --review-secondary-runtime <cursor|cline-pass|cline|opencode|pi|codex|dsh>  Override loop.json reviewSecondaryRuntime
+  --review-secondary-model <id>   Override loop.json reviewSecondaryModel
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
   --pause-after-iteration         Wait for Enter between iterations (TTY only)
@@ -87,6 +91,8 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
   let reviewRuntime: RunCliOptions['reviewRuntime']
   let model: string | undefined
   let reviewModel: string | undefined
+  let reviewSecondaryRuntime: RunCliOptions['reviewSecondaryRuntime']
+  let reviewSecondaryModel: string | undefined
   let escalateModel: string | undefined
   let mode: RunCliOptions['mode']
   let pauseAfterIteration: boolean | undefined
@@ -193,6 +199,30 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       reviewModel = remaining[++i]
       continue
     }
+    if (arg === '--review-secondary-runtime') {
+      const value = remaining[++i]
+      if (
+        value !== 'cursor' &&
+        value !== 'cline-pass' &&
+        value !== 'cline' &&
+        value !== 'opencode' &&
+        value !== 'pi' &&
+        value !== 'codex' &&
+        value !== 'dsh'
+      ) {
+        return {
+          kind: 'error',
+          message:
+            '--review-secondary-runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
+        }
+      }
+      reviewSecondaryRuntime = value
+      continue
+    }
+    if (arg === '--review-secondary-model') {
+      reviewSecondaryModel = remaining[++i]
+      continue
+    }
     if (arg === '--escalate-model') {
       escalateModel = remaining[++i]
       continue
@@ -260,6 +290,8 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       model,
       reviewRuntime,
       reviewModel,
+      reviewSecondaryRuntime,
+      reviewSecondaryModel,
       escalateModel,
       mode,
       pauseAfterIteration,

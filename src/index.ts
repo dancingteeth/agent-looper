@@ -99,6 +99,8 @@ export {
   resolveReviewModel,
   resolveSecondaryReviewAgent,
   isClineSdkRuntime,
+  runtimeHonorsReasoningEffort,
+  toPiThinkingLevel,
   isOpencodeRuntime,
   isCodexRuntime,
   isDshRuntime,

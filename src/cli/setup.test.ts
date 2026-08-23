@@ -9,6 +9,7 @@ import {
   parseMenuSelection,
   workerModelChoices,
   WORKER_RUNTIME_CHOICES,
+  SECONDARY_REVIEW_RUNTIME_CHOICES,
 } from './setupMenus.js'
 
 const dirs: string[] = []
@@ -64,8 +65,34 @@ describe('agent-loop-setup', () => {
     )
     expect(menu).toMatch(/1\) Cursor \(cursor\) \(default\)/)
     expect(menu).toMatch(/DeepSeek Harness \(dsh\)/)
-    expect(menu).toMatch(/PATH `dsh --profile headless`/)
+    expect(menu).toMatch(/Needs `dsh` on PATH/)
     expect(menu).toMatch(/Pi coding agent \(pi\)/)
+    expect(menu).toMatch(/Cline \(cline-pass\)/)
+    expect(menu).toMatch(/Cline \(credits\)/)
+  })
+
+  it('keeps both Cline families on secondary review and adds the rest of the judge list', () => {
+    const values = SECONDARY_REVIEW_RUNTIME_CHOICES.map((choice) => choice.value)
+    expect(values).toEqual([
+      'none',
+      'cline-pass',
+      'cline',
+      'cursor',
+      'dsh',
+      'opencode',
+      'pi',
+      'codex',
+    ])
+    expect(SECONDARY_REVIEW_RUNTIME_CHOICES.map((choice) => choice.title)).toEqual([
+      'none',
+      'Cline (cline-pass)',
+      'Cline (credits)',
+      'Cursor (cursor)',
+      'DeepSeek Harness (dsh)',
+      'OpenCode (opencode)',
+      'Pi coding agent (pi)',
+      'Codex (codex)',
+    ])
   })
 
   it('gives every catalog model a what/when description, not filler', () => {

@@ -1,6 +1,15 @@
 import { render } from 'ink-testing-library'
 import { describe, expect, it } from 'vitest'
-import { FIGURE8_FRAME_COUNT, figure8Lines, SelectPrompt, TextPrompt } from './setupTui.js'
+import { TYPICAL_SETUP_STEPS } from './setupFlow.js'
+import {
+  FIGURE8_FRAME_COUNT,
+  figure8Lines,
+  progressRailFilled,
+  PROGRESS_RAIL_WIDTH,
+  SelectPrompt,
+  setupProgressRatio,
+  TextPrompt,
+} from './setupTui.js'
 
 const choices = [
   { value: 'cursor', title: 'cursor', description: 'Cursor SDK worker.' },
@@ -22,8 +31,19 @@ describe('figure8Lines', () => {
   })
 })
 
+describe('setupProgressRatio', () => {
+  it('fills relative to the typical default path and clamps extras', () => {
+    expect(setupProgressRatio(0, TYPICAL_SETUP_STEPS)).toBe(0)
+    expect(setupProgressRatio(TYPICAL_SETUP_STEPS, TYPICAL_SETUP_STEPS)).toBe(1)
+    expect(setupProgressRatio(TYPICAL_SETUP_STEPS + 4, TYPICAL_SETUP_STEPS)).toBe(1)
+    expect(setupProgressRatio(1, TYPICAL_SETUP_STEPS)).toBeLessThan(setupProgressRatio(10, TYPICAL_SETUP_STEPS))
+    expect(progressRailFilled(0)).toBe(0)
+    expect(progressRailFilled(1)).toBe(PROGRESS_RAIL_WIDTH)
+  })
+})
+
 describe('SelectPrompt', () => {
-  it('renders heading, description, and default marker', () => {
+  it('renders heading, cover stages, wizard chrome, and a fill rail', () => {
     const { lastFrame } = render(
       <SelectPrompt
         heading="Worker runtime"
@@ -33,12 +53,20 @@ describe('SelectPrompt', () => {
         onSubmit={() => undefined}
         onAbort={() => undefined}
         animate={false}
+        progress={setupProgressRatio(3, TYPICAL_SETUP_STEPS)}
       />,
     )
     const frame = lastFrame() ?? ''
     expect(frame).toMatch(/Agent L/)
     expect(frame).toMatch(/per/)
-    expect(frame).toMatch(/setup wizard/)
+    expect(frame).toMatch(/GOAL/)
+    expect(frame).toMatch(/WORKER/)
+    expect(frame).toMatch(/VERIFY/)
+    expect(frame).toMatch(/JUDGE/)
+    expect(frame).not.toMatch(/setup wizard/)
+    expect(frame).toMatch(/the harness that owns the grind/)
+    expect(frame).not.toMatch(/forever/)
+    expect(frame).not.toMatch(/3 \/ ~/)
     expect(frame).toMatch(/Worker runtime/)
     expect(frame).toMatch(/cursor/)
     expect(frame).toMatch(/default/)

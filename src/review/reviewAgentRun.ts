@@ -17,8 +17,9 @@ export type ReviewAgentPromptOptions = {
 }
 
 /**
- * Run a single primary-judge prompt on the configured review runtime
+ * Run a single judge prompt on the configured review runtime
  * (cursor | cline-pass | cline | opencode | pi | codex | dsh).
+ * Used for primary residual review and optional secondary review.
  */
 export async function runReviewAgentPrompt(
   ctx: RepoContext,

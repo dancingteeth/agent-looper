@@ -58,11 +58,10 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     reviewModel: z.string().optional(),
     escalateModel: z.string().optional(),
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
-    /** Reasoning-effort dial for Cline SDK models (low|medium|high|xhigh|none). Cursor ignores it. */
     reasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
-    /** Reasoning effort to use once stagnation reaches escalateAfterStagnation (Cline runtimes only). */
+    /** Ceiling for the reasoning ladder (runtimes that honor reasoningEffort). */
     escalateReasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
-    /** Tiers to step reasoning effort up per iteration once past iteration 1 (Cline runtimes only). */
+    /** Tiers to step reasoning effort up per iteration once past iteration 1. */
     reasoningEscalationStep: z.number().int().min(1).max(2).default(1),
     /** Reasoning tier to use on the escalated model. Defaults to the ceiling tier. */
     escalateModelReasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
@@ -109,13 +108,11 @@ export const loopConfigSchema = loopExtensionFieldsSchema
      */
     reviewReproduceAgent: z.boolean().default(false),
     /**
-     * Optional second-family review runtime (Cline). Unset = disabled (M3).
-     * Runs after primary review (+ optional reproduce filters).
+     * Optional second residual judge. Unset = disabled.
+     * Same runtimes as reviewRuntime. Runs after primary review (+ optional reproduce filters).
      */
-    reviewSecondaryRuntime: z
-      .enum([LOOP_RUNTIME_CLINE_PASS, LOOP_RUNTIME_CLINE])
-      .optional(),
-    /** Cline model for secondary review. Defaults per reviewSecondaryRuntime. */
+    reviewSecondaryRuntime: loopRuntimeSchema.optional(),
+    /** Judge model for secondary review. Defaults per reviewSecondaryRuntime. */
     reviewSecondaryModel: z.string().optional(),
     /** Run repo profile syncCommand after success. Legacy alias: syncPostgres. */
     syncOnSuccess: z.boolean().default(true),
@@ -183,11 +180,13 @@ export const loopConfigSchema = loopExtensionFieldsSchema
       const message = err instanceof Error ? err.message : String(err)
       const issuePath = message.includes('escalateModel')
         ? ['escalateModel']
-        : message.includes('reviewModel')
-          ? ['reviewModel']
-          : message.includes('reviewRuntime')
-            ? ['reviewRuntime']
-            : ['model']
+        : message.includes('reviewSecondaryModel')
+          ? ['reviewSecondaryModel']
+          : message.includes('reviewModel')
+            ? ['reviewModel']
+            : message.includes('reviewRuntime')
+              ? ['reviewRuntime']
+              : ['model']
       ctx.addIssue({ code: 'custom', message, path: issuePath })
     }
   })
@@ -336,7 +335,24 @@ export function mergeLoopConfig(
     reviewModelOverridden: cleanedOverrides.reviewModel !== undefined,
   })
 
-  for (const warning of [...reconciled.warnings, ...reviewReconciled.warnings]) {
+  const nextSecondaryRuntime = (cleanedOverrides.reviewSecondaryRuntime ??
+    base.reviewSecondaryRuntime) as LoopRuntime | undefined
+  const previousSecondaryRuntime = base.reviewSecondaryRuntime as LoopRuntime | undefined
+  const secondaryReconciled =
+    nextSecondaryRuntime !== undefined && previousSecondaryRuntime !== undefined
+      ? clearIncompatibleReviewFieldsOnRuntimeSwitch({
+          previousReviewRuntime: previousSecondaryRuntime,
+          nextReviewRuntime: nextSecondaryRuntime,
+          reviewModel: (cleanedOverrides.reviewSecondaryModel ?? base.reviewSecondaryModel) as
+            | string
+            | undefined,
+          reviewModelOverridden: cleanedOverrides.reviewSecondaryModel !== undefined,
+          runtimeField: 'reviewSecondaryRuntime',
+          modelField: 'reviewSecondaryModel',
+        })
+      : { reviewModel: (cleanedOverrides.reviewSecondaryModel ?? base.reviewSecondaryModel) as string | undefined, warnings: [] }
+
+  for (const warning of [...reconciled.warnings, ...reviewReconciled.warnings, ...secondaryReconciled.warnings]) {
     console.error(`[agent-loop] ${warning}`)
   }
 
@@ -361,6 +377,12 @@ export function mergeLoopConfig(
     delete merged.reviewModel
   } else {
     merged.reviewModel = reviewReconciled.reviewModel
+  }
+
+  if (secondaryReconciled.reviewModel === undefined) {
+    delete merged.reviewSecondaryModel
+  } else {
+    merged.reviewSecondaryModel = secondaryReconciled.reviewModel
   }
 
   return loopConfigSchema.parse(merged)

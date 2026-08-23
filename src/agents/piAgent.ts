@@ -6,6 +6,8 @@ import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import {
   LOOP_RUNTIME_PI,
   parseProviderModel,
+  toPiThinkingLevel,
+  type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
@@ -18,6 +20,7 @@ export type PiAgentRunOptions = {
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
+  reasoningEffort?: LoopReasoningEffort
 }
 
 export type PiLoopSession = {
@@ -126,7 +129,7 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
       const { session } = await createAgentSession({
         cwd: ctx.repoRoot,
         model,
-        thinkingLevel: 'low',
+        thinkingLevel: toPiThinkingLevel(options.reasoningEffort),
         sessionManager: SessionManager.inMemory(),
         resourceLoader,
       })

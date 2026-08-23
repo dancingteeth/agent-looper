@@ -1,8 +1,9 @@
+import { clearInkPerformanceBuffer } from './inkProductionEnv.js'
 import { Box, Text, render, useAnimation, useInput } from 'ink'
 import { useState, type ReactElement } from 'react'
 import type { MenuChoice } from './setupMenus.js'
 import { defaultIndexForValue } from './setupMenus.js'
-import type { SetupPrompts } from './setupFlow.js'
+import { TYPICAL_SETUP_STEPS, type SetupPrompts } from './setupFlow.js'
 
 /** Cover palette — Agent Looper DSH (terracotta / verify green). */
 const C = {
@@ -34,6 +35,17 @@ const FIGURE8_PATH: readonly [row: number, col: number][] = [
 ]
 
 export const FIGURE8_FRAME_COUNT = FIGURE8_PATH.length
+
+export const PROGRESS_RAIL_WIDTH = 22
+
+export function setupProgressRatio(step: number, typicalSteps: number): number {
+  if (typicalSteps <= 0) return 0
+  return Math.min(1, Math.max(0, step / typicalSteps))
+}
+
+export function progressRailFilled(ratio: number, width: number = PROGRESS_RAIL_WIDTH): number {
+  return Math.round(Math.min(1, Math.max(0, ratio)) * width)
+}
 
 /** One animation frame of the Looper `oo` mark (three lines, five cells). */
 export function figure8Lines(frame: number): [string, string, string] {
@@ -67,18 +79,73 @@ function Figure8Frame({ frame }: { frame: number }) {
   )
 }
 
-export function LooperMark({ isActive = true }: { isActive?: boolean }) {
+function StagePill({ label, color }: { label: string; color: string }) {
+  return (
+    <Box borderStyle="round" borderColor={color} paddingX={0} flexShrink={0}>
+      <Text color={color} bold>
+        {label}
+      </Text>
+    </Box>
+  )
+}
+
+function StageArrow() {
+  return (
+    <Box flexDirection="column" height={3} flexShrink={0}>
+      <Text> </Text>
+      <Text color={C.muted}>→</Text>
+      <Text> </Text>
+    </Box>
+  )
+}
+
+function CoverStages() {
+  return (
+    <Box flexDirection="row" alignItems="center" marginLeft={1} flexWrap="wrap">
+      <StagePill label="GOAL" color={C.terracotta} />
+      <StageArrow />
+      <StagePill label="WORKER" color={C.muted} />
+      <StageArrow />
+      <StagePill label="VERIFY" color={C.verify} />
+      <StageArrow />
+      <StagePill label="JUDGE" color={C.tan} />
+    </Box>
+  )
+}
+
+function ProgressRail({ ratio }: { ratio: number }) {
+  const filled = progressRailFilled(ratio)
+  const empty = PROGRESS_RAIL_WIDTH - filled
+  return (
+    <Box>
+      <Text color={C.terracotta}>{'━'.repeat(filled)}</Text>
+      <Text color={C.muted}>{'─'.repeat(empty)}</Text>
+    </Box>
+  )
+}
+
+export function LooperMark({
+  isActive = true,
+  progress,
+}: {
+  isActive?: boolean
+  progress?: number
+}) {
   const { frame } = useAnimation({ interval: 140, isActive })
   return (
-    <Box flexDirection="row" alignItems="center">
-      <Text color={C.white} bold>
-        Agent L
-      </Text>
-      <Figure8Frame frame={isActive ? frame : 0} />
-      <Text color={C.white} bold>
-        per
-      </Text>
-      <Text color={C.muted}>  setup wizard</Text>
+    <Box flexDirection="column">
+      <Box flexDirection="row" alignItems="center" flexWrap="wrap">
+        <Text color={C.white} bold>
+          Agent L
+        </Text>
+        <Figure8Frame frame={isActive ? frame : 0} />
+        <Text color={C.white} bold>
+          per
+        </Text>
+        <CoverStages />
+      </Box>
+      <Text color={C.muted}>the harness that owns the grind.</Text>
+      {progress !== undefined ? <ProgressRail ratio={progress} /> : null}
     </Box>
   )
 }
@@ -91,6 +158,7 @@ export type SelectPromptProps = {
   onSubmit: (value: string) => void
   onAbort: () => void
   animate?: boolean
+  progress?: number
 }
 
 export function SelectPrompt({
@@ -101,6 +169,7 @@ export function SelectPrompt({
   onSubmit,
   onAbort,
   animate = true,
+  progress,
 }: SelectPromptProps) {
   const [index, setIndex] = useState(defaultIndex)
   const windowStart = Math.max(
@@ -138,7 +207,7 @@ export function SelectPrompt({
   return (
     <Box flexDirection="column" paddingX={1} paddingY={1}>
       <Box flexDirection="column" borderStyle="round" borderColor={C.terracotta} paddingX={1} paddingY={0}>
-        <LooperMark isActive={animate} />
+        <LooperMark isActive={animate} progress={progress} />
         <Text color={C.terracotta} bold>
           {heading}
         </Text>
@@ -186,9 +255,17 @@ export type TextPromptProps = {
   onSubmit: (value: string) => void
   onAbort: () => void
   animate?: boolean
+  progress?: number
 }
 
-export function TextPrompt({ prompt, defaultValue, onSubmit, onAbort, animate = true }: TextPromptProps) {
+export function TextPrompt({
+  prompt,
+  defaultValue,
+  onSubmit,
+  onAbort,
+  animate = true,
+  progress,
+}: TextPromptProps) {
   const [value, setValue] = useState('')
 
   useInput((input, key) => {
@@ -214,7 +291,7 @@ export function TextPrompt({ prompt, defaultValue, onSubmit, onAbort, animate = 
   return (
     <Box flexDirection="column" paddingX={1} paddingY={1}>
       <Box flexDirection="column" borderStyle="round" borderColor={C.terracotta} paddingX={1}>
-        <LooperMark isActive={animate} />
+        <LooperMark isActive={animate} progress={progress} />
         <Text color={C.terracotta} bold>
           {prompt}
         </Text>
@@ -242,10 +319,12 @@ async function runInkPrompt<T>(
       element(
         (value) => {
           instance.unmount()
+          clearInkPerformanceBuffer()
           resolve(value)
         },
         () => {
           instance.unmount()
+          clearInkPerformanceBuffer()
           reject(new Error('setup aborted'))
         },
       ),
@@ -255,8 +334,11 @@ async function runInkPrompt<T>(
 }
 
 export function createInkPrompts(): SetupPrompts {
+  let step = 0
   return {
     async select(heading, blurb, choices, defaultValue) {
+      step += 1
+      const progress = setupProgressRatio(step, TYPICAL_SETUP_STEPS)
       const defaultIndex = defaultIndexForValue(choices, defaultValue)
       return await runInkPrompt((done, abort) => (
         <SelectPrompt
@@ -266,12 +348,21 @@ export function createInkPrompts(): SetupPrompts {
           defaultIndex={defaultIndex}
           onSubmit={done}
           onAbort={abort}
+          progress={progress}
         />
       ))
     },
     async text(prompt, dflt) {
+      step += 1
+      const progress = setupProgressRatio(step, TYPICAL_SETUP_STEPS)
       return await runInkPrompt((done, abort) => (
-        <TextPrompt prompt={prompt} defaultValue={dflt} onSubmit={done} onAbort={abort} />
+        <TextPrompt
+          prompt={prompt}
+          defaultValue={dflt}
+          onSubmit={done}
+          onAbort={abort}
+          progress={progress}
+        />
       ))
     },
   }

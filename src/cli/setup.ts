@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './inkProductionEnv.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { stdin as input, stdout as output } from 'node:process'
@@ -12,7 +13,7 @@ import {
 import { pickLoopDefaults } from '../loop/loopDefaults.js'
 import { loopConfigSchema, parseLoopConfig } from '../loop/loopConfig.js'
 import { defaultIndexForValue, formatMenu, parseMenuSelection, type MenuChoice } from './setupMenus.js'
-import { collectSetupAnswers, type SetupPrompts } from './setupFlow.js'
+import { collectSetupAnswers, SetupDeclinedError, type SetupPrompts } from './setupFlow.js'
 import { createInkPrompts } from './setupTui.js'
 
 const LOOP_CONFIG_KEYS = new Set(Object.keys(loopConfigSchema.shape))
@@ -32,20 +33,22 @@ Interactive walkthrough that writes repo loop defaults into
 loop.json for --out (verify + this bundle’s snapshot). Later sparse
 loop.json files inherit those defaults; explicit loop.json keys win.
 Then prints agent-check and agent-loop run. Interactive mode is an Ink TUI
-(arrow keys + enter) on a TTY. Model lists are scoped to the runtime you
-just picked (a DSH slug is never offered as a Cursor judge).
+(arrow keys + enter) on a TTY. Model lists match the runtime you just picked.
 Pass --plain for numbered menus (CI / no TTY / screen readers).
 
 Worker runtimes: cursor | cline-pass | cline | opencode | pi | codex | dsh
 Judge (review): reviewRuntime (cursor | cline-pass | cline | opencode | pi | codex | dsh),
   reviewModel (omit for runtime defaults: cursor grok-4.6 / composer-2.5, opencode
   opencode-go/deepseek-v4-pro, dsh deepseek-official/deepseek-v4-pro, codex gpt-5.6-sol),
-  reviewGate, maxReviewCycles, postQualityReview, reviewRisk, reviewSecondaryRuntime
+  reviewGate, maxReviewCycles, postQualityReview, reviewRisk,
+  reviewSecondaryRuntime (any review runtime; unset = off),
+  reviewSecondaryModel (omit for that runtime’s judge default),
 Verify: verify command, verifyMode (command|skill), verifySkill, finalVerify
 Loop control: maxIterations, stagnationThreshold, mode (forward|reverse),
   pauseAfterIteration, trustConfig
-Notify / Telegram: notifyTelegram, telegramAttachReview, requireNotify,
-  notifyCommand; profile telegramNotify chatId / onSuccess / onFailure / attachReview
+Notify / Telegram: notifyTelegram (off skips chatId / attach / requireNotify);
+  notifyCommand; if sending: telegramAttachReview, requireNotify,
+  profile telegramNotify chatId / onSuccess / onFailure / attachReview
 Git / PR / completion: notifyPrComment (gh pr comment), profile defaultBranch,
   completionSignal, exportPack, exportRunReport, exportTranscript, syncOnSuccess
 
@@ -318,6 +321,11 @@ async function main(): Promise<void> {
     try {
       process.exitCode = await runInteractive(options.outDir, options.repoRoot, options.plain)
     } catch (err) {
+      if (err instanceof SetupDeclinedError) {
+        console.log("Ok. Ask your agent to set defaults or edit loop.json.")
+        process.exitCode = 0
+        return
+      }
       console.error(`[agent-loop-setup] ${errMessage(err)}`)
       process.exitCode = 1
     }

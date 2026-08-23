@@ -204,7 +204,7 @@ helps when families differ.
 | Slice | Status |
 | --- | --- |
 | Primary judge any worker runtime (`reviewRuntime`) | **Shipped** — `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` |
-| Secondary Cline-family judge (`reviewSecondaryRuntime`) | **Shipped** (M3) — Cline Pass/Credits only |
+| Secondary residual judge (`reviewSecondaryRuntime`) | **Shipped** (M3) — any `reviewRuntime` |
 | Meta-review multi-runtime | Out of scope (meta-review stays Cursor) |
 
 ### Design
