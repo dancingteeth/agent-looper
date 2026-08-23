@@ -108,7 +108,7 @@ They do not have to match. A non-Cursor worker can still use a Cursor judge — 
 | **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `vercel/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 | **`pi`** | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
 | **`codex`** | `gpt-5.6-luna` → `gpt-5.6-terra` | ChatGPT / OpenAI — [`docs/codex-runtime.md`](./docs/codex-runtime.md) |
-| **`dsh`** | `deepseek-official/deepseek-v4-flash` (setup also lists `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Headless DSH CLI — [`docs/dsh-runtime.md`](./docs/dsh-runtime.md) |
+| **`dsh`** | `deepseek-official/deepseek-v4-flash` (setup also lists `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Headless DSH CLI — [`docs/dsh-runtime.md`](./docs/dsh-runtime.md). `dsh web` companion: [`docs/dsh-plugin.md`](./docs/dsh-plugin.md) |
 
 ### Judge defaults
 

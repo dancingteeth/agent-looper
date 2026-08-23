@@ -24,7 +24,7 @@ Other workers, judges, and flags are below. You do not need them for a first gre
 
 How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
-Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
+Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). DSH companion for `dsh web` (skills + scaffold, not a second harness): [`docs/dsh-plugin.md`](./docs/dsh-plugin.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 
 ## Features at a glance
 
@@ -67,6 +67,7 @@ Use CLIs via `pnpm exec` (or `npx`) so you do not need a global install:
 
 ```bash
 pnpm exec agent-loop-init
+pnpm exec agent-loop-setup --out .cursor/loops/my-task   # Ink TUI; --plain / --answers for agents
 pnpm exec agent-check cursor
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
@@ -117,6 +118,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime codex
 export DEEPSEEK_API_KEY=…   # or DSH credentials-local
 pnpm exec agent-check dsh
 pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh
+# runtime: docs/dsh-runtime.md — dsh web companion: docs/dsh-plugin.md
 ```
 
 Target another checkout:
