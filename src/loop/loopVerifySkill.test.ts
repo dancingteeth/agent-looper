@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { runOneShotAgentPrompt } from '../agents/oneShotAgentRun.js'
 import {
   buildVerifySkillPrompt,
   parseVerifyResult,
@@ -10,6 +11,12 @@ import {
 } from './loopVerifySkill.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { repoProfileSchema } from '../context/repoProfile.js'
+
+vi.mock('../agents/oneShotAgentRun.js', () => ({
+  runOneShotAgentPrompt: vi.fn(),
+}))
+
+const mockedOneShot = vi.mocked(runOneShotAgentPrompt)
 
 describe('parseVerifyResult', () => {
   it('parses PASS footer', () => {
@@ -53,6 +60,10 @@ describe('buildVerifySkillPrompt', () => {
 })
 
 describe('runVerifySkill', () => {
+  beforeEach(() => {
+    mockedOneShot.mockReset()
+  })
+
   it('fails when agent reports FAIL without running shell verify', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-skill-run-'))
     const loopDir = path.join(root, 'loop')
@@ -128,6 +139,39 @@ describe('runVerifySkill', () => {
 
     expect(result.complete).toBe(false)
     expect(result.reason).toContain('exit 1')
+  })
+
+  it('uses the iteration reasoning ladder when no runAgent override is provided', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-skill-run-'))
+    const loopDir = path.join(root, 'loop')
+    fs.mkdirSync(loopDir)
+    fs.writeFileSync(path.join(loopDir, 'VERIFY.skill.md'), '# verify skill')
+    mockedOneShot.mockResolvedValue({ text: 'ok\nVERIFY_RESULT: PASS' })
+
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      verifyMode: 'skill',
+      verifySkill: 'VERIFY.skill.md',
+      runtime: 'pi',
+      reasoningEffort: 'medium',
+      escalateReasoningEffort: 'xhigh',
+    })
+
+    const result = await runVerifySkill({
+      ctx: { repoRoot: root, profile: repoProfileSchema.parse({}) },
+      loopDir,
+      goal: 'Acceptance criteria',
+      config,
+      iteration: 3,
+    })
+
+    expect(result.complete).toBe(true)
+    expect(mockedOneShot).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      expect.objectContaining({ runtime: 'pi', reasoningEffort: 'xhigh' }),
+      expect.objectContaining({ phase: 'verify' }),
+    )
   })
 })
 

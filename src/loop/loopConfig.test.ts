@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { resolveLoopAgent, resolveReviewAgent, resolveSecondaryReviewAgent } from './loopAgentConfig.js'
-import { loopConfigSchema, mergeLoopConfig, parseLoopConfig } from './loopConfig.js'
+import {
+  LOOP_RUNTIME_VALUES,
+  resolveLoopAgent,
+  resolveReviewAgent,
+  resolveSecondaryReviewAgent,
+} from './loopAgentConfig.js'
+import {
+  formatLoopRuntimeCliList,
+  loopConfigSchema,
+  loopRuntimeFlagError,
+  mergeLoopConfig,
+  parseLoopConfig,
+  parseLoopRuntimeCli,
+} from './loopConfig.js'
 
 describe('loopConfigSchema', () => {
   it('applies defaults', () => {
@@ -406,5 +418,28 @@ describe('mergeLoopConfig', () => {
       runtime: 'cursor',
       model: 'composer-2.5',
     })
+  })
+})
+
+describe('parseLoopRuntimeCli', () => {
+  it('accepts every canonical runtime id', () => {
+    for (const runtime of LOOP_RUNTIME_VALUES) {
+      expect(parseLoopRuntimeCli(runtime)).toBe(runtime)
+    }
+  })
+
+  it('rejects unknown ids and missing values', () => {
+    expect(parseLoopRuntimeCli('bogus')).toBeUndefined()
+    expect(parseLoopRuntimeCli(undefined)).toBeUndefined()
+    expect(parseLoopRuntimeCli('')).toBeUndefined()
+  })
+
+  it('builds CLI error copy from the enum', () => {
+    expect(formatLoopRuntimeCliList()).toBe(
+      'cursor, cline-pass, cline, opencode, pi, codex, or dsh',
+    )
+    expect(loopRuntimeFlagError('--runtime')).toBe(
+      '--runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
+    )
   })
 })

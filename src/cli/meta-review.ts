@@ -1,16 +1,8 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
-import {
-  LOOP_RUNTIME_CLINE,
-  LOOP_RUNTIME_CLINE_PASS,
-  LOOP_RUNTIME_CODEX,
-  LOOP_RUNTIME_CURSOR,
-  LOOP_RUNTIME_DSH,
-  LOOP_RUNTIME_OPENCODE,
-  LOOP_RUNTIME_PI,
-  type LoopRuntime,
-} from '../loop/loopAgentConfig.js'
+import { LOOP_RUNTIME_VALUES, type LoopRuntime } from '../loop/loopAgentConfig.js'
+import { loopRuntimeFlagError, parseLoopRuntimeCli } from '../loop/loopConfig.js'
 import { runMetaReview } from '../review/metaReview.js'
 import { blockingBlockers } from '../review/reviewVerdict.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
@@ -28,7 +20,7 @@ Options:
   --out-dir <path>        Directory for meta-review.md (default: cwd)
   --hitl                  Create HITL checkpoints from ### HITL follow-ups bullets
   --project <name>        Taskwarrior project for --hitl (default: repo profile)
-  --review-runtime <id>   Judge runtime: cursor|cline-pass|cline|opencode|pi|codex|dsh (default: cursor)
+  --review-runtime <id>   Judge runtime: ${LOOP_RUNTIME_VALUES.join('|')} (default: cursor)
   --review-model <id>     Judge model (default depends on runtime)
   --verbose, -v
 ${printRepoRootHelp()}
@@ -48,21 +40,11 @@ type CliOptions = {
 }
 
 function parseReviewRuntime(value: string): LoopRuntime {
-  const allowed = [
-    LOOP_RUNTIME_CURSOR,
-    LOOP_RUNTIME_CLINE_PASS,
-    LOOP_RUNTIME_CLINE,
-    LOOP_RUNTIME_OPENCODE,
-    LOOP_RUNTIME_PI,
-    LOOP_RUNTIME_CODEX,
-    LOOP_RUNTIME_DSH,
-  ] as const
-  if ((allowed as readonly string[]).includes(value)) {
-    return value as LoopRuntime
+  const parsed = parseLoopRuntimeCli(value)
+  if (!parsed) {
+    throw new Error(loopRuntimeFlagError('--review-runtime'))
   }
-  throw new Error(
-    `--review-runtime must be one of ${allowed.join(', ')} (got ${value})`,
-  )
+  return parsed
 }
 
 function parseArgs(argv: string[]): CliOptions {

@@ -456,6 +456,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               goal,
               config,
               verbose,
+              agent: iterationAgent,
+              iteration: i,
+              escalationRepeatCount: stagnation.escalationRepeatCount,
+              reviewCycleEscalation: reviewCyclesUsed,
             })
           : runVerifyCommand(config.verify, repoRoot)
       lastVerify = verify

@@ -154,7 +154,7 @@ counter are appended last. This keeps the prompt prefix unchanged so the provide
 **prefix-cache** is reused on iterations 2..N (cached input tokens are billed at a discount).
 
 **Step 4 — Reasoning + model escalation:** `resolveIterationAgent(config, iteration, repeatCount)`
-(ClinePass only) climbs the **cheap lever first**. The reasoning tier starts at `reasoningEffort`
+(Cline and Pi) climbs the **cheap lever first**. The reasoning tier starts at `reasoningEffort`
 and steps up by `reasoningEscalationStep` tiers each iteration (from iteration 2) until it hits
 the `escalateReasoningEffort` ceiling — so e.g. flash runs `medium → high → xhigh` across
 iterations. The **expensive lever** (model switch to `escalateModel`, default `qwen3.7-plus`) only
@@ -174,6 +174,8 @@ provider-specific inner-loop exhaustion (e.g. Cline’s session iteration cap). 
 that fires, the outer harness continues — the verifier is still the final judge.
 
 **Step 7 — Verifier:** `runVerifyCommand()` runs via `spawnSync` with `shell: true`.
+When `verifyMode` is `skill`, a one-shot verify agent runs first with the **same**
+`resolveIterationAgent` as the worker (reasoning ladder and `escalateModel` apply).
 Exit code 0 = pass. Output truncated at 64KB.
 
 **Step 8 — On failure:** Append iteration log to `log.ndjson`, run

@@ -14,14 +14,18 @@ export const LOOP_RUNTIME_CODEX = 'codex' as const
 /** DeepSeek Harness worker — spawn `dsh --profile headless` (PATH CLI, no npm dep). */
 export const LOOP_RUNTIME_DSH = 'dsh' as const
 
-export type LoopRuntime =
-  | typeof LOOP_RUNTIME_CURSOR
-  | typeof LOOP_RUNTIME_CLINE_PASS
-  | typeof LOOP_RUNTIME_CLINE
-  | typeof LOOP_RUNTIME_OPENCODE
-  | typeof LOOP_RUNTIME_PI
-  | typeof LOOP_RUNTIME_CODEX
-  | typeof LOOP_RUNTIME_DSH
+/** Canonical runtime ids — CLI flags, loop.json, and `loopRuntimeSchema` share this list. */
+export const LOOP_RUNTIME_VALUES = [
+  LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CLINE,
+  LOOP_RUNTIME_OPENCODE,
+  LOOP_RUNTIME_PI,
+  LOOP_RUNTIME_CODEX,
+  LOOP_RUNTIME_DSH,
+] as const
+
+export type LoopRuntime = (typeof LOOP_RUNTIME_VALUES)[number]
 
 export const CURSOR_LOOP_MODEL = 'composer-2.5' as const
 /** Alias — Cursor SDK worker for implement iterations (never Composer Fast). */
@@ -120,13 +124,25 @@ const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0
 export const LOOP_REASONING_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'none'] as const
 export type LoopReasoningEffort = (typeof LOOP_REASONING_EFFORTS)[number]
 
-/** Pi `thinkingLevel` values we map onto (off is `none`; unset keeps the prior harness default `low`). */
+/** Pi `thinkingLevel` values we map onto. Unset and `none` are both `off` — no hidden default. */
 export type PiThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
+/** Map loop.json `reasoningEffort` onto Pi thinking. Omit/`none` → off (do not leak the SDK default). */
 export function toPiThinkingLevel(effort: LoopReasoningEffort | undefined): PiThinkingLevel {
-  if (effort === undefined) return 'low'
-  if (effort === 'none') return 'off'
-  return effort
+  switch (effort) {
+    case undefined:
+    case 'none':
+      return 'off'
+    case 'low':
+    case 'medium':
+    case 'high':
+    case 'xhigh':
+      return effort
+    default: {
+      const _exhaustive: never = effort
+      return _exhaustive
+    }
+  }
 }
 
 export type ResolvedLoopAgent =

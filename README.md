@@ -188,7 +188,7 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `verify` | (required) | Shell command every iteration (usually `bash …/verify.sh`). Exit `0` = pass. |
-| `verifyMode` | `command` | `command` = shell only. `skill` = verify agent reads `verifySkill`, emits `VERIFY_RESULT: PASS/FAIL`, then runs shell `verify` on PASS. |
+| `verifyMode` | `command` | `command` = shell only. `skill` = verify agent reads `verifySkill`, emits `VERIFY_RESULT: PASS/FAIL`, then runs shell `verify` on PASS. Skill-verify uses the same iteration agent as the worker (reasoning ladder / `escalateModel` apply). |
 | `verifySkill` | — | Path to `VERIFY.skill.md` (required when `verifyMode` is `skill`). |
 | `finalVerify` | — | Stricter outer check after inner `verify` passes. |
 | `verifyLogMode` | `inline` | How verify stdout/stderr reach the next worker. `inline` pastes the capture. `sidecar` is **optional**: write `<loop-dir>/verify-logs/` and put a ~600-character preview + path in the prompt. Leave unset / `inline` when verify is short. |
@@ -217,8 +217,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `notifyCommand` | — | Override repo profile `notifyCommand` for this loop |
 | `exportPack` | `true` | Copy curated artifacts to `.cursor/loop-exports/<slug>/` (commit-friendly) |
 | `notifyPrComment` | — | Override profile `notifyPrComment` for this loop |
-| `reasoningEffort` | — | `low` \| `medium` \| `high` \| `xhigh` \| `none` when the worker honors it (Cline, Pi). Cursor / OpenCode / Codex / DSH ignore it. |
-| `escalateReasoningEffort` | — | Reasoning ladder ceiling (same runtimes as `reasoningEffort`) |
+| `reasoningEffort` | — | `low` \| `medium` \| `high` \| `xhigh` \| `none` when the runtime honors it (Cline, Pi). Omit or `none` = no extra thinking. Cursor / OpenCode / Codex / DSH ignore it. |
+| `escalateReasoningEffort` | — | Reasoning ladder ceiling (same runtimes as `reasoningEffort`). Applies to the worker **and** skill-verify. |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
 | `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling) |

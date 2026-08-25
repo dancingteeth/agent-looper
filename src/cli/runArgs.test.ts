@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { LOOP_RUNTIME_VALUES } from '../loop/loopAgentConfig.js'
+import { loopRuntimeFlagError } from '../loop/loopConfig.js'
 import { parseRunArgs, runUsage, type RunCliOptions } from './runArgs.js'
 
 function expectRun(argv: string[]): RunCliOptions {
@@ -28,7 +30,7 @@ describe('parseRunArgs', () => {
     expect(expectRun(['x', '--review-runtime', 'pi']).reviewRuntime).toBe('pi')
     expect(parseRunArgs(['x', '--review-runtime', 'bogus'])).toEqual({
       kind: 'error',
-      message: '--review-runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
+      message: loopRuntimeFlagError('--review-runtime'),
     })
   })
 
@@ -47,8 +49,7 @@ describe('parseRunArgs', () => {
     })
     expect(parseRunArgs(['x', '--review-secondary-runtime', 'bogus'])).toEqual({
       kind: 'error',
-      message:
-        '--review-secondary-runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
+      message: loopRuntimeFlagError('--review-secondary-runtime'),
     })
   })
 
@@ -89,13 +90,13 @@ describe('parseRunArgs', () => {
   it('validates --runtime and --mode values', () => {
     expect(parseRunArgs(['x', '--runtime', 'bogus'])).toEqual({
       kind: 'error',
-      message: '--runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
+      message: loopRuntimeFlagError('--runtime'),
     })
     expect(parseRunArgs(['x', '--mode', 'sideways'])).toEqual({
       kind: 'error',
       message: '--mode must be forward or reverse',
     })
-    for (const runtime of ['cursor', 'cline-pass', 'cline', 'opencode', 'pi', 'codex', 'dsh'] as const) {
+    for (const runtime of LOOP_RUNTIME_VALUES) {
       expect(expectRun(['x', '--runtime', runtime]).runtime).toBe(runtime)
     }
     expect(expectRun(['x', '--mode', 'reverse']).mode).toBe('reverse')

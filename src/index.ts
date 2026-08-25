@@ -94,6 +94,7 @@ export {
   LOOP_RUNTIME_PI,
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_VALUES,
   resolveLoopAgent,
   resolveReviewAgent,
   resolveReviewModel,
@@ -132,7 +133,7 @@ export {
   DEFAULT_DSH_ESCALATE_MODEL,
   DEFAULT_DSH_REVIEW_MODEL,
 } from './loop/loopAgentConfig.js'
-export type { ResolvedLoopAgent, ResolvedReviewAgent } from './loop/loopAgentConfig.js'
+export type { ResolvedLoopAgent, ResolvedReviewAgent, LoopRuntime } from './loop/loopAgentConfig.js'
 
 export { runVerifyCommand } from './loop/loopVerify.js'
 export type { VerifyResult } from './loop/loopVerify.js'

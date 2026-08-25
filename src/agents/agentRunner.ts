@@ -152,6 +152,7 @@ export async function createLoopAgentSession(
   config: LoopConfig,
   ctx: RepoContext,
 ): Promise<LoopAgentSession> {
+  // Long-lived worker. One-shot verify/judge lives in runOneShotAgentPrompt.
   const { runtime } = resolveLoopAgent(config)
 
   if (runtime === LOOP_RUNTIME_CURSOR) {

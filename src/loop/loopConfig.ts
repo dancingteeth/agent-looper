@@ -2,13 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import {
-  LOOP_RUNTIME_CLINE,
-  LOOP_RUNTIME_CLINE_PASS,
-  LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
-  LOOP_RUNTIME_DSH,
-  LOOP_RUNTIME_OPENCODE,
-  LOOP_RUNTIME_PI,
+  LOOP_RUNTIME_VALUES,
   LOOP_REASONING_EFFORTS,
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
   clearIncompatibleReviewFieldsOnRuntimeSwitch,
@@ -29,15 +24,22 @@ import { loopModeSchema } from './loopMode.js'
 import { isTrivialVerifyCommand, trivialVerifyWarning } from './trivialVerify.js'
 import { loadLoopDefaultsForDir } from '../context/repoProfile.js'
 
-export const loopRuntimeSchema = z.enum([
-  LOOP_RUNTIME_CURSOR,
-  LOOP_RUNTIME_CLINE_PASS,
-  LOOP_RUNTIME_CLINE,
-  LOOP_RUNTIME_OPENCODE,
-  LOOP_RUNTIME_PI,
-  LOOP_RUNTIME_CODEX,
-  LOOP_RUNTIME_DSH,
-])
+export const loopRuntimeSchema = z.enum(LOOP_RUNTIME_VALUES)
+
+/** `cursor, cline-pass, …, or dsh` — keep CLI error copy generated from the enum. */
+export function formatLoopRuntimeCliList(): string {
+  const last = LOOP_RUNTIME_VALUES[LOOP_RUNTIME_VALUES.length - 1]
+  return `${LOOP_RUNTIME_VALUES.slice(0, -1).join(', ')}, or ${last}`
+}
+
+export function parseLoopRuntimeCli(value: string | undefined): LoopRuntime | undefined {
+  const parsed = loopRuntimeSchema.safeParse(value)
+  return parsed.success ? parsed.data : undefined
+}
+
+export function loopRuntimeFlagError(flag: string): string {
+  return `${flag} must be ${formatLoopRuntimeCliList()}`
+}
 
 export const loopVerifyModeSchema = z.enum(['command', 'skill']).default('command')
 
@@ -58,6 +60,7 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     reviewModel: z.string().optional(),
     escalateModel: z.string().optional(),
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
+    /** Worker/verify thinking dial when the runtime honors it. Omit or `none` = off. */
     reasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
     /** Ceiling for the reasoning ladder (runtimes that honor reasoningEffort). */
     escalateReasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),

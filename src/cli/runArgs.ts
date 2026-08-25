@@ -1,4 +1,8 @@
+import { LOOP_RUNTIME_VALUES, type LoopRuntime } from '../loop/loopAgentConfig.js'
+import { loopRuntimeFlagError, parseLoopRuntimeCli } from '../loop/loopConfig.js'
 import { parseRepoRootFlag, parseVerboseFlag, printRepoRootHelp } from './shared.js'
+
+const RUNTIME_FLAG_UNION = LOOP_RUNTIME_VALUES.join('|')
 
 export type RunCliOptions = {
   loopDir: string
@@ -10,11 +14,11 @@ export type RunCliOptions = {
   qualityReview?: boolean | 'off'
   reviewGate?: boolean
   skipSync?: boolean
-  runtime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
-  reviewRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
+  runtime?: LoopRuntime
+  reviewRuntime?: LoopRuntime
   model?: string
   reviewModel?: string
-  reviewSecondaryRuntime?: 'cursor' | 'cline-pass' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
+  reviewSecondaryRuntime?: LoopRuntime
   reviewSecondaryModel?: string
   escalateModel?: string
   mode?: 'forward' | 'reverse'
@@ -48,11 +52,11 @@ ${printRepoRootHelp()}
   --review-gate                   Require review verdict != BLOCKERS to complete
   --no-review-gate                Disable review gate (default from loop.json)
   --skip-sync                     Do not run repo profile syncCommand
-  --runtime <cursor|cline-pass|cline|opencode|pi|codex|dsh>  Override loop.json runtime
+  --runtime <${RUNTIME_FLAG_UNION}>  Override loop.json runtime
   --model <id>                    Override loop.json worker model
-  --review-runtime <cursor|cline-pass|cline|opencode|pi|codex|dsh>  Override loop.json reviewRuntime (judge)
+  --review-runtime <${RUNTIME_FLAG_UNION}>  Override loop.json reviewRuntime (judge)
   --review-model <id>             Override loop.json reviewModel (judge model)
-  --review-secondary-runtime <cursor|cline-pass|cline|opencode|pi|codex|dsh>  Override loop.json reviewSecondaryRuntime
+  --review-secondary-runtime <${RUNTIME_FLAG_UNION}>  Override loop.json reviewSecondaryRuntime
   --review-secondary-model <id>   Override loop.json reviewSecondaryModel
   --escalate-model <id>           Override loop.json escalateModel
   --mode <forward|reverse>        Loop mode (default from loop.json)
@@ -154,22 +158,11 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       continue
     }
     if (arg === '--runtime') {
-      const value = remaining[++i]
-      if (
-        value !== 'cursor' &&
-        value !== 'cline-pass' &&
-        value !== 'cline' &&
-        value !== 'opencode' &&
-        value !== 'pi' &&
-        value !== 'codex' &&
-        value !== 'dsh'
-      ) {
-        return {
-          kind: 'error',
-          message: '--runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
-        }
+      const parsed = parseLoopRuntimeCli(remaining[++i])
+      if (!parsed) {
+        return { kind: 'error', message: loopRuntimeFlagError('--runtime') }
       }
-      runtime = value
+      runtime = parsed
       continue
     }
     if (arg === '--model') {
@@ -177,22 +170,11 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       continue
     }
     if (arg === '--review-runtime') {
-      const value = remaining[++i]
-      if (
-        value !== 'cursor' &&
-        value !== 'cline-pass' &&
-        value !== 'cline' &&
-        value !== 'opencode' &&
-        value !== 'pi' &&
-        value !== 'codex' &&
-        value !== 'dsh'
-      ) {
-        return {
-          kind: 'error',
-          message: '--review-runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
-        }
+      const parsed = parseLoopRuntimeCli(remaining[++i])
+      if (!parsed) {
+        return { kind: 'error', message: loopRuntimeFlagError('--review-runtime') }
       }
-      reviewRuntime = value
+      reviewRuntime = parsed
       continue
     }
     if (arg === '--review-model') {
@@ -200,23 +182,11 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       continue
     }
     if (arg === '--review-secondary-runtime') {
-      const value = remaining[++i]
-      if (
-        value !== 'cursor' &&
-        value !== 'cline-pass' &&
-        value !== 'cline' &&
-        value !== 'opencode' &&
-        value !== 'pi' &&
-        value !== 'codex' &&
-        value !== 'dsh'
-      ) {
-        return {
-          kind: 'error',
-          message:
-            '--review-secondary-runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
-        }
+      const parsed = parseLoopRuntimeCli(remaining[++i])
+      if (!parsed) {
+        return { kind: 'error', message: loopRuntimeFlagError('--review-secondary-runtime') }
       }
-      reviewSecondaryRuntime = value
+      reviewSecondaryRuntime = parsed
       continue
     }
     if (arg === '--review-secondary-model') {

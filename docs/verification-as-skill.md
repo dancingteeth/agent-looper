@@ -172,7 +172,7 @@ consumers wire their driver beside `verify.sh`. Dogfood loop:
 
 ### Skill verify flow
 
-1. Fresh agent session with `phase: 'verify'` (uses loop `runtime` / `model`).
+1. Fresh agent session with `phase: 'verify'` (same `resolveIterationAgent` as the worker for this iteration — `reasoningEffort` ladder and `escalateModel` apply).
 2. Prompt = `VERIFY.skill.md` body + `GOAL.md` acceptance criteria.
 3. Agent must end with **`VERIFY_RESULT: PASS`** or **`VERIFY_RESULT: FAIL`** (last footer wins).
 4. On **FAIL** or missing footer → iteration fails (shell `verify` is **not** run).

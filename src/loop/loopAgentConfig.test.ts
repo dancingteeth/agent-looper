@@ -34,9 +34,10 @@ describe('runtimeHonorsReasoningEffort', () => {
 })
 
 describe('toPiThinkingLevel', () => {
-  it('maps none to off and unset to the prior harness default', () => {
-    expect(toPiThinkingLevel(undefined)).toBe('low')
+  it('maps unset and none to off; set values pass through', () => {
+    expect(toPiThinkingLevel(undefined)).toBe('off')
     expect(toPiThinkingLevel('none')).toBe('off')
+    expect(toPiThinkingLevel('low')).toBe('low')
     expect(toPiThinkingLevel('xhigh')).toBe('xhigh')
   })
 })

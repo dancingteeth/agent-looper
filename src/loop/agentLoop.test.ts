@@ -188,6 +188,40 @@ describe('runAgentLoop', () => {
     expect(dispose).toHaveBeenCalledOnce()
   })
 
+  it('passes the iteration agent into skill verify so the reasoning ladder applies', async () => {
+    mockSession()
+    mockedRunVerifySkill
+      .mockResolvedValueOnce(failVerify('skill fail'))
+      .mockResolvedValueOnce(passVerify('skill:true → true'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        verifyMode: 'skill',
+        verifySkill: 'VERIFY.skill.md',
+        runtime: 'pi',
+        reasoningEffort: 'medium',
+        escalateReasoningEffort: 'xhigh',
+        maxIterations: 2,
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(mockedRunVerifySkill).toHaveBeenCalledTimes(2)
+    expect(mockedRunVerifySkill.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        iteration: 1,
+        agent: expect.objectContaining({ runtime: 'pi', reasoningEffort: 'medium' }),
+      }),
+    )
+    expect(mockedRunVerifySkill.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        iteration: 2,
+        agent: expect.objectContaining({ runtime: 'pi', reasoningEffort: 'high' }),
+      }),
+    )
+  })
+
   it('retries after a failed verifier and completes on the next pass', async () => {
     const { runIterationPrompt } = mockSession()
     mockedRunVerify.mockReturnValueOnce(failVerify('FAIL first')).mockReturnValueOnce(passVerify())

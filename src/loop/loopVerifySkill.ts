@@ -1,17 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { RepoContext } from '../context/repoContext.js'
-import { runCursorAgentPrompt } from '../agents/cursorAgent.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
-import {
-  isClineSdkRuntime,
-  isCodexRuntime,
-  isDshRuntime,
-  isOpencodeRuntime,
-  isPiRuntime,
-  LOOP_RUNTIME_CURSOR,
-  resolveLoopAgent,
-} from './loopAgentConfig.js'
+import { runOneShotAgentPrompt } from '../agents/oneShotAgentRun.js'
+import { resolveIterationAgent, type ResolvedLoopAgent } from './loopAgentConfig.js'
 import type { LoopConfig } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
 
@@ -20,6 +12,11 @@ export type SkillVerifyAgentRun = (input: {
   prompt: string
   config: LoopConfig
   verbose?: boolean
+  /** Same resolved worker as this iteration (ladder / escalateModel). */
+  agent?: ResolvedLoopAgent
+  iteration?: number
+  escalationRepeatCount?: number
+  reviewCycleEscalation?: number
 }) => Promise<AgentRunResult>
 
 const VERIFY_RESULT_RE = /VERIFY_RESULT:\s*(PASS|FAIL)\b/gi
@@ -65,96 +62,21 @@ export function buildVerifySkillPrompt(goal: string, skillBody: string): string 
   ].join('\n')
 }
 
-async function defaultSkillVerifyAgentRun(input: {
-  ctx: RepoContext
-  prompt: string
-  config: LoopConfig
-  verbose?: boolean
-}): Promise<AgentRunResult> {
-  const agent = resolveLoopAgent(input.config)
-  if (agent.runtime === LOOP_RUNTIME_CURSOR) {
-    return runCursorAgentPrompt(input.ctx, input.prompt, {
-      verbose: input.verbose,
-      modelId: agent.model,
-      role: 'worker',
-      assistantOutput: 'none',
-      phase: 'verify',
-    })
-  }
-  if (isOpencodeRuntime(agent.runtime)) {
-    const { createOpencodeLoopSession } = await import('../agents/opencodeAgent.js')
-    const opencode = await createOpencodeLoopSession(input.ctx)
-    try {
-      return await opencode.runPrompt(input.prompt, {
-        verbose: input.verbose,
-        modelId: agent.model,
-        assistantOutput: 'none',
-        phase: 'verify',
-      })
-    } finally {
-      await opencode.dispose()
-    }
-  }
-  if (isPiRuntime(agent.runtime)) {
-    const { createPiLoopSession } = await import('../agents/piAgent.js')
-    const pi = await createPiLoopSession(input.ctx)
-    try {
-      return await pi.runPrompt(input.prompt, {
-        verbose: input.verbose,
-        modelId: agent.model,
-        assistantOutput: 'none',
-        phase: 'verify',
-      })
-    } finally {
-      await pi.dispose()
-    }
-  }
-  if (isCodexRuntime(agent.runtime)) {
-    const { createCodexLoopSession } = await import('../agents/codexAgent.js')
-    const codex = await createCodexLoopSession(input.ctx)
-    try {
-      return await codex.runPrompt(input.prompt, {
-        verbose: input.verbose,
-        modelId: agent.model,
-        assistantOutput: 'none',
-        phase: 'verify',
-      })
-    } finally {
-      await codex.dispose()
-    }
-  }
-  if (isDshRuntime(agent.runtime)) {
-    const { createDshLoopSession } = await import('../agents/dshAgent.js')
-    const dsh = await createDshLoopSession(input.ctx)
-    try {
-      return await dsh.runPrompt(input.prompt, {
-        verbose: input.verbose,
-        modelId: agent.model,
-        assistantOutput: 'none',
-        phase: 'verify',
-      })
-    } finally {
-      await dsh.dispose()
-    }
-  }
-  if (!isClineSdkRuntime(agent.runtime)) {
-    throw new Error(`Unsupported verify runtime: ${agent.runtime}`)
-  }
-  // Dynamic import: @cline/sdk is optional — Cursor-only installs must not load it unless enabled.
-  const { createClineLoopSession } = await import('../agents/clineAgent.js')
-  const cline = await createClineLoopSession(input.ctx)
-  try {
-    return await cline.runPrompt(input.prompt, {
-      verbose: input.verbose,
-      modelId: agent.model,
-      providerId: agent.runtime,
-      assistantOutput: 'none',
-      phase: 'verify',
-      reasoningEffort: agent.reasoningEffort,
-    })
-  } finally {
-    await cline.dispose()
-  }
+async function defaultSkillVerifyAgentRun(
+  input: Parameters<SkillVerifyAgentRun>[0],
+): Promise<AgentRunResult> {
+  const agent =
+    input.agent ??
+    resolveIterationAgent(
+      input.config,
+      input.iteration ?? 1,
+      input.escalationRepeatCount,
+      input.reviewCycleEscalation ?? 0,
+    )
+  return runOneShotAgentPrompt(input.ctx, input.prompt, agent, {
+    phase: 'verify',
+    verbose: input.verbose,
+  })
 }
 
 function skillVerifyFailure(
@@ -204,6 +126,10 @@ export async function runVerifySkill(input: {
   config: LoopConfig
   verbose?: boolean
   runAgent?: SkillVerifyAgentRun
+  agent?: ResolvedLoopAgent
+  iteration?: number
+  escalationRepeatCount?: number
+  reviewCycleEscalation?: number
 }): Promise<VerifyResult> {
   const verifySkill = input.config.verifySkill
   if (!verifySkill?.trim()) {
@@ -227,6 +153,10 @@ export async function runVerifySkill(input: {
       prompt,
       config: input.config,
       verbose: input.verbose,
+      agent: input.agent,
+      iteration: input.iteration,
+      escalationRepeatCount: input.escalationRepeatCount,
+      reviewCycleEscalation: input.reviewCycleEscalation,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
