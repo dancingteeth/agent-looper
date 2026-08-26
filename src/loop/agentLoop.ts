@@ -441,29 +441,30 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     return parkOnBudget(iteration, budgetCompletionReason())
   }
 
-  const refuseIfNextCallExceedsBudget = async (
-    phase: 'WORKER' | 'JUDGE',
+  /**
+   * Worker-only. A green verify must not become `waiting` because the residual
+   * judge would not fit — `stopOnBudget` after review still parks if the invoice
+   * crossed the cap (GOAL: after implement, and after review if billed).
+   */
+  const refuseIfNextWorkerExceedsBudget = async (
     model: string,
     promptChars: number,
+    startedIteration: number,
   ): Promise<AgentLoopResult | undefined> => {
-    const lastSessionCostUsd =
-      lastPhaseCostUsd(usageSummary, phase === 'JUDGE' ? 'review' : 'implement') ??
-      lastPhaseCostUsd(usageSummary, 'implement')
     const fit = nextCallFitsBudget({
       maxCostUsd: config.maxCostUsd,
       spentUsd: usageSummary.totalCostUsd,
       model,
       promptChars,
-      lastSessionCostUsd,
+      lastSessionCostUsd: lastPhaseCostUsd(usageSummary, 'implement'),
     })
     if (fit.ok) return undefined
     const source = costSourceMix(usageSummary)
     const reason =
-      `Budget cap: next ${phase} call predicted ~$${fit.predictedUsd.toFixed(4)} ` +
+      `Budget cap: next WORKER call predicted ~$${fit.predictedUsd.toFixed(4)} ` +
       `> remaining $${fit.remainingUsd.toFixed(4)} of maxCostUsd $${config.maxCostUsd!.toFixed(4)} ` +
       `(did not start the call; costSource ${source}).`
-    const completedImplements = usageSummary.records.filter((record) => record.phase === 'implement').length
-    return parkOnBudget(completedImplements, reason)
+    return parkOnBudget(Math.max(0, startedIteration - 1), reason)
   }
 
   options.onPhase?.({
@@ -513,10 +514,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       console.error(
         `[agent-loop] iteration ${i}/${config.maxIterations} — ${iterationAgent.runtime} ${iterationAgent.model} (fresh context)`,
       )
-      const budgetRefuse = await refuseIfNextCallExceedsBudget(
-        'WORKER',
+      const budgetRefuse = await refuseIfNextWorkerExceedsBudget(
         iterationAgent.model,
         prompt.length,
+        i,
       )
       if (budgetRefuse) return budgetRefuse
       options.onPhase?.({

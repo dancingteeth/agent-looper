@@ -350,6 +350,35 @@ describe('runAgentLoop', () => {
     )
   })
 
+  it('still starts post-success review when remaining budget is below the last worker cost', async () => {
+    const runIterationPrompt = vi.fn().mockResolvedValue({
+      text: 'assistant ok',
+      usage: {
+        phase: 'implement',
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 4.5,
+        costSource: 'estimated',
+      },
+    })
+    mockSession(runIterationPrompt)
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxCostUsd: 5, postQualityReview: true, reviewGate: false }),
+    })
+
+    expect(runPostLoopQualityReview).toHaveBeenCalledOnce()
+    expect(result.complete).toBe(true)
+    expect(result.iterations).toBe(1)
+  })
+
   it('continues the loop when maxCostUsd is omitted', async () => {
     const runIterationPrompt = vi.fn().mockResolvedValue({
       text: 'assistant ok',

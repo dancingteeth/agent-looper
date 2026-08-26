@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
