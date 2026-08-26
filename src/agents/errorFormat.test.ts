@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatErrorChain,
+  isHttp2StreamTransportError,
   isTransportAgentError,
   isTransportErrorMessage,
 } from './errorFormat.js'
@@ -34,5 +35,26 @@ describe('isTransportAgentError', () => {
     expect(isTransportAgentError(new Error('OpenCode session timed out after 1000ms'))).toBe(
       false,
     )
+  })
+
+  it('matches Cursor SDK HTTP/2 stream refusals', () => {
+    const err = new Error(
+      '[unknown] [internal] Stream closed with error code NGHTTP2_REFUSED_STREAM',
+    )
+    expect(isTransportAgentError(err)).toBe(true)
+    expect(isHttp2StreamTransportError(err)).toBe(true)
+    expect(isHttp2StreamTransportError(new Error('Invalid API key'))).toBe(false)
+  })
+
+  it('matches Connect-ES errors that only put NGHTTP2 on rawMessage', () => {
+    const cause = Object.assign(new Error('Stream closed with error code NGHTTP2_REFUSED_STREAM'), {
+      code: 'ERR_HTTP2_STREAM_ERROR',
+    })
+    const err = Object.assign(new Error(''), {
+      rawMessage: 'Stream closed with error code NGHTTP2_REFUSED_STREAM',
+      code: 13,
+      cause,
+    })
+    expect(isHttp2StreamTransportError(err)).toBe(true)
   })
 })

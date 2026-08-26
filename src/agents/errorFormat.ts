@@ -56,8 +56,10 @@ export function formatErrorChain(err: unknown, maxDepth = 6): string {
 }
 
 /** Provider/transport failures (vs auth, validation, or long agent timeouts). */
+const HTTP2_STREAM_TRANSPORT_PATTERN = /NGHTTP2_[A-Z_]+|ERR_HTTP2_STREAM_ERROR/i
+
 const TRANSPORT_ERROR_PATTERN =
-  /\bfetch failed\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|\bUND_ERR_|\bECONNREFUSED\b|\bENOTFOUND\b|\bCERT_|\bSSL\b|\[layer=transport\]|\bstalled after\b/i
+  /\bfetch failed\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|\bUND_ERR_|\bECONNREFUSED\b|\bENOTFOUND\b|\bCERT_|\bSSL\b|\[layer=transport\]|\bstalled after\b|NGHTTP2_[A-Z_]+|ERR_HTTP2_STREAM_ERROR/i
 
 export function isTransportErrorMessage(message: string): boolean {
   return TRANSPORT_ERROR_PATTERN.test(message)
@@ -65,4 +67,31 @@ export function isTransportErrorMessage(message: string): boolean {
 
 export function isTransportAgentError(err: unknown): boolean {
   return isTransportErrorMessage(formatErrorChain(err))
+}
+
+/**
+ * Connect-ES puts the NGHTTP2 text on `rawMessage` when `message` is empty.
+ * Walk `cause` the same way {@link formatErrorChain} does.
+ */
+function http2ErrorHaystack(err: unknown, maxDepth = 6): string {
+  const parts = [formatErrorChain(err)]
+  let current: unknown = err
+  for (let depth = 0; depth < maxDepth && current != null; depth++) {
+    if (typeof current !== 'object') break
+    const record = current as { rawMessage?: unknown; cause?: unknown }
+    if (typeof record.rawMessage === 'string' && record.rawMessage.trim()) {
+      parts.push(record.rawMessage.trim())
+    }
+    current = record.cause
+  }
+  return parts.join(' ')
+}
+
+/**
+ * Detached Cursor SDK RPCs (team-repo / shouldBlockRead) can refuse an HTTP/2
+ * stream and reject a promise nobody awaited — Node then dies with
+ * `triggerUncaughtException`. Narrower than {@link isTransportAgentError}.
+ */
+export function isHttp2StreamTransportError(err: unknown): boolean {
+  return HTTP2_STREAM_TRANSPORT_PATTERN.test(http2ErrorHaystack(err))
 }

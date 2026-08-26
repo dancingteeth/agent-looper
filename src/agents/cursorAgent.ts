@@ -10,6 +10,7 @@ import { printRunStream } from '../stream/streamRun.js'
 import { StreamCollector } from '../stream/streamCollect.js'
 import { assertCursorSdkModelAllowed } from '../usage/modelPolicy.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
+import { installHttp2UnhandledRejectionGuard } from './http2RejectionGuard.js'
 
 export const AGENT_LOOP_CURSOR_TIMEOUT_MS_ENV = 'AGENT_LOOP_CURSOR_TIMEOUT_MS'
 const DEFAULT_CURSOR_SESSION_TIMEOUT_MS = 45 * 60 * 1000
@@ -104,6 +105,7 @@ export async function runCursorAgentPrompt(
   const phase = options.phase ?? (role === 'review' ? 'review' : 'implement')
   const storeDir = path.join(ctx.repoRoot, '.cursor', 'sdk-runs')
   const store = new JsonlLocalAgentStore(storeDir)
+  const releaseHttp2Guard = installHttp2UnhandledRejectionGuard()
 
   const agentOptions = {
     apiKey,
@@ -168,5 +170,7 @@ export async function runCursorAgentPrompt(
       throw new Error(`Cursor SDK error: ${err.message}`)
     }
     throw err
+  } finally {
+    releaseHttp2Guard()
   }
 }
