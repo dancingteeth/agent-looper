@@ -56,6 +56,7 @@ control plane).
 ## Agent-authored changes
 
 - Intent evidence = frozen `GOAL.md` + verifier output — not the agent's "done" message.
+  Cite the capture; do not invent a diagnosis stdout/stderr do not state.
 - Read **test hunks first**; green CI ≠ correct until assertions are justified.
 - Do not weaken tests, skip CI, or disable lint to go green.
 - Unbacked “tested / done” claims without verify/log evidence → Advisory
@@ -145,6 +146,8 @@ When this repo uses Taskwarrior (or similar):
 Keep this section **sparse** — elevate only durable, high-impact conduct you will
 actually gate on. Prefer fewer laws over a novel. When a law stops failing under
 the current worker/judge models, **delete it** (same instinct as prompt diet).
+When a worker mistake repeats across runs, add a computational check in
+`verify.sh` (or a linter) rather than a new law here.
 
 When authoring a new law (or a new gating impact), if the standard feels mushy,
 sketch it with these dimensions (Agent Behavior-inspired; free-form is fine):

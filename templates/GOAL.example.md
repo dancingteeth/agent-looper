@@ -22,6 +22,10 @@ Describe what the agent should fix or implement.
 
 Path to a screenshot, fixture, or baseline to hold the result against. Omit if verify is enough.
 
+## Research (optional, brownfield)
+
+Link `RESEARCH.md` beside this file when the change lives in an unfamiliar area. Omit for tiny dogfooded loops.
+
 ## Acceptance criteria
 
 Success is determined only by the verifier in `loop.json`, not by your assessment.

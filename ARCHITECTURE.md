@@ -145,13 +145,20 @@ iterations, creating a new Cline session per iteration via `cline.start()`.
 
 **Step 3 — Prompt construction:** `buildAgentLoopPrompt()` assembles the iteration
 prompt from frozen GOAL.md, current git snapshot, prior verifier failures (injected
-verbatim), last verifier result, stagnation warnings, reverse-mode guidance, failure
-context from meta-loop probes, review blockers, and inlined skill runbooks. The prompt is
-ordered **stable head → volatile tail**: the intro, goal, skills, mode, and `## Rules`
-section are emitted first and are byte-identical across iterations, while the git snapshot,
-verifier results, failures, stagnation, review blockers, failure context, and the iteration
+verbatim — not diagnosed), last verifier result, stagnation warnings, reverse-mode
+guidance, failure context from meta-loop probes, review blockers, skill indexes, and
+an optional frozen `RESEARCH.md` index. Incorrect injected context is worse than
+missing; missing is worse than noise. The prompt is ordered **stable head → volatile
+tail**: the intro, goal, skills, research, mode, and `## Rules` section are emitted
+first and are byte-identical across iterations, while the git snapshot, verifier
+results, failures, stagnation, review blockers, failure context, and the iteration
 counter are appended last. This keeps the prompt prefix unchanged so the provider
-**prefix-cache** is reused on iterations 2..N (cached input tokens are billed at a discount).
+**prefix-cache** is reused on iterations 2..N (cached input tokens are billed at a
+discount).
+
+GOAL / skills / `RESEARCH.md` are inferential **guides** (feedforward). `verify.sh`
+is the computational **sensor**. `reviewGate` is inferential feedback. When a
+failure repeats, strengthen the sensor, not the prompt.
 
 **Step 4 — Reasoning + model escalation:** `resolveIterationAgent(config, iteration, repeatCount)`
 (Cline and Pi) climbs the **cheap lever first**. The reasoning tier starts at `reasoningEffort`

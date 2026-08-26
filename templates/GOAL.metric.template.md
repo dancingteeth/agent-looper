@@ -56,4 +56,3 @@ Lower-is-better (latency, error rate). Pair with `templates/verify.metric.exampl
 
 - [`docs/unknowns-preflight.md`](../docs/unknowns-preflight.md) — list how measurement can flake before freezing
 - [`docs/verification-as-skill.md`](../docs/verification-as-skill.md)
-- [`docs/competitive-steal-backlog.md`](../docs/competitive-steal-backlog.md) P7 — revert condition

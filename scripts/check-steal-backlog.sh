@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke-check P3–P7 competitive steals (docs/templates + harness hooks that must still work).
+# Smoke-check P3–P8 competitive steals (docs/templates + harness hooks that must still work).
 # Usage: bash scripts/check-steal-backlog.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -102,6 +102,31 @@ require_grep plugins/dsh-agent-looper/skills/design-loop/SKILL.md 'Four-part fin
 require_grep docs/unknowns-preflight.md 'Optional \*\*golden\*\*' 'unknowns preflight golden'
 
 echo
+echo "== P8 Fowler / Horthy context artifacts =="
+require_file templates/RESEARCH.example.md
+require_grep docs/competitive-steal-backlog.md 'P8 — Fowler' 'P8 section present'
+require_grep docs/competitive-steal-backlog.md 'indexed in the worker prompt' 'P8 RESEARCH.md row'
+require_grep docs/competitive-steal-backlog.md 'Incorrect info is worse than missing' 'P8 incorrect-info row'
+require_grep docs/competitive-steal-backlog.md 'Steering loop: sensor before prompt' 'P8 steering-loop row'
+require_grep docs/competitive-steal-backlog.md 'Research → Plan → Implement as inner-loop' 'P8 skips inner RPI'
+require_grep docs/competitive-steal-backlog.md 'Force TDD inside the worker prompt' 'P8 skips TDD-in-prompt'
+require_grep docs/competitive-steal-backlog.md '40–60% context-utilization' 'P8 skips utilization gate'
+require_grep docs/unknowns-preflight.md 'Brownfield research' 'unknowns preflight brownfield research'
+require_grep docs/unknowns-preflight.md 'steer the harness' 'unknowns preflight steering loop'
+require_grep templates/GOAL.template.md '## Research \(optional' 'GOAL.template Research section'
+require_grep templates/GOAL.example.md '## Research \(optional' 'GOAL.example Research section'
+require_grep templates/REVIEWS.md 'do not invent a diagnosis' 'REVIEWS cite-capture not diagnosis'
+require_grep templates/REVIEWS.md 'computational check in' 'REVIEWS steering: sensor before law'
+require_grep REVIEWS.md 'Repeated worker mistakes belong in' 'dogfood REVIEWS steering'
+require_grep ARCHITECTURE.md 'Incorrect injected context' 'ARCHITECTURE context rank'
+require_grep README.md '`research`' 'README documents research field'
+require_grep README.intro.md 'RESEARCH.md' 'intro links RESEARCH template'
+require_grep plugins/agent-looper/skills/design-loop/SKILL.md 'Research' 'Cursor design-loop research'
+require_grep plugins/dsh-agent-looper/skills/design-loop/SKILL.md 'Research' 'DSH design-loop research'
+require_grep src/loop/loopResearch.ts '## Research \(index\)' 'research index prompt heading'
+require_grep src/loop/loopExtensions.ts 'research: z.string' 'loop.json research field'
+
+echo
 echo "== Relative links resolve =="
 for link in \
   docs/unknowns-preflight.md \
@@ -109,7 +134,8 @@ for link in \
   templates/REVIEWS.md \
   templates/verify.ai-assisted.example.sh \
   docs/competitive-steal-backlog.md \
-  docs/runtime-cost-bench.md
+  docs/runtime-cost-bench.md \
+  templates/RESEARCH.example.md
 do
   require_file "$link"
 done
@@ -122,8 +148,11 @@ if command -v pnpm >/dev/null 2>&1; then
     src/review/reviewPrompt.test.ts \
     src/loop/loopRunReport.test.ts \
     src/loop/loopRiskProfile.test.ts \
-    src/loop/loopSkills.test.ts
-  ok 'focused vitest (review embed + run-report + risk profile + skills index)'
+    src/loop/loopSkills.test.ts \
+    src/loop/loopResearch.test.ts \
+    src/loop/loopPrompt.test.ts \
+    src/loop/loopConfig.test.ts
+  ok 'focused vitest (review embed + run-report + risk profile + skills/research index)'
 else
   bad 'pnpm not found — skip vitest'
 fi

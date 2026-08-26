@@ -26,6 +26,10 @@ What to achieve in one paragraph. Link canonical modules and runbooks.
 
 Path to a concrete example the critic / verify holds the work against (screenshot, fixture, baseline number, reference implementation). Omit when `verify.sh` is already the whole scoreboard. Computer-use loops: put the reference screenshot here. Visual / taste loops: [`GOAL.visual.template.md`](./GOAL.visual.template.md) (golden is a critic, not only `img src`).
 
+## Research (optional, brownfield)
+
+If the change lives in an unfamiliar area, freeze [`RESEARCH.md`](./RESEARCH.example.md) beside this file (where / data flow / test conventions). A human reads it before freeze. The worker indexes the path — do not paste the body here. Do **not** edit `RESEARCH.md` mid-run. `verify.sh` still decides.
+
 ## Budget
 
 - `maxIterations`: (see `loop.json`; default from repo config)
@@ -50,4 +54,5 @@ Path to a concrete example the critic / verify holds the work against (screensho
 ## References
 
 - Related docs and tests.
-- [`docs/competitive-steal-backlog.md`](../docs/competitive-steal-backlog.md) P7 — four-part finish line / golden
+- Brownfield map: [`RESEARCH.example.md`](./RESEARCH.example.md) (optional, freeze beside this file)
+- Before freeze: [`docs/unknowns-preflight.md`](../docs/unknowns-preflight.md)

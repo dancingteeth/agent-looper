@@ -35,6 +35,7 @@ Bounded preflight is enough: one `ssh … ls` (or a local path), copy the design
 ```text
 .cursor/loops/<name>/
   GOAL.md           # frozen spec
+  RESEARCH.md       # optional — frozen brownfield map (indexed, not inlined)
   loop.json         # verify (+ per-loop overrides). Repo `defaults` supply runtime/models.
   verify.sh         # exit 0 = done
   VERIFY.skill.md   # optional; required when verifyMode is skill
@@ -47,6 +48,7 @@ Bounded preflight is enough: one `ssh … ls` (or a local path), copy the design
 - **Acceptance criteria** tied to the verifier (not agent self-assessment)
 - **Constraints** + **Out of scope**
 - Optional **Golden** path (screenshot, fixture, baseline) when verify needs a concrete example to hold against
+- Optional brownfield **Research** map ([`RESEARCH.example.md`](https://github.com/dancingteeth/agent-looper/blob/main/templates/RESEARCH.example.md)) when the change lives in an unfamiliar area — freeze beside GOAL; worker indexes the path
 - Metric loops: **revert** if measured worse than baseline ([`GOAL.metric.template.md`](https://github.com/dancingteeth/agent-looper/blob/main/templates/GOAL.metric.template.md))
 - Taste / visual loops: decide with the section below ([`GOAL.visual.template.md`](https://github.com/dancingteeth/agent-looper/blob/main/templates/GOAL.visual.template.md))
 - HITL via `hitlProvider` when humans must close residual work ([`docs/hitl-providers.md`](https://github.com/dancingteeth/agent-looper/blob/main/docs/hitl-providers.md))

@@ -102,7 +102,7 @@ Name a **four-part finish line** before freeze (see [`templates/GOAL.template.md
 | Permission | `loop.json` `maxIterations` / `stagnationThreshold` |
 | Budget | stop when further work is not worth it — not "until perfect" |
 
-Optional **Golden**: path to a screenshot, fixture, or baseline the critic / verify holds against. Visual / taste loops: [`templates/GOAL.visual.template.md`](../templates/GOAL.visual.template.md).
+Optional **Golden**: path to a screenshot, fixture, or baseline the critic / verify holds against. Visual / taste loops: [`templates/GOAL.visual.template.md`](../templates/GOAL.visual.template.md). Optional brownfield **Research**: [`templates/RESEARCH.example.md`](../templates/RESEARCH.example.md) beside GOAL (indexed in the worker prompt).
 
 Under **Acceptance criteria**, link the verifier explicitly:
 

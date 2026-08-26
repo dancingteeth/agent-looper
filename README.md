@@ -172,6 +172,7 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 ```text
 .cursor/loops/my-task/
   GOAL.md                  # frozen spec (four-part finish line + optional golden)
+  RESEARCH.md              # optional — frozen brownfield map (indexed in the worker prompt)
   loop.json                # verify, runtime, optional taskwarriorUuid
   verify.sh                # measurable shell checks (exit 0 = pass)
   VERIFY.skill.md          # agent-readable verify procedure (optional; required for verifyMode: skill)
@@ -225,6 +226,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `skills` | — | Explicit `…/SKILL.md` paths (merged with GOAL refs). Default prompt is an **index** (name, description, path) — worker **Read**s the file when needed. |
 | `skillDisclosure` | `index` | `index` = progressive disclosure (0.4.0 default; 0.3.0 always inlined). `inline` = paste full SKILL.md bodies. Pin the field on any loop that must keep the old in-prompt runbook. |
 | `plugins` | — | Agent Plugins package dirs — discovers `skills/*/SKILL.md` ([`docs/agent-plugins.md`](./docs/agent-plugins.md)) |
+| `research` | — | Optional path to a frozen brownfield map. If unset, the harness indexes `RESEARCH.md` beside `GOAL.md` when that file exists. Prompt gets path + one-line (worker **Read**s it); body is not inlined. Template: [`templates/RESEARCH.example.md`](./templates/RESEARCH.example.md). |
 
 ### loop.json — review & quality
 

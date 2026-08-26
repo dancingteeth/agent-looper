@@ -226,4 +226,38 @@ describe('buildAgentLoopPrompt', () => {
     })
     expect(prompt).not.toContain('## Batch rubric')
   })
+
+  it('puts research index in the stable head and omits it when absent', () => {
+    const git = {
+      branch: 'feat/x',
+      shortSha: 'abc1234',
+      diffStat: '',
+      statusPorcelain: '',
+    }
+    const withResearch = (iteration: number) =>
+      buildAgentLoopPrompt({
+        goal: 'Ship feature X',
+        iteration,
+        maxIterations: 5,
+        git,
+        lastVerify: null,
+        priorFailures: [],
+        researchSection: '## Research (index)\n\nRead `.cursor/loops/x/RESEARCH.md`.',
+      })
+    const head = (prompt: string) => prompt.slice(0, prompt.indexOf('## Workspace (git)'))
+    expect(head(withResearch(1))).toBe(head(withResearch(3)))
+    expect(head(withResearch(1))).toContain('## Research (index)')
+    expect(withResearch(1).indexOf('## Research (index)')).toBeLessThan(
+      withResearch(1).indexOf('## Workspace (git)'),
+    )
+    const without = buildAgentLoopPrompt({
+      goal: 'Ship feature X',
+      iteration: 1,
+      maxIterations: 5,
+      git,
+      lastVerify: null,
+      priorFailures: [],
+    })
+    expect(without).not.toContain('## Research (index)')
+  })
 })

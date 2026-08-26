@@ -53,7 +53,5 @@ The shell floor must still pass without it.
 
 ## References
 
-- [`templates/GOAL.computer-use.template.md`](./GOAL.computer-use.template.md) — this scaffold
 - [`templates/verify.computer-use.example.sh`](./verify.computer-use.example.sh) — shell floor + UI hook comments
 - [`docs/verification-as-skill.md`](../docs/verification-as-skill.md) — hybrid dynamic verify
-- [`docs/competitive-steal-backlog.md`](../docs/competitive-steal-backlog.md) — M8 P2 computer-use example

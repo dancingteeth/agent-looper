@@ -7,6 +7,7 @@ import { resolveIterationAgent, resolveLoopAgent, resolveReviewAgent, type Resol
 import type { LoadedLoopBundle } from '../loop/loopConfig.js'
 import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
 import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
+import { loadLoopResearchSection, resolveLoopResearchRelativePath } from './loopResearch.js'
 import type { ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
 import { detectStagnation } from '../loop/loopStagnation.js'
 import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
@@ -312,6 +313,17 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       config.skillDisclosure === SKILL_DISCLOSURE_INLINE ? 'inlined' : 'indexed (Read on demand)'
     console.error(`[agent-loop] ${how} ${skillPaths.length} skill runbook(s) into iteration prompts`)
   }
+  const researchRelative = resolveLoopResearchRelativePath(
+    bundle.loopDir,
+    repoRoot,
+    config.research,
+  )
+  const researchSection = researchRelative
+    ? loadLoopResearchSection(repoRoot, researchRelative)
+    : undefined
+  if (researchRelative) {
+    console.error(`[agent-loop] indexed research map ${researchRelative}`)
+  }
   const agentSession = await createLoopAgentSession(config, ctx)
   const baseAgent = resolveLoopAgent(config)
   const reviewAgent = resolveReviewAgent(config)
@@ -405,6 +417,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         reviewBlockers,
         guidePackets,
         skillsSection,
+        researchSection,
         batchRubric: options.batchRubric,
         mode: config.mode,
         failureContext,

@@ -24,6 +24,8 @@ export type LoopPromptInput = {
   guidePackets?: GuidePacket[]
   /** Skill index or inlined runbooks (from GOAL / loop.json / plugins). */
   skillsSection?: string
+  /** Frozen RESEARCH.md index (path + one-line; worker Reads the file). */
+  researchSection?: string
   /** Per-batch fan-out rubric (prompt-only; does not rewrite GOAL.md). */
   batchRubric?: string
   mode?: LoopMode
@@ -68,13 +70,18 @@ The verifier failed **${input.stagnationRepeatCount}** times with the same outpu
       ? `${input.skillsSection.trim()}\n\n`
       : ''
 
+  const researchSection =
+    input.researchSection && input.researchSection.trim()
+      ? `${input.researchSection.trim()}\n\n`
+      : ''
+
   const rulesSection = renderLoopPromptRulesSection(agentsFile)
   const batchRubricSection = buildBatchRubricSection(input.batchRubric)
 
-  // Stable head first (intro + goal + skills + mode + rules) so the prompt prefix is
-  // byte-identical across iterations and the provider prefix cache is reused. Volatile
-  // content (git snapshot, batch rubric, verifier results, failures, stagnation, review
-  // guides, failure context) and the iteration counter go last.
+  // Stable head first (intro + goal + skills + research + mode + rules) so the prompt
+  // prefix is byte-identical across iterations and the provider prefix cache is reused.
+  // Volatile content (git snapshot, batch rubric, verifier results, failures, stagnation,
+  // review guides, failure context) and the iteration counter go last.
   return `You are a coding agent in a fresh-context fix-until-green loop.
 An external shell verifier decides success — do not claim the task is finished.
 
@@ -82,7 +89,7 @@ An external shell verifier decides success — do not claim the task is finished
 
 ${input.goal}
 
-${skillsSection}${modeSection}${rulesSection}
+${skillsSection}${researchSection}${modeSection}${rulesSection}
 
 ## Workspace (git)
 

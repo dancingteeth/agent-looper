@@ -13,6 +13,7 @@ Portable overlay for this dogfood repo. Keep short — inlined into quality-revi
 **Specs ≠ prompts:** `AGENTS.md` = worker runtime; this file = judge standard. Do not
 load review laws into the worker prompt. Author new laws sparsely (see
 `templates/REVIEWS.md` five-dimension checklist); treat out-of-scope laws as NA.
+Repeated worker mistakes belong in `verify.sh`, not a new law here.
 
 For full human/Cursor review (Pass 0…3, pincer Full, deep thermo), use the
 **unified-code-review** skill (≥1.4.x) outside the loop. Do **not** paste that
@@ -37,6 +38,7 @@ Compressed from UCR — Lite only in the gate:
 0. **Change set** — loop working tree + verify evidence; do not invent missing files
 1. **Risk** — blast radius, not diff size (tiers below)
 2. **Agent-authored** (loop-written) — GOAL + verify are intent; test hunks first;
+   cite the capture, do not invent a diagnosis it does not state;
    unbacked “done” → `[unverified_claim]`
 2b. **Always** — open cited callee before gating blockers; live path or
    `[latent_contract]`

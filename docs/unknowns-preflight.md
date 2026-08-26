@@ -12,8 +12,8 @@ discover how the system can fail, have a human read that plan, *then* freeze
 `GOAL.md` and run the loop.
 
 This is **not** part of the Ralph iteration. It is a human+agent step *before*
-`agent-loop run`. Do not edit `GOAL.md` mid-loop to absorb new unknowns; stop,
-update the spec, re-run.
+`agent-loop run`. Do not edit `GOAL.md` or `RESEARCH.md` mid-loop to absorb new
+unknowns; stop, update the spec, re-run.
 
 ## Prove in chat → freeze (Linear-style)
 
@@ -31,6 +31,7 @@ make the worker look done; stop the run, revise the draft, freeze again, re-run.
 
 - New loop with unfamiliar deps, flaky verify, or external APIs
 - Perf / metric goals (know how measurement fails)
+- Brownfield work in an area the author does not already hold in their head
 - Any goal where “done” is ambiguous until edge cases are listed
 
 Skip for tiny, well-understood verify scripts you’ve already dogfooded.
@@ -49,7 +50,25 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
    Accept residual risk only explicitly.
 5. **Permissions** — Default-deny MCP/extra tools and writes beyond scope; name
    opt-ins (see `templates/LOOP.permissions.example.md`).
-6. **Freeze** — Commit `GOAL.md` + `verify.sh` (+ `VERIFY.skill.md`). Then run.
+6. **Brownfield research** (optional) — If the worker would otherwise spend the
+   first iteration Grep-hunting, freeze a short map as `RESEARCH.md` beside
+   GOAL.md ([`templates/RESEARCH.example.md`](../templates/RESEARCH.example.md)):
+   relevant files, data flow, likely cause, how this repo tests this area. A
+   **human reads it** before freeze — throw it out if it says the bug is invalid
+   or names the wrong layer. The worker prompt indexes the path (Read on demand);
+   do not paste the body into GOAL. This is **not** an inner
+   Research→Plan→Implement graph; the Ralph node still implements until verify
+   is green.
+7. **Freeze** — Commit `GOAL.md` + `verify.sh` (+ `VERIFY.skill.md`, optional
+   `RESEARCH.md`). Then run.
+
+## After a run: steer the harness
+
+If the worker made the same mistake twice, add a **computational** check to
+`verify.sh` (or a linter) rather than another GOAL / `AGENTS.md` sentence.
+What you inject into the next iteration is ranked: **correct raw verify output**
+beats a summarized “diagnosis”; missing context beats incorrect context; noise
+last. Prefer sidecar / truncated capture over an LLM rewrite of the failure.
 
 ## Relation to meta-loop
 
@@ -60,6 +79,7 @@ cases up front than thrash iterations.
 ## Anti-patterns
 
 - Freezing a vibes goal (“make it great”) with `verify: "true"`
-- Discovering new requirements mid-loop and rewriting `GOAL.md` in-place
+- Discovering new requirements mid-loop and rewriting `GOAL.md` or `RESEARCH.md` in-place
+- Treating a research map as a diagnosis to defend when verify disagrees
 - Treating LLM “looks done” as the finish line
 - Leaving ambient MCP / network / browser tools “just in case” without naming them

@@ -139,6 +139,11 @@ export { runVerifyCommand } from './loop/loopVerify.js'
 export type { VerifyResult } from './loop/loopVerify.js'
 
 export { buildAgentLoopPrompt } from './loop/loopPrompt.js'
+export {
+  loadLoopResearchSection,
+  RESEARCH_FILENAME,
+  resolveLoopResearchRelativePath,
+} from './loop/loopResearch.js'
 export { detectStagnation } from './loop/loopStagnation.js'
 export { validateGoalPreflight } from './loop/loopPreflight.js'
 export { inferLoopReviewRisk, resolvePostQualityReview, resolveShouldRunQualityReview } from './loop/loopRisk.js'

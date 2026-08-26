@@ -185,14 +185,40 @@ Replay-one-variable evals fold into **P6** cost bench (same frozen bundle, swap 
 - "Don't stop until utterly perfect" as a default stopping rule
 - Ultraprompting skill that writes more prompt (anti prompt-diet)
 
+## P8 — Fowler / Horthy context (Aug 2026)
+
+Sources: [Böckeler, Context engineering for coding agents](https://martinfowler.com/articles/exploring-gen-ai/context-engineering-coding-agents.html)
++ [Harness engineering](https://martinfowler.com/articles/exploring-gen-ai/harness-engineering.html),
+[Horthy / HumanLayer, Advanced context engineering](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents)
+(and the [blog write-up](https://www.humanlayer.com/blog/advanced-context-engineering)),
+[TDD inside the agent loop](https://martinfowler.com/articles/exploring-gen-ai/tdd-in-the-agent-loop.html).
+
+Horthy’s “frequent intentional compaction” is the same constraint Huntley’s Ralph
+loop already solves here: **fresh session every iteration**, state in git/files/verify.
+Steal the brownfield **research artifact** as preflight (not an inner RPI graph)
+and Fowler’s steering language (sensor before prompt).
+
+| Item | Adopt as | Deliverable | Notes |
+| --- | --- | --- | --- |
+| Brownfield `RESEARCH.md` before freeze | Template + harness index | **Shipped** — `templates/RESEARCH.example.md` + unknowns-preflight step + `RESEARCH.md` beside GOAL (or `loop.json` `research`) indexed in the worker prompt | Human reads before freeze. Path + one-line only; body is not inlined. Verify still decides. |
+| Incorrect info is worse than missing | Docs | **Shipped** — `ARCHITECTURE.md` prompt rank + `templates/REVIEWS.md` / dogfood: cite the capture, do not invent a diagnosis | Raw verify (or sidecar preview) beats an LLM “diagnosis.” |
+| Steering loop: sensor before prompt | Docs | **Shipped** — unknowns-preflight “After a run” + REVIEWS authoring: repeated mistake → `verify.sh`, not a new law | Fowler 2×2: GOAL/skills/research = guides; verify = computational sensor; reviewGate = inferential sensor. |
+
+### Explicit skips (Fowler / Horthy)
+
+- Research → Plan → Implement as inner-loop stages (preflight is the right home; Ralph node stays implement-until-green)
+- Harness-level subagents / `progress.md` as spine (same skip as P6 compaction; LLM summaries are incorrect-info risk)
+- Force TDD inside the worker prompt (Fowler’s eval: design-first beat red-green theater; human-owned tests in `verify.sh` already cover the useful half)
+- 40–60% context-utilization gate (no reliable Cursor fill telemetry; fresh sessions already bound rot)
+
 ## Verify this backlog
 
 ```bash
 bash scripts/check-steal-backlog.sh
 ```
 
-Asserts P3–P7 sections + shipped P3/P4/P5 artifacts and shipped P6/P7 docs
-(cost-bench method, four-part GOAL, revert, golden). P6 sidecar and progressive
+Asserts P3–P8 sections + shipped P3/P4/P5 artifacts and shipped P6/P7/P8 docs
+(cost-bench method, four-part GOAL, revert, golden, RESEARCH.md index). P6 sidecar and progressive
 skills are shipped (dogfood n≥3 cost numbers still planned). Then runs focused vitest for review embedding, run-report,
 and risk-profile hooks. Docs/templates are not runtime-enforced (permissions
 matrix is governance docs; `REVIEWS.md` laws are judge prompt text).

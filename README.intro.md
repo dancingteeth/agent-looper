@@ -134,7 +134,7 @@ If a README promises “autonomous digital employees,” walk away. This one pro
 
 After each run (default `exportRunReport: true`), the bundle also gets **`run-report.md`** — a human-readable timeline (models, verify, session IDs, tool counts) plus optional **`transcript.ndjson`**. Regenerate anytime with `agent-loop-export-run <loop-dir>`. Treat **`run-report.md`** as the default post-run audit surface (Linear-style run history); dig into `log.ndjson` / the agent only when you need failure detail.
 
-Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md). Optional scope matrix: [`templates/LOOP.permissions.example.md`](./templates/LOOP.permissions.example.md) (MCP / tools / path writes / installs default-deny until named; model ≠ security control plane). For AI-touched dep/secret risk, copy steps from [`templates/verify.ai-assisted.example.sh`](./templates/verify.ai-assisted.example.sh). To compare runtimes on one frozen task: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md).
+Before freezing a tricky loop: design in chat, then freeze — see [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md) (optional brownfield [`RESEARCH.md`](./templates/RESEARCH.example.md)). Optional scope matrix: [`templates/LOOP.permissions.example.md`](./templates/LOOP.permissions.example.md) (MCP / tools / path writes / installs default-deny until named; model ≠ security control plane). For AI-touched dep/secret risk, copy steps from [`templates/verify.ai-assisted.example.sh`](./templates/verify.ai-assisted.example.sh). To compare runtimes on one frozen task: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md).
 
 ---
 

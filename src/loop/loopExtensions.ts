@@ -49,6 +49,12 @@ export const loopExtensionFieldsSchema = z.object({
    * `inline` pastes full SKILL.md bodies (tiny loops).
    */
   skillDisclosure: skillDisclosureSchema,
+  /**
+   * Optional brownfield map. Defaults to `RESEARCH.md` beside GOAL.md when that
+   * file exists. Worker prompt indexes the path (Read before editing); body is
+   * not inlined. Frozen with GOAL — do not edit mid-run.
+   */
+  research: z.string().trim().min(1).optional(),
 })
 
 export type VerifyLogRefs = {

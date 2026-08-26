@@ -21,6 +21,15 @@ describe('loopConfigSchema', () => {
     expect(parsed.delayMs).toBe(1500)
     expect(parsed.verifyLogMode).toBe('inline')
     expect(parsed.skillDisclosure).toBe('index')
+    expect(parsed.research).toBeUndefined()
+  })
+
+  it('accepts an optional research path', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      research: 'RESEARCH.md',
+    })
+    expect(parsed.research).toBe('RESEARCH.md')
   })
 
   it('defaults syncOnSuccess to true', () => {
