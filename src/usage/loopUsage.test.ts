@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  costSourceMix,
   createUsageRecord,
   estimateCostUsd,
   formatUsageSummaryLine,
+  lastPhaseCostUsd,
   mergeUsageSummaries,
+  nextCallFitsBudget,
   summarizeUsageRecords,
 } from './loopUsage.js'
 
@@ -105,5 +108,95 @@ describe('loopUsage', () => {
     const merged = mergeUsageSummaries(a, b)
     expect(merged.totalInputTokens).toBe(15_000)
     expect(merged.records).toHaveLength(2)
+  })
+
+  it('labels the cost source mix', () => {
+    const estimated = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+        inputTokens: 1000,
+        outputTokens: 500,
+      }),
+    ])
+    expect(costSourceMix(estimated)).toBe('estimated')
+
+    const provider = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'cline-pass',
+        model: 'cline-pass/deepseek-v4-flash',
+        inputTokens: 1000,
+        outputTokens: 500,
+        providerCostUsd: 0.01,
+      }),
+    ])
+    expect(costSourceMix(provider)).toBe('provider')
+
+    const mixed = mergeUsageSummaries(estimated, provider)
+    expect(costSourceMix(mixed)).toBe('mixed')
+  })
+
+  it('refuses a billed call when predicted cost exceeds remaining cap', () => {
+    const tooSmall = nextCallFitsBudget({
+      maxCostUsd: 0.0001,
+      spentUsd: 0,
+      model: 'composer-2.5',
+      promptChars: 40_000,
+    })
+    expect(tooSmall.ok).toBe(false)
+    if (!tooSmall.ok) {
+      expect(tooSmall.predictedUsd).toBeGreaterThan(0.0001)
+      expect(tooSmall.remainingUsd).toBeCloseTo(0.0001)
+    }
+
+    const plenty = nextCallFitsBudget({
+      maxCostUsd: 10,
+      spentUsd: 0,
+      model: 'composer-2.5',
+      promptChars: 40_000,
+    })
+    expect(plenty.ok).toBe(true)
+
+    const alreadySpent = nextCallFitsBudget({
+      maxCostUsd: 5,
+      spentUsd: 5,
+      model: 'composer-2.5',
+      promptChars: 10,
+    })
+    expect(alreadySpent.ok).toBe(false)
+
+    const lastSession = nextCallFitsBudget({
+      maxCostUsd: 1,
+      spentUsd: 0.6,
+      model: 'composer-2.5',
+      promptChars: 10,
+      lastSessionCostUsd: 0.5,
+    })
+    expect(lastSession.ok).toBe(false)
+  })
+
+  it('reads the latest cost for a usage phase', () => {
+    const summary = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        inputTokens: 1000,
+        outputTokens: 100,
+        providerCostUsd: 0.1,
+      }),
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        inputTokens: 1000,
+        outputTokens: 100,
+        providerCostUsd: 0.24,
+      }),
+    ])
+    expect(lastPhaseCostUsd(summary, 'implement')).toBe(0.24)
+    expect(lastPhaseCostUsd(summary, 'review')).toBeUndefined()
   })
 })

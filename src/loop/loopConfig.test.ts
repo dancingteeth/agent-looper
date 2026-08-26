@@ -177,6 +177,18 @@ describe('loopConfigSchema', () => {
     expect(parsed.stagnationThreshold).toBe(3)
   })
 
+  it('accepts a positive maxCostUsd and leaves it undefined when omitted', () => {
+    expect(loopConfigSchema.parse({ verify: 'true' }).maxCostUsd).toBeUndefined()
+    const parsed = loopConfigSchema.parse({ verify: 'true', maxCostUsd: 12.5 })
+    expect(parsed.maxCostUsd).toBe(12.5)
+  })
+
+  it('rejects zero or negative maxCostUsd', () => {
+    expect(() => loopConfigSchema.parse({ verify: 'true', maxCostUsd: 0 })).toThrow()
+    expect(() => loopConfigSchema.parse({ verify: 'true', maxCostUsd: -1 })).toThrow()
+    expect(() => loopConfigSchema.parse({ verify: 'true', maxCostUsd: '10' })).toThrow()
+  })
+
   it('accepts reasoningEffort and escalateReasoningEffort for cline-pass', () => {
     const parsed = loopConfigSchema.parse({
       verify: 'true',

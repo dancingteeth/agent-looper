@@ -178,6 +178,71 @@ export function mergeUsageSummaries(...summaries: LoopUsageSummary[]): LoopUsage
   return summarizeUsageRecords(summaries.flatMap((s) => s.records))
 }
 
+/**
+ * Summarize the source mix of a run's cost: `provider` when every record carries
+ * a provider invoice, `estimated` when every record is derived from token
+ * pricing (e.g. $0 OpenCode/Codex rows), `mixed` when both appear.
+ */
+export function costSourceMix(
+  summary: LoopUsageSummary,
+): 'provider' | 'estimated' | 'mixed' {
+  const hasProvider = summary.records.some((r) => r.costSource === 'provider')
+  const hasEstimated = summary.records.some((r) => r.costSource === 'estimated')
+  if (hasProvider && hasEstimated) return 'mixed'
+  if (hasProvider) return 'provider'
+  return 'estimated'
+}
+
+/** ~4 chars per token; used to price a prompt before the billed session starts. */
+export const BUDGET_CHARS_PER_TOKEN = 4
+/** Minimum completion reserve so a tiny cap cannot start a turn. */
+export const BUDGET_OUTPUT_RESERVE_TOKENS = 2048
+
+export function estimatePromptCostUsd(model: string, promptChars: number): number | null {
+  const inputTokens = Math.max(1, Math.ceil(Math.max(0, promptChars) / BUDGET_CHARS_PER_TOKEN))
+  return estimateCostUsd(model, inputTokens, BUDGET_OUTPUT_RESERVE_TOKENS)
+}
+
+export function lastPhaseCostUsd(
+  summary: LoopUsageSummary,
+  phase: AgentRunPhase,
+): number | undefined {
+  for (let index = summary.records.length - 1; index >= 0; index--) {
+    const record = summary.records[index]
+    if (record?.phase === phase) return record.costUsd
+  }
+  return undefined
+}
+
+export type NextCallBudgetFit =
+  | { ok: true }
+  | { ok: false; remainingUsd: number; predictedUsd: number }
+
+/**
+ * Whether the next billed session is allowed to start. Uses the larger of
+ * prompt-priced estimate and the last similar session so a $0.0001 cap cannot
+ * launch a composer turn that later invoices $0.24.
+ */
+export function nextCallFitsBudget(input: {
+  maxCostUsd: number | undefined
+  spentUsd: number
+  model: string
+  promptChars: number
+  lastSessionCostUsd?: number
+}): NextCallBudgetFit {
+  if (input.maxCostUsd === undefined) return { ok: true }
+  const remainingUsd = input.maxCostUsd - input.spentUsd
+  if (remainingUsd <= 0) {
+    return { ok: false, remainingUsd, predictedUsd: 0 }
+  }
+  const fromPrompt = estimatePromptCostUsd(input.model, input.promptChars) ?? 0
+  const predictedUsd = Math.max(fromPrompt, input.lastSessionCostUsd ?? 0)
+  if (predictedUsd > remainingUsd) {
+    return { ok: false, remainingUsd, predictedUsd }
+  }
+  return { ok: true }
+}
+
 function roundUsd(value: number): number {
   return Math.round(value * 10_000) / 10_000
 }

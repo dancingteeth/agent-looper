@@ -87,6 +87,21 @@ describe('parseRunArgs', () => {
     expect(parseRunArgs(['x', '--max-iterations', '0']).kind).toBe('error')
   })
 
+  it('parses --max-cost and rejects non-numeric', () => {
+    expect(expectRun(['x', '--max-cost', '10']).maxCostUsd).toBe(10)
+    expect(expectRun(['x', '--max-cost', '0.5']).maxCostUsd).toBe(0.5)
+    expect(parseRunArgs(['x', '--max-cost', 'abc'])).toEqual({
+      kind: 'error',
+      message: '--max-cost must be a positive number (got abc)',
+    })
+    expect(parseRunArgs(['x', '--max-cost'])).toEqual({
+      kind: 'error',
+      message: '--max-cost requires a number',
+    })
+    expect(parseRunArgs(['x', '--max-cost', '0']).kind).toBe('error')
+    expect(parseRunArgs(['x', '--max-cost', '-1']).kind).toBe('error')
+  })
+
   it('validates --runtime and --mode values', () => {
     expect(parseRunArgs(['x', '--runtime', 'bogus'])).toEqual({
       kind: 'error',

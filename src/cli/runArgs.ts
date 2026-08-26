@@ -9,6 +9,7 @@ export type RunCliOptions = {
   repoRoot?: string
   verbose: boolean
   maxIterations?: number
+  maxCostUsd?: number
   verify?: string
   finalVerify?: string
   qualityReview?: boolean | 'off'
@@ -45,6 +46,7 @@ Options:
   --verbose, -v                   Tool args/results on stderr
 ${printRepoRootHelp()}
   --max-iterations <n>            Override loop.json maxIterations
+  --max-cost <n>                  Dollar cap: stop (waiting) when cost crosses $n
   --verify <shell-cmd>            Override loop.json verify command
   --final-verify <cmd>            Override loop.json finalVerify
   --quality-review                Force advisory post-success review
@@ -86,6 +88,7 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
 
   const positional: string[] = []
   let maxIterations: number | undefined
+  let maxCostUsd: number | undefined
   let verify: string | undefined
   let finalVerify: string | undefined
   let qualityReview: boolean | 'off' | undefined
@@ -125,6 +128,20 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
         return {
           kind: 'error',
           message: `--max-iterations must be a positive integer (got ${raw})`,
+        }
+      }
+      continue
+    }
+    if (arg === '--max-cost') {
+      const raw = remaining[++i]
+      if (raw === undefined || raw.startsWith('-')) {
+        return { kind: 'error', message: '--max-cost requires a number' }
+      }
+      maxCostUsd = Number(raw)
+      if (!Number.isFinite(maxCostUsd) || maxCostUsd <= 0) {
+        return {
+          kind: 'error',
+          message: `--max-cost must be a positive number (got ${raw})`,
         }
       }
       continue
@@ -251,6 +268,7 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
       repoRoot,
       verbose,
       maxIterations,
+      maxCostUsd,
       verify,
       finalVerify,
       qualityReview,

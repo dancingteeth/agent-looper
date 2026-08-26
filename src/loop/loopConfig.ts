@@ -46,6 +46,12 @@ export const loopVerifyModeSchema = z.enum(['command', 'skill']).default('comman
 export const loopConfigSchema = loopExtensionFieldsSchema
   .extend({
     maxIterations: z.number().int().min(1).max(50).default(8),
+    /**
+     * Dollar cap (USD). When cumulative cost crosses this, the loop stops with
+     * `status: waiting` and opens a HITL `budget` checkpoint instead of starting
+     * the next worker. Omit = no cap (today's behavior).
+     */
+    maxCostUsd: z.number().positive().optional(),
     verify: z.string().min(1),
     /** command = shell verify only (default); skill = agent reads verifySkill then runs verify shell. */
     verifyMode: loopVerifyModeSchema,
@@ -266,9 +272,10 @@ export function loadLoopBundle(
 export function mergeLoopConfig(
   base: LoopConfig,
   overrides: Partial<
-    Pick<
+      Pick<
       LoopConfig,
       | 'maxIterations'
+      | 'maxCostUsd'
       | 'verify'
       | 'finalVerify'
       | 'postQualityReview'

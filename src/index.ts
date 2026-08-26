@@ -248,6 +248,8 @@ export {
   createUsageRecord,
   emptyUsageSummary,
   estimateCostUsd,
+  lastPhaseCostUsd,
+  nextCallFitsBudget,
   formatUsageSummaryLine,
   logUsageSummary,
   mergeUsageSummaries,

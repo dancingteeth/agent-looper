@@ -281,6 +281,104 @@ describe('runAgentLoop', () => {
     expect(result.completionReason).toMatch(/Max iterations/)
   })
 
+  it('stops waiting when cumulative cost crosses maxCostUsd', async () => {
+    const runIterationPrompt = vi.fn().mockResolvedValue({
+      text: 'assistant ok',
+      usage: {
+        phase: 'implement',
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 10,
+        costSource: 'estimated',
+      },
+    })
+    mockSession(runIterationPrompt)
+    vi.mocked(createHitlCheckpoint).mockResolvedValue('hitl-budget-1')
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxCostUsd: 5 }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.status).toBe('waiting')
+    expect(result.iterations).toBe(1)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+    expect(createHitlCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'budget' }),
+    )
+    expect(result.completionReason).toContain('totalCostUsd')
+    expect(result.completionReason).toContain('maxCostUsd')
+    expect(result.completionReason).toContain('estimated')
+  })
+
+  it('does not start the worker when predicted cost already exceeds maxCostUsd', async () => {
+    const runIterationPrompt = vi.fn().mockResolvedValue({
+      text: 'should not run',
+      usage: {
+        phase: 'implement',
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 0.24,
+        costSource: 'estimated',
+      },
+    })
+    mockSession(runIterationPrompt)
+    vi.mocked(createHitlCheckpoint).mockResolvedValue('hitl-budget-preflight')
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxCostUsd: 0.0001 }),
+    })
+
+    expect(runIterationPrompt).not.toHaveBeenCalled()
+    expect(result.complete).toBe(false)
+    expect(result.status).toBe('waiting')
+    expect(result.iterations).toBe(0)
+    expect(result.completionReason).toContain('did not start the call')
+    expect(result.completionReason).toContain('maxCostUsd')
+    expect(createHitlCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'budget' }),
+    )
+  })
+
+  it('continues the loop when maxCostUsd is omitted', async () => {
+    const runIterationPrompt = vi.fn().mockResolvedValue({
+      text: 'assistant ok',
+      usage: {
+        phase: 'implement',
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+        inputTokens: 1000,
+        outputTokens: 1000,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 10,
+        costSource: 'estimated',
+      },
+    })
+    mockSession(runIterationPrompt)
+    mockedRunVerify.mockReturnValue(passVerify())
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle(),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(result.iterations).toBe(1)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+    expect(createHitlCheckpoint).not.toHaveBeenCalled()
+  })
+
   it('retries the agent session on transient SDK errors', async () => {
     vi.useFakeTimers()
     const runIterationPrompt = vi
@@ -362,6 +460,25 @@ describe('runAgentLoop', () => {
     expect(onIterationStart).toHaveBeenCalledTimes(2)
     expect(onIterationStart).toHaveBeenNthCalledWith(1, 1)
     expect(onIterationStart).toHaveBeenNthCalledWith(2, 2)
+  })
+
+  it('invokes onPhase once per implement and once per verify per iteration', async () => {
+    mockSession()
+    mockedRunVerify.mockReturnValueOnce(failVerify()).mockReturnValueOnce(passVerify())
+    const onPhase = vi.fn()
+
+    await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 2 }),
+      onPhase,
+    })
+
+    const phases = onPhase.mock.calls.map((call) => call[0]?.phase)
+    expect(phases.filter((phase) => phase === 'WORKER')).toHaveLength(2)
+    expect(phases.filter((phase) => phase === 'VERIFY')).toHaveLength(2)
+    expect(onPhase.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ phase: 'GOAL', iteration: 1, maxIterations: 2, costUsd: 0 }),
+    )
   })
 
   it('disposes the agent session and logs a failure domain when the verifier throws', async () => {
@@ -768,6 +885,11 @@ describe('isTransientAgentError', () => {
     expect(isTransientAgentError(new Error('read ECONNRESET'))).toBe(true)
     expect(isTransientAgentError(new Error('fetch failed'))).toBe(true)
     expect(isTransientAgentError(new Error('upstream request timeout'))).toBe(true)
+    expect(
+      isTransientAgentError(
+        new Error('[unknown] [internal] Stream closed with error code NGHTTP2_REFUSED_STREAM'),
+      ),
+    ).toBe(true)
   })
 
   it('does not retry permanent errors that merely contain risky substrings', () => {

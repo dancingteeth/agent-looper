@@ -46,8 +46,11 @@ import { loadConfiguredAgentPlugins } from '../plugins/agentPluginsLoad.js'
 import { loadLoopSkillSection, resolveLoopSkillPaths } from './loopSkills.js'
 import {
   addUsageRecord,
+  costSourceMix,
   emptyUsageSummary,
+  lastPhaseCostUsd,
   logUsageSummary,
+  nextCallFitsBudget,
   type LoopUsageRecord,
   type LoopUsageSummary,
 } from '../usage/loopUsage.js'
@@ -116,6 +119,16 @@ export function deriveLoopRunStatus(
   return 'continue'
 }
 
+export type AgentLoopPhase = 'GOAL' | 'WORKER' | 'VERIFY' | 'JUDGE'
+
+export type AgentLoopPhaseEvent = {
+  phase: AgentLoopPhase
+  iteration: number
+  maxIterations: number
+  /** Cumulative estimated cost so far (USD). */
+  costUsd: number
+}
+
 export type AgentLoopOptions = {
   ctx: RepoContext
   bundle: LoadedLoopBundle
@@ -123,6 +136,8 @@ export type AgentLoopOptions = {
   /** Optional per-batch fan-out rubric injected into worker prompts. */
   batchRubric?: string
   onIterationStart?: (iteration: number) => void
+  /** Phase-transition hook for live progress (CLI watch / structured phase lines). */
+  onPhase?: (event: AgentLoopPhaseEvent) => void
 }
 
 const SDK_RETRY_DELAYS_MS = [5000, 15_000] as const
@@ -386,6 +401,78 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     return finalResult
   }
 
+  const budgetCrossed = (): boolean =>
+    config.maxCostUsd !== undefined && usageSummary.totalCostUsd >= config.maxCostUsd
+
+  const budgetCompletionReason = (): string => {
+    const source = costSourceMix(usageSummary)
+    return (
+      `Budget cap reached: totalCostUsd $${usageSummary.totalCostUsd.toFixed(4)} ` +
+      `>= maxCostUsd $${config.maxCostUsd!.toFixed(4)} (costSource ${source}).`
+    )
+  }
+
+  const parkOnBudget = async (
+    iteration: number,
+    reason: string,
+  ): Promise<AgentLoopResult> => {
+    console.error(`[agent-loop] ${reason}`)
+    const hitlCheckTaskUuid = await createHitlCheckpoint({
+      description: reason,
+      reason: 'budget',
+      ctx,
+      loopDir: bundle.loopDir,
+      loopOverrides: hitlLoopOverridesFrom(config),
+    })
+    return finish({
+      complete: false,
+      iterations: iteration,
+      completionReason: reason,
+      lastVerify,
+      logPath,
+      status: 'waiting',
+      ...(hitlCheckTaskUuid ? { hitlCheckTaskUuid } : {}),
+    })
+  }
+
+  /** Stop the loop (waiting) when cumulative cost crosses the dollar cap. */
+  const stopOnBudget = async (iteration: number): Promise<AgentLoopResult | undefined> => {
+    if (!budgetCrossed()) return undefined
+    return parkOnBudget(iteration, budgetCompletionReason())
+  }
+
+  const refuseIfNextCallExceedsBudget = async (
+    phase: 'WORKER' | 'JUDGE',
+    model: string,
+    promptChars: number,
+  ): Promise<AgentLoopResult | undefined> => {
+    const lastSessionCostUsd =
+      lastPhaseCostUsd(usageSummary, phase === 'JUDGE' ? 'review' : 'implement') ??
+      lastPhaseCostUsd(usageSummary, 'implement')
+    const fit = nextCallFitsBudget({
+      maxCostUsd: config.maxCostUsd,
+      spentUsd: usageSummary.totalCostUsd,
+      model,
+      promptChars,
+      lastSessionCostUsd,
+    })
+    if (fit.ok) return undefined
+    const source = costSourceMix(usageSummary)
+    const reason =
+      `Budget cap: next ${phase} call predicted ~$${fit.predictedUsd.toFixed(4)} ` +
+      `> remaining $${fit.remainingUsd.toFixed(4)} of maxCostUsd $${config.maxCostUsd!.toFixed(4)} ` +
+      `(did not start the call; costSource ${source}).`
+    const completedImplements = usageSummary.records.filter((record) => record.phase === 'implement').length
+    return parkOnBudget(completedImplements, reason)
+  }
+
+  options.onPhase?.({
+    phase: 'GOAL',
+    iteration: 1,
+    maxIterations: config.maxIterations,
+    costUsd: 0,
+  })
+
   try {
     for (let i = 1; i <= config.maxIterations; i++) {
       iterations = i
@@ -426,6 +513,18 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       console.error(
         `[agent-loop] iteration ${i}/${config.maxIterations} — ${iterationAgent.runtime} ${iterationAgent.model} (fresh context)`,
       )
+      const budgetRefuse = await refuseIfNextCallExceedsBudget(
+        'WORKER',
+        iterationAgent.model,
+        prompt.length,
+      )
+      if (budgetRefuse) return budgetRefuse
+      options.onPhase?.({
+        phase: 'WORKER',
+        iteration: i,
+        maxIterations: config.maxIterations,
+        costUsd: usageSummary.totalCostUsd,
+      })
       const collector = config.exportTranscript
         ? new StreamCollector({ phase: 'implement', iteration: i })
         : undefined
@@ -440,6 +539,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         },
       )
       usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+      const budgetStop = await stopOnBudget(i)
+      if (budgetStop) return budgetStop
       const assistantText = assistantRun.text
       const innerAgent = assistantRun.innerAgent
       if (assistantRun.transcriptEvents?.length) {
@@ -461,6 +562,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       console.error(`[agent-loop] iteration ${i} — verify: ${config.verify}`)
+      options.onPhase?.({
+        phase: 'VERIFY',
+        iteration: i,
+        maxIterations: config.maxIterations,
+        costUsd: usageSummary.totalCostUsd,
+      })
       const verify =
         config.verifyMode === 'skill'
           ? await runVerifySkill({
@@ -523,6 +630,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       if (passed) {
+        options.onPhase?.({
+          phase: 'JUDGE',
+          iteration: i,
+          maxIterations: config.maxIterations,
+          costUsd: usageSummary.totalCostUsd,
+        })
         const reviewPhase = await runPostSuccessReviewPhase({
           config,
           goal,
@@ -537,6 +650,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         })
         usageSummary = reviewPhase.usageSummary
         reviewLog = reviewPhase.reviewLog
+
+        const reviewBudgetStop = await stopOnBudget(i)
+        if (reviewBudgetStop) return reviewBudgetStop
 
         if (reviewPhase.outcome.action === 'stop') {
           if (!reviewPhase.outcome.skipIterationLog) {
