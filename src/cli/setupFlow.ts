@@ -1,9 +1,16 @@
 import path from 'node:path'
 import {
+  LOOP_RUNTIME_CLINE,
+  LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
+  LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_OPENCODE,
+  LOOP_RUNTIME_PI,
   runtimeHonorsReasoningEffort,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
+import type { DetectableRuntime, DetectionResult } from './detectRuntimes.js'
 import {
   HITL_PROVIDER_CHOICES,
   JUDGE_RUNTIME_CHOICES,
@@ -51,9 +58,34 @@ export type SetupPrompts = {
   text: (prompt: string, dflt?: string) => Promise<string>
 }
 
+/** Menu choice value → detectable runtime (both Cline families share the @cline/sdk probe). */
+const RUNTIME_DETECT_KEY: Record<string, DetectableRuntime> = {
+  [LOOP_RUNTIME_CURSOR]: 'cursor',
+  [LOOP_RUNTIME_CLINE]: 'cline',
+  [LOOP_RUNTIME_CLINE_PASS]: 'cline',
+  [LOOP_RUNTIME_OPENCODE]: 'opencode',
+  [LOOP_RUNTIME_PI]: 'pi',
+  [LOOP_RUNTIME_CODEX]: 'codex',
+  [LOOP_RUNTIME_DSH]: 'dsh',
+}
+
+/** Tag runtime-menu choices `detected` / `missing`; never drops a choice. */
+function annotateDetection(
+  choices: readonly MenuChoice[],
+  detection: DetectionResult | undefined,
+): MenuChoice[] {
+  if (!detection) return [...choices]
+  return choices.map((choice) => {
+    const key = RUNTIME_DETECT_KEY[choice.value]
+    if (!key) return choice
+    return { ...choice, tag: detection[key] }
+  })
+}
+
 export async function collectSetupAnswers(
   prompts: SetupPrompts,
   outDir: string,
+  detection?: DetectionResult,
 ): Promise<Record<string, unknown>> {
   const answers: Record<string, unknown> = {}
   const profile: Record<string, unknown> = {}
@@ -106,7 +138,7 @@ export async function collectSetupAnswers(
   const runtime = await askSelect(
     'Worker runtime',
     'Who implements GOAL.md each iteration. The judge is a later step.',
-    WORKER_RUNTIME_CHOICES,
+    annotateDetection(WORKER_RUNTIME_CHOICES, detection),
     LOOP_RUNTIME_CURSOR,
   )
   answers.runtime = runtime
@@ -158,7 +190,7 @@ export async function collectSetupAnswers(
   const reviewRuntime = await askSelect(
     'Judge runtime (reviewRuntime)',
     'Who writes residual review.md after verify. Independent of the worker.',
-    JUDGE_RUNTIME_CHOICES,
+    annotateDetection(JUDGE_RUNTIME_CHOICES, detection),
     LOOP_RUNTIME_CURSOR,
   )
   answers.reviewRuntime = reviewRuntime
@@ -239,7 +271,7 @@ export async function collectSetupAnswers(
   const secondary = await askSelect(
     'Secondary review runtime',
     'Optional second review after the primary judge. Same runtimes as the judge step. none is the usual choice.',
-    SECONDARY_REVIEW_RUNTIME_CHOICES,
+    annotateDetection(SECONDARY_REVIEW_RUNTIME_CHOICES, detection),
     'none',
   )
   if (secondary !== 'none') {

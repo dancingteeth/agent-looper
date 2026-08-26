@@ -1,153 +1,29 @@
 import { clearInkPerformanceBuffer } from './inkProductionEnv.js'
-import { Box, Text, render, useAnimation, useInput } from 'ink'
+import { Box, Text, render, useInput } from 'ink'
 import { useState, type ReactElement } from 'react'
 import type { MenuChoice } from './setupMenus.js'
 import { defaultIndexForValue } from './setupMenus.js'
 import { TYPICAL_SETUP_STEPS, type SetupPrompts } from './setupFlow.js'
+import { C, LooperMark } from './loopChrome.js'
 
-/** Cover palette — Agent Looper DSH (terracotta / verify green). */
-const C = {
-  terracotta: '#D65D2E',
-  verify: '#76A17B',
-  tan: '#C4A574',
-  muted: '#8A8580',
-  white: '#FFFFFF',
-} as const
+// Re-export shared cover chrome so existing consumers keep importing from here.
+export {
+  CoverStages,
+  Figure8Frame,
+  FIGURE8_FRAME_COUNT,
+  figure8Lines,
+  progressRailFilled,
+  PROGRESS_RAIL_WIDTH,
+  StageArrow,
+  StagePill,
+  stagePipelineTone,
+} from './loopChrome.js'
 
 const LIST_WINDOW = 9
-
-/** 3×5 figure-8 (the `oo` in Looper). Dot walks this path. */
-const FIGURE8_SKELETON: readonly (readonly string[])[] = [
-  [' ', 'o', ' ', 'o', ' '],
-  ['o', ' ', ' ', ' ', 'o'],
-  [' ', 'o', ' ', 'o', ' '],
-]
-
-const FIGURE8_PATH: readonly [row: number, col: number][] = [
-  [1, 0],
-  [0, 1],
-  [1, 2],
-  [0, 3],
-  [1, 4],
-  [2, 3],
-  [1, 2],
-  [2, 1],
-]
-
-export const FIGURE8_FRAME_COUNT = FIGURE8_PATH.length
-
-export const PROGRESS_RAIL_WIDTH = 22
 
 export function setupProgressRatio(step: number, typicalSteps: number): number {
   if (typicalSteps <= 0) return 0
   return Math.min(1, Math.max(0, step / typicalSteps))
-}
-
-export function progressRailFilled(ratio: number, width: number = PROGRESS_RAIL_WIDTH): number {
-  return Math.round(Math.min(1, Math.max(0, ratio)) * width)
-}
-
-/** One animation frame of the Looper `oo` mark (three lines, five cells). */
-export function figure8Lines(frame: number): [string, string, string] {
-  const grid = FIGURE8_SKELETON.map((row) => [...row])
-  const slot = FIGURE8_PATH[((frame % FIGURE8_PATH.length) + FIGURE8_PATH.length) % FIGURE8_PATH.length]
-  if (slot !== undefined) {
-    const [row, col] = slot
-    const line = grid[row]
-    if (line) line[col] = '·'
-  }
-  return [grid[0]?.join('') ?? '', grid[1]?.join('') ?? '', grid[2]?.join('') ?? '']
-}
-
-function Figure8Frame({ frame }: { frame: number }) {
-  const lines = figure8Lines(frame)
-  return (
-    <Box flexDirection="column" width={5} height={3} flexShrink={0} marginX={1}>
-      {lines.map((line, lineIndex) => (
-        <Text key={lineIndex}>
-          {[...line].map((cell, cellIndex) => (
-            <Text
-              key={cellIndex}
-              color={cell === '·' ? C.verify : cell === 'o' ? C.terracotta : C.muted}
-            >
-              {cell === ' ' ? '\u00A0' : cell}
-            </Text>
-          ))}
-        </Text>
-      ))}
-    </Box>
-  )
-}
-
-function StagePill({ label, color }: { label: string; color: string }) {
-  return (
-    <Box borderStyle="round" borderColor={color} paddingX={0} flexShrink={0}>
-      <Text color={color} bold>
-        {label}
-      </Text>
-    </Box>
-  )
-}
-
-function StageArrow() {
-  return (
-    <Box flexDirection="column" height={3} flexShrink={0}>
-      <Text> </Text>
-      <Text color={C.muted}>→</Text>
-      <Text> </Text>
-    </Box>
-  )
-}
-
-function CoverStages() {
-  return (
-    <Box flexDirection="row" alignItems="center" marginLeft={1} flexWrap="wrap">
-      <StagePill label="GOAL" color={C.terracotta} />
-      <StageArrow />
-      <StagePill label="WORKER" color={C.muted} />
-      <StageArrow />
-      <StagePill label="VERIFY" color={C.verify} />
-      <StageArrow />
-      <StagePill label="JUDGE" color={C.tan} />
-    </Box>
-  )
-}
-
-function ProgressRail({ ratio }: { ratio: number }) {
-  const filled = progressRailFilled(ratio)
-  const empty = PROGRESS_RAIL_WIDTH - filled
-  return (
-    <Box>
-      <Text color={C.terracotta}>{'━'.repeat(filled)}</Text>
-      <Text color={C.muted}>{'─'.repeat(empty)}</Text>
-    </Box>
-  )
-}
-
-export function LooperMark({
-  isActive = true,
-  progress,
-}: {
-  isActive?: boolean
-  progress?: number
-}) {
-  const { frame } = useAnimation({ interval: 140, isActive })
-  return (
-    <Box flexDirection="column">
-      <Box flexDirection="row" alignItems="center" flexWrap="wrap">
-        <Text color={C.white} bold>
-          Agent L
-        </Text>
-        <Figure8Frame frame={isActive ? frame : 0} />
-        <Text color={C.white} bold>
-          per
-        </Text>
-        <CoverStages />
-      </Box>
-      <Text color={C.muted}>the harness that owns the grind.</Text>
-      {progress !== undefined ? <ProgressRail ratio={progress} /> : null}
-    </Box>
-  )
 }
 
 export type SelectPromptProps = {
@@ -227,6 +103,12 @@ export function SelectPrompt({
                 {choice.title}
                 {isDefault ? (
                   <Text color={C.muted}>  default</Text>
+                ) : null}
+                {choice.tag ? (
+                  <Text color={choice.tag === 'detected' ? C.verify : C.muted}>
+                    {'  '}
+                    [{choice.tag}]
+                  </Text>
                 ) : null}
               </Text>
             </Box>

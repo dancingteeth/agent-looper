@@ -15,6 +15,7 @@ import { loopConfigSchema, parseLoopConfig } from '../loop/loopConfig.js'
 import { defaultIndexForValue, formatMenu, parseMenuSelection, type MenuChoice } from './setupMenus.js'
 import { collectSetupAnswers, SetupDeclinedError, type SetupPrompts } from './setupFlow.js'
 import { createInkPrompts } from './setupTui.js'
+import { detectLoopRuntimes } from './detectRuntimes.js'
 
 const LOOP_CONFIG_KEYS = new Set(Object.keys(loopConfigSchema.shape))
 
@@ -23,6 +24,7 @@ type CliOptions = {
   outDir: string
   repoRoot: string
   plain: boolean
+  dryRun: boolean
 }
 
 function usage(): string {
@@ -35,6 +37,9 @@ loop.json files inherit those defaults; explicit loop.json keys win.
 Then prints agent-check and agent-loop run. Interactive mode is an Ink TUI
 (arrow keys + enter) on a TTY. Model lists match the runtime you just picked.
 Pass --plain for numbered menus (CI / no TTY / screen readers).
+Before the worker-runtime menu, the wizard detects which runtimes are actually
+installed (SDK import + CLI on PATH, same checks as agent-check) and annotates
+each choice detected / missing. Missing runtimes stay selectable.
 
 Worker runtimes: cursor | cline-pass | cline | opencode | pi | codex | dsh
 Judge (review): reviewRuntime (cursor | cline-pass | cline | opencode | pi | codex | dsh),
@@ -60,6 +65,8 @@ Options:
   --repo-root <path>        Repo whose .cursor/agent-loop.repo.json gets defaults
                             (default: current directory)
   --plain                   Numbered menus instead of the Ink TUI
+  --dry-run                 Detect runtimes and print the loop.json + repo-profile
+                            that would be written, then exit without writing anything
   --help                    Show this help`
 }
 
@@ -68,7 +75,12 @@ function errMessage(err: unknown): string {
 }
 
 export function parseArgs(argv: string[]): CliOptions {
-  const options: CliOptions = { outDir: process.cwd(), repoRoot: process.cwd(), plain: false }
+  const options: CliOptions = {
+    outDir: process.cwd(),
+    repoRoot: process.cwd(),
+    plain: false,
+    dryRun: false,
+  }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     switch (arg) {
@@ -86,6 +98,9 @@ export function parseArgs(argv: string[]): CliOptions {
         break
       case '--plain':
         options.plain = true
+        break
+      case '--dry-run':
+        options.dryRun = true
         break
       default:
         throw new Error(`unknown option: ${arg}`)
@@ -161,8 +176,15 @@ function writeProfile(repoRoot: string, profile: Record<string, unknown>): void 
 /**
  * Shared pipeline for answers + interactive modes. Validates everything with the
  * real schema BEFORE writing, so a rejected config never leaves a loop.json behind.
+ * Prints the exact loop.json object and repo-profile patch before any write; with
+ * `dryRun` it stops there and writes nothing.
  */
-export function runWizard(answers: Record<string, unknown>, outDir: string, repoRoot: string): number {
+export function runWizard(
+  answers: Record<string, unknown>,
+  outDir: string,
+  repoRoot: string,
+  options: { dryRun?: boolean } = {},
+): number {
   const config = pickLoopConfigFields(answers)
 
   let parsed: { runtime: string; reviewRuntime?: string; maxIterations: number }
@@ -205,6 +227,18 @@ export function runWizard(answers: Record<string, unknown>, outDir: string, repo
     }
   }
 
+  console.log('[agent-loop-setup] would write:')
+  console.log('--- loop.json ---')
+  console.log(JSON.stringify(config, null, 2))
+  if (profile !== undefined) {
+    console.log('--- .cursor/agent-loop.repo.json ---')
+    console.log(JSON.stringify(profile, null, 2))
+  }
+  if (options.dryRun) {
+    console.log('[agent-loop-setup] dry-run — nothing written')
+    return 0
+  }
+
   if (profile !== undefined) {
     try {
       writeProfile(repoRoot, profile)
@@ -233,7 +267,7 @@ export function runWizard(answers: Record<string, unknown>, outDir: string, repo
   return 0
 }
 
-function runAnswersMode(answersPath: string, outDir: string, repoRoot: string): number {
+function runAnswersMode(answersPath: string, outDir: string, repoRoot: string, dryRun: boolean): number {
   let answers: unknown
   try {
     answers = JSON.parse(fs.readFileSync(answersPath, 'utf8'))
@@ -245,7 +279,7 @@ function runAnswersMode(answersPath: string, outDir: string, repoRoot: string): 
     console.error('[agent-loop-setup] --answers must contain a JSON object')
     return 1
   }
-  return runWizard(answers as Record<string, unknown>, outDir, repoRoot)
+  return runWizard(answers as Record<string, unknown>, outDir, repoRoot, { dryRun })
 }
 
 function createPlainPrompts(rl: readline.Interface): SetupPrompts {
@@ -283,18 +317,24 @@ function shouldUseTui(plain: boolean): boolean {
   return !plain && Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY)
 }
 
-async function runInteractive(outDir: string, repoRoot: string, plain: boolean): Promise<number> {
+async function runInteractive(
+  outDir: string,
+  repoRoot: string,
+  plain: boolean,
+  dryRun: boolean,
+): Promise<number> {
+  const detection = await detectLoopRuntimes()
   if (shouldUseTui(plain)) {
-    const answers = await collectSetupAnswers(createInkPrompts(), outDir)
-    return runWizard(answers, outDir, repoRoot)
+    const answers = await collectSetupAnswers(createInkPrompts(), outDir, detection)
+    return runWizard(answers, outDir, repoRoot, { dryRun })
   }
 
   const rl = readline.createInterface({ input, output })
   try {
     console.log('agent-loop-setup — numbered menus (--plain or no TTY)')
     console.log('Type the number of an option (or press Enter for the default). Do not type slugs.')
-    const answers = await collectSetupAnswers(createPlainPrompts(rl), outDir)
-    return runWizard(answers, outDir, repoRoot)
+    const answers = await collectSetupAnswers(createPlainPrompts(rl), outDir, detection)
+    return runWizard(answers, outDir, repoRoot, { dryRun })
   } finally {
     rl.close()
   }
@@ -316,10 +356,10 @@ async function main(): Promise<void> {
     return
   }
   if (options.answersPath !== undefined) {
-    process.exitCode = runAnswersMode(options.answersPath, options.outDir, options.repoRoot)
+    process.exitCode = runAnswersMode(options.answersPath, options.outDir, options.repoRoot, options.dryRun)
   } else {
     try {
-      process.exitCode = await runInteractive(options.outDir, options.repoRoot, options.plain)
+      process.exitCode = await runInteractive(options.outDir, options.repoRoot, options.plain, options.dryRun)
     } catch (err) {
       if (err instanceof SetupDeclinedError) {
         console.log("Ok. Ask your agent to set defaults or edit loop.json.")

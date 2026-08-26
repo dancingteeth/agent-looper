@@ -6,6 +6,7 @@ import {
   figure8Lines,
   progressRailFilled,
   PROGRESS_RAIL_WIDTH,
+  stagePipelineTone,
   SelectPrompt,
   setupProgressRatio,
   TextPrompt,
@@ -15,6 +16,15 @@ const choices = [
   { value: 'cursor', title: 'cursor', description: 'Cursor SDK worker.' },
   { value: 'dsh', title: 'dsh', description: 'PATH dsh --profile headless.' },
 ] as const
+
+describe('stagePipelineTone', () => {
+  it('dims later stages until the current phase starts', () => {
+    expect(stagePipelineTone('GOAL', 'WORKER')).toBe('reached')
+    expect(stagePipelineTone('WORKER', 'WORKER')).toBe('current')
+    expect(stagePipelineTone('VERIFY', 'WORKER')).toBe('pending')
+    expect(stagePipelineTone('JUDGE', 'WORKER')).toBe('pending')
+  })
+})
 
 describe('figure8Lines', () => {
   it('is a 3×5 figure-8 with one moving dot', () => {

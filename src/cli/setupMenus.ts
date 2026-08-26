@@ -37,6 +37,8 @@ export type MenuChoice = {
   value: string
   title: string
   description: string
+  /** Optional install annotation (`detected` / `missing`) from the runtime probe. */
+  tag?: 'detected' | 'missing'
 }
 
 export const WORKER_RUNTIME_CHOICES: readonly MenuChoice[] = [
@@ -509,7 +511,8 @@ export function formatMenu(
 ): string {
   const items = choices.map((choice, index) => {
     const mark = index === defaultIndex ? ' (default)' : ''
-    return `  ${index + 1}) ${choice.title}${mark}\n     ${choice.description}`
+    const tag = choice.tag ? ` [${choice.tag}]` : ''
+    return `  ${index + 1}) ${choice.title}${mark}${tag}\n     ${choice.description}`
   })
   return ['', `## ${heading}`, blurb, '', ...items, `Select [1-${choices.length}]:`].join('\n')
 }
