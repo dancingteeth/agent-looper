@@ -98,10 +98,32 @@ function truncate(text: string, max: number): string {
   return `${trimmed.slice(0, max - 1)}…`
 }
 
-function formatVerifyStep(verify: LoopIterationLog['verify']): string {
+function relativeLink(baseDir: string | undefined, filePath: string): string {
+  if (!baseDir) return filePath
+  const rel = path.relative(baseDir, filePath)
+  return rel || path.basename(filePath)
+}
+
+function formatVerifyStep(
+  verify: LoopIterationLog['verify'],
+  options: { verifyLog?: LoopIterationLog['verifyLog']; baseDir?: string } = {},
+): string {
   const status = verify.complete ? 'PASS' : 'FAIL'
+  const header = `**${status}** (exit ${verify.exitCode}) — \`${verify.command}\``
+
+  const links: string[] = []
+  if (options.verifyLog?.stdoutPath) {
+    links.push(`stdout: ${relativeLink(options.baseDir, options.verifyLog.stdoutPath)}`)
+  }
+  if (options.verifyLog?.stderrPath) {
+    links.push(`stderr: ${relativeLink(options.baseDir, options.verifyLog.stderrPath)}`)
+  }
+  if (links.length > 0) {
+    return [header, '', ...links].join('\n')
+  }
+
   const tail = truncate([verify.stdout, verify.stderr].filter(Boolean).join('\n'), 400)
-  return `**${status}** (exit ${verify.exitCode}) — \`${verify.command}\`${tail ? `\n\n\`\`\`\n${tail}\n\`\`\`` : ''}`
+  return `${header}${tail ? `\n\n\`\`\`\n${tail}\n\`\`\`` : ''}`
 }
 
 export type BuildRunReportInput = {
@@ -205,9 +227,9 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     if (entry.toolSummary) {
       lines.push(`- **Tools:** ${formatToolSummary(entry.toolSummary)}`)
     }
-    lines.push('- **Verify:**', '', formatVerifyStep(entry.verify))
+    lines.push('- **Verify:**', '', formatVerifyStep(entry.verify, { verifyLog: entry.verifyLog, baseDir: input.loopDir }))
     if (entry.finalVerify) {
-      lines.push('- **Final verify:**', '', formatVerifyStep(entry.finalVerify))
+      lines.push('- **Final verify:**', '', formatVerifyStep(entry.finalVerify, { baseDir: input.loopDir }))
     }
     if (entry.review) {
       lines.push(

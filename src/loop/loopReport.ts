@@ -5,6 +5,10 @@ import type { LoopBatchResult } from './loopBatch.js'
 import { captureGitWorkspaceSnapshot } from './loopGit.js'
 import { parseReviewMarkdown, blockingBlockers } from '../review/reviewVerdict.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
+import {
+  formatFailureDomainLine,
+  readLatestFailureDomain,
+} from './loopFailureDomain.js'
 
 const TELEGRAM_MAX_MESSAGE = 4096
 const VERIFY_SNIPPET_MAX = 600
@@ -163,13 +167,18 @@ export function formatLoopCompletionReport(input: {
     lines.push('Note: inner agent hit clineMaxIterations; outer verifier still passed.')
   }
 
-  if (result.hitlCheckTaskUuid) {
-    lines.push(`HITL: manual check task uuid:${result.hitlCheckTaskUuid}`)
-  }
-
   if (result.complete) {
+    if (result.hitlCheckTaskUuid) {
+      lines.push(`HITL: uuid:${result.hitlCheckTaskUuid}`)
+    }
     lines.push(...formatSuccessNextSteps(repoRoot))
   } else {
+    lines.push(`→ resume: agent-loop run ${bundleLabel}`)
+    if (result.hitlCheckTaskUuid) {
+      lines.push(`HITL: uuid:${result.hitlCheckTaskUuid}`)
+    }
+    const failureDomain = formatFailureDomainLine(readLatestFailureDomain(loopDir))
+    if (failureDomain) lines.push(failureDomain)
     const gitStatus = formatGitStatusLine(repoRoot)
     if (gitStatus) lines.push('', gitStatus)
   }

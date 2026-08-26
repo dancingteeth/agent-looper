@@ -260,6 +260,51 @@ describe('buildRunReportMarkdown', () => {
     expect(report).toContain('Fix the widget')
   })
 
+  it('links to sidecar verify logs instead of only truncating', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-run-report-sidecar-'))
+    const logPath = path.join(tmpDir, 'log.ndjson')
+    const stdoutPath = path.join(tmpDir, 'verify-logs', 'iter-1.verify.stdout.txt')
+    const stderrPath = path.join(tmpDir, 'verify-logs', 'iter-1.verify.stderr.txt')
+    fs.writeFileSync(
+      logPath,
+      `${JSON.stringify({
+        at: '2026-07-22T00:00:00.000Z',
+        iteration: 1,
+        branch: 'main',
+        shortSha: 'abc1234',
+        verify: {
+          complete: false,
+          command: 'bash verify.sh',
+          exitCode: 1,
+          stdout: 'FAIL a very long verifier output blob',
+          stderr: '',
+          reason: 'Verifier failed (exit 1).',
+        },
+        verifyLog: { stdoutPath, stderrPath },
+        assistantPreview: 'fix',
+      })}\n`,
+      'utf8',
+    )
+
+    const config = parseLoopConfig({ verify: 'bash verify.sh' })
+    const report = buildRunReportMarkdown({
+      ctx: minimalCtx(tmpDir),
+      loopDir: tmpDir,
+      goal: 'Fix',
+      config,
+      result: loopResult({ logPath, complete: false }),
+      workerModel: 'composer-2.5',
+      reviewRuntime: 'cursor',
+      reviewModel: 'grok-4.5',
+      runtime: 'cursor',
+    })
+
+    expect(report).toContain('verify-logs/iter-1.verify.stdout.txt')
+    expect(report).toContain('verify-logs/iter-1.verify.stderr.txt')
+    expect(report).toContain('**FAIL** (exit 1)')
+    expect(report).not.toContain('FAIL a very long verifier output blob')
+  })
+
   it('writes run-report.md to the bundle', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-run-report-write-'))
     const logPath = path.join(tmpDir, 'log.ndjson')

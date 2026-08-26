@@ -55,6 +55,14 @@ export function isHitlWaitingFailureDomain(entry: FailureDomainEntry | null): bo
   return entry.reason === 'review_gate_hitl' || entry.status === 'waiting'
 }
 
+/** One-line domain summary for reports (reason + optional status). */
+export function formatFailureDomainLine(entry: FailureDomainEntry | null): string | undefined {
+  if (!entry) return undefined
+  return entry.status
+    ? `Failure domain: ${entry.reason} (status: ${entry.status})`
+    : `Failure domain: ${entry.reason}`
+}
+
 function suggestionForReason(reason: FailureDomainReason, repeatCount?: number): string {
   switch (reason) {
     case 'stagnation':

@@ -6,6 +6,7 @@ import {
   FAILURE_DOMAINS_FILENAME,
   appendFailureDomain,
   failureDomainsPath,
+  formatFailureDomainLine,
   isHitlWaitingFailureDomain,
   logFailureDomainFromAgentError,
   logFailureDomainFromVerify,
@@ -117,6 +118,31 @@ describe('loopFailureDomain', () => {
     const latest = readLatestFailureDomain(tmpDir)
     expect(latest?.reason).toBe('review_gate_hitl')
     expect(isHitlWaitingFailureDomain(latest)).toBe(true)
+  })
+
+  it('formats a one-line domain summary', () => {
+    expect(formatFailureDomainLine(null)).toBeUndefined()
+    expect(
+      formatFailureDomainLine({
+        at: '2026-07-22T00:00:00.000Z',
+        iteration: 1,
+        reason: 'stagnation',
+        fingerprint: 'fp',
+        verify: { command: 'pnpm test', exitCode: 1, reason: 'Verifier failed' },
+        suggestion: 'tune verify',
+      }),
+    ).toBe('Failure domain: stagnation')
+    expect(
+      formatFailureDomainLine({
+        at: '2026-07-22T00:00:00.000Z',
+        iteration: 1,
+        reason: 'review_gate_hitl',
+        fingerprint: 'fp',
+        verify: { command: 'true', exitCode: 0, reason: 'ok' },
+        suggestion: 'HITL',
+        status: 'waiting',
+      }),
+    ).toBe('Failure domain: review_gate_hitl (status: waiting)')
   })
 
   it('tags transport agent_error with a clearer suggestion', () => {

@@ -158,6 +158,81 @@ describe('formatLoopCompletionReport', () => {
     expect(report).toContain('❌ Loop failed')
     expect(report).toContain('FAIL src/foo.test.ts')
   })
+
+  it('prints resume command and HITL uuid on failure', () => {
+    const report = formatLoopCompletionReport({
+      repoRoot: '/repo',
+      bundleLabel: '.cursor/loops/example-fix',
+      loopDir: '/repo/.cursor/loops/example-fix',
+      result: loopResult({
+        complete: false,
+        status: 'waiting',
+        completionReason: 'Review gate: BLOCKERS after 1 cycle — escalated to human review.',
+        hitlCheckTaskUuid: 'a74a94d1-2069-4e05-861e-de80143b0526',
+        lastVerify: {
+          complete: false,
+          command: 'pnpm test',
+          exitCode: 1,
+          stdout: 'FAIL src/foo.test.ts',
+          stderr: '',
+          reason: 'Verifier failed (exit 1).',
+        },
+      }),
+    })
+
+    expect(report).toContain('→ resume: agent-loop run .cursor/loops/example-fix')
+    expect(report).toContain('HITL: uuid:a74a94d1-2069-4e05-861e-de80143b0526')
+  })
+
+  it('does not print a resume line on complete reports', () => {
+    const report = formatLoopCompletionReport({
+      repoRoot: '/repo',
+      bundleLabel: 'loop-a',
+      loopDir: '/repo/loop-a',
+      result: loopResult(),
+    })
+
+    expect(report).not.toContain('→ resume:')
+    expect(report).toContain('Suggested next steps')
+  })
+
+  it('includes a one-line failure-domain summary when present', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-report-domain-'))
+    fs.writeFileSync(
+      path.join(tmpDir, 'failure-domains.ndjson'),
+      `${JSON.stringify({
+        at: '2026-07-22T00:00:00.000Z',
+        iteration: 3,
+        reason: 'stagnation',
+        fingerprint: 'fp',
+        verify: { command: 'pnpm test', exitCode: 1, reason: 'Verifier failed' },
+        suggestion: 'tune verify',
+      })}\n`,
+      'utf8',
+    )
+
+    const report = formatLoopCompletionReport({
+      repoRoot: '/repo',
+      bundleLabel: 'loop-a',
+      loopDir: tmpDir,
+      result: loopResult({
+        complete: false,
+        completionReason: 'Stagnation detected',
+        lastVerify: {
+          complete: false,
+          command: 'pnpm test',
+          exitCode: 1,
+          stdout: 'FAIL',
+          stderr: '',
+          reason: 'Verifier failed (exit 1).',
+        },
+      }),
+    })
+
+    expect(report).toContain('Failure domain: stagnation')
+
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  })
 })
 
 describe('formatBatchCompletionReport', () => {
