@@ -7,6 +7,7 @@ const LOOP_GITIGNORE_LINES: readonly string[] = [
   LOOP_GITIGNORE_MARKER,
   '.cursor/sdk-runs/',
   '.cursor/loops/**/log.ndjson',
+  '.cursor/loops/**/watch-status.json',
   '.cursor/loops/**/failure-domains.ndjson',
   '.cursor/loops/**/failure-context.md',
   '.cursor/loops/**/review.md',

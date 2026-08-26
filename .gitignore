@@ -9,6 +9,7 @@ coverage/
 
 # Agent-loop dogfood runtime artifacts
 .cursor/loops/**/log.ndjson
+.cursor/loops/**/watch-status.json
 .cursor/loops/**/failure-domains.ndjson
 .cursor/loops/**/failure-context.md
 .cursor/loops/**/review.md

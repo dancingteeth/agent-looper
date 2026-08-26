@@ -23,9 +23,16 @@ import {
 } from '../integrations/telegramNotify.js'
 import { formatLoopCompletionReport } from '../loop/loopReport.js'
 import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
+import { WatchHeartbeat, clearWatchStatus, watchStatusPath, writeWatchStatus } from '../loop/loopWatch.js'
 import { parseRunArgs, type RunCliOptions } from './runArgs.js'
+import { runWatchCommand } from './watch.js'
 
-const parsedArgs = parseRunArgs(process.argv.slice(2))
+const rawArgv = process.argv.slice(2)
+if (rawArgv[0] === 'watch') {
+  process.exit(await runWatchCommand(rawArgv.slice(1)))
+}
+
+const parsedArgs = parseRunArgs(rawArgv)
 if (parsedArgs.kind === 'help') {
   console.log(parsedArgs.text)
   process.exit(0)
@@ -132,6 +139,7 @@ try {
     ...bundle,
     config: mergeLoopConfig(bundle.config, {
       maxIterations: cli.maxIterations,
+      maxCostUsd: cli.maxCostUsd,
       verify: cli.verify,
       finalVerify: cli.finalVerify,
       postQualityReview:
@@ -247,71 +255,105 @@ try {
     }
   }
 
-  const result = await runAgentLoop({ ctx, bundle, verbose: cli.verbose })
-
-  console.error(`[agent-loop] finished complete=${result.complete} iterations=${result.iterations}`)
-  console.error(`[agent-loop] reason: ${result.completionReason}`)
-  if (result.reviewAdvisoryBlockers) {
-    console.error('[agent-loop] advisory review had BLOCKERS (reviewGate=false)')
-  }
-  if (result.innerAgentIncomplete) {
-    console.error('[agent-loop] inner agent did not complete cleanly (see log innerAgent)')
-  }
-  if (result.hitlCheckTaskUuid) {
-    console.error(`[agent-loop] HITL manual check: task uuid:${result.hitlCheckTaskUuid}`)
-  }
-  console.error(`[agent-loop] ${formatUsageSummaryLine(result.usage)}`)
-
-  const telegramReport = formatLoopCompletionReport({
-    repoRoot: ctx.repoRoot,
-    bundleLabel,
-    loopDir,
-    result,
-  })
-  const telegramReportSent = await sendLoopTelegramReport({
-    profile: ctx.profile,
-    notifyTelegram: bundle.config.notifyTelegram,
-    complete: result.complete,
-    report: telegramReport,
-  })
-
-  await sendLoopTelegramReviewAttachment({
-    profile: ctx.profile,
-    notifyTelegram: bundle.config.notifyTelegram,
-    telegramAttachReview: bundle.config.telegramAttachReview,
-    complete: result.complete,
-    loopDir,
-    bundleLabel,
-  })
-
-  const hitlId =
-    (await maybeCreateIncompleteLoopHitl({
+  const heartbeat = new WatchHeartbeat({ emit: (line) => console.error(line) })
+  try {
+    const result = await runAgentLoop({
       ctx,
+      bundle,
+      verbose: cli.verbose,
+      onPhase: (event) => {
+        heartbeat.update({
+          phase: event.phase,
+          iteration: event.iteration,
+          maxIterations: event.maxIterations,
+          costUsd: event.costUsd,
+        })
+        try {
+          writeWatchStatus(watchStatusPath(loopDir), {
+            phase: event.phase,
+            iteration: event.iteration,
+            maxIterations: event.maxIterations,
+            costUsd: event.costUsd,
+            phaseStartedAt: new Date().toISOString(),
+            pid: process.pid,
+          })
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err)
+          console.error(`[agent-loop] watch-status write failed: ${detail}`)
+        }
+      },
+    })
+
+    console.error(`[agent-loop] finished complete=${result.complete} iterations=${result.iterations}`)
+    console.error(`[agent-loop] reason: ${result.completionReason}`)
+    if (result.reviewAdvisoryBlockers) {
+      console.error('[agent-loop] advisory review had BLOCKERS (reviewGate=false)')
+    }
+    if (result.innerAgentIncomplete) {
+      console.error('[agent-loop] inner agent did not complete cleanly (see log innerAgent)')
+    }
+    if (!result.complete) {
+      console.error(`[agent-loop] → resume: agent-loop run ${bundleLabel}`)
+    }
+    if (result.hitlCheckTaskUuid) {
+      console.error(`[agent-loop] HITL: uuid:${result.hitlCheckTaskUuid}`)
+    }
+    console.error(`[agent-loop] ${formatUsageSummaryLine(result.usage)}`)
+
+    const telegramReport = formatLoopCompletionReport({
+      repoRoot: ctx.repoRoot,
+      bundleLabel,
+      loopDir,
+      result,
+    })
+    const telegramReportSent = await sendLoopTelegramReport({
+      profile: ctx.profile,
+      notifyTelegram: bundle.config.notifyTelegram,
+      complete: result.complete,
+      report: telegramReport,
+    })
+
+    await sendLoopTelegramReviewAttachment({
+      profile: ctx.profile,
+      notifyTelegram: bundle.config.notifyTelegram,
+      telegramAttachReview: bundle.config.telegramAttachReview,
+      complete: result.complete,
       loopDir,
       bundleLabel,
-      result,
-      telegramReportSent,
-      config: {
-        notifyTelegram: bundle.config.notifyTelegram,
-        hitlOnFailure: bundle.config.hitlOnFailure,
-        taskwarriorProject: bundle.config.taskwarriorProject,
-        hitlProvider: bundle.config.hitlProvider,
-        hitlFileDir: bundle.config.hitlFileDir,
-        hitlCommand: bundle.config.hitlCommand,
-        hitlLinearTeam: bundle.config.hitlLinearTeam,
-      },
-    })) ?? result.hitlCheckTaskUuid
+    })
 
-  const exitCode: 0 | 2 = result.complete ? 0 : 2
-  await finishLoopExit({
-    exitCode,
-    complete: result.complete,
-    reason: result.completionReason,
-    iterations: result.iterations,
-    hitl: hitlId,
-    includeRunReport: bundle.config.exportRunReport,
-    report: telegramReport,
-  })
+    const hitlId =
+      (await maybeCreateIncompleteLoopHitl({
+        ctx,
+        loopDir,
+        bundleLabel,
+        result,
+        telegramReportSent,
+        config: {
+          notifyTelegram: bundle.config.notifyTelegram,
+          hitlOnFailure: bundle.config.hitlOnFailure,
+          taskwarriorProject: bundle.config.taskwarriorProject,
+          hitlProvider: bundle.config.hitlProvider,
+          hitlFileDir: bundle.config.hitlFileDir,
+          hitlCommand: bundle.config.hitlCommand,
+          hitlLinearTeam: bundle.config.hitlLinearTeam,
+        },
+      })) ?? result.hitlCheckTaskUuid
+
+    const exitCode: 0 | 2 = result.complete ? 0 : 2
+    await finishLoopExit({
+      exitCode,
+      complete: result.complete,
+      reason: result.completionReason,
+      iterations: result.iterations,
+      hitl: hitlId,
+      includeRunReport: bundle.config.exportRunReport,
+      report: telegramReport,
+    })
+  } finally {
+    heartbeat.stop()
+    clearWatchStatus(watchStatusPath(loopDir))
+  }
 } catch (err) {
   console.error('[agent-loop] failed:', err)
   await reportFatalVisibility(err)

@@ -90,7 +90,7 @@ orchestrator-workers inside one `GOAL.md`.
 
 | Binary | Source | Purpose |
 |--------|--------|---------|
-| `agent-loop` | `src/cli/run.ts` | Run a single loop bundle |
+| `agent-loop` | `src/cli/run.ts` | Run a single loop bundle (dispatch: `run` + `watch`) |
 | `agent-loop-batch` | `src/cli/run-batch.ts` | Run `loop-batch.json` (sequential or meta) |
 | `agent-check` | `src/cli/check.ts` | SDK + API key smoke test |
 | `agent-loop-init` | `src/cli/init.ts` | Scaffold repo profile + example loop + templates |
