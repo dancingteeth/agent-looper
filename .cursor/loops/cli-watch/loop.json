@@ -1,0 +1,19 @@
+{
+  "runtime": "opencode",
+  "model": "opencode-go/deepseek-v4-pro",
+  "escalateModel": "opencode-go/qwen3.8-max",
+  "reviewRuntime": "cursor",
+  "reviewModel": "grok-4.6",
+  "maxIterations": 10,
+  "verify": "bash .cursor/loops/cli-watch/verify.sh",
+  "postQualityReview": true,
+  "reviewGate": true,
+  "maxReviewCycles": 2,
+  "syncOnSuccess": false,
+  "stagnationThreshold": 3,
+  "mode": "forward",
+  "notifyTelegram": true,
+  "delayMs": 0,
+  "trustConfig": true,
+  "verifyLogMode": "sidecar"
+}

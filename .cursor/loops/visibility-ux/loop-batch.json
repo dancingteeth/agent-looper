@@ -1,0 +1,23 @@
+{
+  "loops": [
+    {
+      "path": "cli-watch",
+      "rubric": "Always-on phase/heartbeat stderr + TTY Watch chrome from setupTui; agent-loop watch --snapshot; no pause/detach, no ls."
+    },
+    {
+      "path": "cli-resume-report",
+      "rubric": "Incomplete reports print resume command; sidecar verify linked in run-report; Telegram adds failure-domain one-liner. No replay binary."
+    },
+    {
+      "path": "cli-max-cost",
+      "rubric": "maxCostUsd + --max-cost; stop as status waiting with HITL budget; label estimated vs provider. Preserve watch onPhase if present."
+    },
+    {
+      "path": "cli-setup-detect",
+      "rubric": "detectLoopRuntimes like agent-check not doctor; --dry-run dump-before-write; wizard fixtures stay green. No repair mode."
+    }
+  ],
+  "taskwarriorProject": "agent-loop",
+  "syncOnSuccess": false,
+  "notifyTelegram": true
+}
