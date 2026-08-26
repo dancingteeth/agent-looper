@@ -19,6 +19,7 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 - **Prompt diet on model bumps:** when upgrading worker/judge models, *delete* deterministic instructions from `AGENTS.md`, skills, and loop prompts before adding new ones. Stronger models need fewer hard rules (Claude Code cut ~80% of system prompt for this reason). Same for `REVIEWS.md` Project-specific laws: retire ones the worker stops failing.
 - `AGENTS.md` = worker runtime; `REVIEWS.md` = judge standard — do not conflate (see `templates/REVIEWS.md`).
 - Before freezing a new loop, prefer an [unknowns preflight](./docs/unknowns-preflight.md) when verify/deps are unfamiliar. Design in chat → freeze; do not edit `GOAL.md` mid-run. Optional [permissions matrix](./templates/LOOP.permissions.example.md) (tools/MCP default-deny).
+- **Cursor Agent Shell:** never start `agent-loop` / `agent-loop-batch` with `block_until_ms: 0`. Attach ≥45m (`2700000`) or run in a **human terminal**. Background agent shells get reaped at ~5 min (`status: aborted`, pnpm 255) — harness timeouts are 45m, they did not fire. Walk-away: your terminal; Telegram/HITL wake you. `AGENT_LOOP_DONE` is a sentinel, not a license to background.
 - Competitive steals / skips: `docs/competitive-steal-backlog.md`.
 
 ## Layout

@@ -205,6 +205,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`. See [`docs/runtime-map.md`](./docs/runtime-map.md). Same-task cost method: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). |
 | `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi/Codex/DSH: after threshold; Cline: after reasoning ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
+| `maxCostUsd` | — | Dollar cap: refuse to start a billed call whose predicted cost exceeds remaining budget; stop `waiting` + HITL `budget` if a finished call still crosses it (`--max-cost`). Omit = no cap. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
 | `pauseAfterIteration` | `false` | Wait for Enter after each iteration (TTY only) |
@@ -333,7 +334,7 @@ Implements the [Ralph loop](https://ghuntley.com/loop/) pattern:
 - **Shell backpressure** (`verify` / `finalVerify`) as the deterministic done signal
 - **Verification-as-skill** — `verify.sh` + `VERIFY.skill.md`; optional `verifyMode: skill`
 - **Watch the loop** — `log.ndjson`, `run-report.md`, `transcript.ndjson`, stagnation, optional `--pause-after-iteration`
-- **Cursor background wake** — on exit, stdout line `AGENT_LOOP_DONE {…}` for **local** Shell `notify_on_output` (Cloud Agents: no watcher yet — see below)
+- **Completion sentinel** — stdout `AGENT_LOOP_DONE {…}` when the CLI exits (for attached local Shell `notify_on_output` or log grep; do **not** background the job — see below)
 - **Failure domains** — `failure-domains.ndjson` on stagnation, max iterations, or review-gate exhaustion
 - **Meta-loop** — probe → `failure-context.md` → fix → re-probe
 
@@ -378,6 +379,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | Command | Description |
 | --- | --- |
 | `agent-loop run <dir>` | Single loop |
+| `agent-loop watch <dir>` | Live progress: Ink watch view (TTY) or structured phase lines; `--snapshot` prints one frame and exits |
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
 | `agent-check cursor\|cline\|opencode\|pi\|codex\|dsh` | SDK + API key smoke (`dsh`: PATH CLI + Node ≥ 22.15) |
 | `agent-loop-init` | Scaffold templates |
@@ -466,13 +468,20 @@ Optional second message: attach `review.md` as a document. Opt out with `"telegr
 
 **Opt out:** `"notifyTelegram": false` or `--no-telegram`. Notify send failures are non-blocking for exit code, but if Telegram was configured and a **failure** report did not land, the harness opens a HITL checkpoint (`notify_failed`) via `hitlProvider`. Use `--require-notify` / `requireNotify: true` to abort before the loop when `getMe` preflight fails.
 
-## Background runs in Cursor (chat wake-up)
+## Running from Cursor chat
 
-When a **local** Cursor Agent starts Agent Looper (`agent-loop`) in a **background shell**, the chat can wake on completion without Telegram:
+Cursor’s **agent Shell** is not a terminal. A job started with `block_until_ms: 0` is a background child the IDE reaps at **~5 minutes** (`status: aborted`, `exit_code: unknown`, often pnpm **255`) while the worker is still mid-turn. That is not the harness: TTFB stall is 3 min with no events; overall timeout is **45 min**.
 
-1. Background the run with a long `block_until_ms` (or `0`) and **`notify_on_output`** on pattern `^AGENT_LOOP_DONE `.
-2. On wake, read the JSON on that stdout line (`complete`, `exitCode`, `reason`, `bundle`, optional `runReport`) and/or open `run-report.md`.
-3. Opt out: `--no-completion-signal`, `"completionSignal": false` in `loop.json` / `loop-batch.json`, or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.
+**Do this instead:**
+
+| Intent | How |
+| --- | --- |
+| Stay in this chat | Shell **attached**: `block_until_ms` ≥ 45m (`2700000`). Optional `notify_on_output` on `^AGENT_LOOP_DONE `. |
+| Walk away | A **human terminal** (`pnpm agent:loop …`). Telegram / HITL / webhook wake you. |
+
+Never `block_until_ms: 0` for `agent-loop` or `agent-loop-batch`. Re-attach after an abort; do not treat it as a harness failure.
+
+`AGENT_LOOP_DONE` is a stdout sentinel for an **attached** watcher or log grep. Opt out: `--no-completion-signal`, `"completionSignal": false`, or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.
 
 Example payload:
 
@@ -480,7 +489,7 @@ Example payload:
 AGENT_LOOP_DONE {"v":1,"kind":"loop","bundle":".cursor/loops/my-task","complete":true,"exitCode":0,"reason":"Verifier passed (exit 0).","iterations":2,"runReport":".cursor/loops/my-task/run-report.md"}
 ```
 
-Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout (local background shells) is not lost before `process.exit`. Side channels (`notifyWebhook` / `notifyCommand` / PR comment) run **after** the sentinel and are time-capped so a hung hook cannot delay local wake.
+Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout is not lost before `process.exit`. Side channels (`notifyWebhook` / `notifyCommand` / PR comment) run **after** the sentinel and are time-capped so a hung hook cannot delay wake.
 
 ### Cloud Agents
 

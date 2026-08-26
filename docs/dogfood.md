@@ -24,6 +24,8 @@ pnpm agent:loop run .cursor/loops/<name> --runtime cursor --review-gate
 
 Secrets via Doppler (`doppler.yaml` in the repo root); scripts wrap `doppler run`.
 
+From **Cursor chat**, attach the agent Shell (`block_until_ms` ≥ 45m). Do not background (`block_until_ms: 0`) — the IDE reaps those jobs at ~5 min. Walk-away runs belong in **your** terminal; Telegram / HITL wake you.
+
 Smoke peers (after `pnpm build`):
 
 ```bash

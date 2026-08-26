@@ -63,13 +63,13 @@ npm view @dancingteeth/agent-looper version
 
 ### Local Agent
 
-To start a loop in the **background** and wake this chat when it finishes:
+Do **not** background `agent-loop` (`block_until_ms: 0`). Cursor reaps those shells at ~5 min (`aborted` / pnpm 255) while the worker is still going.
 
-1. Run `agent-loop run .cursor/loops/<name>` in a background shell.
-2. Use Shell `notify_on_output` with pattern `^AGENT_LOOP_DONE `.
-3. On notification, parse the JSON on that stdout line and read `runReport` / `run-report.md`.
+1. **This chat:** Shell attached, `block_until_ms` ≥ `2700000` (45m). Optional `notify_on_output` on `^AGENT_LOOP_DONE `.
+2. **Walk away:** a human terminal (`pnpm agent:loop …`); Telegram / HITL wake you.
+3. On `AGENT_LOOP_DONE`, parse the JSON and read `runReport` / `run-report.md`.
 
-Disable the line with `--no-completion-signal` or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.
+Disable the sentinel with `--no-completion-signal` or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.
 
 ### Cloud Agents
 
