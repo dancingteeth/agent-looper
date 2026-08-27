@@ -4,6 +4,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { loadLoopBundle } from './loopConfig.js'
+import { detectionOf } from '../cli/detectRuntimes.js'
 
 const VALID_GOAL = `# Task
 
@@ -84,6 +85,16 @@ describe('loadLoopBundle', () => {
     })
     const bundle = loadLoopBundle(loopDir, { defaults: { runtime: 'dsh' } })
     expect(bundle.config.runtime).toBe('cursor')
+  })
+
+  it('resolves a sparse costPreset with injected detection', () => {
+    const loopDir = writeLoopDir({ loopJson: { verify: 'true', delayMs: 0, costPreset: 'minmax' } })
+    const bundle = loadLoopBundle(loopDir, {
+      detection: detectionOf({ opencode: 'detected', cursor: 'detected' }),
+    })
+    expect(bundle.config.runtime).toBe('opencode')
+    expect(bundle.config.model).toBe('opencode-go/hy3')
+    expect(bundle.config.reviewModel).toBe('grok-4.6')
   })
 
   it('discovers profile defaults from a git repo ancestor', () => {

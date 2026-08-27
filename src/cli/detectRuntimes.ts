@@ -15,6 +15,38 @@ export type DetectionStatus = 'detected' | 'missing'
 
 export type DetectionResult = Record<DetectableRuntime, DetectionStatus>
 
+const DETECTABLE_RUNTIMES = [
+  'cursor',
+  'cline',
+  'opencode',
+  'pi',
+  'codex',
+  'dsh',
+] as const satisfies readonly DetectableRuntime[]
+
+/** Every runtime `missing`. */
+export function emptyDetection(): DetectionResult {
+  const result = {} as DetectionResult
+  for (const runtime of DETECTABLE_RUNTIMES) {
+    result[runtime] = 'missing'
+  }
+  return result
+}
+
+/** Overlay `detected` / `missing` on {@link emptyDetection}. */
+export function detectionOf(
+  overlay: Partial<Record<DetectableRuntime, DetectionStatus>>,
+): DetectionResult {
+  return { ...emptyDetection(), ...overlay }
+}
+
+export function isRuntimeDetected(
+  detection: DetectionResult,
+  runtime: DetectableRuntime,
+): boolean {
+  return detection[runtime] === 'detected'
+}
+
 /** Injectable seams so unit tests can mock `import` and `which` without a shell. */
 export type DetectDeps = {
   importModule?: (specifier: string) => Promise<unknown>

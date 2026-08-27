@@ -49,7 +49,8 @@ describe('OPENCODE_GO_LOOP_MODELS', () => {
     expect(OPENCODE_GO_LOOP_MODELS.length).toBeGreaterThan(5)
   })
 
-  it('includes current Go lineup slugs (Kimi K3, GLM-5.3, Qwen3.8 Max)', () => {
+  it('includes current Go lineup slugs (Hy3, Kimi K3, GLM-5.3, Qwen3.8 Max)', () => {
+    expect(OPENCODE_GO_LOOP_MODELS).toContain('opencode-go/hy3')
     expect(OPENCODE_GO_LOOP_MODELS).toContain('opencode-go/kimi-k3')
     expect(OPENCODE_GO_LOOP_MODELS).toContain('opencode-go/glm-5.3')
     expect(OPENCODE_GO_LOOP_MODELS).toContain('opencode-go/qwen3.8-max')

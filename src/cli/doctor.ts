@@ -6,6 +6,7 @@ import {
   formatRepoProfileCheck,
   validateRepoProfile,
 } from '../context/repoProfileDoctor.js'
+import { detectLoopRuntimes } from './detectRuntimes.js'
 import {
   formatPackageDistHelp,
   inspectPackageInstall,
@@ -64,12 +65,15 @@ for (let i = 0; i < argv.length; i++) {
 }
 
 const packageRoot = resolvePackageRoot(import.meta.url)
+const detection = await detectLoopRuntimes()
 const installReport = {
   ...inspectPackageInstall({ packageRoot, consumerRoot }),
   consumerRootHint: consumerRoot,
 }
 
-const profileCheck = validateRepoProfile(resolveRepoContext({ repoRoot: consumerRoot }))
+const profileCheck = validateRepoProfile(resolveRepoContext({ repoRoot: consumerRoot }), {
+  detection,
+})
 const pricingDrift = checkModelPricingDrift()
 const report = {
   ...installReport,

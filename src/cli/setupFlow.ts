@@ -10,7 +10,7 @@ import {
   runtimeHonorsReasoningEffort,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
-import type { DetectableRuntime, DetectionResult } from './detectRuntimes.js'
+import { detectionOf, type DetectableRuntime, type DetectionResult } from './detectRuntimes.js'
 import {
   HITL_PROVIDER_CHOICES,
   JUDGE_RUNTIME_CHOICES,
@@ -19,6 +19,7 @@ import {
   REASONING_EFFORT_CHOICES,
   SECONDARY_REVIEW_RUNTIME_CHOICES,
   WORKER_RUNTIME_CHOICES,
+  costPresetChoices,
   escalateAfterChoices,
   escalateModelChoices,
   judgeModelChoices,
@@ -29,6 +30,15 @@ import {
   yesNoChoices,
   type MenuChoice,
 } from './setupMenus.js'
+import {
+  COST_PRESET_CUSTOM,
+  assertUserCostPresetName,
+  isCostPreset,
+  isReservedCostPresetName,
+  resolveCostPreset,
+  resolveUserCostPreset,
+  type UserCostPresetMap,
+} from '../loop/costPreset.js'
 
 export const SETUP_INTRO_HEADING = 'Setup wizard'
 
@@ -38,8 +48,15 @@ export const SETUP_INTRO =
 export const SETUP_GATE_CONTINUE = 'continue'
 export const SETUP_GATE_QUIT = 'quit'
 
-/** Select+text prompts on the all-defaults Cursor path, including the intro gate. */
-export const TYPICAL_SETUP_STEPS = 38
+export const COST_PRESET_HEADING = 'Cost / quality preset'
+export const COST_PRESET_BLURB =
+  'Choose a stack of models for running loops, or create your own preset.'
+export const SAVE_PRESET_NAME_PROMPT = 'Preset name'
+export const SAVE_PRESET_OVERWRITE_HEADING = 'Replace existing preset'
+export const SAVE_PRESET_AFTER_CUSTOM_HEADING = 'Save this stack as a named costPreset'
+
+/** Select+text prompts on the all-defaults minmax Cursor-only path, including the intro gate. */
+export const TYPICAL_SETUP_STEPS = 35
 
 export class SetupDeclinedError extends Error {
   readonly name = 'SetupDeclinedError'
@@ -86,6 +103,7 @@ export async function collectSetupAnswers(
   prompts: SetupPrompts,
   outDir: string,
   detection?: DetectionResult,
+  costPresets?: UserCostPresetMap,
 ): Promise<Record<string, unknown>> {
   const answers: Record<string, unknown> = {}
   const profile: Record<string, unknown> = {}
@@ -116,6 +134,49 @@ export async function collectSetupAnswers(
     return picked
   }
 
+  const collectCustomWorkerAndJudge = async (): Promise<{
+    runtime: LoopRuntime
+    model?: string
+    escalateModel?: string
+    reviewRuntime: LoopRuntime
+    reviewModel?: string
+  }> => {
+    const runtime = (await askSelect(
+      'Worker runtime',
+      'Who implements GOAL.md each iteration. The judge is a later step.',
+      annotateDetection(WORKER_RUNTIME_CHOICES, detection),
+      LOOP_RUNTIME_CURSOR,
+    )) as LoopRuntime
+    const model = await askOptionalSlug(
+      'Worker model',
+      `Models for ${runtime}. Omit unless you want a non-default.`,
+      workerModelChoices(runtime),
+      'Custom worker model slug',
+    )
+    let escalateModel: string | undefined
+    if (runtime !== LOOP_RUNTIME_CURSOR) {
+      escalateModel = await askOptionalSlug(
+        'Escalate model',
+        `Stronger ${runtime} model after repeated identical verify failures. Omit for the default.`,
+        escalateModelChoices(runtime),
+        'Custom escalate model slug',
+      )
+    }
+    const reviewRuntime = (await askSelect(
+      'Judge runtime (reviewRuntime)',
+      'Who writes residual review.md after verify. Independent of the worker.',
+      annotateDetection(JUDGE_RUNTIME_CHOICES, detection),
+      LOOP_RUNTIME_CURSOR,
+    )) as LoopRuntime
+    const reviewModel = await askOptionalSlug(
+      'Judge model (reviewModel)',
+      `Models for ${reviewRuntime}. Omit for its default.`,
+      judgeModelChoices(reviewRuntime, runtime),
+      'Custom judge model slug',
+    )
+    return { runtime, model, escalateModel, reviewRuntime, reviewModel }
+  }
+
   const gate = await askSelect(
     SETUP_INTRO_HEADING,
     SETUP_INTRO,
@@ -135,32 +196,86 @@ export async function collectSetupAnswers(
   )
   if (gate === SETUP_GATE_QUIT) throw new SetupDeclinedError()
 
-  const runtime = await askSelect(
-    'Worker runtime',
-    'Who implements GOAL.md each iteration. The judge is a later step.',
-    annotateDetection(WORKER_RUNTIME_CHOICES, detection),
-    LOOP_RUNTIME_CURSOR,
+  const detectionForPreset = detection ?? detectionOf({ cursor: 'detected' })
+  const costPresetPick = await askSelect(
+    COST_PRESET_HEADING,
+    COST_PRESET_BLURB,
+    costPresetChoices(detectionForPreset, costPresets),
+    'minmax',
   )
-  answers.runtime = runtime
-  const workerRuntime = runtime as LoopRuntime
 
-  const model = await askOptionalSlug(
-    'Worker model',
-    `Models for ${workerRuntime}. Omit unless you want a non-default.`,
-    workerModelChoices(workerRuntime),
-    'Custom worker model slug',
-  )
-  if (model !== undefined) answers.model = model
-
-  if (runtime !== LOOP_RUNTIME_CURSOR) {
-    const escalateModel = await askOptionalSlug(
-      'Escalate model',
-      `Stronger ${workerRuntime} model after repeated identical verify failures. Omit for the default.`,
-      escalateModelChoices(workerRuntime),
-      'Custom escalate model slug',
-    )
-    if (escalateModel !== undefined) answers.escalateModel = escalateModel
+  const assignStack = (
+    stack: {
+      runtime: LoopRuntime
+      model?: string
+      escalateModel?: string
+      reviewRuntime: LoopRuntime
+      reviewModel?: string
+    },
+    presetName?: string,
+  ): LoopRuntime => {
+    if (presetName !== undefined) answers.costPreset = presetName
+    answers.runtime = stack.runtime
+    answers.reviewRuntime = stack.reviewRuntime
+    if (stack.model !== undefined) answers.model = stack.model
+    if (stack.escalateModel !== undefined) answers.escalateModel = stack.escalateModel
+    if (stack.reviewModel !== undefined) answers.reviewModel = stack.reviewModel
+    return stack.runtime
   }
+
+  const promptSavedPresetName = async (): Promise<string> => {
+    for (;;) {
+      const name = (await askText(SAVE_PRESET_NAME_PROMPT, '')).trim()
+      try {
+        assertUserCostPresetName(name)
+      } catch (err) {
+        console.error(`[agent-loop-setup] ${err instanceof Error ? err.message : String(err)}`)
+        continue
+      }
+      if (costPresets && Object.prototype.hasOwnProperty.call(costPresets, name)) {
+        const replace = await askBool(
+          SAVE_PRESET_OVERWRITE_HEADING,
+          `"${name}" is already in profile.costPresets.`,
+          false,
+          'Replace the existing stack.',
+          'Pick a different name.',
+        )
+        if (!replace) continue
+      }
+      return name
+    }
+  }
+
+  let workerRuntime: LoopRuntime
+  if (costPresetPick === COST_PRESET_CUSTOM) {
+    const stack = await collectCustomWorkerAndJudge()
+    workerRuntime = assignStack(stack)
+    const save = await askBool(
+      SAVE_PRESET_AFTER_CUSTOM_HEADING,
+      'Store this worker/judge stack in profile.costPresets for later loops.',
+      false,
+      'Save under a kebab-case name.',
+      'One-off — write the keys, do not add a catalog name.',
+    )
+    if (save) {
+      const name = await promptSavedPresetName()
+      answers.saveCostPreset = name
+      answers.costPreset = name
+    }
+  } else if (isCostPreset(costPresetPick)) {
+    const stack = resolveCostPreset(costPresetPick, detectionForPreset)
+    workerRuntime = assignStack(stack, costPresetPick)
+  } else if (
+    costPresets &&
+    !isReservedCostPresetName(costPresetPick) &&
+    Object.prototype.hasOwnProperty.call(costPresets, costPresetPick)
+  ) {
+    const stack = resolveUserCostPreset(costPresetPick, costPresets)
+    workerRuntime = assignStack(stack, costPresetPick)
+  } else {
+    throw new Error(`unknown costPreset: ${costPresetPick}`)
+  }
+
   answers.escalateAfterStagnation = Number(
     await askSelect(
       'Escalate after N identical failures',
@@ -187,20 +302,6 @@ export async function collectSetupAnswers(
     if (escalateEffort !== 'none') answers.escalateReasoningEffort = escalateEffort
   }
 
-  const reviewRuntime = await askSelect(
-    'Judge runtime (reviewRuntime)',
-    'Who writes residual review.md after verify. Independent of the worker.',
-    annotateDetection(JUDGE_RUNTIME_CHOICES, detection),
-    LOOP_RUNTIME_CURSOR,
-  )
-  answers.reviewRuntime = reviewRuntime
-  const reviewModel = await askOptionalSlug(
-    'Judge model (reviewModel)',
-    `Models for ${reviewRuntime}. Omit for its default.`,
-    judgeModelChoices(reviewRuntime as LoopRuntime, workerRuntime),
-    'Custom judge model slug',
-  )
-  if (reviewModel !== undefined) answers.reviewModel = reviewModel
   answers.reviewGate = await askBool(
     'Enable review gate (reviewGate)',
     'When on, a blocking review can trigger another implement cycle. Shell verify is still the exit.',

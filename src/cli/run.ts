@@ -7,6 +7,7 @@ import {
 } from '../context/repoProfileDoctor.js'
 import { runAgentLoop } from '../loop/agentLoop.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
+import { detectLoopRuntimes } from './detectRuntimes.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { maybeCreateIncompleteLoopHitl } from '../integrations/loopFailureVisibility.js'
 import {
@@ -134,7 +135,8 @@ async function reportFatalVisibility(err: unknown): Promise<void> {
 }
 
 try {
-  let bundle = loadLoopBundle(loopDir)
+  const detection = await detectLoopRuntimes()
+  let bundle = loadLoopBundle(loopDir, { detection })
   bundle = {
     ...bundle,
     config: mergeLoopConfig(bundle.config, {
@@ -203,7 +205,7 @@ try {
   }
   console.error(`[agent-loop] log=${path.relative(ctx.repoRoot, bundle.logPath)}`)
 
-  const profileCheck = validateRepoProfile(ctx)
+  const profileCheck = validateRepoProfile(ctx, { detection })
   if (!profileCheck.ok) {
     console.error('[agent-loop] repo profile errors:')
     console.error(formatRepoProfileCheck({ ...profileCheck, warnings: [] }))

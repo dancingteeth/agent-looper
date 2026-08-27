@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
@@ -45,6 +45,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "agent:init": "node dist/cli/init.js",
+    "agent:setup": "node dist/cli/setup.js",
     "agent:loop": "doppler run --project agent-looper --config dev -- node dist/cli/run.js",
     "agent:check": "doppler run --project agent-looper --config dev -- node dist/cli/check.js cursor",
     "agent:check:cline": "doppler run --project agent-looper --config dev -- node dist/cli/check.js cline",

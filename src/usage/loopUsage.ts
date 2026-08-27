@@ -46,6 +46,7 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'openrouter/qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
   // OpenCode Go — rates from https://opencode.ai/docs/go/ (subscription quota; estimates for costUsd)
   'opencode-go/deepseek-v4-flash': { input: 0.14, output: 0.28 },
+  'opencode-go/hy3': { input: 0.14, output: 0.58 },
   'opencode-go/mimo-v2.5': { input: 0.14, output: 0.28 },
   'opencode-go/minimax-m3': { input: 0.3, output: 1.2 },
   'opencode-go/qwen3.7-plus': { input: 0.4, output: 1.6 },

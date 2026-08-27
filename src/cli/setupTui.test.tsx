@@ -101,6 +101,62 @@ describe('SelectPrompt', () => {
     expect(submitted).toEqual(['cursor'])
   })
 
+  it('keeps a stable frame and drops the previous description when scrolling', async () => {
+    const many = Array.from({ length: 16 }, (_, i) => ({
+      value: `m${i}`,
+      title: `opencode-go/model-${String(i).padStart(2, '0')}`,
+      description:
+        i === 0
+          ? 'Tencent Hy3 — slower than Flash.'
+          : i === 1
+            ? 'Qwen3.7 Plus — OpenCode Go catalog, second line leftover bait.'
+            : `Model ${i} description.`,
+    }))
+    const { lastFrame, stdin } = render(
+      <SelectPrompt
+        heading="Judge model (reviewModel)"
+        blurb="Models for opencode. Omit for its default."
+        choices={many}
+        defaultIndex={0}
+        onSubmit={() => undefined}
+        onAbort={() => undefined}
+        animate={false}
+      />,
+    )
+    const first = lastFrame() ?? ''
+    const height = first.split('\n').length
+    expect(first).toMatch(/Tencent Hy3/)
+    expect(first).not.toMatch(/Qwen3\.7 Plus/)
+    stdin.write('\u001B[B')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    const second = lastFrame() ?? ''
+    expect(second.split('\n').length).toBe(height)
+    expect(second).toMatch(/Qwen3\.7 Plus/)
+    expect(second).not.toMatch(/Tencent Hy3/)
+    expect(second).toMatch(/↓ \d+ more/)
+  })
+
+  it('does not pad a short list with empty rows', () => {
+    const { lastFrame } = render(
+      <SelectPrompt
+        heading="Worker runtime"
+        blurb="Pick a runtime."
+        choices={choices}
+        defaultIndex={0}
+        onSubmit={() => undefined}
+        onAbort={() => undefined}
+        animate={false}
+      />,
+    )
+    const lines = (lastFrame() ?? '').split('\n')
+    const dsh = lines.findIndex((line) => /\bdsh\b/.test(line) && !line.includes('PATH'))
+    const desc = lines.findIndex((line) => line.includes('Cursor SDK worker'))
+    expect(dsh).toBeGreaterThanOrEqual(0)
+    expect(desc).toBeGreaterThan(dsh)
+    expect(desc - dsh).toBeLessThan(3)
+    expect(lastFrame() ?? '').not.toMatch(/↑ \d+ more|↓ \d+ more/)
+  })
+
   it('moves down then submits dsh', async () => {
     const submitted: string[] = []
     const { stdin } = render(

@@ -5,17 +5,24 @@ import path from 'node:path'
 import { stdin as input, stdout as output } from 'node:process'
 import readline from 'node:readline/promises'
 import { fileURLToPath } from 'node:url'
-import { repoProfilePath, repoProfileSchema } from '../context/repoProfile.js'
+import { repoProfilePath, repoProfileSchema, loadRepoProfile } from '../context/repoProfile.js'
 import {
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CURSOR,
+  resolveLoopAgent,
+  resolveReviewAgent,
 } from '../loop/loopAgentConfig.js'
 import { pickLoopDefaults } from '../loop/loopDefaults.js'
 import { loopConfigSchema, parseLoopConfig } from '../loop/loopConfig.js'
+import {
+  assertUserCostPresetName,
+  type CostPresetStack,
+  type UserCostPresetMap,
+} from '../loop/costPreset.js'
+import { detectLoopRuntimes, type DetectionResult } from './detectRuntimes.js'
 import { defaultIndexForValue, formatMenu, parseMenuSelection, type MenuChoice } from './setupMenus.js'
 import { collectSetupAnswers, SetupDeclinedError, type SetupPrompts } from './setupFlow.js'
 import { createInkPrompts } from './setupTui.js'
-import { detectLoopRuntimes } from './detectRuntimes.js'
 
 const LOOP_CONFIG_KEYS = new Set(Object.keys(loopConfigSchema.shape))
 
@@ -37,10 +44,14 @@ loop.json files inherit those defaults; explicit loop.json keys win.
 Then prints agent-check and agent-loop run. Interactive mode is an Ink TUI
 (arrow keys + enter) on a TTY. Model lists match the runtime you just picked.
 Pass --plain for numbered menus (CI / no TTY / screen readers).
-Before the worker-runtime menu, the wizard detects which runtimes are actually
+Before the cost-preset menu, the wizard detects which runtimes are actually
 installed (SDK import + CLI on PATH, same checks as agent-check) and annotates
-each choice detected / missing. Missing runtimes stay selectable.
+runtime choices detected / missing. Missing runtimes stay selectable.
 
+Cost preset: minmax (efficiency — cheap capable worker + strongest included
+  judge; Grok whenever Cursor is installed) | balanced | cursor (Composer + Grok)
+  | saved names from profile.costPresets | custom (pick worker and judge;
+  optionally save as a named preset). Default is minmax.
 Worker runtimes: cursor | cline-pass | cline | opencode | pi | codex | dsh
 Judge (review): reviewRuntime (cursor | cline-pass | cline | opencode | pi | codex | dsh),
   reviewModel (omit for runtime defaults: cursor grok-4.6 / composer-2.5, opencode
@@ -60,7 +71,10 @@ Git / PR / completion: notifyPrComment (gh pr comment), profile defaultBranch,
 Options:
   --answers <answers.json>  Non-interactive answers: JSON object mirroring loop.json
                             fields (optional "profile" object patches telegram/branch;
-                            runtime/models always go to profile.defaults)
+                            runtime/models always go to profile.defaults).
+                            Or { "saveCostPreset": "<name>", runtime, model,
+                            reviewRuntime, reviewModel } with no verify to write
+                            profile.costPresets only. Include verify to also write loop.json.
   --out <loop-dir>          Directory to write loop.json (default: current directory)
   --repo-root <path>        Repo whose .cursor/agent-loop.repo.json gets defaults
                             (default: current directory)
@@ -72,6 +86,28 @@ Options:
 
 function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
+}
+
+const SETUP_CLI_BASENAMES = new Set(['agent-loop-setup', 'setup.js'])
+
+function realpathOrResolve(filePath: string): string {
+  try {
+    return fs.realpathSync(filePath)
+  } catch {
+    return path.resolve(filePath)
+  }
+}
+
+/**
+ * True when this module is the process entry (bin shim, symlink, or `node dist/cli/setup.js`).
+ * False when tests import `./setup.js` (argv[1] is vitest).
+ */
+export function isSetupCliEntry(argv1: string | undefined, moduleUrl: string): boolean {
+  if (argv1 === undefined || argv1 === '') return false
+  const modulePath = fileURLToPath(moduleUrl)
+  if (realpathOrResolve(argv1) === realpathOrResolve(modulePath)) return true
+  const base = path.basename(argv1).replace(/\.(cmd|ps1|exe)$/i, '')
+  return SETUP_CLI_BASENAMES.has(base)
 }
 
 export function parseArgs(argv: string[]): CliOptions {
@@ -113,7 +149,7 @@ export function parseArgs(argv: string[]): CliOptions {
 export function pickLoopConfigFields(answers: Record<string, unknown>): Record<string, unknown> {
   const config: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(answers)) {
-    if (key === 'profile') continue
+    if (key === 'profile' || key === 'saveCostPreset' || key === 'setCostPresetDefault') continue
     if (!LOOP_CONFIG_KEYS.has(key)) {
       console.error(`[agent-loop-setup] warn: ignoring unknown loop.json field "${key}"`)
       continue
@@ -173,6 +209,114 @@ function writeProfile(repoRoot: string, profile: Record<string, unknown>): void 
   console.error(`[agent-loop-setup] patched ${profilePath}`)
 }
 
+function existingCostPresetsRecord(existing: Record<string, unknown>): UserCostPresetMap {
+  const raw = existing.costPresets
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
+  return { ...raw }
+}
+
+function freezeCostPresetStack(
+  answers: Record<string, unknown>,
+  detection?: DetectionResult,
+): CostPresetStack {
+  const parsed = parseLoopConfig(
+    {
+      verify: 'true',
+      runtime: answers.runtime,
+      model: answers.model,
+      escalateModel: answers.escalateModel,
+      reviewRuntime: answers.reviewRuntime,
+      reviewModel: answers.reviewModel,
+    },
+    { detection },
+  )
+  const worker = resolveLoopAgent(parsed)
+  const judge = resolveReviewAgent(parsed)
+  const stack: CostPresetStack = {
+    runtime: worker.runtime,
+    model: worker.model,
+    reviewRuntime: judge.runtime,
+    reviewModel: judge.model,
+  }
+  if (typeof parsed.escalateModel === 'string') {
+    stack.escalateModel = parsed.escalateModel
+  }
+  return stack
+}
+
+function printSavedPresetNextSteps(name: string, repoRoot: string, setAsDefault: boolean): void {
+  console.log('')
+  console.log(`Saved costPreset "${name}" in ${repoProfilePath(repoRoot)}`)
+  console.log('Use it from a sparse loop.json:')
+  console.log(`  { "verify": "bash .cursor/loops/<name>/verify.sh", "costPreset": "${name}" }`)
+  if (setAsDefault) {
+    console.log(`Repo defaults.costPreset is now "${name}".`)
+  }
+}
+
+/**
+ * Write only profile.costPresets (optional defaults.costPreset). No loop.json.
+ */
+export function runSaveCostPreset(
+  answers: Record<string, unknown>,
+  repoRoot: string,
+  options: { dryRun?: boolean; detection?: DetectionResult } = {},
+): number {
+  const nameRaw = answers.saveCostPreset
+  if (typeof nameRaw !== 'string') {
+    console.error('[agent-loop-setup] saveCostPreset must be a string name')
+    return 1
+  }
+  const name = nameRaw.trim()
+  try {
+    assertUserCostPresetName(name)
+  } catch (err) {
+    console.error(`[agent-loop-setup] ${errMessage(err)}`)
+    return 1
+  }
+
+  let stack: CostPresetStack
+  try {
+    stack = freezeCostPresetStack(answers, options.detection)
+  } catch (err) {
+    console.error(`[agent-loop-setup] invalid cost preset stack: ${errMessage(err)}`)
+    return 1
+  }
+
+  const setAsDefault = answers.setCostPresetDefault === true
+  const existing = loadExistingProfile(repoRoot)
+  const costPresets = { ...existingCostPresetsRecord(existing), [name]: stack }
+  const patch: Record<string, unknown> = { costPresets }
+  if (setAsDefault) {
+    patch.defaults = { ...existingDefaultsRecord(existing), costPreset: name }
+  }
+
+  let profile: Record<string, unknown>
+  try {
+    profile = mergeAndValidateProfile(repoRoot, patch)
+  } catch (err) {
+    console.error(`[agent-loop-setup] invalid repo profile patch: ${errMessage(err)}`)
+    return 1
+  }
+
+  console.log('[agent-loop-setup] would write:')
+  console.log('--- .cursor/agent-loop.repo.json ---')
+  console.log(JSON.stringify(profile, null, 2))
+  if (options.dryRun) {
+    console.log('[agent-loop-setup] dry-run — nothing written')
+    return 0
+  }
+
+  try {
+    writeProfile(repoRoot, profile)
+  } catch (err) {
+    console.error(`[agent-loop-setup] cannot patch repo profile: ${errMessage(err)}`)
+    return 1
+  }
+  printSavedPresetNextSteps(name, repoRoot, setAsDefault)
+  return 0
+}
+
 /**
  * Shared pipeline for answers + interactive modes. Validates everything with the
  * real schema BEFORE writing, so a rejected config never leaves a loop.json behind.
@@ -183,13 +327,35 @@ export function runWizard(
   answers: Record<string, unknown>,
   outDir: string,
   repoRoot: string,
-  options: { dryRun?: boolean } = {},
+  options: { dryRun?: boolean; detection?: DetectionResult; costPresets?: UserCostPresetMap } = {},
 ): number {
+  if (typeof answers.saveCostPreset === 'string' && answers.verify === undefined) {
+    return runSaveCostPreset(answers, repoRoot, {
+      dryRun: options.dryRun,
+      detection: options.detection,
+    })
+  }
+
   const config = pickLoopConfigFields(answers)
+
+  let costPresets = options.costPresets
+  let catalogPatch: UserCostPresetMap | undefined
+  if (typeof answers.saveCostPreset === 'string') {
+    const name = answers.saveCostPreset.trim()
+    try {
+      assertUserCostPresetName(name)
+      const stack = freezeCostPresetStack(answers, options.detection)
+      catalogPatch = { ...existingCostPresetsRecord(loadExistingProfile(repoRoot)), [name]: stack }
+      costPresets = catalogPatch
+    } catch (err) {
+      console.error(`[agent-loop-setup] invalid cost preset stack: ${errMessage(err)}`)
+      return 1
+    }
+  }
 
   let parsed: { runtime: string; reviewRuntime?: string; maxIterations: number }
   try {
-    parsed = parseLoopConfig(config)
+    parsed = parseLoopConfig(config, { detection: options.detection, costPresets })
   } catch (err) {
     console.error(`[agent-loop-setup] invalid loop config: ${errMessage(err)}`)
     return 1
@@ -210,11 +376,12 @@ export function runWizard(
   }
 
   let profile: Record<string, unknown> | undefined
-  if (Object.keys(defaults).length > 0 || profilePatch !== undefined) {
+  if (Object.keys(defaults).length > 0 || profilePatch !== undefined || catalogPatch !== undefined) {
     try {
       const existing = loadExistingProfile(repoRoot)
       profile = mergeAndValidateProfile(repoRoot, {
         ...(profilePatch ?? {}),
+        ...(catalogPatch !== undefined ? { costPresets: catalogPatch } : {}),
         defaults: {
           ...existingDefaultsRecord(existing),
           ...existingDefaultsRecord(profilePatch ?? {}),
@@ -267,7 +434,12 @@ export function runWizard(
   return 0
 }
 
-function runAnswersMode(answersPath: string, outDir: string, repoRoot: string, dryRun: boolean): number {
+async function runAnswersMode(
+  answersPath: string,
+  outDir: string,
+  repoRoot: string,
+  dryRun: boolean,
+): Promise<number> {
   let answers: unknown
   try {
     answers = JSON.parse(fs.readFileSync(answersPath, 'utf8'))
@@ -279,7 +451,9 @@ function runAnswersMode(answersPath: string, outDir: string, repoRoot: string, d
     console.error('[agent-loop-setup] --answers must contain a JSON object')
     return 1
   }
-  return runWizard(answers as Record<string, unknown>, outDir, repoRoot, { dryRun })
+  const detection = await detectLoopRuntimes()
+  const costPresets = loadRepoProfile(repoRoot).costPresets
+  return runWizard(answers as Record<string, unknown>, outDir, repoRoot, { dryRun, detection, costPresets })
 }
 
 function createPlainPrompts(rl: readline.Interface): SetupPrompts {
@@ -324,17 +498,18 @@ async function runInteractive(
   dryRun: boolean,
 ): Promise<number> {
   const detection = await detectLoopRuntimes()
+  const costPresets = loadRepoProfile(repoRoot).costPresets
   if (shouldUseTui(plain)) {
-    const answers = await collectSetupAnswers(createInkPrompts(), outDir, detection)
-    return runWizard(answers, outDir, repoRoot, { dryRun })
+    const answers = await collectSetupAnswers(createInkPrompts(), outDir, detection, costPresets)
+    return runWizard(answers, outDir, repoRoot, { dryRun, detection, costPresets })
   }
 
   const rl = readline.createInterface({ input, output })
   try {
     console.log('agent-loop-setup — numbered menus (--plain or no TTY)')
     console.log('Type the number of an option (or press Enter for the default). Do not type slugs.')
-    const answers = await collectSetupAnswers(createPlainPrompts(rl), outDir, detection)
-    return runWizard(answers, outDir, repoRoot, { dryRun })
+    const answers = await collectSetupAnswers(createPlainPrompts(rl), outDir, detection, costPresets)
+    return runWizard(answers, outDir, repoRoot, { dryRun, detection, costPresets })
   } finally {
     rl.close()
   }
@@ -356,7 +531,7 @@ async function main(): Promise<void> {
     return
   }
   if (options.answersPath !== undefined) {
-    process.exitCode = runAnswersMode(options.answersPath, options.outDir, options.repoRoot, options.dryRun)
+    process.exitCode = await runAnswersMode(options.answersPath, options.outDir, options.repoRoot, options.dryRun)
   } else {
     try {
       process.exitCode = await runInteractive(options.outDir, options.repoRoot, options.plain, options.dryRun)
@@ -372,11 +547,7 @@ async function main(): Promise<void> {
   }
 }
 
-const invokedAsCli =
-  process.argv[1] !== undefined &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (invokedAsCli) {
+if (isSetupCliEntry(process.argv[1], import.meta.url)) {
   await main()
 }
 

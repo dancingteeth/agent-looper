@@ -2,6 +2,7 @@ import type { RepoContext } from '../context/repoContext.js'
 import { z } from 'zod'
 import { runAgentLoop, type AgentLoopResult } from './agentLoop.js'
 import { loadLoopBundle, mergeLoopConfig, type LoopConfig } from './loopConfig.js'
+import type { DetectionResult } from '../cli/detectRuntimes.js'
 import { clearFailureContext, writeFailureContext } from './loopFailureContext.js'
 import { logFailureDomainFromVerify } from './loopFailureDomain.js'
 import { resolveBatchLoopDir } from './loopBatchPaths.js'
@@ -35,6 +36,7 @@ export type RunMetaLoopOptions = {
   meta: MetaLoopConfig
   verbose?: boolean
   batchLoopConfig: (base: LoopConfig) => LoopConfig
+  detection?: DetectionResult
 }
 
 export { batchLoopConfig as metaBatchLoopConfig } from './loopBatchConfig.js'
@@ -55,7 +57,7 @@ export async function runMetaLoop(options: RunMetaLoopOptions): Promise<MetaLoop
     clearFailureContext(fixDir)
     console.error(`[agent-loop-meta] cycle ${cycle}/${meta.maxCycles} — running probe`)
 
-    const probeBundle = loadLoopBundle(probeDir)
+    const probeBundle = loadLoopBundle(probeDir, { detection: options.detection })
     const probeResult = await runAgentLoop({
       ctx,
       bundle: {
@@ -93,7 +95,7 @@ export async function runMetaLoop(options: RunMetaLoopOptions): Promise<MetaLoop
 
     console.error(`[agent-loop-meta] cycle ${cycle}/${meta.maxCycles} — probe failed, running fix`)
 
-    const fixBundle = loadLoopBundle(fixDir)
+    const fixBundle = loadLoopBundle(fixDir, { detection: options.detection })
     const fixResult = await runAgentLoop({
       ctx,
       bundle: {

@@ -12,4 +12,4 @@ alwaysApply: false
 - Prompt diet on model bumps: delete deterministic instructions workers stop failing before adding new ones.
 - Harness package is `@dancingteeth/agent-looper` (npm); GitHub repo is `dancingteeth/agent-looper`.
 - This Cursor plugin is guidance only — install the npm package to run loops.
-- **Local Agent Shell:** never `block_until_ms: 0` for `agent-loop` — attach ≥45m or use a human terminal. Background jobs get reaped at ~5 min. `AGENT_LOOP_DONE` is a sentinel for an attached watcher. **Cloud Agents:** `notifyWebhook` / `notifyPrComment` / Telegram / export packs (see install skill).
+- **Local Agent Shell:** you start `agent-loop` in this chat — `block_until_ms` ≥ 45m (`2700000`), `notify_on_output` on `^AGENT_LOOP_DONE `. Never `block_until_ms: 0` (reaped ~5 min). Never tell the human to run it in a terminal unless they already asked to walk away. `AGENT_LOOP_DONE` is a sentinel, not a license to background. **Cloud Agents:** `notifyWebhook` / `notifyPrComment` / Telegram / export packs (see install skill).

@@ -102,7 +102,7 @@ They do not have to match. A non-Cursor worker can still use a Cursor judge — 
 
 | `runtime` | Default worker model (escalate →) | Notes |
 | --- | --- | --- |
-| **`cursor`** | `composer-2.5` | Default path; Cursor-only dogfood |
+| **`cursor`** | `composer-2.5` | `costPreset: "cursor"`, or Cursor-only minmax |
 | **`cline-pass`** | `cline-pass/deepseek-v4-flash` → `qwen3.7-plus` | ClinePass subscription (`@cline/sdk`) |
 | **`cline`** | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Cline Credits (same SDK, different billing) |
 | **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `vercel/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |

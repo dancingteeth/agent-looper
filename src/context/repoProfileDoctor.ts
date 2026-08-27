@@ -6,6 +6,8 @@ import { resolveTelegramCredentials } from '../integrations/telegramNotify.js'
 import { parseLoopConfig } from '../loop/loopConfig.js'
 import { isTrivialVerifyCommand, trivialVerifyWarning } from '../loop/trivialVerify.js'
 import { applyLoopDefaults } from '../loop/loopDefaults.js'
+import type { DetectionResult } from '../cli/detectRuntimes.js'
+import type { UserCostPresetMap } from '../loop/costPreset.js'
 
 export type RepoProfileCheck = {
   ok: boolean
@@ -16,6 +18,8 @@ export type RepoProfileCheck = {
 function scanLoopConfigWarnings(
   repoRoot: string,
   defaults: Record<string, unknown> | undefined,
+  detection?: DetectionResult,
+  costPresets?: UserCostPresetMap,
 ): string[] {
   const loopsDir = path.join(repoRoot, '.cursor', 'loops')
   const warnings: string[] = []
@@ -35,7 +39,7 @@ function scanLoopConfigWarnings(
 
     try {
       const raw = JSON.parse(fs.readFileSync(loopJsonPath, 'utf8')) as unknown
-      const config = parseLoopConfig(applyLoopDefaults(raw, defaults))
+      const config = parseLoopConfig(applyLoopDefaults(raw, defaults), { detection, costPresets })
       if (config.taskwarriorUuid && config.syncOnSuccess === false) {
         warnings.push(
           `${path.relative(repoRoot, loopJsonPath)}: taskwarriorUuid is set but syncOnSuccess=false — TW task will not auto-complete (enable reviewGate separately if review should block).`,
@@ -46,17 +50,30 @@ function scanLoopConfigWarnings(
           trivialVerifyWarning(path.relative(repoRoot, loopJsonPath), config.verify),
         )
       }
-    } catch {
-      warnings.push(`${path.relative(repoRoot, loopJsonPath)}: could not parse loop.json`)
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err)
+      warnings.push(
+        `${path.relative(repoRoot, loopJsonPath)}: could not parse loop.json (${detail})`,
+      )
     }
   }
 
   return warnings
 }
 
-export function validateRepoProfile(ctx: RepoContext): RepoProfileCheck {
+export function validateRepoProfile(
+  ctx: RepoContext,
+  options?: { detection?: DetectionResult },
+): RepoProfileCheck {
   const errors: string[] = []
-  const warnings: string[] = [...scanLoopConfigWarnings(ctx.repoRoot, ctx.profile.defaults)]
+  const warnings: string[] = [
+    ...scanLoopConfigWarnings(
+      ctx.repoRoot,
+      ctx.profile.defaults,
+      options?.detection,
+      ctx.profile.costPresets,
+    ),
+  ]
 
   const { defaultBranch } = ctx.profile
   if (!defaultBranchRefExists(ctx.repoRoot, defaultBranch)) {

@@ -26,6 +26,15 @@ import {
   defaultModelForRuntime,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
+import {
+  COST_PRESET_CUSTOM,
+  describeCostPreset,
+  describeUserCostPresetRaw,
+  isReservedCostPresetName,
+  shortModelName,
+  type UserCostPresetMap,
+} from '../loop/costPreset.js'
+import { detectionOf, type DetectionResult } from './detectRuntimes.js'
 
 /** Sentinel: interactive menu then prompts for a free-form slug. */
 export const MENU_CUSTOM = '__custom__'
@@ -39,6 +48,50 @@ export type MenuChoice = {
   description: string
   /** Optional install annotation (`detected` / `missing`) from the runtime probe. */
   tag?: 'detected' | 'missing'
+}
+
+/** Named stacks plus create-a-preset. Descriptions bind to this machine’s detection. */
+export function costPresetChoices(
+  detection?: DetectionResult,
+  costPresets?: UserCostPresetMap,
+): MenuChoice[] {
+  const bound = detection ?? detectionOf({ cursor: 'detected' })
+  const builtins: MenuChoice[] = [
+    {
+      value: 'minmax',
+      title: 'minmax — efficiency',
+      description: describeCostPreset('minmax', bound),
+    },
+    {
+      value: 'balanced',
+      title: 'balanced — spend more on the worker',
+      description: describeCostPreset('balanced', bound),
+    },
+    {
+      value: 'cursor',
+      title: 'cursor — Composer + Grok',
+      description: describeCostPreset('cursor', bound),
+    },
+  ]
+  const userChoices: MenuChoice[] = costPresets
+    ? Object.entries(costPresets)
+        .filter(([name]) => !isReservedCostPresetName(name))
+        .map(([name, raw]) => ({
+          value: name,
+          title: `${name} — saved preset`,
+          description: describeUserCostPresetRaw(raw),
+        }))
+    : []
+  return [
+    ...builtins,
+    ...userChoices,
+    {
+      value: COST_PRESET_CUSTOM,
+      title: 'custom — pick worker and judge',
+      description:
+        'Walk the encyclopedia for this loop. Optionally save the stack as a named preset after.',
+    },
+  ]
 }
 
 export const WORKER_RUNTIME_CHOICES: readonly MenuChoice[] = [
@@ -188,12 +241,6 @@ function customChoice(example: string): MenuChoice {
   }
 }
 
-/** Last path segment (`cline-pass/kimi-k3` → `kimi-k3`; `gpt-5.6-luna` stays). */
-function catalogId(slug: string): string {
-  const slash = slug.lastIndexOf('/')
-  return slash === -1 ? slug : slug.slice(slash + 1)
-}
-
 /**
  * Same shape for every catalog row: who made it, what it's for, when to pick it.
  * No "catalog slug" filler and no recency-only blurbs.
@@ -207,6 +254,7 @@ const MODEL_BLURBS: Record<string, string> = {
     'xAI Grok 4.5 — allowed Cursor judge. Weaker than Grok 4.6 on Cursor.',
   'deepseek-v4-flash':
     'DeepSeek V4 Flash — cheap, fast implement iterations. Common worker default.',
+  hy3: 'Tencent Hy3 — slower than Flash, often stronger coding. Large Go monthly quota.',
   'deepseek-v4-flash-vision-exp':
     'DeepSeek V4 Flash Vision (experimental) — image-capable Flash.',
   'deepseek-v4-pro':
@@ -246,7 +294,7 @@ const MODEL_BLURBS: Record<string, string> = {
 }
 
 export function modelChoiceDescription(slug: string): string {
-  const id = catalogId(slug)
+  const id = shortModelName(slug)
   return (
     MODEL_BLURBS[id] ??
     MODEL_BLURBS[slug] ??

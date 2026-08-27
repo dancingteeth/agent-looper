@@ -20,6 +20,7 @@
     "dist/loop/loopReport.js",
     "dist/loop/agentLoop.js",
     "dist/loop/loopConfig.js",
+    "dist/loop/costPreset.js",
     "dist/loop/loopDefaults.js",
     "dist/loop/loopWatch.js",
     "dist/loop/loopSkills.js",

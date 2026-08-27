@@ -90,8 +90,10 @@ console.error(
 
 console.error(`[agent-loop-init] done — repo=${ctx.repoRoot}`)
 console.error(`[agent-loop-init] next: edit .cursor/agent-loop.repo.json (or agent-loop-setup for repo defaults) and run:`)
+console.error(`  agent-loop run .cursor/loops/example-fix`)
+console.error(`  # costPreset minmax (repo default): Hy3+Grok when Go+Cursor; Composer+Grok on Cursor-only`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cursor --review-gate`)
-console.error(`  # Cursor-only: composer-2.5 worker + grok-4.6 judge`)
+console.error(`  # force Composer worker + grok-4.6 judge (costPreset cursor)`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cline-pass`)
 console.error(`  # when ClinePass weekly quota is exhausted:`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cline`)

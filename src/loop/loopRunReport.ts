@@ -174,6 +174,12 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     `| Worker | ${loopRuntimeLabel(input.runtime)} | ${input.workerModel} |`,
     `| Judge | ${loopRuntimeLabel(input.reviewRuntime)} | ${input.reviewModel} |`,
     '',
+    ...(input.config.costPreset
+      ? [
+          `**costPreset:** \`${input.config.costPreset}\` — frozen at parse (not Auto).`,
+          '',
+        ]
+      : []),
     '## Why this is a loop (not a one-shot prompt)',
     '',
     '- **Fresh worker context** each iteration — progress lives in git + files, not chat memory.',

@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { parseArgs, pickLoopConfigFields, runWizard, usage } from './setup.js'
+import { isSetupCliEntry, parseArgs, pickLoopConfigFields, runWizard, usage } from './setup.js'
 import {
   formatMenu,
   judgeModelChoices,
@@ -36,11 +36,25 @@ describe('agent-loop-setup', () => {
     expect(text).toMatch(/numbered|number|--plain/i)
     expect(text).toMatch(/Ink|TUI/i)
     expect(text).toMatch(/defaults/i)
+    expect(text).toMatch(/minmax|cost preset|costPreset/i)
   })
 
   it('parses --plain without treating it as unknown', () => {
     expect(parseArgs(['--plain', '--out', '/tmp/loop']).plain).toBe(true)
     expect(parseArgs(['--out', '/tmp/loop']).plain).toBe(false)
+  })
+
+  it('treats bin shims and node dist/cli/setup.js as CLI entry, not vitest imports', () => {
+    const moduleUrl = 'file:///Users/paul/Projects/agent-loop/dist/cli/setup.js'
+    expect(isSetupCliEntry('/Users/paul/.nvm/versions/node/v22.23.2/bin/agent-loop-setup', moduleUrl)).toBe(
+      true,
+    )
+    expect(isSetupCliEntry('/Users/paul/Projects/agent-loop/dist/cli/setup.js', moduleUrl)).toBe(true)
+    expect(isSetupCliEntry('/Users/paul/Projects/agent-loop/node_modules/.bin/agent-loop-setup', moduleUrl)).toBe(
+      true,
+    )
+    expect(isSetupCliEntry('/Users/paul/Projects/agent-loop/node_modules/.bin/vitest', moduleUrl)).toBe(false)
+    expect(isSetupCliEntry(undefined, moduleUrl)).toBe(false)
   })
 
   it('parses menu numbers and rejects typed slugs', () => {
@@ -120,6 +134,7 @@ describe('agent-loop-setup', () => {
     const go = workerModelChoices('opencode').map((choice) => choice.value)
     expect(pass).toContain('cline-pass/kimi-k3')
     expect(go).toContain('opencode-go/kimi-k3')
+    expect(go).toContain('opencode-go/hy3')
   })
 
   it('writes a dsh worker+judge loop.json without a reviewModel key', () => {
@@ -151,6 +166,40 @@ describe('agent-loop-setup', () => {
     expect(profile.defaults?.runtime).toBe('dsh')
     expect(profile.defaults?.reviewRuntime).toBe('dsh')
     expect(profile.defaults).not.toHaveProperty('verify')
+  })
+
+  it('writes a user-defined costPreset name without rejecting it at write time', () => {
+    const outDir = tmpDir('agent-loop-setup-userpreset-')
+    const repoRoot = tmpDir('agent-loop-setup-userpreset-repo-')
+    const cheapPi = {
+      runtime: 'pi',
+      model: 'openrouter/deepseek/deepseek-chat',
+      escalateModel: 'openrouter/qwen/qwen3-coder-plus',
+      reviewRuntime: 'pi',
+      reviewModel: 'openrouter/qwen/qwen3-coder-plus',
+    }
+    const code = runWizard(
+      {
+        costPreset: 'cheap-pi',
+        runtime: 'pi',
+        model: 'openrouter/deepseek/deepseek-chat',
+        reviewRuntime: 'pi',
+        reviewModel: 'openrouter/qwen/qwen3-coder-plus',
+        maxIterations: 8,
+        verify: 'bash .cursor/loops/example/verify.sh',
+      },
+      outDir,
+      repoRoot,
+      { costPresets: { 'cheap-pi': cheapPi } },
+    )
+    expect(code).toBe(0)
+    const written = JSON.parse(fs.readFileSync(path.join(outDir, 'loop.json'), 'utf8')) as Record<
+      string,
+      unknown
+    >
+    expect(written.costPreset).toBe('cheap-pi')
+    expect(written.runtime).toBe('pi')
+    expect(written.reviewRuntime).toBe('pi')
   })
 
   it('round-trips notifyTelegram false and notifyPrComment true', () => {
@@ -239,5 +288,135 @@ describe('agent-loop-setup', () => {
     expect(pickLoopConfigFields({ runtime: 'dsh', notAField: true, profile: {} })).toEqual({
       runtime: 'dsh',
     })
+  })
+
+  it('writes a named costPresets stack without loop.json', () => {
+    const outDir = tmpDir('agent-loop-setup-savepreset-out-')
+    const repoRoot = tmpDir('agent-loop-setup-savepreset-repo-')
+    const code = runWizard(
+      {
+        saveCostPreset: 'hy3-dsh',
+        runtime: 'opencode',
+        model: 'opencode-go/hy3',
+        escalateModel: 'opencode-go/qwen3.7-plus',
+        reviewRuntime: 'dsh',
+        reviewModel: 'deepseek-official/deepseek-v4-pro',
+      },
+      outDir,
+      repoRoot,
+    )
+    expect(code).toBe(0)
+    expect(fs.existsSync(path.join(outDir, 'loop.json'))).toBe(false)
+    const profile = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, '.cursor', 'agent-loop.repo.json'), 'utf8'),
+    ) as {
+      costPresets?: Record<string, Record<string, string>>
+      defaults?: Record<string, unknown>
+    }
+    expect(profile.costPresets?.['hy3-dsh']).toEqual({
+      runtime: 'opencode',
+      model: 'opencode-go/hy3',
+      escalateModel: 'opencode-go/qwen3.7-plus',
+      reviewRuntime: 'dsh',
+      reviewModel: 'deepseek-official/deepseek-v4-pro',
+    })
+    expect(profile.defaults?.costPreset).toBeUndefined()
+  })
+
+  it('writes catalog and loop.json when saveCostPreset is paired with verify', () => {
+    const outDir = tmpDir('agent-loop-setup-savepreset-full-out-')
+    const repoRoot = tmpDir('agent-loop-setup-savepreset-full-repo-')
+    const code = runWizard(
+      {
+        saveCostPreset: 'hy3-dsh',
+        costPreset: 'hy3-dsh',
+        runtime: 'opencode',
+        model: 'opencode-go/hy3',
+        escalateModel: 'opencode-go/qwen3.7-plus',
+        reviewRuntime: 'dsh',
+        reviewModel: 'deepseek-official/deepseek-v4-pro',
+        maxIterations: 8,
+        verify: 'bash .cursor/loops/example/verify.sh',
+      },
+      outDir,
+      repoRoot,
+    )
+    expect(code).toBe(0)
+    const written = JSON.parse(fs.readFileSync(path.join(outDir, 'loop.json'), 'utf8')) as Record<
+      string,
+      unknown
+    >
+    expect(written.costPreset).toBe('hy3-dsh')
+    expect(written.verify).toBe('bash .cursor/loops/example/verify.sh')
+    const profile = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, '.cursor', 'agent-loop.repo.json'), 'utf8'),
+    ) as {
+      costPresets?: Record<string, unknown>
+      defaults?: { costPreset?: string }
+    }
+    expect(profile.costPresets).toHaveProperty('hy3-dsh')
+    expect(profile.defaults?.costPreset).toBe('hy3-dsh')
+  })
+
+  it('merges a new preset without dropping an existing catalog name', () => {
+    const outDir = tmpDir('agent-loop-setup-savepreset-merge-out-')
+    const repoRoot = tmpDir('agent-loop-setup-savepreset-merge-repo-')
+    fs.mkdirSync(path.join(repoRoot, '.cursor'), { recursive: true })
+    fs.writeFileSync(
+      path.join(repoRoot, '.cursor', 'agent-loop.repo.json'),
+      `${JSON.stringify({
+        defaultBranch: 'main',
+        costPresets: {
+          'cheap-pi': {
+            runtime: 'pi',
+            model: 'openrouter/deepseek/deepseek-chat',
+            reviewRuntime: 'pi',
+            reviewModel: 'openrouter/qwen/qwen3-coder-plus',
+          },
+        },
+      })}\n`,
+      'utf8',
+    )
+    const code = runWizard(
+      {
+        saveCostPreset: 'hy3-dsh',
+        runtime: 'opencode',
+        model: 'opencode-go/hy3',
+        reviewRuntime: 'cursor',
+        reviewModel: 'grok-4.6',
+        setCostPresetDefault: true,
+      },
+      outDir,
+      repoRoot,
+    )
+    expect(code).toBe(0)
+    const profile = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, '.cursor', 'agent-loop.repo.json'), 'utf8'),
+    ) as {
+      costPresets?: Record<string, unknown>
+      defaults?: { costPreset?: string }
+    }
+    expect(profile.costPresets).toHaveProperty('cheap-pi')
+    expect(profile.costPresets).toHaveProperty('hy3-dsh')
+    expect(profile.defaults?.costPreset).toBe('hy3-dsh')
+  })
+
+  it('rejects a reserved saveCostPreset name and writes nothing', () => {
+    const outDir = tmpDir('agent-loop-setup-savepreset-reserved-out-')
+    const repoRoot = tmpDir('agent-loop-setup-savepreset-reserved-repo-')
+    const code = runWizard(
+      {
+        saveCostPreset: 'minmax',
+        runtime: 'pi',
+        model: 'openrouter/deepseek/deepseek-chat',
+        reviewRuntime: 'pi',
+        reviewModel: 'openrouter/qwen/qwen3-coder-plus',
+      },
+      outDir,
+      repoRoot,
+    )
+    expect(code).toBe(1)
+    expect(fs.existsSync(path.join(outDir, 'loop.json'))).toBe(false)
+    expect(fs.existsSync(path.join(repoRoot, '.cursor', 'agent-loop.repo.json'))).toBe(false)
   })
 })

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { emptyUsageSummary } from '../usage/loopUsage.js'
 import { DEFAULT_REPO_PROFILE } from '../context/repoProfile.js'
+import { detectionOf } from '../cli/detectRuntimes.js'
 import { parseLoopConfig } from './loopConfig.js'
 import {
   buildRunReportMarkdown,
@@ -238,7 +239,14 @@ describe('buildRunReportMarkdown', () => {
       'utf8',
     )
 
-    const config = parseLoopConfig({ verify: 'bash verify.sh', reviewGate: true })
+    const config = parseLoopConfig(
+      {
+        verify: 'bash verify.sh',
+        reviewGate: true,
+        costPreset: 'minmax',
+      },
+      { detection: detectionOf({ cursor: 'detected' }) },
+    )
     const report = buildRunReportMarkdown({
       ctx: minimalCtx(tmpDir),
       loopDir: tmpDir,
@@ -253,6 +261,7 @@ describe('buildRunReportMarkdown', () => {
 
     expect(report).toContain('# Loop run report')
     expect(report).toContain('Why this is a loop')
+    expect(report).toContain('**costPreset:** `minmax`')
     expect(report).toContain('Review gate armed')
     expect(report).toContain('### Iteration 1')
     expect(report).toContain('run_id=run-abc')

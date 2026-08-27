@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { type RepoContext } from '../context/repoContext.js'
 import { runAgentLoop, type AgentLoopResult } from './agentLoop.js'
 import { loadLoopBundle } from './loopConfig.js'
+import type { DetectionResult } from '../cli/detectRuntimes.js'
 import {
   createHitlCheckpoint,
   hitlLoopOverridesFrom,
@@ -122,6 +123,7 @@ export type RunLoopBatchOptions = {
   verbose?: boolean
   skipSync?: boolean
   onLoopStart?: (loopDir: string, index: number, total: number) => void
+  detection?: DetectionResult
 }
 
 export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBatchResult> {
@@ -129,6 +131,7 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
   const repoRoot = ctx.repoRoot
   const batchDir = resolveBatchDir(options.batchDir, repoRoot)
   const batchConfig = loadLoopBatchConfig(batchDir)
+  const detection = options.detection
 
   if (batchConfig.metaLoop) {
     const metaResult = await runMetaLoop({
@@ -137,6 +140,7 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
       meta: batchConfig.metaLoop,
       verbose: options.verbose ?? false,
       batchLoopConfig,
+      detection,
     })
 
     if (metaResult.complete) {
@@ -186,7 +190,7 @@ export async function runLoopBatch(options: RunLoopBatchOptions): Promise<LoopBa
     const loopDir = resolveBatchLoopDir(loopPath, batchDir, repoRoot)
     options.onLoopStart?.(loopDir, i + 1, loops.length)
 
-    const bundle = loadLoopBundle(loopDir)
+    const bundle = loadLoopBundle(loopDir, { detection })
     const result = await runAgentLoop({
       ctx,
       bundle: { ...bundle, config: batchLoopConfig(bundle.config) },

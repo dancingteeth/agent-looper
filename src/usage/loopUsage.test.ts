@@ -16,6 +16,11 @@ describe('loopUsage', () => {
     expect(cost).toBeCloseTo(0.14 + 0.14, 5)
   })
 
+  it('estimates OpenCode Go Hy3 cost from Go list rates', () => {
+    const cost = estimateCostUsd('opencode-go/hy3', 1_000_000, 1_000_000)
+    expect(cost).toBeCloseTo(0.14 + 0.58, 5)
+  })
+
   it('estimates Composer 2.5 cost from official rates', () => {
     const cost = estimateCostUsd('composer-2.5', 200_000, 50_000)
     expect(cost).toBeCloseTo(0.1 + 0.125, 5)

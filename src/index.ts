@@ -87,6 +87,26 @@ export {
 } from './loop/loopDefaults.js'
 
 export {
+  applyCostPreset,
+  resolveCostPreset,
+  describeCostPreset,
+  isCostPreset,
+  COST_PRESET_VALUES,
+  COST_PRESET_CUSTOM,
+  costPresetStackSchema,
+  userCostPresetsCatalogSchema,
+} from './loop/costPreset.js'
+export type { CostPreset, CostPresetStack } from './loop/costPreset.js'
+
+export {
+  detectLoopRuntimes,
+  emptyDetection,
+  detectionOf,
+  isRuntimeDetected,
+} from './cli/detectRuntimes.js'
+export type { DetectionResult, DetectableRuntime } from './cli/detectRuntimes.js'
+
+export {
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_CLINE_PASS,
   LOOP_RUNTIME_CLINE,

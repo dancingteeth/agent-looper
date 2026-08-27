@@ -4,6 +4,7 @@ import { resolveRepoContext } from '../context/repoContext.js'
 import { resolveReviewAgent } from '../loop/loopAgentConfig.js'
 import { loopRuntimeLabel } from '../agents/agentRunner.js'
 import { loadLoopBundle, resolveLoopDir } from '../loop/loopConfig.js'
+import { detectLoopRuntimes } from './detectRuntimes.js'
 import { runPostLoopQualityReview } from '../review/loopPostReview.js'
 import { blockingBlockers } from '../review/reviewVerdict.js'
 import { parseRepoRootFlag } from './shared.js'
@@ -21,7 +22,8 @@ Uses loop.json reviewRuntime / reviewModel when set; otherwise cursor + runtime 
 
 const ctx = resolveRepoContext({ repoRoot })
 const loopDir = resolveLoopDir(loopArg, ctx.repoRoot)
-const bundle = loadLoopBundle(loopDir)
+const detection = await detectLoopRuntimes()
+const bundle = loadLoopBundle(loopDir, { detection })
 const reviewAgent = resolveReviewAgent(bundle.config)
 
 console.error(

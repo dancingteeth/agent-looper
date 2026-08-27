@@ -2,6 +2,7 @@
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { loadLoopBundle, resolveLoopDir } from '../loop/loopConfig.js'
+import { detectLoopRuntimes } from './detectRuntimes.js'
 import { inferLoopReviewRisk, resolvePostQualityReview } from '../loop/loopRisk.js'
 import { resolveLoopRiskKeywords } from '../loop/loopRiskProfile.js'
 import { buildPostLoopQualityReviewPrompt } from '../review/loopPostReview.js'
@@ -25,7 +26,8 @@ if (!loopArg || remaining.includes('--help') || remaining.includes('-h')) {
 
 const ctx = resolveRepoContext({ repoRoot })
 const loopDir = resolveLoopDir(loopArg, ctx.repoRoot)
-const bundle = loadLoopBundle(loopDir)
+const detection = await detectLoopRuntimes()
+const bundle = loadLoopBundle(loopDir, { detection })
 const { goal, config } = bundle
 
 const riskKeywords = resolveLoopRiskKeywords({

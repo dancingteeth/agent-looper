@@ -18,7 +18,7 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 
 | `runtime` | SDK / CLI | Worker default (escalate →) | Judge (typical) | Cost angle |
 | --- | --- | --- | --- | --- |
-| `cursor` | `@cursor/sdk` | `composer-2.5` | Grok 4.6 when worker is `cursor`, else Composer 2.5 | IDE subscription; dogfood default |
+| `cursor` | `@cursor/sdk` | `composer-2.5` | Grok 4.6 when worker is `cursor`, else Composer 2.5 | IDE subscription; `costPreset: "cursor"` |
 | `cline-pass` | `@cline/sdk` | `cline-pass/deepseek-v4-flash` → `qwen3.7-plus` | Cursor Composer 2.5 (unless `reviewRuntime` set) | Quota / subscription implement loops |
 | `cline` | `@cline/sdk` | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Same | Credits when Pass quota is gone |
 | `opencode` | `@opencode-ai/sdk` + `opencode` CLI | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`; **or** BYOK e.g. `openrouter/…`, `vercel/…`, `ollama/…` | Cursor judge, or `reviewRuntime: opencode` | [OpenCode Go](https://opencode.ai/go) **and** OpenRouter / Vercel AI Gateway / other providers — [`opencode-providers.md`](./opencode-providers.md) |
@@ -32,11 +32,24 @@ n≥3, change one of `runtime` / `model`).
 
 Primary judge is independent: unset `reviewRuntime` → Cursor SDK. Set `reviewRuntime` + `reviewModel` to any worker runtime to keep review off Cursor quota.
 
+## `costPreset` (detect-bound, not Auto)
+
+Named stacks so you pick **economics** instead of a model encyclopedia. Detection chooses which catalog row that means on this machine; it does not swap models mid-loop. Explicit `runtime` / `model` win.
+
+| Preset | Intent | Go + Cursor | Cursor-only |
+| --- | --- | --- | --- |
+| `minmax` | Efficiency — cheapest *capable* worker + strongest included judge | Hy3 + Grok | Composer + Grok |
+| `balanced` | Escalate-tier worker, same strong judge | Qwen 3.7 Plus + Grok | Composer + Grok |
+| `cursor` | Stay on Cursor | Composer + Grok | Composer + Grok |
+
+minmax is **not** cheapest-cheapest: never Composer-as-judge while Grok is in the Cursor seat. Setup defaults to minmax. Sparse `{ verify, costPreset }` still resolves at parse (omit detection → fail closed; CLI always probes). Setup **custom** walks the encyclopedia for a one-off stack and can optionally save it under `costPresets`.
+
 ## Judge presets (`reviewRuntime` + `reviewModel`)
 
 | Stack | `loop.json` sketch | When |
 | --- | --- | --- |
-| **Dogfood** | `runtime: cursor`, default judge (Grok) | One Cursor bill, strongest judge |
+| **Dogfood minmax** | `costPreset: minmax` (omit `runtime`) | Hy3 + Grok when Go+Cursor; Composer + Grok on Cursor-only |
+| **Cursor IDE** | `costPreset: cursor` or `runtime: cursor` | Composer worker, Grok judge |
 | **Cheap Pi + Pi** | `runtime: pi`, `reviewRuntime: pi`, same `openrouter/…` model | Minimize judge + worker cost on BYOK |
 | **Pi worker + Cursor judge** | `runtime: pi`, omit `reviewRuntime` (defaults to cursor) | Cheap implement; Cursor subscription for review |
 | **OpenCode Go + Cursor** | `runtime: opencode` (Go model), default judge | Go worker quota; familiar Cursor judge |

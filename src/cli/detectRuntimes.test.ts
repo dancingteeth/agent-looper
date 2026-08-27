@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectLoopRuntimes, type DetectableRuntime } from './detectRuntimes.js'
+import { detectLoopRuntimes, detectionOf, emptyDetection, type DetectableRuntime } from './detectRuntimes.js'
 
 describe('detectLoopRuntimes', () => {
   it('returns a structured map keyed by every detectable runtime', async () => {
@@ -55,5 +55,20 @@ describe('detectLoopRuntimes', () => {
     expect(result.cline).toBe('missing')
     expect(result.pi).toBe('missing')
     expect(result.dsh).toBe('detected')
+  })
+})
+
+describe('emptyDetection / detectionOf', () => {
+  it('starts every runtime missing and overlays detected', () => {
+    expect(emptyDetection()).toEqual({
+      cursor: 'missing',
+      cline: 'missing',
+      opencode: 'missing',
+      pi: 'missing',
+      codex: 'missing',
+      dsh: 'missing',
+    })
+    expect(detectionOf({ cursor: 'detected' }).cursor).toBe('detected')
+    expect(detectionOf({ cursor: 'detected' }).opencode).toBe('missing')
   })
 })

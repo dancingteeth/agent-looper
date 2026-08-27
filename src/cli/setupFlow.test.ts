@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   collectSetupAnswers,
+  COST_PRESET_HEADING,
+  SAVE_PRESET_AFTER_CUSTOM_HEADING,
+  SAVE_PRESET_NAME_PROMPT,
   SetupDeclinedError,
+  SETUP_GATE_CONTINUE,
   SETUP_GATE_QUIT,
   SETUP_INTRO_HEADING,
   TYPICAL_SETUP_STEPS,
   type SetupPrompts,
 } from './setupFlow.js'
+import { COST_PRESET_CUSTOM } from '../loop/costPreset.js'
 import { MENU_OMIT } from './setupMenus.js'
 
 function defaultingPrompts(): SetupPrompts {
@@ -21,12 +26,13 @@ function defaultingPrompts(): SetupPrompts {
 }
 
 describe('collectSetupAnswers', () => {
-  it('writes a schema-shaped cursor bundle when every prompt takes the default', async () => {
+  it('writes a schema-shaped minmax bundle when every prompt takes the default', async () => {
     const answers = await collectSetupAnswers(defaultingPrompts(), '/tmp/my-task')
+    expect(answers.costPreset).toBe('minmax')
     expect(answers.runtime).toBe('cursor')
     expect(answers.reviewRuntime).toBe('cursor')
-    expect(answers).not.toHaveProperty('model')
-    expect(answers).not.toHaveProperty('reviewModel')
+    expect(answers.model).toBe('composer-2.5')
+    expect(answers.reviewModel).toBe('grok-4.6')
     expect(answers.verify).toBe('bash /tmp/my-task/verify.sh')
     expect(answers.maxIterations).toBe(8)
     expect(answers.notifyTelegram).toBe(true)
@@ -86,15 +92,17 @@ describe('collectSetupAnswers', () => {
     expect(headings).toContain('Attach latest review.md to Telegram')
   })
 
-  it('asks reasoning effort when the worker runtime honors it', async () => {
+  it('asks reasoning effort when a new preset uses a runtime that honors it', async () => {
     const headings: string[] = []
     const prompts: SetupPrompts = {
       async select(heading, _blurb, _choices, defaultValue) {
         headings.push(heading)
+        if (heading === COST_PRESET_HEADING) return COST_PRESET_CUSTOM
         if (heading === 'Worker runtime') return 'pi'
         return defaultValue
       },
-      async text(_prompt, dflt) {
+      async text(prompt, dflt) {
+        if (prompt === SAVE_PRESET_NAME_PROMPT) return 'pi-stack'
         return dflt ?? ''
       },
     }
@@ -120,6 +128,102 @@ describe('collectSetupAnswers', () => {
     )
     expect(headings).not.toContain('Reasoning effort')
     expect(headings).not.toContain('Escalate reasoning effort')
+  })
+
+  it('skips the worker encyclopedia on a named cost preset', async () => {
+    const headings: string[] = []
+    const answers = await collectSetupAnswers(
+      {
+        async select(heading, _blurb, _choices, defaultValue) {
+          headings.push(heading)
+          return defaultValue
+        },
+        async text(_prompt, dflt) {
+          return dflt ?? ''
+        },
+      },
+      '/tmp/my-task',
+    )
+    expect(answers.costPreset).toBe('minmax')
+    expect(headings).toContain(COST_PRESET_HEADING)
+    expect(headings).not.toContain('Worker runtime')
+    expect(headings).not.toContain('Worker model')
+    expect(headings).not.toContain('Judge runtime (reviewRuntime)')
+    expect(headings).not.toContain('Judge model (reviewModel)')
+  })
+
+  it('walks the encyclopedia for one-off custom without a catalog name', async () => {
+    const headings: string[] = []
+    const answers = await collectSetupAnswers(
+      {
+        async select(heading, _blurb, _choices, defaultValue) {
+          headings.push(heading)
+          if (heading === COST_PRESET_HEADING) return COST_PRESET_CUSTOM
+          return defaultValue
+        },
+        async text(_prompt, dflt) {
+          return dflt ?? ''
+        },
+      },
+      '/tmp/my-task',
+    )
+    expect(headings).toContain('Worker runtime')
+    expect(headings).toContain('Worker model')
+    expect(headings).toContain('Judge runtime (reviewRuntime)')
+    expect(headings).toContain('Judge model (reviewModel)')
+    expect(headings).toContain(SAVE_PRESET_AFTER_CUSTOM_HEADING)
+    expect(answers.costPreset).toBeUndefined()
+    expect(answers.saveCostPreset).toBeUndefined()
+    expect(answers.runtime).toBe('cursor')
+  })
+
+  it('expands a user-defined costPreset name and skips the encyclopedia', async () => {
+    const headings: string[] = []
+    let costPresetChoices: { value: string }[] = []
+    const userPresets = {
+      'cheap-pi': {
+        runtime: 'pi',
+        model: 'openrouter/deepseek/deepseek-chat',
+        escalateModel: 'openrouter/qwen/qwen3-coder-plus',
+        reviewRuntime: 'pi',
+        reviewModel: 'openrouter/qwen/qwen3-coder-plus',
+      },
+    }
+    const answers = await collectSetupAnswers(
+      {
+        async select(heading, _blurb, choices, defaultValue) {
+          headings.push(heading)
+          if (heading === COST_PRESET_HEADING) {
+            costPresetChoices = choices.map((choice) => ({ value: choice.value }))
+            return 'cheap-pi'
+          }
+          return defaultValue
+        },
+        async text(_prompt, dflt) {
+          return dflt ?? ''
+        },
+      },
+      '/tmp/my-task',
+      undefined,
+      userPresets,
+    )
+    expect(answers.costPreset).toBe('cheap-pi')
+    expect(answers.runtime).toBe('pi')
+    expect(answers.model).toBe('openrouter/deepseek/deepseek-chat')
+    expect(answers.reviewRuntime).toBe('pi')
+    expect(answers.reviewModel).toBe('openrouter/qwen/qwen3-coder-plus')
+    expect(headings).toContain(COST_PRESET_HEADING)
+    expect(headings).not.toContain('Worker runtime')
+    expect(headings).not.toContain('Worker model')
+    expect(headings).not.toContain('Judge runtime (reviewRuntime)')
+    expect(headings).not.toContain('Judge model (reviewModel)')
+    const choiceValues = costPresetChoices.map((choice) => choice.value)
+    expect(choiceValues).toContain('cheap-pi')
+    expect(choiceValues).toContain('minmax')
+    expect(choiceValues).toContain('balanced')
+    expect(choiceValues).toContain('cursor')
+    expect(choiceValues).toContain(COST_PRESET_CUSTOM)
+    expect(choiceValues).not.toContain('__save_preset__')
   })
 
   it('skips the Taskwarrior UUID step when HITL is github', async () => {
@@ -178,10 +282,14 @@ describe('collectSetupAnswers', () => {
 
   it('stops when the intro gate is quit', async () => {
     const headings: string[] = []
+    let introChoices: string[] = []
     const prompts: SetupPrompts = {
-      async select(heading, _blurb, _choices, defaultValue) {
+      async select(heading, _blurb, choices, defaultValue) {
         headings.push(heading)
-        if (heading === SETUP_INTRO_HEADING) return SETUP_GATE_QUIT
+        if (heading === SETUP_INTRO_HEADING) {
+          introChoices = choices.map((choice) => choice.value)
+          return SETUP_GATE_QUIT
+        }
         return defaultValue
       },
       async text(_prompt, dflt) {
@@ -190,6 +298,7 @@ describe('collectSetupAnswers', () => {
     }
     await expect(collectSetupAnswers(prompts, '/tmp/my-task')).rejects.toBeInstanceOf(SetupDeclinedError)
     expect(headings).toEqual([SETUP_INTRO_HEADING])
+    expect(introChoices).toEqual([SETUP_GATE_CONTINUE, SETUP_GATE_QUIT])
   })
 
   it('keeps TYPICAL_SETUP_STEPS aligned with the default Cursor path', async () => {
@@ -206,5 +315,33 @@ describe('collectSetupAnswers', () => {
     }
     await collectSetupAnswers(prompts, '/tmp/my-task')
     expect(n).toBe(TYPICAL_SETUP_STEPS)
+  })
+
+  it('continues the wizard after saving a named cost preset', async () => {
+    const headings: string[] = []
+    const prompts: SetupPrompts = {
+      async select(heading, _blurb, _choices, defaultValue) {
+        headings.push(heading)
+        if (heading === COST_PRESET_HEADING) return COST_PRESET_CUSTOM
+        if (heading === SAVE_PRESET_AFTER_CUSTOM_HEADING) return 'y'
+        return defaultValue
+      },
+      async text(prompt, dflt) {
+        if (prompt === SAVE_PRESET_NAME_PROMPT) return 'hy3-dsh'
+        return dflt ?? ''
+      },
+    }
+    const answers = await collectSetupAnswers(prompts, '/tmp/my-task')
+    expect(answers.saveCostPreset).toBe('hy3-dsh')
+    expect(answers.costPreset).toBe('hy3-dsh')
+    expect(answers.runtime).toBe('cursor')
+    expect(answers.reviewRuntime).toBe('cursor')
+    expect(answers.verify).toBe('bash /tmp/my-task/verify.sh')
+    expect(headings).toContain(SETUP_INTRO_HEADING)
+    expect(headings).toContain(COST_PRESET_HEADING)
+    expect(headings).toContain('Worker runtime')
+    expect(headings).toContain('Judge runtime (reviewRuntime)')
+    expect(headings).toContain('Verify command')
+    expect(headings).toContain('Send completion report to Telegram')
   })
 })

@@ -19,12 +19,14 @@ developing against local `dist/`.
 
 ```bash
 pnpm build
-pnpm agent:loop run .cursor/loops/<name> --runtime cursor --review-gate
+pnpm agent:loop run .cursor/loops/<name>
 ```
+
+Repo default is `costPreset: "minmax"` in `.cursor/agent-loop.repo.json`. Sparse loops bind Hy3 + Grok when OpenCode Go and Cursor are both installed (Composer + Grok on Cursor-only). Loops that pin `"runtime": "cursor"` stay on Composer. This is not Cursor Auto / build.
 
 Secrets via Doppler (`doppler.yaml` in the repo root); scripts wrap `doppler run`.
 
-From **Cursor chat**, attach the agent Shell (`block_until_ms` ≥ 45m). Do not background (`block_until_ms: 0`) — the IDE reaps those jobs at ~5 min. Walk-away runs belong in **your** terminal; Telegram / HITL wake you.
+From **Cursor chat**, the agent starts the loop: attach Shell (`block_until_ms` ≥ 45m, `notify_on_output` on `^AGENT_LOOP_DONE `). Do not `block_until_ms: 0` — the IDE reaps those jobs at ~5 min. Do not tell the human to run it in a terminal unless they asked to walk away (Telegram / HITL wake them).
 
 Smoke peers (after `pnpm build`):
 

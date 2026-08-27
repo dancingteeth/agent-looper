@@ -1,5 +1,5 @@
-import { Fragment } from 'react'
-import { Box, Text, useAnimation } from 'ink'
+import { Fragment, type ReactNode } from 'react'
+import { Box, Text, useAnimation, useStdout } from 'ink'
 
 /** Cover palette — Agent Looper DSH (terracotta / verify green). */
 export const C = {
@@ -53,9 +53,9 @@ export function figure8Lines(frame: number): [string, string, string] {
 export function Figure8Frame({ frame }: { frame: number }) {
   const lines = figure8Lines(frame)
   return (
-    <Box flexDirection="column" width={5} height={3} flexShrink={0} marginX={1}>
+    <Box flexDirection="column" width={5} height={3} flexShrink={0} marginX={1} overflow="hidden">
       {lines.map((line, lineIndex) => (
-        <Text key={lineIndex}>
+        <Text key={lineIndex} wrap="truncate">
           {[...line].map((cell, cellIndex) => (
             <Text
               key={cellIndex}
@@ -153,7 +153,7 @@ export function CoverStages({
   idle?: boolean
 } = {}) {
   return (
-    <Box flexDirection="row" alignItems="center" marginLeft={1} flexWrap="wrap">
+    <Box flexDirection="row" alignItems="center" marginLeft={1} flexWrap="nowrap" flexShrink={1} overflow="hidden">
       {STAGE_COLORS.map((stage, index) => {
         const style = pillStyle(stage, active, idle)
         return (
@@ -191,19 +191,44 @@ export function LooperMark({
 }) {
   const { frame } = useAnimation({ interval: 140, isActive })
   return (
-    <Box flexDirection="column">
-      <Box flexDirection="row" alignItems="center" flexWrap="wrap">
-        <Text color={C.white} bold>
-          Agent L
-        </Text>
+    <Box flexDirection="column" overflow="hidden">
+      <Box flexDirection="row" alignItems="center" flexWrap="nowrap" overflow="hidden">
+        <Box flexShrink={0}>
+          <Text color={C.white} bold>
+            Agent L
+          </Text>
+        </Box>
         <Figure8Frame frame={isActive ? frame : 0} />
-        <Text color={C.white} bold>
-          per
-        </Text>
+        <Box flexShrink={0}>
+          <Text color={C.white} bold>
+            per
+          </Text>
+        </Box>
         <CoverStages active={activeStage} idle={idlePipeline} />
       </Box>
-      <Text color={C.muted}>the harness that owns the grind.</Text>
+      <Text color={C.muted} wrap="truncate">
+        the harness that owns the grind.
+      </Text>
       {progress !== undefined ? <ProgressRail ratio={progress} /> : null}
+    </Box>
+  )
+}
+
+/** Pinned-width bordered card so list/description wrap cannot shrink the logo row. */
+export function CoverFrame({ children }: { children: ReactNode }) {
+  const { stdout } = useStdout()
+  return (
+    <Box flexDirection="column" width={stdout.columns ?? 80} paddingX={1} paddingY={0}>
+      <Box
+        flexDirection="column"
+        borderStyle="round"
+        borderColor={C.terracotta}
+        paddingX={1}
+        paddingY={0}
+        overflow="hidden"
+      >
+        {children}
+      </Box>
     </Box>
   )
 }

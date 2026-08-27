@@ -20,9 +20,16 @@ import { formatPreflightMessage, validateGoalPreflight } from './loopPreflight.j
 import { loopExtensionFieldsSchema } from './loopExtensions.js'
 import { migrateLegacySyncPostgres } from './loopConfigLegacy.js'
 import { applyLoopDefaults } from './loopDefaults.js'
+import {
+  applyCostPreset,
+  isCostPreset,
+  parseCostPresetsCatalog,
+  type UserCostPresetMap,
+} from './costPreset.js'
+import { emptyDetection, type DetectionResult } from '../cli/detectRuntimes.js'
 import { loopModeSchema } from './loopMode.js'
 import { isTrivialVerifyCommand, trivialVerifyWarning } from './trivialVerify.js'
-import { loadLoopDefaultsForDir } from '../context/repoProfile.js'
+import { loadLoopDefaultsForDir, loadLoopCostPresetsForDir } from '../context/repoProfile.js'
 
 export const loopRuntimeSchema = z.enum(LOOP_RUNTIME_VALUES)
 
@@ -59,6 +66,12 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     verifySkill: z.string().trim().min(1).optional(),
     finalVerify: z.string().optional(),
     runtime: loopRuntimeSchema.default(LOOP_RUNTIME_CURSOR),
+    /**
+     * Named worker/judge stack. Built-in names (minmax|balanced|cursor) bind from
+     * detection; user names resolve from the repo profile `costPresets` map. The
+     * string is the name only — the expanded keys live in runtime/model/review*.
+     */
+    costPreset: z.string().optional(),
     model: z.string().optional(),
     /** Primary judge runtime. Unset → cursor (backward compatible). */
     reviewRuntime: loopRuntimeSchema.optional(),
@@ -210,8 +223,35 @@ export type LoadedLoopBundle = {
 }
 
 /** Accept legacy loop.json field `syncPostgres` as alias for syncOnSuccess. */
-export function parseLoopConfig(raw: unknown): LoopConfig {
-  return loopConfigSchema.parse(migrateLegacySyncPostgres(raw))
+export type ParseLoopConfigOptions = {
+  detection?: DetectionResult
+  /** Repo profile `costPresets` map — user-authored named stacks. */
+  costPresets?: UserCostPresetMap
+}
+
+export function parseLoopConfig(raw: unknown, options?: ParseLoopConfigOptions): LoopConfig {
+  const migrated = migrateLegacySyncPostgres(raw)
+  const costPresets =
+    options?.costPresets !== undefined ? parseCostPresetsCatalog(options.costPresets) : undefined
+
+  const withPreset = applyCostPreset(
+    migrated,
+    options?.detection ?? emptyDetection(),
+    costPresets,
+  )
+
+  const presetName = (withPreset as Record<string, unknown>).costPreset
+  if (typeof presetName === 'string') {
+    const known =
+      isCostPreset(presetName) ||
+      (costPresets !== undefined &&
+        Object.prototype.hasOwnProperty.call(costPresets, presetName))
+    if (!known) {
+      throw new Error(`unknown costPreset "${presetName}"`)
+    }
+  }
+
+  return loopConfigSchema.parse(withPreset)
 }
 
 export function resolveLoopDir(loopDirArg: string, repoRoot: string): string {
@@ -221,7 +261,11 @@ export function resolveLoopDir(loopDirArg: string, repoRoot: string): string {
 
 export function loadLoopBundle(
   loopDir: string,
-  options?: { defaults?: Record<string, unknown> },
+  options?: {
+    defaults?: Record<string, unknown>
+    detection?: DetectionResult
+    costPresets?: UserCostPresetMap
+  },
 ): LoadedLoopBundle {
   const goalPath = path.join(loopDir, 'GOAL.md')
   const configPath = path.join(loopDir, 'loop.json')
@@ -253,7 +297,12 @@ export function loadLoopBundle(
   const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as unknown
   const defaults =
     options && 'defaults' in options ? options.defaults : loadLoopDefaultsForDir(loopDir)
-  const config = parseLoopConfig(applyLoopDefaults(raw, defaults))
+  const costPresets =
+    options && 'costPresets' in options ? options.costPresets : loadLoopCostPresetsForDir(loopDir)
+  const config = parseLoopConfig(applyLoopDefaults(raw, defaults), {
+    detection: options?.detection,
+    costPresets,
+  })
 
   if (isTrivialVerifyCommand(config.verify)) {
     console.error(

@@ -5,6 +5,7 @@ import { taskwarriorProjectSchema } from '../integrations/taskwarrior.js'
 import { hitlProfileFieldsSchema } from '../integrations/hitlConfig.js'
 import { pickLoopDefaults } from '../loop/loopDefaults.js'
 import { loopRiskProfileOverrideSchema } from '../loop/loopRiskProfile.js'
+import { userCostPresetsCatalogSchema } from '../loop/costPreset.js'
 
 export const REPO_PROFILE_RELATIVE_PATH = path.join('.cursor', 'agent-loop.repo.json')
 
@@ -69,6 +70,13 @@ export const repoProfileSchema = z
       const picked = pickLoopDefaults(value)
       return Object.keys(picked).length > 0 ? picked : undefined
     }),
+  /**
+   * User-authored named cost stacks (name → worker/judge stack). Selected from
+   * loop.json `"costPreset": "<name>"`. Sibling of `defaults` — this is a catalog,
+   * not a loop-field overlay. Built-in names (minmax/balanced/cursor/custom) are
+   * reserved; keys must be kebab-case; each value is a worker/judge stack.
+   */
+  costPresets: userCostPresetsCatalogSchema.optional(),
   })
   .merge(hitlProfileFieldsSchema)
 
@@ -113,4 +121,13 @@ export function loadLoopDefaultsForDir(loopDir: string): Record<string, unknown>
   const defaults = loadRepoProfile(repoRoot).defaults
   if (!defaults || Object.keys(defaults).length === 0) return undefined
   return defaults
+}
+
+/** Profile `costPresets` catalog for a loop directory, or undefined when none apply. */
+export function loadLoopCostPresetsForDir(loopDir: string): Record<string, unknown> | undefined {
+  const repoRoot = findRepoRootWithProfile(loopDir)
+  if (!repoRoot) return undefined
+  const costPresets = loadRepoProfile(repoRoot).costPresets
+  if (!costPresets || Object.keys(costPresets).length === 0) return undefined
+  return costPresets
 }

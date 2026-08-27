@@ -3,6 +3,7 @@ import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { resolveLoopAgent, resolveReviewAgent } from '../loop/loopAgentConfig.js'
 import { loadLoopBundle, resolveLoopDir } from '../loop/loopConfig.js'
+import { detectLoopRuntimes } from './detectRuntimes.js'
 import {
   reconstructAgentLoopResultFromLog,
   readTranscriptEvents,
@@ -24,7 +25,8 @@ Reads log.ndjson for iteration timeline; optionally merges existing transcript.n
 
 const ctx = resolveRepoContext({ repoRoot })
 const loopDir = resolveLoopDir(loopArg, ctx.repoRoot)
-const bundle = loadLoopBundle(loopDir)
+const detection = await detectLoopRuntimes()
+const bundle = loadLoopBundle(loopDir, { detection })
 const result = reconstructAgentLoopResultFromLog(bundle.logPath, { config: bundle.config })
 const workerModel = resolveLoopAgent(bundle.config).model
 const reviewAgent = resolveReviewAgent(bundle.config)

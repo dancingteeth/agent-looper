@@ -77,6 +77,15 @@ describe('loopConfigSchema', () => {
     expect(resolveLoopAgent(parsed).model).toBe('opencode-go/deepseek-v4-flash')
   })
 
+  it('accepts OpenCode Go Hy3 as a worker model', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      model: 'opencode-go/hy3',
+    })
+    expect(resolveLoopAgent(parsed).model).toBe('opencode-go/hy3')
+  })
+
   it('rejects unknown OpenCode Go model slugs', () => {
     expect(() =>
       loopConfigSchema.parse({

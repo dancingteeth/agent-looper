@@ -22,7 +22,7 @@ Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "opencod
 | `escalateModel` | `opencode-go/qwen3.7-plus` (after stagnation) |
 | `reviewModel` (when `reviewRuntime: "opencode"`) | `opencode-go/deepseek-v4-pro` (not Flash) |
 
-Go slugs must appear in `OPENCODE_GO_LOOP_MODELS` (see [OpenCode Go docs](https://opencode.ai/docs/go/)).
+Go slugs must appear in `OPENCODE_GO_LOOP_MODELS` (see [OpenCode Go docs](https://opencode.ai/docs/go/)). **Hy3** (`opencode-go/hy3`) is on that list — slower than Flash, large monthly quota. `costPreset: "minmax"` binds Hy3 as the Go worker (not Flash) plus a Grok judge when Cursor is installed.
 
 ## BYOK and local models
 

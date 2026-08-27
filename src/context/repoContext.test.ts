@@ -25,6 +25,43 @@ describe('repoProfileSchema', () => {
     })
     expect(parsed.defaults).toEqual({ runtime: 'dsh', maxIterations: 5 })
   })
+
+  it('accepts a kebab costPresets stack', () => {
+    const parsed = repoProfileSchema.parse({
+      costPresets: {
+        'cheap-pi': {
+          runtime: 'pi',
+          model: 'openrouter/deepseek/deepseek-chat',
+          reviewRuntime: 'pi',
+          reviewModel: 'openrouter/qwen/qwen3-coder-plus',
+        },
+      },
+    })
+    expect(parsed.costPresets?.['cheap-pi']?.runtime).toBe('pi')
+  })
+
+  it('rejects reserved costPresets keys', () => {
+    expect(() =>
+      repoProfileSchema.parse({
+        costPresets: {
+          minmax: {
+            runtime: 'pi',
+            model: 'openrouter/deepseek/deepseek-chat',
+            reviewRuntime: 'pi',
+            reviewModel: 'openrouter/qwen/qwen3-coder-plus',
+          },
+        },
+      }),
+    ).toThrow(/reserved/)
+  })
+
+  it('rejects incomplete costPresets stacks', () => {
+    expect(() =>
+      repoProfileSchema.parse({
+        costPresets: { 'cheap-pi': { runtime: 'pi', model: 'm' } },
+      }),
+    ).toThrow()
+  })
 })
 
 describe('resolveRepoContext', () => {

@@ -202,7 +202,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`. See [`docs/runtime-map.md`](./docs/runtime-map.md). Same-task cost method: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). |
+| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`. Unset when `costPreset` is set so detection can bind. See [`docs/runtime-map.md`](./docs/runtime-map.md). Same-task cost method: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). |
+| `costPreset` | — | Named worker+judge stack: `minmax` (efficiency — cheapest *capable* worker + strongest included judge; Grok whenever Cursor is installed), `balanced` (escalate-tier worker, same judge), `cursor` (Composer + Grok). Detect-bound at parse when `runtime`/`model` are unset; explicit keys win. Not Auto. |
 | `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi/Codex/DSH: after threshold; Cline: after reasoning ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
 | `maxCostUsd` | — | Dollar cap: refuse to start a billed **worker** call whose predicted cost exceeds remaining budget; after a finished worker (or billed review) that still crosses it, stop `waiting` + HITL `budget` (`--max-cost`). Omit = no cap. |
@@ -470,14 +471,14 @@ Optional second message: attach `review.md` as a document. Opt out with `"telegr
 
 ## Running from Cursor chat
 
-Cursor’s **agent Shell** is not a terminal. A job started with `block_until_ms: 0` is a background child the IDE reaps at **~5 minutes** (`status: aborted`, `exit_code: unknown`, often pnpm **255`) while the worker is still mid-turn. That is not the harness: TTFB stall is 3 min with no events; overall timeout is **45 min**.
+Cursor’s **agent Shell** is not a terminal. `block_until_ms: 0` (or the IDE **background** button) is a child the IDE reaps at **~5 minutes** (`status: aborted`, `exit_code: unknown`, often pnpm **255`) while the worker is still mid-turn. That is not the harness: TTFB stall is 3 min with no events; overall timeout is **45 min**.
 
-**Do this instead:**
+**If you are the agent in this chat, you start the loop. Do not print a command and tell the human to run it.** Walk-away is not your fallback.
 
 | Intent | How |
 | --- | --- |
-| Stay in this chat | Shell **attached**: `block_until_ms` ≥ 45m (`2700000`). Optional `notify_on_output` on `^AGENT_LOOP_DONE `. |
-| Walk away | A **human terminal** (`pnpm agent:loop …`). Telegram / HITL / webhook wake you. |
+| This chat (default) | Shell **attached**: `block_until_ms` ≥ 45m (`2700000`). `notify_on_output` on `^AGENT_LOOP_DONE `. |
+| Human asked to walk away | **Their** terminal (`pnpm agent:loop …`). Telegram / HITL / webhook wake them. |
 
 Never `block_until_ms: 0` for `agent-loop` or `agent-loop-batch`. Re-attach after an abort; do not treat it as a harness failure.
 

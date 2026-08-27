@@ -4,10 +4,11 @@ import { useState, type ReactElement } from 'react'
 import type { MenuChoice } from './setupMenus.js'
 import { defaultIndexForValue } from './setupMenus.js'
 import { TYPICAL_SETUP_STEPS, type SetupPrompts } from './setupFlow.js'
-import { C, LooperMark } from './loopChrome.js'
+import { C, CoverFrame, LooperMark } from './loopChrome.js'
 
 // Re-export shared cover chrome so existing consumers keep importing from here.
 export {
+  CoverFrame,
   CoverStages,
   Figure8Frame,
   FIGURE8_FRAME_COUNT,
@@ -81,53 +82,47 @@ export function SelectPrompt({
   })
 
   return (
-    <Box flexDirection="column" paddingX={1} paddingY={1}>
-      <Box flexDirection="column" borderStyle="round" borderColor={C.terracotta} paddingX={1} paddingY={0}>
-        <LooperMark isActive={animate} progress={progress} />
-        <Text color={C.terracotta} bold>
-          {heading}
-        </Text>
-        <Text color={C.muted} wrap="wrap">
-          {blurb}
-        </Text>
-        <Text> </Text>
-        {windowStart > 0 ? <Text color={C.muted}>  ↑ {windowStart} more</Text> : null}
-        {visible.map((choice, offset) => {
-          const absolute = windowStart + offset
-          const selected = absolute === index
-          const isDefault = absolute === defaultIndex
-          return (
-            <Box key={`${choice.value}:${absolute}`}>
-              <Text color={selected ? C.terracotta : C.white} bold={selected}>
-                {selected ? ' ❯ ' : '   '}
-                {choice.title}
-                {isDefault ? (
-                  <Text color={C.muted}>  default</Text>
-                ) : null}
-                {choice.tag ? (
-                  <Text color={choice.tag === 'detected' ? C.verify : C.muted}>
-                    {'  '}
-                    [{choice.tag}]
-                  </Text>
-                ) : null}
-              </Text>
-            </Box>
-          )
-        })}
-        {windowStart + visible.length < choices.length ? (
-          <Text color={C.muted}>  ↓ {choices.length - windowStart - visible.length} more</Text>
-        ) : null}
-        <Text> </Text>
-        <Box flexDirection="column" minHeight={3}>
-          <Text color={C.tan} wrap="wrap">
-            {current?.description ?? ''}
-          </Text>
-        </Box>
-        <Text color={C.muted}>
-          ↑↓ / j k  move  ·  enter  select  ·  1–9  jump  ·  esc  abort
-        </Text>
-      </Box>
-    </Box>
+    <CoverFrame>
+      <LooperMark isActive={animate} progress={progress} />
+      <Text color={C.terracotta} bold wrap="truncate">
+        {heading}
+      </Text>
+      <Text color={C.muted} wrap="truncate">
+        {blurb}
+      </Text>
+      {windowStart > 0 ? <Text color={C.muted}>  ↑ {windowStart} more</Text> : null}
+      {visible.map((choice, offset) => {
+        const absolute = windowStart + offset
+        const selected = absolute === index
+        const isDefault = absolute === defaultIndex
+        return (
+          <Box key={`${choice.value}:${absolute}`} height={1} overflow="hidden">
+            <Text color={selected ? C.terracotta : C.white} bold={selected} wrap="truncate">
+              {selected ? ' ❯ ' : '   '}
+              {choice.title}
+              {isDefault ? (
+                <Text color={C.muted}>  default</Text>
+              ) : null}
+              {choice.tag ? (
+                <Text color={choice.tag === 'detected' ? C.verify : C.muted}>
+                  {'  '}
+                  [{choice.tag}]
+                </Text>
+              ) : null}
+            </Text>
+          </Box>
+        )
+      })}
+      {windowStart + visible.length < choices.length ? (
+        <Text color={C.muted}>  ↓ {choices.length - windowStart - visible.length} more</Text>
+      ) : null}
+      <Text color={C.tan} wrap="truncate">
+        {current?.description ?? ''}
+      </Text>
+      <Text color={C.muted} wrap="truncate">
+        ↑↓ / j k  move  ·  enter  select  ·  1–9  jump  ·  esc  abort
+      </Text>
+    </CoverFrame>
   )
 }
 
@@ -171,25 +166,26 @@ export function TextPrompt({
   })
 
   return (
-    <Box flexDirection="column" paddingX={1} paddingY={1}>
-      <Box flexDirection="column" borderStyle="round" borderColor={C.terracotta} paddingX={1}>
-        <LooperMark isActive={animate} progress={progress} />
-        <Text color={C.terracotta} bold>
-          {prompt}
+    <CoverFrame>
+      <LooperMark isActive={animate} progress={progress} />
+      <Text color={C.terracotta} bold wrap="truncate">
+        {prompt}
+      </Text>
+      {defaultValue !== undefined ? (
+        <Text color={C.muted} wrap="truncate">
+          Enter keeps [{defaultValue}]
         </Text>
-        {defaultValue !== undefined ? (
-          <Text color={C.muted}>Enter keeps [{defaultValue}]</Text>
-        ) : (
-          <Text color={C.muted}>Type a value, then enter. Esc aborts.</Text>
-        )}
-        <Text> </Text>
-        <Text color={C.verify}>
-          {' > '}
-          {value}
-          <Text inverse> </Text>
+      ) : (
+        <Text color={C.muted} wrap="truncate">
+          Type a value, then enter. Esc aborts.
         </Text>
-      </Box>
-    </Box>
+      )}
+      <Text color={C.verify} wrap="truncate">
+        {' > '}
+        {value}
+        <Text inverse> </Text>
+      </Text>
+    </CoverFrame>
   )
 }
 

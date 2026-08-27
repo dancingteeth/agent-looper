@@ -1,27 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Box, Text } from 'ink'
-import { C, LooperMark } from './loopChrome.js'
+import { Text } from 'ink'
+import { C, CoverFrame, LooperMark } from './loopChrome.js'
 import { formatWatchStatusLine, readWatchView, type WatchStatus } from '../loop/loopWatch.js'
 
 export function WatchView({ status }: { status: WatchStatus }) {
   return (
-    <Box flexDirection="column" paddingX={1} paddingY={1}>
-      <Box flexDirection="column" borderStyle="round" borderColor={C.terracotta} paddingX={1} paddingY={0}>
-        <LooperMark
-          isActive={!status.ended}
-          activeStage={status.ended ? undefined : status.phase}
-          idlePipeline={Boolean(status.ended)}
-        />
-        <Text color={C.terracotta} bold>
-          {formatWatchStatusLine(status)}
-        </Text>
-        <Text color={C.muted}>
-          {status.ended
-            ? `run exited — last ${status.phase} iteration ${status.iteration}/${status.maxIterations}`
-            : `watching ${status.phase} — iteration ${status.iteration}/${status.maxIterations}`}
-        </Text>
-      </Box>
-    </Box>
+    <CoverFrame>
+      <LooperMark
+        isActive={!status.ended}
+        activeStage={status.ended ? undefined : status.phase}
+        idlePipeline={Boolean(status.ended)}
+      />
+      <Text color={C.terracotta} bold wrap="truncate">
+        {formatWatchStatusLine(status)}
+      </Text>
+      <Text color={C.muted} wrap="truncate">
+        {status.ended
+          ? `run exited — last ${status.phase} iteration ${status.iteration}/${status.maxIterations}`
+          : `watching ${status.phase} — iteration ${status.iteration}/${status.maxIterations}`}
+      </Text>
+    </CoverFrame>
   )
 }
 
@@ -62,12 +60,10 @@ export function WatchApp({
 
   if (!status) {
     return (
-      <Box flexDirection="column" paddingX={1} paddingY={1}>
-        <Box flexDirection="column" borderStyle="round" borderColor={C.terracotta} paddingX={1} paddingY={0}>
-          <LooperMark isActive idlePipeline />
-          <Text color={C.muted}>waiting for a run…</Text>
-        </Box>
-      </Box>
+      <CoverFrame>
+        <LooperMark isActive idlePipeline />
+        <Text color={C.muted}>waiting for a run…</Text>
+      </CoverFrame>
     )
   }
   return <WatchView status={status} />

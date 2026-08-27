@@ -6,6 +6,9 @@
   "reviewsFile": "REVIEWS.md",
   "skillsGlob": ".cursor/loops/*/VERIFY.skill.md",
   "clientName": "@dancingteeth/agent-looper",
+  "defaults": {
+    "costPreset": "minmax"
+  },
   "telegramNotify": {
     "onSuccess": true,
     "onFailure": true

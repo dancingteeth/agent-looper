@@ -25,6 +25,7 @@ import { formatBatchCompletionReport } from '../loop/loopReport.js'
 import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
 import { parseRunBatchArgs, type RunBatchCliOptions } from './runBatchArgs.js'
 import { loadLoopBundle } from '../loop/loopConfig.js'
+import { detectLoopRuntimes } from './detectRuntimes.js'
 
 const parsedArgs = parseRunBatchArgs(process.argv.slice(2))
 if (parsedArgs.kind === 'help') {
@@ -44,6 +45,7 @@ const batchLabel = path.relative(ctx.repoRoot, batchDir)
 console.error(`[agent-loop-batch] repo=${ctx.repoRoot}`)
 console.error(`[agent-loop-batch] batch=${path.relative(ctx.repoRoot, batchDir)}`)
 
+const detection = await detectLoopRuntimes()
 const loops = batchConfig.loops ?? []
 const batchTrusted =
   cli.trustConfig ||
@@ -52,7 +54,7 @@ const batchTrusted =
       try {
         const { path: loopRel } = normalizeBatchLoopEntry(loopEntry)
         const loopDir = resolveBatchLoopDir(loopRel, batchDir, ctx.repoRoot)
-        return loadLoopBundle(loopDir).config.trustConfig
+        return loadLoopBundle(loopDir, { detection }).config.trustConfig
       } catch {
         return false
       }
@@ -169,6 +171,7 @@ try {
     batchDir: cli.batchDir,
     verbose: cli.verbose,
     skipSync: cli.skipSync,
+    detection,
     onLoopStart: (loopDir, index, total) => {
       console.error(
         `[agent-loop-batch] loop ${index}/${total}: ${path.relative(ctx.repoRoot, loopDir)}`,

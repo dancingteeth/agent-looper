@@ -63,10 +63,12 @@ npm view @dancingteeth/agent-looper version
 
 ### Local Agent
 
-Do **not** background `agent-loop` (`block_until_ms: 0`). Cursor reaps those shells at ~5 min (`aborted` / pnpm 255) while the worker is still going.
+**You start the loop in this chat.** Do not print `pnpm agent:loop …` and tell the human to run it.
 
-1. **This chat:** Shell attached, `block_until_ms` ≥ `2700000` (45m). Optional `notify_on_output` on `^AGENT_LOOP_DONE `.
-2. **Walk away:** a human terminal (`pnpm agent:loop …`); Telegram / HITL wake you.
+Do **not** background `agent-loop` (`block_until_ms: 0` or the IDE background button). Cursor reaps those shells at ~5 min (`aborted` / pnpm 255) while the worker is still going.
+
+1. **This chat (default):** Shell attached, `block_until_ms` ≥ `2700000` (45m). `notify_on_output` on `^AGENT_LOOP_DONE `.
+2. **Only if the human asked to walk away:** their terminal (`pnpm agent:loop …`); Telegram / HITL wake them.
 3. On `AGENT_LOOP_DONE`, parse the JSON and read `runReport` / `run-report.md`.
 
 Disable the sentinel with `--no-completion-signal` or `AGENT_LOOP_NO_COMPLETION_SIGNAL=1`.

@@ -73,6 +73,7 @@ export const DEFAULT_CLINE_CREDITS_ESCALATE_MODEL = 'qwen/qwen3-coder-plus'
  */
 export const OPENCODE_GO_LOOP_MODELS = [
   'opencode-go/deepseek-v4-flash',
+  'opencode-go/hy3',
   'opencode-go/mimo-v2.5',
   'opencode-go/minimax-m3',
   'opencode-go/qwen3.7-plus',
