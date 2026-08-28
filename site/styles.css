@@ -308,19 +308,60 @@ code {
 .tui-loop-line.fail { color: var(--terracotta); }
 .tui-loop-line.pass { color: var(--verify); }
 
-.tui-providers,
-.tui-presets,
-.tui-budget {
-  margin: 1.25rem 0 0;
-  max-width: 38rem;
+.tui-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  margin-top: 2.5rem;
+}
+
+.tui-answer {
+  border-left: 2px solid var(--terracotta);
+  padding-left: 1.25rem;
+  max-width: 42rem;
+}
+
+.tui-answer--presets { border-left-color: var(--tan); }
+.tui-answer--budget { border-left-color: var(--verify); }
+
+.tui-answer h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  margin: 0 0 0.75rem;
+}
+
+.tui-answer p {
+  margin: 0;
   color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.65;
 }
 
-.tui-presets,
-.tui-budget {
-  margin-top: 1rem;
+.tui-agent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.85rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+@media (min-width: 960px) {
+  .tui-answers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem 2.5rem;
+    max-width: none;
+  }
+
+  .tui-answer {
+    max-width: none;
+  }
 }
 
 /* Sections — black page, no warm cards */
