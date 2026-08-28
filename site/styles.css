@@ -79,29 +79,58 @@ code {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 0;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--white);
   text-decoration: none;
 }
 
-.logo:hover { color: var(--white); text-decoration: none; }
+.logo:hover { text-decoration: none; }
 
-.logo-oo {
+/* LooperMark — loopChrome.tsx */
+
+.looper-mark {
+  font-family: var(--font-mono);
+}
+
+.looper-mark-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.looper-word {
+  color: var(--white);
+  font-weight: 700;
+  white-space: pre;
+}
+
+.looper-mark--compact .looper-word {
+  font-size: 0.9rem;
+}
+
+.looper-mark--compact .figure8 {
+  font-size: 0.72rem;
+  margin: 0 0.15rem;
+}
+
+.figure8 {
   display: inline-grid;
   grid-template-columns: repeat(5, 1ch);
-  grid-template-rows: repeat(3, 1em);
-  font-size: 0.65rem;
+  grid-template-rows: repeat(3, 1.15em);
   line-height: 1;
-  margin: 0 0.1rem;
+  flex-shrink: 0;
+  margin: 0 0.25rem;
   vertical-align: middle;
 }
 
-.logo-oo .o { color: var(--terracotta); }
-.logo-oo .dot { color: var(--verify); }
-.logo-oo .empty { color: transparent; }
+.figure8 .cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.figure8 .o { color: var(--terracotta); }
+.figure8 .dot { color: var(--verify); }
+.figure8 .empty { color: transparent; }
 
 .nav {
   display: flex;
@@ -220,42 +249,19 @@ code {
 }
 
 .tui-mark {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.1rem 0.3rem;
   margin-bottom: 0.2rem;
 }
 
-.tui-word {
-  color: var(--white);
-  font-weight: 700;
+.tui-mark .looper-mark-row {
+  flex-wrap: wrap;
 }
-
-.figure8 {
-  display: grid;
-  grid-template-columns: repeat(5, 1ch);
-  grid-template-rows: repeat(3, 1.15em);
-  margin: 0 0.2rem;
-  line-height: 1;
-}
-
-.figure8 .cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.figure8 .o { color: var(--terracotta); }
-.figure8 .dot { color: var(--verify); }
-.figure8 .empty { color: transparent; }
 
 .tui-pipeline {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.15rem 0.3rem;
-  margin-left: 0.2rem;
+  margin-left: 0.35rem;
 }
 
 .stage-pill {

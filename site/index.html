@@ -11,8 +11,14 @@
 <body>
   <header class="site-header">
     <div class="wrap">
-      <a class="logo" href="./">
-        <span>Agent&nbsp;L</span><span class="logo-oo" id="logo-figure8" aria-hidden="true"></span><span>per</span>
+      <a class="logo" href="./" aria-label="Agent Looper">
+        <span class="looper-mark looper-mark--compact">
+          <span class="looper-mark-row">
+            <span class="looper-word">Agent L</span>
+            <span class="figure8" data-figure8></span>
+            <span class="looper-word">per</span>
+          </span>
+        </span>
       </a>
       <nav class="nav">
         <a href="https://github.com/dancingteeth/agent-looper">GitHub</a>
@@ -48,19 +54,21 @@
     <section class="tui-section" aria-label="Setup wizard preview">
       <div class="wrap">
         <div class="cover-frame">
-          <div class="tui-mark">
-            <span class="tui-word">Agent L</span>
-            <div class="figure8" id="figure8" aria-hidden="true"></div>
-            <span class="tui-word">per</span>
-            <div class="tui-pipeline" aria-label="Stage pipeline">
-              <span class="stage-pill grey">GOAL</span>
-              <span class="stage-arrow">→</span>
-              <span class="stage-pill grey">WORKER</span>
-              <span class="stage-arrow">→</span>
-              <span class="stage-pill verify">VERIFY</span>
-              <span class="stage-arrow">→</span>
-              <span class="stage-pill grey">JUDGE</span>
-            </div>
+          <div class="tui-mark looper-mark">
+            <span class="looper-mark-row">
+              <span class="looper-word">Agent L</span>
+              <span class="figure8" data-figure8></span>
+              <span class="looper-word">per</span>
+              <span class="tui-pipeline" aria-label="Stage pipeline">
+                <span class="stage-pill grey">GOAL</span>
+                <span class="stage-arrow">→</span>
+                <span class="stage-pill grey">WORKER</span>
+                <span class="stage-arrow">→</span>
+                <span class="stage-pill verify">VERIFY</span>
+                <span class="stage-arrow">→</span>
+                <span class="stage-pill grey">JUDGE</span>
+              </span>
+            </span>
           </div>
           <p class="tui-tagline">the harness that owns the grind.</p>
           <p class="tui-rail" aria-hidden="true">
@@ -225,37 +233,43 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
   </footer>
 
   <script>
-    // Figure-8 dot path from src/cli/loopChrome.tsx
-    const SKELETON = [
+    // Figure-8 animation — src/cli/loopChrome.tsx (Figure8Frame / figure8Lines)
+    const FIGURE8_SKELETON = [
       [' ', 'o', ' ', 'o', ' '],
       ['o', ' ', ' ', ' ', 'o'],
       [' ', 'o', ' ', 'o', ' '],
     ];
-    const PATH = [[1,0],[0,1],[1,2],[0,3],[1,4],[2,3],[1,2],[2,1]];
+    const FIGURE8_PATH = [[1,0],[0,1],[1,2],[0,3],[1,4],[2,3],[1,2],[2,1]];
 
-    function figure8Html(grid) {
-      return grid.flat().map((cell) => {
+    function figure8Lines(frame) {
+      const grid = FIGURE8_SKELETON.map((row) => [...row]);
+      const slot = FIGURE8_PATH[((frame % FIGURE8_PATH.length) + FIGURE8_PATH.length) % FIGURE8_PATH.length];
+      const [row, col] = slot;
+      grid[row][col] = '·';
+      return grid;
+    }
+
+    function figure8Html(frame) {
+      return figure8Lines(frame).flat().map((cell) => {
         const cls = cell === '·' ? 'dot' : cell === 'o' ? 'o' : 'empty';
         const ch = cell === ' ' ? '\u00A0' : cell;
         return `<span class="cell ${cls}">${ch}</span>`;
       }).join('');
     }
 
-    function renderFigure8(frame) {
-      const grid = SKELETON.map((row) => [...row]);
-      const slot = PATH[((frame % PATH.length) + PATH.length) % PATH.length];
-      const [row, col] = slot;
-      grid[row][col] = '·';
-      const html = figure8Html(grid);
-      const main = document.getElementById('figure8');
-      const logo = document.getElementById('logo-figure8');
-      if (main) main.innerHTML = html;
-      if (logo) logo.innerHTML = html;
+    function renderAllFigure8(frame) {
+      const html = figure8Html(frame);
+      document.querySelectorAll('[data-figure8]').forEach((el) => {
+        el.innerHTML = html;
+      });
     }
 
-    let frame = 0;
-    renderFigure8(frame);
-    setInterval(() => { frame += 1; renderFigure8(frame); }, 140);
+    let figure8Frame = 0;
+    renderAllFigure8(figure8Frame);
+    setInterval(() => {
+      figure8Frame += 1;
+      renderAllFigure8(figure8Frame);
+    }, 140);
 
     document.querySelectorAll('[data-copy]').forEach((btn) => {
       btn.addEventListener('click', async () => {
