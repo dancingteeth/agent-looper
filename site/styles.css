@@ -368,6 +368,7 @@ code {
 
 .tui-answer--presets { border-left-color: var(--tan); }
 .tui-answer--budget { border-left-color: var(--verify); }
+.tui-answer--escalation { border-left-color: var(--ghost); }
 
 .tui-answer h2 {
   font-size: 1.15rem;
