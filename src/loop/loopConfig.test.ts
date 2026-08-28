@@ -12,6 +12,7 @@ import {
   mergeLoopConfig,
   parseLoopConfig,
   parseLoopRuntimeCli,
+  resolveLoopDir,
 } from './loopConfig.js'
 
 describe('loopConfigSchema', () => {
@@ -471,5 +472,12 @@ describe('parseLoopRuntimeCli', () => {
     expect(loopRuntimeFlagError('--runtime')).toBe(
       '--runtime must be cursor, cline-pass, cline, opencode, pi, codex, or dsh',
     )
+  })
+})
+
+describe('resolveLoopDir', () => {
+  it('resolves relative bundle paths against repo root', () => {
+    expect(resolveLoopDir('.cursor/loops/foo', '/repo')).toBe('/repo/.cursor/loops/foo')
+    expect(resolveLoopDir('/abs/loops/foo', '/repo')).toBe('/abs/loops/foo')
   })
 })

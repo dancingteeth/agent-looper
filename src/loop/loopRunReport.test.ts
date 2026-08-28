@@ -8,6 +8,7 @@ import { detectionOf } from '../cli/detectRuntimes.js'
 import { parseLoopConfig } from './loopConfig.js'
 import {
   buildRunReportMarkdown,
+  readTranscriptEvents,
   reconstructAgentLoopResultFromLog,
   writeRunReportArtifacts,
 } from './loopRunReport.js'
@@ -362,5 +363,31 @@ describe('buildRunReportMarkdown', () => {
     expect(fs.existsSync(reportPath)).toBe(true)
     expect(fs.readFileSync(reportPath, 'utf8')).toContain('Loop run report')
     expect(fs.existsSync(path.join(tmpDir, 'transcript.ndjson'))).toBe(true)
+  })
+})
+
+describe('readTranscriptEvents', () => {
+  let tmpDir: string
+
+  afterEach(() => {
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns parsed NDJSON events and skips malformed lines', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-transcript-'))
+    const transcriptPath = path.join(tmpDir, 'transcript.ndjson')
+    fs.writeFileSync(
+      transcriptPath,
+      [
+        JSON.stringify({ at: '2026-01-01T00:00:00.000Z', type: 'tool_start', name: 'Read' }),
+        'not-json',
+      ].join('\n'),
+    )
+    const events = readTranscriptEvents(transcriptPath)
+    expect(events).toHaveLength(1)
+    expect(events[0]?.name).toBe('Read')
+    expect(readTranscriptEvents(path.join(tmpDir, 'missing.ndjson'))).toEqual([])
   })
 })

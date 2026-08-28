@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { detectDefaultBranch } from './defaultBranch.js'
-import { validateRepoProfile } from './repoProfileDoctor.js'
+import { formatRepoProfileCheck, validateRepoProfile } from './repoProfileDoctor.js'
 import { repoProfileSchema } from './repoProfile.js'
 import { emptyDetection } from '../cli/detectRuntimes.js'
 import { CURSOR_LOOP_MODEL, CURSOR_REVIEW_MODEL } from '../loop/loopAgentConfig.js'
@@ -126,5 +126,15 @@ describe('validateRepoProfile', () => {
     )
     expect(check.ok).toBe(true)
     expect(check.warnings.some((warning) => warning.includes('unknown costPreset'))).toBe(true)
+  })
+
+  it('formats errors and warnings for CLI doctor output', () => {
+    const formatted = formatRepoProfileCheck({
+      ok: false,
+      errors: ['defaultBranch ref missing'],
+      warnings: ['loop.json uses unknown costPreset'],
+    })
+    expect(formatted).toContain('error: defaultBranch ref missing')
+    expect(formatted).toContain('warn: loop.json uses unknown costPreset')
   })
 })

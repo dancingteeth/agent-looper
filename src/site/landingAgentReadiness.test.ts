@@ -67,12 +67,13 @@ describe('landing agent readiness', () => {
     expect(html).toMatch(/<h1>Not found<\/h1>/)
     expect(html).toContain('noindex')
     expect(html).not.toMatch(/rel="canonical"/)
-    expect(html).toContain('href="/styles.css"')
+    expect(html).toContain('href="/styles.css?v=')
     expect(html).toContain('href="/docs/"')
     expect(html).toContain('href="/llms.txt"')
     expect(html).toContain('href="/sitemap.xml"')
-    expect(html).toContain('# Not found')
-    expect(readSite('404.md')).toContain('llms.txt')
+    const md = readSite('404.md')
+    expect(md).toContain('# Not found')
+    expect(md).toContain('llms.txt')
   })
 
   it('trust and docs pages have Agent Looper in the H1 and 500+ chars', () => {
@@ -114,5 +115,114 @@ describe('landing agent readiness', () => {
 
   it('disables Jekyll so markdown files stay markdown on Pages', () => {
     expect(fs.existsSync(path.join(siteRoot, '.nojekyll'))).toBe(true)
+  })
+
+  it('robots.txt declares Content-Signal search and ai-input without ai-train', () => {
+    const robots = readSite('robots.txt')
+    expect(robots).toContain('Content-Signal: search=yes, ai-input=yes')
+    expect(robots).not.toMatch(/ai-train/i)
+    expect(robots).toContain('Allow: /')
+    expect(robots).toContain(
+      'Sitemap: https://looper.dancingteeth.net/sitemap.xml',
+    )
+  })
+
+  it('install section has For agent / For human switcher with agent as default', () => {
+    const html = readSite('index.html')
+    expect(html).toContain('For agent')
+    expect(html).toContain('For human')
+    expect(html).toMatch(/id="install-view-agent"[^>]*checked/)
+    expect(html).toMatch(/aria-selected="true"[^>]*>For agent</)
+
+    const agentPanel = html.slice(
+      html.indexOf('id="install-panel-agent"'),
+      html.indexOf('id="install-panel-human"'),
+    )
+    expect(agentPanel).toContain('Set up Agent Looper in this repo')
+    expect(agentPanel).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+
+    const humanSnippet = html.slice(
+      html.indexOf('id="install-snippet-human"'),
+      html.indexOf('</pre>', html.indexOf('id="install-snippet-human"')),
+    )
+    expect(humanSnippet).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+    expect(humanSnippet).toContain('export CURSOR_API_KEY=…   # or: doppler run -- …')
+    expect(humanSnippet).toContain('pnpm exec agent-loop-init')
+    expect(humanSnippet).toContain(
+      '# edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest',
+    )
+    expect(humanSnippet).toContain(
+      'pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate',
+    )
+  })
+
+  it('index.md includes agent install prompt before human terminal commands', () => {
+    const md = readSite('index.md')
+    const agentIdx = md.indexOf('Set up Agent Looper in this repo')
+    const humanIdx = md.indexOf('### For human')
+    expect(agentIdx).toBeGreaterThan(-1)
+    expect(humanIdx).toBeGreaterThan(agentIdx)
+    expect(md).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+    expect(md).toContain("Don't loop on subjective taste.")
+  })
+
+  it('every HTML page cache-busts styles.css when linked', () => {
+    const htmlFiles: string[] = []
+    function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) walk(full)
+        else if (entry.name.endsWith('.html')) htmlFiles.push(full)
+      }
+    }
+    walk(siteRoot)
+    expect(htmlFiles.length).toBeGreaterThan(0)
+    for (const file of htmlFiles) {
+      const html = fs.readFileSync(file, 'utf8')
+      if (!html.includes('styles.css')) continue
+      expect(html, path.relative(siteRoot, file)).toMatch(/styles\.css\?v=/)
+    }
+  })
+
+  it('names cost presets and reverse repair copy in HTML, markdown, and JSON-LD', () => {
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    const graph = jsonLdGraph(html)
+
+    const faq = graph.find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as {
+      mainEntity?: Array<{
+        name?: string
+        acceptedAnswer?: { text?: string }
+      }>
+    }
+
+    const presetsQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'How do Agent Looper worker and judge presets work?',
+    )
+    const reverseQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'What if the code is already broken?',
+    )
+
+    for (const preset of ['minmax', 'balanced', 'cursor'] as const) {
+      expect(html).toContain(preset)
+      expect(md).toContain(preset)
+      expect(presetsQuestion?.acceptedAnswer?.text).toContain(preset)
+    }
+
+    expect(html).toContain('What if the code is already broken?')
+    expect(html).toContain('Reverse starts from a red check')
+    expect(md).toContain('What if the code is already broken?')
+    expect(md).toContain('Reverse starts from a red check')
+    expect(reverseQuestion?.acceptedAnswer?.text).toContain(
+      'Reverse starts from a red check',
+    )
+    expect(reverseQuestion?.acceptedAnswer?.text).toContain(
+      "Don't copy the broken internals",
+    )
   })
 })

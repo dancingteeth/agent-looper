@@ -4,6 +4,7 @@ import { MODEL_PRICING_PER_MILLION } from './loopUsage.js'
 import {
   checkModelPricingDrift,
   collectModelPricingDriftIssues,
+  formatModelPricingDriftReport,
   requiredLoopPricingModels,
 } from './modelPricingDrift.js'
 
@@ -33,5 +34,16 @@ describe('modelPricingDrift', () => {
     const issues = collectModelPricingDriftIssues()
     expect(issues.some((i) => i.kind === 'missing-pricing')).toBe(false)
     expect(issues.some((i) => i.kind === 'stale-pricing')).toBe(false)
+  })
+
+  it('formats OK and drift reports for doctor output', () => {
+    expect(formatModelPricingDriftReport([])).toContain('model pricing: OK')
+    const report = formatModelPricingDriftReport([
+      { kind: 'missing-pricing', model: 'vendor/new-model' },
+      { kind: 'stale-pricing', model: 'vendor/retired-model' },
+    ])
+    expect(report).toContain('missing MODEL_PRICING_PER_MILLION entry for vendor/new-model')
+    expect(report).toContain('stale MODEL_PRICING_PER_MILLION entry')
+    expect(report).toContain('loopUsage.ts')
   })
 })
