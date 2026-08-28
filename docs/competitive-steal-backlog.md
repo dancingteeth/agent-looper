@@ -213,12 +213,4 @@ and Fowler’s steering language (sensor before prompt).
 
 ## Verify this backlog
 
-```bash
-bash scripts/check-steal-backlog.sh
-```
-
-Asserts P3–P8 sections + shipped P3/P4/P5 artifacts and shipped P6/P7/P8 docs
-(cost-bench method, four-part GOAL, revert, golden, RESEARCH.md index). P6 sidecar and progressive
-skills are shipped (dogfood n≥3 cost numbers still planned). Then runs focused vitest for review embedding, run-report,
-and risk-profile hooks. Docs/templates are not runtime-enforced (permissions
-matrix is governance docs; `REVIEWS.md` laws are judge prompt text).
+P3–P8 harness hooks are covered by focused vitest (`loopPostReview`, `reviewPrompt`, `loopRunReport`, `loopRiskProfile`, `loopSkills`, `loopResearch`, `loopPrompt`, `loopConfig`). Docs/templates are not runtime-enforced (permissions matrix is governance docs; `REVIEWS.md` laws are judge prompt text). P6 sidecar and progressive skills are shipped (dogfood n≥3 cost numbers still planned).

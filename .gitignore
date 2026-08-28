@@ -21,3 +21,6 @@ coverage/
 .cursor/loops/pi-smoke/probe.txt
 .cursor/loops/dsh-smoke/probe.txt
 .cursor/loops/**/verify-logs/
+
+# Local-only smoke (not shipped)
+scripts/check-steal-backlog.sh
