@@ -6,13 +6,13 @@
   <title>Agent Looper — You are the verify step</title>
   <meta name="description" content="Fix-until-green loop harness for Cursor. Fresh worker each round. Shell verify decides done. Stop when exit 0.">
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23141210'/><text x='16' y='14' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='10' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='22' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><circle cx='16' cy='20' r='2' fill='%2376A17B'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23000000'/><text x='16' y='14' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='10' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='22' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><circle cx='16' cy='20' r='2' fill='%2376A17B'/></svg>">
 </head>
 <body>
   <header class="site-header">
     <div class="wrap">
       <a class="logo" href="./">
-        Agent L<span class="logo-oo" aria-hidden="true">oo</span>per
+        <span>Agent&nbsp;L</span><span class="logo-oo" id="logo-figure8" aria-hidden="true"></span><span>per</span>
       </a>
       <nav class="nav">
         <a href="https://github.com/dancingteeth/agent-looper">GitHub</a>
@@ -45,34 +45,42 @@
       </div>
     </section>
 
-    <section class="tui-section" aria-label="Watch TUI preview">
+    <section class="tui-section" aria-label="Setup wizard preview">
       <div class="wrap">
-        <div class="tui-frame">
+        <div class="cover-frame">
           <div class="tui-mark">
             <span class="tui-word">Agent L</span>
             <div class="figure8" id="figure8" aria-hidden="true"></div>
             <span class="tui-word">per</span>
             <div class="tui-pipeline" aria-label="Stage pipeline">
-              <span class="stage-pill reached-goal">GOAL</span>
+              <span class="stage-pill grey">GOAL</span>
               <span class="stage-arrow">→</span>
-              <span class="stage-pill reached-worker">WORKER</span>
+              <span class="stage-pill grey">WORKER</span>
               <span class="stage-arrow">→</span>
-              <span class="stage-pill current">VERIFY</span>
+              <span class="stage-pill verify">VERIFY</span>
               <span class="stage-arrow">→</span>
-              <span class="stage-pill pending">JUDGE</span>
+              <span class="stage-pill grey">JUDGE</span>
             </div>
           </div>
           <p class="tui-tagline">the harness that owns the grind.</p>
           <p class="tui-rail" aria-hidden="true">
-            <span class="filled">━━━━━━━━━━━━━━</span><span class="empty">────────</span>
+            <span class="filled">━━━━</span><span class="empty">──────────────────</span>
           </p>
-          <p class="tui-status">VERIFY failed — exit 1</p>
-          <p class="tui-substatus">watching VERIFY — iteration 3/6</p>
+          <p class="tui-heading">Cost / quality preset</p>
+          <p class="tui-blurb">Choose a stack of models for running loops, or create your own preset.</p>
+          <ul class="tui-menu" aria-label="Setup menu">
+            <li><span class="row selected"> ❯ minmax — efficiency<span class="default">  default</span><span class="tag-detected">  [detected]</span></span></li>
+            <li><span class="row">   balanced — spend more on the worker</span></li>
+            <li><span class="row">   cursor — Composer + Grok</span></li>
+            <li><span class="row">   custom — pick worker and judge</span></li>
+          </ul>
+          <p class="tui-desc">DeepSeek Flash worker when OpenCode + Cursor are installed; Composer + Grok on Cursor-only.</p>
+          <p class="tui-help">↑↓ / j k  move  ·  enter  select  ·  1–9  jump  ·  esc  abort</p>
         </div>
         <p class="tui-loop-note">
-          <span class="fail">fail → fresh worker</span>
+          <span class="fail">verify fail → fresh worker</span>
           <span aria-hidden="true"> · </span>
-          <span class="pass">pass → done (optional JUDGE after green verify)</span>
+          <span class="pass">verify pass → done (optional JUDGE after green verify)</span>
         </p>
       </div>
     </section>
@@ -225,18 +233,24 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
     ];
     const PATH = [[1,0],[0,1],[1,2],[0,3],[1,4],[2,3],[1,2],[2,1]];
 
+    function figure8Html(grid) {
+      return grid.flat().map((cell) => {
+        const cls = cell === '·' ? 'dot' : cell === 'o' ? 'o' : 'empty';
+        const ch = cell === ' ' ? '\u00A0' : cell;
+        return `<span class="cell ${cls}">${ch}</span>`;
+      }).join('');
+    }
+
     function renderFigure8(frame) {
       const grid = SKELETON.map((row) => [...row]);
       const slot = PATH[((frame % PATH.length) + PATH.length) % PATH.length];
       const [row, col] = slot;
       grid[row][col] = '·';
-      const el = document.getElementById('figure8');
-      if (!el) return;
-      el.innerHTML = grid.flat().map((cell) => {
-        const cls = cell === '·' ? 'dot' : cell === 'o' ? 'o' : 'empty';
-        const ch = cell === ' ' ? '\u00A0' : cell;
-        return `<span class="cell ${cls}">${ch}</span>`;
-      }).join('');
+      const html = figure8Html(grid);
+      const main = document.getElementById('figure8');
+      const logo = document.getElementById('logo-figure8');
+      if (main) main.innerHTML = html;
+      if (logo) logo.innerHTML = html;
     }
 
     let frame = 0;

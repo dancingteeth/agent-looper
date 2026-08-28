@@ -1,4 +1,4 @@
-/* Agent Looper landing — palette from src/cli/loopChrome.tsx */
+/* Agent Looper landing — Ink on terminal black (loopChrome / setupTui) */
 
 :root {
   --terracotta: #D65D2E;
@@ -7,14 +7,12 @@
   --muted: #8A8580;
   --ghost: #4A4542;
   --white: #FFFFFF;
+  --black: #000000;
 
-  --bg: #141210;
-  --bg-alt: #1a1816;
-  --bg-card: #201e1b;
+  --bg: var(--black);
   --border: var(--ghost);
   --text: var(--white);
   --text-muted: var(--muted);
-  --text-dim: #6b6661;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
@@ -48,10 +46,10 @@ a:hover { text-decoration: underline; }
 code {
   font-family: var(--font-mono);
   font-size: 0.88em;
-  background: var(--bg-card);
+  background: var(--black);
   padding: 0.12em 0.35em;
   border-radius: 4px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--ghost);
 }
 
 .wrap {
@@ -63,12 +61,11 @@ code {
 /* Header */
 
 .site-header {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--ghost);
   padding: 1rem 0;
   position: sticky;
   top: 0;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--black);
   z-index: 10;
 }
 
@@ -82,22 +79,29 @@ code {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-  letter-spacing: -0.02em;
-  color: var(--text);
+  gap: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--white);
   text-decoration: none;
 }
 
-.logo:hover { color: var(--terracotta); text-decoration: none; }
+.logo:hover { color: var(--white); text-decoration: none; }
 
 .logo-oo {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: -0.08em;
-  color: var(--terracotta);
+  display: inline-grid;
+  grid-template-columns: repeat(5, 1ch);
+  grid-template-rows: repeat(3, 1em);
+  font-size: 0.65rem;
+  line-height: 1;
+  margin: 0 0.1rem;
+  vertical-align: middle;
 }
+
+.logo-oo .o { color: var(--terracotta); }
+.logo-oo .dot { color: var(--verify); }
+.logo-oo .empty { color: transparent; }
 
 .nav {
   display: flex;
@@ -106,11 +110,11 @@ code {
 }
 
 .nav a {
-  color: var(--text-muted);
+  color: var(--muted);
   text-decoration: none;
 }
 
-.nav a:hover { color: var(--text); text-decoration: none; }
+.nav a:hover { color: var(--white); text-decoration: none; }
 
 /* Hero */
 
@@ -121,7 +125,7 @@ code {
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 0.8rem;
-  color: var(--text-dim);
+  color: var(--muted);
   margin: 0 0 1rem;
   letter-spacing: 0.02em;
 }
@@ -137,7 +141,7 @@ code {
 
 .lead {
   font-size: 1.125rem;
-  color: var(--text-muted);
+  color: var(--muted);
   max-width: 42rem;
   margin: 0 0 2rem;
   line-height: 1.7;
@@ -154,18 +158,12 @@ code {
   font-size: 0.85rem;
 }
 
-.promise li {
-  color: var(--verify);
-}
-
-.promise li::before {
-  content: "✓ ";
-  opacity: 0.7;
-}
+.promise li { color: var(--verify); }
+.promise li::before { content: "✓ "; opacity: 0.7; }
 
 .anti-promise {
   font-size: 0.9rem;
-  color: var(--text-dim);
+  color: var(--ghost);
   margin: 0 0 2rem;
   font-style: italic;
 }
@@ -185,52 +183,48 @@ code {
   border-radius: 6px;
   text-decoration: none;
   border: 1px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
+  transition: opacity 0.15s;
 }
 
-.btn:hover { text-decoration: none; }
+.btn:hover { text-decoration: none; opacity: 0.9; }
 
 .btn-primary {
   background: var(--terracotta);
   color: var(--white);
 }
 
-.btn-primary:hover {
-  background: #e06d3a;
-}
-
 .btn-ghost {
-  border-color: var(--border);
-  color: var(--text);
+  border-color: var(--ghost);
+  color: var(--white);
 }
 
 .btn-ghost:hover {
   border-color: var(--muted);
-  background: var(--bg-card);
 }
 
-/* Watch TUI chrome (from loopChrome / watchTui) */
+/* CoverFrame + SelectPrompt (setupTui / loopChrome) */
 
 .tui-section {
   padding: 1rem 0 4rem;
 }
 
-.tui-frame {
+.cover-frame {
   font-family: var(--font-mono);
   font-size: clamp(0.68rem, 2vw, 0.82rem);
+  background: var(--black);
   border: 1px solid var(--terracotta);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  background: var(--bg-alt);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
   overflow-x: auto;
+  line-height: 1.35;
 }
 
 .tui-mark {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.15rem 0.35rem;
-  margin-bottom: 0.35rem;
+  gap: 0.1rem 0.3rem;
+  margin-bottom: 0.2rem;
 }
 
 .tui-word {
@@ -242,7 +236,7 @@ code {
   display: grid;
   grid-template-columns: repeat(5, 1ch);
   grid-template-rows: repeat(3, 1.15em);
-  margin: 0 0.25rem;
+  margin: 0 0.2rem;
   line-height: 1;
 }
 
@@ -260,23 +254,28 @@ code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.2rem 0.35rem;
-  margin-left: 0.25rem;
+  gap: 0.15rem 0.3rem;
+  margin-left: 0.2rem;
 }
 
 .stage-pill {
   border: 1px solid;
   border-radius: 999px;
-  padding: 0.1rem 0.45rem;
+  padding: 0.05rem 0.4rem;
   font-size: 0.72em;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.stage-pill.reached-goal { color: var(--terracotta); border-color: var(--terracotta); }
-.stage-pill.reached-worker { color: var(--muted); border-color: var(--muted); }
-.stage-pill.current { color: var(--white); border-color: var(--white); }
-.stage-pill.pending { color: var(--ghost); border-color: var(--ghost); opacity: 0.85; }
+.stage-pill.grey {
+  color: var(--muted);
+  border-color: var(--muted);
+}
+
+.stage-pill.verify {
+  color: var(--verify);
+  border-color: var(--verify);
+}
 
 .stage-arrow {
   color: var(--muted);
@@ -285,49 +284,87 @@ code {
 
 .tui-tagline {
   color: var(--muted);
-  margin: 0 0 0.65rem;
-  font-size: 0.95em;
+  margin: 0 0 0.45rem;
 }
 
 .tui-rail {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.55rem;
   letter-spacing: -0.05em;
 }
 
 .tui-rail .filled { color: var(--terracotta); }
 .tui-rail .empty { color: var(--muted); }
 
-.tui-status {
+.tui-heading {
   color: var(--terracotta);
   font-weight: 700;
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.15rem;
 }
 
-.tui-substatus {
+.tui-blurb {
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+}
+
+.tui-menu {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tui-menu li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tui-menu .row {
+  color: var(--white);
+}
+
+.tui-menu .row.selected {
+  color: var(--terracotta);
+  font-weight: 700;
+}
+
+.tui-menu .default {
+  color: var(--muted);
+}
+
+.tui-menu .tag-detected {
+  color: var(--verify);
+}
+
+.tui-desc {
+  color: var(--tan);
+  margin: 0.35rem 0 0.25rem;
+}
+
+.tui-help {
   color: var(--muted);
   margin: 0;
+  font-size: 0.95em;
 }
 
 .tui-loop-note {
   margin: 1rem 0 0;
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  color: var(--text-dim);
+  color: var(--ghost);
 }
 
 .tui-loop-note .fail { color: var(--terracotta); }
 .tui-loop-note .pass { color: var(--verify); }
 
-/* Sections */
+/* Sections — black page, no warm cards */
 
 .section {
   padding: 4rem 0;
 }
 
 .section-alt {
-  background: var(--bg-alt);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--ghost);
+  border-bottom: 1px solid var(--ghost);
 }
 
 .section h2 {
@@ -335,10 +372,11 @@ code {
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 0 0 1rem;
+  color: var(--white);
 }
 
 .section-intro {
-  color: var(--text-muted);
+  color: var(--muted);
   max-width: 44rem;
   margin: 0 0 2rem;
   line-height: 1.7;
@@ -351,8 +389,8 @@ code {
 }
 
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--black);
+  border: 1px solid var(--ghost);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
 }
@@ -369,7 +407,7 @@ code {
 
 .card p {
   font-size: 0.9rem;
-  color: var(--text-muted);
+  color: var(--muted);
   margin: 0;
   line-height: 1.6;
 }
@@ -377,12 +415,10 @@ code {
 .optional {
   font-size: 0.7rem;
   font-weight: 400;
-  color: var(--text-dim);
+  color: var(--ghost);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-
-/* Compare table */
 
 .compare {
   width: 100%;
@@ -394,11 +430,11 @@ code {
 .compare td {
   text-align: left;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--ghost);
 }
 
 .compare th {
-  color: var(--text-dim);
+  color: var(--ghost);
   font-weight: 500;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -406,16 +442,14 @@ code {
 }
 
 .compare td:first-child {
-  color: var(--text);
+  color: var(--white);
   font-family: var(--font-mono);
   font-size: 0.88rem;
 }
 
 .compare td:last-child {
-  color: var(--text-dim);
+  color: var(--ghost);
 }
-
-/* Pull quote */
 
 .pull-quote {
   margin: 0;
@@ -426,14 +460,12 @@ code {
   max-width: 32rem;
   border-left: 3px solid var(--terracotta);
   padding-left: 1.5rem;
-  color: var(--text);
+  color: var(--white);
 }
 
-/* Install */
-
 .install-section .code-block {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: var(--black);
+  border: 1px solid var(--ghost);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -443,16 +475,16 @@ code {
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--ghost);
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  color: var(--text-dim);
+  color: var(--ghost);
 }
 
 .copy-btn {
   background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  border: 1px solid var(--ghost);
+  color: var(--muted);
   font-family: var(--font-mono);
   font-size: 0.7rem;
   padding: 0.25rem 0.6rem;
@@ -462,7 +494,7 @@ code {
 
 .copy-btn:hover {
   border-color: var(--muted);
-  color: var(--text);
+  color: var(--white);
 }
 
 .code-block pre {
@@ -478,16 +510,14 @@ code {
   background: none;
   border: none;
   padding: 0;
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 .install-links {
   margin: 1rem 0 0;
   font-size: 0.875rem;
-  color: var(--text-dim);
+  color: var(--ghost);
 }
-
-/* Runtimes */
 
 .runtime-list {
   list-style: none;
@@ -499,39 +529,35 @@ code {
 
 .runtime-list li {
   font-size: 0.9rem;
-  color: var(--text-muted);
+  color: var(--muted);
   padding-left: 1rem;
-  border-left: 2px solid var(--border);
+  border-left: 2px solid var(--ghost);
 }
 
 .runtime-list strong {
-  color: var(--text);
+  color: var(--white);
   font-weight: 500;
 }
 
 .docs-pointer {
   font-size: 0.875rem;
-  color: var(--text-dim);
+  color: var(--ghost);
   margin: 0;
 }
 
-/* Footer */
-
 .site-footer {
   padding: 2.5rem 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--ghost);
 }
 
 .site-footer p {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--text-dim);
+  color: var(--ghost);
 }
-
-/* Responsive */
 
 @media (max-width: 600px) {
   .hero { padding-top: 3rem; }
   .nav { gap: 0.85rem; font-size: 0.8rem; }
-  .tui-frame { padding: 0.85rem; }
+  .cover-frame { padding: 0.55rem; }
 }
