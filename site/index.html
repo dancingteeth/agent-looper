@@ -399,12 +399,35 @@
           <li>Edit <code>GOAL.md</code> and <code>verify.sh</code> until <code>bash verify.sh</code> is an honest determined check.</li>
           <li>Run <code>pnpm exec agent-loop run</code> until that check is green.</li>
         </ol>
-        <div class="code-block">
-          <div class="code-header">
-            <span>terminal</span>
-            <button type="button" class="copy-btn" data-copy="install-snippet" aria-label="Copy install commands">Copy</button>
+        <div class="install-switcher">
+          <input type="radio" name="install-view" id="install-view-agent" class="install-switcher__input" checked>
+          <input type="radio" name="install-view" id="install-view-human" class="install-switcher__input">
+          <div class="install-switcher__tabs" role="tablist" aria-label="Install view">
+            <label for="install-view-agent" class="install-switcher__tab" role="tab" id="install-tab-agent" aria-controls="install-panel-agent" aria-selected="true">For agent</label>
+            <label for="install-view-human" class="install-switcher__tab" role="tab" id="install-tab-human" aria-controls="install-panel-human" aria-selected="false">For human</label>
           </div>
-          <pre id="install-snippet"><code>pnpm add -D @dancingteeth/agent-looper @cursor/sdk
+          <div class="install-panel" id="install-panel-agent" role="tabpanel" aria-labelledby="install-tab-agent">
+            <div class="code-block">
+              <div class="code-header">
+                <span>prompt</span>
+                <button type="button" class="copy-btn" data-copy="install-snippet-agent" aria-label="Copy agent install prompt">Copy</button>
+              </div>
+              <pre id="install-snippet-agent"><code>Set up Agent Looper in this repo for the feature I want. I don't want to babysit the grind.
+
+Requirements: Node 22+ and pnpm.
+
+1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH).
+2. Use an API key already on this machine, or run under Doppler. Don't invent keys.
+3. Run: pnpm exec agent-loop-init
+4. Write GOAL.md for the feature and freeze it. Don't rewrite the goal mid-loop.
+5. Write a determined check until `bash verify.sh` is an honest pass/fail that the feature actually works. The model does not get to say done.
+6. Start the loop:
+   pnpm exec agent-loop run .cursor/loops/&lt;task&gt; --runtime &lt;cursor|cline|opencode|pi|codex|dsh&gt; --review-gate
+7. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
+
+Cursor example (swap the SDK, key, and --runtime if this machine isn't Cursor):
+
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 
 export CURSOR_API_KEY=…   # or: doppler run -- …
 
@@ -413,6 +436,25 @@ pnpm exec agent-loop-init
 # edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest
 
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></pre>
+            </div>
+          </div>
+          <div class="install-panel" id="install-panel-human" role="tabpanel" aria-labelledby="install-tab-human">
+            <div class="code-block">
+              <div class="code-header">
+                <span>terminal</span>
+                <button type="button" class="copy-btn" data-copy="install-snippet-human" aria-label="Copy install commands">Copy</button>
+              </div>
+              <pre id="install-snippet-human"><code>pnpm add -D @dancingteeth/agent-looper @cursor/sdk
+
+export CURSOR_API_KEY=…   # or: doppler run -- …
+
+pnpm exec agent-loop-init
+# edit .cursor/loops/my-task/GOAL.md
+# edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest
+
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></pre>
+            </div>
+          </div>
         </div>
         <p class="install-links">
           <a href="https://www.npmjs.com/package/@dancingteeth/agent-looper">@dancingteeth/agent-looper on npm</a>
@@ -500,6 +542,21 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
       figure8Frame += 1;
       renderAllFigure8(figure8Frame);
     }, 140);
+
+    const installViewAgent = document.getElementById('install-view-agent');
+    const installViewHuman = document.getElementById('install-view-human');
+    const installTabAgent = document.getElementById('install-tab-agent');
+    const installTabHuman = document.getElementById('install-tab-human');
+
+    function syncInstallTabs() {
+      const agentSelected = installViewAgent?.checked ?? true;
+      installTabAgent?.setAttribute('aria-selected', agentSelected ? 'true' : 'false');
+      installTabHuman?.setAttribute('aria-selected', agentSelected ? 'false' : 'true');
+    }
+
+    installViewAgent?.addEventListener('change', syncInstallTabs);
+    installViewHuman?.addEventListener('change', syncInstallTabs);
+    syncInstallTabs();
 
     document.querySelectorAll('[data-copy]').forEach((btn) => {
       btn.addEventListener('click', async () => {

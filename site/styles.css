@@ -531,6 +531,68 @@ code {
   color: var(--white);
 }
 
+.install-switcher {
+  margin-top: 1.5rem;
+}
+
+.install-switcher__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.install-switcher__tabs {
+  display: inline-flex;
+  gap: 0;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--ghost);
+  border-radius: 6px;
+  background: var(--black);
+  overflow: hidden;
+}
+
+.install-switcher__tab {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.45rem 0.9rem;
+  color: var(--ghost);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.install-switcher__tab:hover {
+  color: var(--muted);
+}
+
+.install-switcher__tab:focus-visible {
+  outline: 2px solid var(--terracotta);
+  outline-offset: -2px;
+}
+
+#install-view-agent:checked ~ .install-switcher__tabs label[for="install-view-agent"],
+#install-view-human:checked ~ .install-switcher__tabs label[for="install-view-human"] {
+  color: var(--terracotta);
+  border-bottom-color: var(--terracotta);
+}
+
+.install-panel {
+  display: none;
+}
+
+#install-view-agent:checked ~ #install-panel-agent,
+#install-view-human:checked ~ #install-panel-human {
+  display: block;
+}
+
 .install-section .code-block {
   background: var(--black);
   border: 1px solid var(--ghost);
