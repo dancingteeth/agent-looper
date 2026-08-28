@@ -308,6 +308,51 @@ code {
 .tui-loop-line.fail { color: var(--terracotta); }
 .tui-loop-line.pass { color: var(--verify); }
 
+.harness-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem 1.75rem;
+  margin-top: 2rem;
+  padding: 0 0.25rem;
+}
+
+.harness-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 4.25rem;
+}
+
+.harness-logo__icon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  background-color: var(--muted);
+  mask: var(--logo) center / contain no-repeat;
+  -webkit-mask: var(--logo) center / contain no-repeat;
+  transition: background-color 0.15s ease;
+}
+
+.harness-logo:hover .harness-logo__icon,
+.harness-logo:focus-within .harness-logo__icon {
+  background-color: var(--white);
+}
+
+.harness-logo__label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  transition: color 0.15s ease;
+}
+
+.harness-logo:hover .harness-logo__label,
+.harness-logo:focus-within .harness-logo__label {
+  color: var(--white);
+}
+
 .tui-answers {
   display: flex;
   flex-direction: column;
@@ -337,18 +382,6 @@ code {
   color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.65;
-}
-
-.tui-agent-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.85rem;
-  list-style: none;
-  padding: 0;
-  margin: 0.85rem 0 0;
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--muted);
 }
 
 @media (min-width: 960px) {

@@ -107,20 +107,57 @@
           <p class="tui-loop-line fail">fail → fresh worker</p>
           <p class="tui-loop-line pass">pass → done</p>
         </div>
-        <p class="tui-providers">
-          Use the coding agents you already have and already pay for — Cursor, Cline, OpenCode, Pi, Codex, DSH.
-          Agent Looper detects what's installed. You or your agent pick the model and provider.
-          OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router you already have.
-        </p>
-        <p class="tui-presets">
-          Named worker/judge presets, or skip picking — Looper (or your agent) wires a pair from what's installed.
-          Easy work gets a cheap worker and a strong judge. Work that matters gets a heavier pair.
-          The pair stays for the whole loop.
-        </p>
-        <p class="tui-budget">
-          The real pain is the bill. Looper is how you get to handoff or production-ready without burning a frontier model on every loop.
-          Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops.
-        </p>
+        <div class="harness-logos" aria-label="Works with coding agent harnesses">
+          <div class="harness-logo">
+            <span class="harness-logo__icon" style="--logo: url('logos/cursor.svg')" aria-hidden="true"></span>
+            <span class="harness-logo__label">Cursor</span>
+          </div>
+          <div class="harness-logo">
+            <span class="harness-logo__icon" style="--logo: url('logos/cline.svg')" aria-hidden="true"></span>
+            <span class="harness-logo__label">Cline</span>
+          </div>
+          <div class="harness-logo">
+            <span class="harness-logo__icon" style="--logo: url('logos/opencode.svg')" aria-hidden="true"></span>
+            <span class="harness-logo__label">OpenCode</span>
+          </div>
+          <div class="harness-logo">
+            <span class="harness-logo__icon" style="--logo: url('logos/pi.svg')" aria-hidden="true"></span>
+            <span class="harness-logo__label">Pi</span>
+          </div>
+          <div class="harness-logo">
+            <span class="harness-logo__icon" style="--logo: url('logos/openai.svg')" aria-hidden="true"></span>
+            <span class="harness-logo__label">Codex</span>
+          </div>
+          <div class="harness-logo">
+            <span class="harness-logo__icon" style="--logo: url('logos/deepseek.svg')" aria-hidden="true"></span>
+            <span class="harness-logo__label">DSH</span>
+          </div>
+        </div>
+        <div class="tui-answers">
+          <article class="tui-answer tui-answer--agents">
+            <h2>Agents you already have</h2>
+            <p>
+              Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH.
+              It detects what's installed. You or your agent pick the model and provider.
+              OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--presets">
+            <h2>Named worker/judge presets</h2>
+            <p>
+              Agent Looper ships named worker/judge presets, or it (or your agent) wires a pair from what's installed.
+              Easy work gets a cheap worker and a strong judge. Work that matters gets a heavier pair.
+              The pair stays for the whole loop.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--budget">
+            <h2>The real pain is the bill</h2>
+            <p>
+              Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop.
+              Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops.
+            </p>
+          </article>
+        </div>
       </div>
     </section>
 
