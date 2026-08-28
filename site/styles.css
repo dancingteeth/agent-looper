@@ -308,6 +308,14 @@ code {
 .tui-loop-line.fail { color: var(--terracotta); }
 .tui-loop-line.pass { color: var(--verify); }
 
+.tui-providers {
+  margin: 1.25rem 0 0;
+  max-width: 38rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
 /* Sections — black page, no warm cards */
 
 .section {
