@@ -24,7 +24,7 @@ From `dsh web`, switch the session to **Full Access** (or start the grind bash w
 | Bash guard | Denies *foreground* `agent-loop run` and Doppler / DSH credentials-local / OpenCode secret dumps. Background grind is allowed (`blockNestedRun` toggles the foreground deny). |
 | `cordis.patch.yml` | Inserts plugin row `id: agent-looper` |
 
-Parity reference: [`plugins/agent-looper/`](../plugins/agent-looper/) and [`docs/cursor-marketplace-plugin.md`](./cursor-marketplace-plugin.md).
+Parity reference: [`plugins/agent-looper/`](../plugins/agent-looper/) and [`docs/cursor-marketplace-plugin.md`](./cursor-marketplace-plugin.md). Cursor-only `check-running-loops` (IDE terminal `ps` + mtime) does not ship here — DSH grind uses background jobs, not Cursor terminals.
 
 ## Install
 
