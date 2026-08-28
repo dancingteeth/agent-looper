@@ -388,7 +388,7 @@ code {
 @media (min-width: 960px) {
   .tui-answers {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 2rem 2.5rem;
     max-width: none;
   }
