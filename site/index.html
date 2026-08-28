@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agent Looper — Finally, you're not the verify step</title>
-  <meta name="description" content="Fix-until-green loop harness for Cursor. Fresh worker each round. Shell verify decides done. Stop when exit 0.">
+  <meta name="description" content="Install Agent Looper. Tell your agent the feature you want. It writes the goal and check, then loops until it works.">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23000000'/><text x='16' y='14' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='10' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='22' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><circle cx='16' cy='20' r='2' fill='%2376A17B'/></svg>">
 </head>
@@ -34,16 +34,14 @@
         <p class="eyebrow">@dancingteeth/agent-looper · <code>agent-loop</code></p>
         <h1>Finally, you're not the verify step.</h1>
         <p class="lead">
-          Composer says done. CI is still red. You paste the log and open a new chat.
-          Agent Looper is that loop without you in the middle. Fresh worker each round.
-          The same check you'd already run. It stops when that's green.
+          You heard looping beats prompting. You install Agent Looper. You tell your agent you just want the feature.
+          It writes the goal, writes the check, and runs until it actually works. You don't sit in the middle.
         </p>
         <ul class="promise">
-          <li>Green verify</li>
-          <li>Bounded spend</li>
-          <li>Inspectable logs</li>
+          <li>It actually works</li>
+          <li>You don't babysit</li>
+          <li>You can see the run</li>
         </ul>
-        <p class="anti-promise">Not “autonomous digital employees.”</p>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#install">Install</a>
           <a class="btn btn-ghost" href="https://github.com/dancingteeth/agent-looper">View on GitHub</a>
@@ -97,8 +95,8 @@
       <div class="wrap">
         <h2>How it works</h2>
         <p class="section-intro">
-          Frozen <code>GOAL.md</code> → worker (pluggable agent SDK: Cursor, Cline, OpenCode, Pi, Codex, DSH)
-          → shell verify (hard gate, exit&nbsp;0) → optional judge / <code>reviewGate</code> that only reopens on serious findings.
+          Your agent writes <code>GOAL.md</code> and a check that the feature really works.
+          A fresh worker loops until that check passes — optional judge / <code>reviewGate</code> only on serious findings.
           Progress lives in git and files, not chat memory.
         </p>
         <div class="grid two-col">
@@ -116,7 +114,7 @@
           </div>
           <div class="card">
             <h3>You</h3>
-            <p>Write the goal and verify script. Own outcome, scoreboard, permission, and budget. The harness owns the grind.</p>
+            <p>You say what you want. Your agent writes the goal, wires the check, and starts the loop. You pick when to stop and what to spend — the harness owns the grind.</p>
           </div>
         </div>
       </div>
@@ -174,7 +172,7 @@
       <div class="wrap">
         <h2>Install</h2>
         <p class="section-intro">
-          Node 22+, pnpm. Cursor-only 60-second path — other runtimes below.
+          Node 22+, pnpm. Tell your agent to set up Agent Looper for the feature you want.
         </p>
         <div class="code-block">
           <div class="code-header">
