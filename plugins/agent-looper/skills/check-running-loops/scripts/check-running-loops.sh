@@ -20,7 +20,13 @@ file_mtime_epoch() {
 
 age_secs() {
   m="$1"
-  expr "$(now_epoch)" - "$m"
+  [ -n "$m" ] || { echo 0; return 0; }
+  now=$(now_epoch)
+  if [ "$now" -le "$m" ]; then
+    echo 0
+    return 0
+  fi
+  echo $((now - m))
 }
 
 pid_alive() {
@@ -46,12 +52,11 @@ classify_quiet() {
 }
 
 json_str() {
-  # One-line JSON object: extract "key":"value"
-  sed -n "s/.*\"$2\":\"\\([^\"]*\\)\".*/\\1/p" "$1" | head -1
+  sed -n "s/.*\"$2\":\"\\([^\"]*\\)\".*/\\1/p" "$1" 2>/dev/null | head -1 || true
 }
 
 json_num() {
-  sed -n "s/.*\"$2\":[ ]*\\([0-9][0-9]*\\).*/\\1/p" "$1" | head -1
+  sed -n "s/.*\"$2\":[ ]*\\([0-9][0-9]*\\).*/\\1/p" "$1" 2>/dev/null | head -1 || true
 }
 
 repo_slug() {
@@ -186,6 +191,16 @@ if [ -d "$LOOP_ROOT" ]; then
     any=1
     name=$(basename "$d")
     extra=""
+    cfg="${d}loop.json"
+    runtime=""
+    if [ -f "$cfg" ]; then
+      runtime=$(awk -F '"' '{
+        for (i = 1; i < NF; i++) {
+          if ($i == "runtime") { print $(i + 2); exit }
+        }
+      }' "$cfg") || true
+    fi
+    extra=" runtime=${runtime:-defaults}"
     if [ "$src" = "watch-status.json" ]; then
       phase=$(json_str "$live" phase)
       iter=$(json_num "$live" iteration)
@@ -199,7 +214,7 @@ if [ -d "$LOOP_ROOT" ]; then
           wps=DEAD
         fi
       fi
-      extra=" phase=${phase:-?} iteration=${iter:-?}/${max:-?} pid=${wpid:-?} ps=$wps"
+      extra="$extra phase=${phase:-?} iteration=${iter:-?}/${max:-?} pid=${wpid:-?} ps=$wps"
     fi
     echo "loop=$name source=$src log_age_s=$age quiet=$(classify_quiet "$age")$extra"
   done

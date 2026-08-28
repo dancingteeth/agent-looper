@@ -14,7 +14,8 @@ function run(repo, env = {}) {
     encoding: 'utf8',
     env: { ...process.env, ...env },
   })
-  assert.equal(result.status, 0, result.stderr || result.stdout)
+  const detail = `status=${result.status}\n${result.stderr}\n${result.stdout}`
+  assert.equal(result.status, 0, detail)
   return result.stdout
 }
 
@@ -101,6 +102,10 @@ describe('check-running-loops.sh', () => {
     const old = new Date(Date.now() - 3_600_000)
     utimesSync(join(loopDir, 'log.ndjson'), old, old)
     writeFileSync(
+      join(loopDir, 'loop.json'),
+      `${JSON.stringify({ verify: 'verify.sh', runtime: 'opencode' })}\n`,
+    )
+    writeFileSync(
       join(loopDir, 'watch-status.json'),
       `${JSON.stringify({
         phase: 'WORKER',
@@ -116,7 +121,7 @@ describe('check-running-loops.sh', () => {
       assert.match(
         out,
         new RegExp(
-          `loop=demo source=watch-status.json .*phase=WORKER iteration=2/8 pid=${process.pid} ps=ALIVE`,
+          `loop=demo source=watch-status.json .*runtime=opencode phase=WORKER iteration=2/8 pid=${process.pid} ps=ALIVE`,
         ),
       )
     } finally {
@@ -133,7 +138,7 @@ describe('check-running-loops.sh', () => {
     writeFileSync(join(loopDir, 'log.ndjson'), '{"iteration":1}\n')
     try {
       const out = run(root, { CURSOR_TERMINALS_DIR: terms })
-      assert.match(out, /loop=solo source=log\.ndjson /)
+      assert.match(out, /loop=solo source=log\.ndjson .*runtime=defaults/)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

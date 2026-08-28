@@ -16,7 +16,7 @@ Guidance for designing and wiring **[Agent Looper](https://www.npmjs.com/package
 | Skill `design-loop` | Freeze measurable `GOAL.md` + `verify.sh` |
 | Skill `install-agent-looper` | npm install, init, scripts |
 | Skill `review-gate` | `postQualityReview` / `reviewGate` without thrash |
-| Skill `check-running-loops` | Cursor: is `agent-loop` actually alive vs stale/hung/dead |
+| Skill `check-running-loops` | Is `agent-loop` actually alive vs stale/hung/dead (any runtime) |
 | Rule `agent-looper` | Sparse working agreements |
 | Command `/loop-scaffold` | Guided loop bundle creation |
 

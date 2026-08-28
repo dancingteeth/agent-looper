@@ -1,7 +1,8 @@
 ---
 name: check-running-loops
 description: >-
-  Checks whether agent-loop / agent-loop-batch jobs are actually alive, stale, hung, dead, or done.
+  Checks whether agent-loop / agent-loop-batch jobs are actually alive, stale, hung, dead, or done,
+  for any worker/judge runtime (Cursor, Cline, OpenCode, Pi, Codex, DSH).
   Use when the user asks if loops are ok, stuck, running, healthy, or what the current batch status is;
   when they mention agent-loop, loop-batch, verify.sh harness, or AGENT_LOOP_DONE.
 tags:
@@ -13,7 +14,9 @@ tags:
 
 # Check running loops
 
-Cursor-only. Do **not** answer loop health from memory, Cursor terminal `status: running`, or `running_for_ms`. Those stay `running` after the process dies.
+The harness (`agent-loop` / `agent-loop-batch`) is the process to check. Worker and judge may be Cursor, Cline, OpenCode, Pi, Codex, or DSH — that does not change the heartbeat.
+
+Do **not** answer loop health from memory, an IDE job list, Cursor terminal `status: running`, or `running_for_ms`. Those stay `running` after the process dies.
 
 ## Must run first
 
@@ -25,15 +28,19 @@ sh "<this-skill-dir>/scripts/check-running-loops.sh" "$(pwd)"
 
 In this harness checkout that path is `plugins/agent-looper/skills/check-running-loops/scripts/check-running-loops.sh`.
 
-Optional: `STALE_SECS=180 HUNG_SECS=600` (defaults: 3 min stale, 10 min hung). Override `CURSOR_TERMINALS_DIR` when terminals are not under `~/.cursor/projects/<slug>/terminals`.
+Optional: `STALE_SECS=180 HUNG_SECS=600` (defaults: 3 min stale, 10 min hung).
 
-Optional extra for a known loop dir (corroboration, not the heartbeat):
+Heartbeat, in order:
+
+1. `ps` — `agent-loop run` / `agent-loop-batch` PIDs (runtime-agnostic)
+2. `.cursor/loops/*/watch-status.json` — `pid` + file mtime (written by `run`, any runtime)
+3. Cursor Agent Shell terminal files — extra probe **only if** the grind was started from that chat (`CURSOR_TERMINALS_DIR` or `~/.cursor/projects/<slug>/terminals`)
+
+Optional corroboration for a known loop dir (`watch --snapshot` is not the heartbeat — `log.ndjson` often does not grow during a worker/judge think stretch):
 
 ```bash
 pnpm exec agent-loop watch --snapshot .cursor/loops/<name>
 ```
-
-`watch --snapshot` reads `watch-status.json` / `log.ndjson`. `log.ndjson` is often **not** updated during a worker/judge think stretch. Treat a fresh **terminal log mtime** + live **PID** as the heartbeat; use `watch-status.json` `pid` + file mtime for the loop-dir line.
 
 ## Classify
 
@@ -44,15 +51,15 @@ pnpm exec agent-loop watch --snapshot .cursor/loops/<name>
 | `ALIVE_BUT_HUNG` | PID live, no log growth for ≥ 10 min — hung or judge/worker stall |
 | `DEAD` | PID gone, no `AGENT_LOOP_DONE` |
 | `DONE` | PID gone, `AGENT_LOOP_DONE` in the log |
-| `NONE` | No harness process / no matching terminal |
+| `NONE` | No harness process / no matching terminal / no recent loop dir |
 
-`meta_status=running` with `ps=DEAD` → **DEAD**. Say that.
+`meta_status=running` with `ps=DEAD` → **DEAD**. Same if a DSH/Cline/OpenCode job UI still says running.
 
 Do not print full `ps`/`pgrep -fl` command lines (API keys have leaked there). The script prints PIDs only.
 
 ## What you may tell the user
 
-Lead with **verdict + PID + log age + which loop**. Then last `iteration` / `verify` / `review gate` lines.
+Lead with **verdict + PID + log age + which loop + runtime**. Then last `iteration` / `verify` / `review gate` lines.
 
 Forbidden unless `verdict=ALIVE` (fresh):
 
@@ -66,4 +73,4 @@ Forbidden unless `verdict=ALIVE` (fresh):
 
 ## Why this exists
 
-Cursor terminal metadata is not a heartbeat. A worker/judge turn can also sit in `RUNNING` with no new tool lines until `AGENT_LOOP_CURSOR_TIMEOUT_MS` (default 45 min). Quiet log + live PID = stall, not success.
+Host UIs are not a heartbeat. A worker/judge turn on any runtime can sit with no new log lines until that SDK’s timeout (Cursor: `AGENT_LOOP_CURSOR_TIMEOUT_MS`, default 45 min). Quiet `watch-status.json` / terminal log + live harness PID = stall, not success.
