@@ -1,6 +1,6 @@
 # Agent Looper privacy
 
-The Agent Looper marketing site at https://looper.dancingteeth.net/ is a static GitHub Pages deploy. It does not set cookies, does not embed analytics pixels, and does not collect accounts, forms, or payment data. Copy-to-clipboard on the install snippet uses the browser clipboard API in your session only.
+The Agent Looper marketing site at https://looper.dancingteeth.net/ is a static site we host. It does not set cookies, does not embed analytics pixels, and does not collect accounts, forms, or payment data. Copy-to-clipboard on the install snippet uses the browser clipboard API in your session only.
 
 The Agent Looper npm package (`@dancingteeth/agent-looper`) runs on your machine against coding-agent SDKs you configure. API keys, loop folders, `GOAL.md`, verify output, and git history stay in your environment and with the providers you already pay (Cursor, Cline, OpenCode, Pi, Codex, DSH, OpenRouter, and so on). This site does not proxy those calls.
 

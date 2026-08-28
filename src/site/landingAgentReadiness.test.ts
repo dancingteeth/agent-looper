@@ -113,7 +113,7 @@ describe('landing agent readiness', () => {
     expect(org?.contactPoint?.url).toContain('github.com/dancingteeth/agent-looper/issues')
   })
 
-  it('disables Jekyll so markdown files stay markdown on Pages', () => {
+  it('ships .nojekyll so markdown files stay markdown on static hosts', () => {
     expect(fs.existsSync(path.join(siteRoot, '.nojekyll'))).toBe(true)
   })
 
