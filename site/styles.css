@@ -301,66 +301,12 @@ code {
 .tui-rail .filled { color: var(--terracotta); }
 .tui-rail .empty { color: var(--muted); }
 
-.tui-heading {
-  color: var(--terracotta);
-  font-weight: 700;
-  margin: 0 0 0.15rem;
+.tui-loop-line {
+  margin: 0.15rem 0 0;
 }
 
-.tui-blurb {
-  color: var(--muted);
-  margin: 0 0 0.35rem;
-}
-
-.tui-menu {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tui-menu li {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tui-menu .row {
-  color: var(--white);
-}
-
-.tui-menu .row.selected {
-  color: var(--terracotta);
-  font-weight: 700;
-}
-
-.tui-menu .default {
-  color: var(--muted);
-}
-
-.tui-menu .tag-detected {
-  color: var(--verify);
-}
-
-.tui-desc {
-  color: var(--tan);
-  margin: 0.35rem 0 0.25rem;
-}
-
-.tui-help {
-  color: var(--muted);
-  margin: 0;
-  font-size: 0.95em;
-}
-
-.tui-loop-note {
-  margin: 1rem 0 0;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--ghost);
-}
-
-.tui-loop-note .fail { color: var(--terracotta); }
-.tui-loop-note .pass { color: var(--verify); }
+.tui-loop-line.fail { color: var(--terracotta); }
+.tui-loop-line.pass { color: var(--verify); }
 
 /* Sections — black page, no warm cards */
 

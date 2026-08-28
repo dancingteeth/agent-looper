@@ -35,12 +35,12 @@
         <h1>Finally, you're not the verify step.</h1>
         <p class="lead">
           You heard looping beats prompting. You install Agent Looper. You tell your agent you just want the feature.
-          It writes the goal, writes the check, and runs until it actually works. You don't sit in the middle.
+          It writes the goal, writes a determined check, and runs until that check passes. No hallucinated “done.”
         </p>
         <ul class="promise">
           <li>It actually works</li>
+          <li>Determined check</li>
           <li>You don't babysit</li>
-          <li>You can see the run</li>
         </ul>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#install">Install</a>
@@ -49,7 +49,7 @@
       </div>
     </section>
 
-    <section class="tui-section" aria-label="Setup wizard preview">
+    <section class="tui-section" aria-label="Agent Looper loop">
       <div class="wrap">
         <div class="cover-frame">
           <div class="tui-mark looper-mark">
@@ -72,22 +72,9 @@
           <p class="tui-rail" aria-hidden="true">
             <span class="filled">━━━━</span><span class="empty">──────────────────</span>
           </p>
-          <p class="tui-heading">Cost / quality preset</p>
-          <p class="tui-blurb">Choose a stack of models for running loops, or create your own preset.</p>
-          <ul class="tui-menu" aria-label="Setup menu">
-            <li><span class="row selected"> ❯ minmax — efficiency<span class="default">  default</span><span class="tag-detected">  [detected]</span></span></li>
-            <li><span class="row">   balanced — spend more on the worker</span></li>
-            <li><span class="row">   cursor — Composer + Grok</span></li>
-            <li><span class="row">   custom — pick worker and judge</span></li>
-          </ul>
-          <p class="tui-desc">DeepSeek Flash worker when OpenCode + Cursor are installed; Composer + Grok on Cursor-only.</p>
-          <p class="tui-help">↑↓ / j k  move  ·  enter  select  ·  1–9  jump  ·  esc  abort</p>
+          <p class="tui-loop-line fail">fail → fresh worker</p>
+          <p class="tui-loop-line pass">pass → done</p>
         </div>
-        <p class="tui-loop-note">
-          <span class="fail">verify fail → fresh worker</span>
-          <span aria-hidden="true"> · </span>
-          <span class="pass">verify pass → done (optional JUDGE after green verify)</span>
-        </p>
       </div>
     </section>
 
@@ -95,7 +82,7 @@
       <div class="wrap">
         <h2>How it works</h2>
         <p class="section-intro">
-          Your agent writes <code>GOAL.md</code> and a check that the feature really works.
+          Your agent writes <code>GOAL.md</code> and a determined check that the feature really works.
           A fresh worker loops until that check passes — optional judge / <code>reviewGate</code> only on serious findings.
           Progress lives in git and files, not chat memory.
         </p>
@@ -106,7 +93,7 @@
           </div>
           <div class="card card--verify">
             <h3>Verifier</h3>
-            <p>Your check. Green means done. Models don't get to mark their own homework.</p>
+            <p>A determined check. Green means it really works. The model doesn't get to hallucinate done. If something's wrong, the mistake is in the goal or the script.</p>
           </div>
           <div class="card card--judge">
             <h3>Judge <span class="optional">optional</span></h3>
