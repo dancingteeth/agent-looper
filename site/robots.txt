@@ -1,5 +1,7 @@
+License: https://looper.dancingteeth.net/license.xml
+
 User-agent: *
 Allow: /
-Content-Signal: search=yes, ai-input=yes
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 Sitemap: https://looper.dancingteeth.net/sitemap.xml

@@ -117,13 +117,34 @@ describe('landing agent readiness', () => {
     expect(fs.existsSync(path.join(siteRoot, '.nojekyll'))).toBe(true)
   })
 
-  it('robots.txt declares Content-Signal search and ai-input without ai-train', () => {
+  it('robots.txt and license.xml declare RSL 1.0 AI training permission', () => {
     const robots = readSite('robots.txt')
-    expect(robots).toContain('Content-Signal: search=yes, ai-input=yes')
-    expect(robots).not.toMatch(/ai-train/i)
+    expect(robots).toContain(
+      'Content-Signal: search=yes, ai-input=yes, ai-train=yes',
+    )
+    expect(robots).toContain(
+      'License: https://looper.dancingteeth.net/license.xml',
+    )
+    const licenseLineIdx = robots.indexOf('License:')
+    const userAgentIdx = robots.indexOf('User-agent:')
+    expect(licenseLineIdx).toBeGreaterThanOrEqual(0)
+    expect(userAgentIdx).toBeGreaterThan(licenseLineIdx)
     expect(robots).toContain('Allow: /')
     expect(robots).toContain(
       'Sitemap: https://looper.dancingteeth.net/sitemap.xml',
+    )
+
+    const license = readSite('license.xml')
+    expect(license).toContain('xmlns="https://rslstandard.org/rsl"')
+    expect(license).toContain(
+      '<permits type="usage">search ai-input ai-train</permits>',
+    )
+    expect(license).toContain('<payment type="free"/>')
+    expect(license).not.toMatch(/server=/)
+
+    const sitemap = readSite('sitemap.xml')
+    expect(sitemap).toContain(
+      'https://looper.dancingteeth.net/license.xml',
     )
   })
 
