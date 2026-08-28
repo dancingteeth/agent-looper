@@ -191,26 +191,24 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
 
     <section class="section section-alt" id="runtimes">
       <div class="wrap">
-        <h2>Other runtimes &amp; judge</h2>
+        <h2>Workers &amp; judge</h2>
         <p class="section-intro">
-          Worker and judge are independent. Default judge is Cursor (<code>grok-4.6</code> when worker is Cursor).
-          Point <code>reviewRuntime</code> elsewhere to keep the judge off Cursor quota.
+          Worker and judge are separate — mix what you already pay for. Point the judge elsewhere if you want to save worker quota.
         </p>
         <ul class="runtime-list">
-          <li><strong>Cursor</strong> — default worker; needs <code>@cursor/sdk</code></li>
-          <li><strong>Cline</strong> — Pass or Credits via <code>@cline/sdk</code></li>
-          <li><strong>OpenCode</strong> — Go + BYOK via <code>@opencode-ai/sdk</code></li>
-          <li><strong>Pi</strong> — BYOK via <code>@earendil-works/pi-coding-agent</code></li>
-          <li><strong>Codex</strong> — ChatGPT / OpenAI via <code>@openai/codex-sdk</code></li>
-          <li><strong>DSH</strong> — DeepSeek Harness CLI on PATH</li>
+          <li><strong>Cursor</strong></li>
+          <li><strong>Cline</strong> — Pass or Credits</li>
+          <li><strong>OpenCode</strong> — Go or BYOK through OpenRouter, Vercel, Ollama, and more</li>
+          <li><strong>Pi</strong> — OpenRouter by default, or another OpenAI-compatible router you configure</li>
+          <li><strong>Codex</strong> — ChatGPT / OpenAI</li>
+          <li><strong>DSH</strong> — DeepSeek Harness CLI, plus a plugin for dsh web</li>
         </ul>
         <p class="docs-pointer">
-          Full flags, threat model, and consumer wiring:
+          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/opencode-providers.md">OpenCode providers</a>
+          ·
+          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md">Pi runtime</a>
+          ·
           <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.md">README.md</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.intro.md">README.intro.md</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a>
         </p>
       </div>
     </section>
