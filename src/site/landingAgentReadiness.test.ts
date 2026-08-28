@@ -173,4 +173,46 @@ describe('landing agent readiness', () => {
       expect(html, path.relative(siteRoot, file)).toMatch(/styles\.css\?v=/)
     }
   })
+
+  it('names cost presets and reverse repair copy in HTML, markdown, and JSON-LD', () => {
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    const graph = jsonLdGraph(html)
+
+    const faq = graph.find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as {
+      mainEntity?: Array<{
+        name?: string
+        acceptedAnswer?: { text?: string }
+      }>
+    }
+
+    const presetsQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'How do Agent Looper worker and judge presets work?',
+    )
+    const reverseQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'What if the code is already broken?',
+    )
+
+    for (const preset of ['minmax', 'balanced', 'cursor'] as const) {
+      expect(html).toContain(preset)
+      expect(md).toContain(preset)
+      expect(presetsQuestion?.acceptedAnswer?.text).toContain(preset)
+    }
+
+    expect(html).toContain('What if the code is already broken?')
+    expect(html).toContain('Reverse starts from a red check')
+    expect(md).toContain('What if the code is already broken?')
+    expect(md).toContain('Reverse starts from a red check')
+    expect(reverseQuestion?.acceptedAnswer?.text).toContain(
+      'Reverse starts from a red check',
+    )
+    expect(reverseQuestion?.acceptedAnswer?.text).toContain(
+      "Don't copy the broken internals",
+    )
+  })
 })

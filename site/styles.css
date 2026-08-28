@@ -378,6 +378,7 @@ code {
 .tui-answer--presets { border-left-color: var(--tan); }
 .tui-answer--budget { border-left-color: var(--verify); }
 .tui-answer--escalation { border-left-color: var(--ghost); }
+.tui-answer--reverse { border-left-color: var(--terracotta); }
 
 .tui-answer h2 {
   font-size: 1.05rem;
@@ -405,6 +406,12 @@ code {
 
   .tui-answer {
     max-width: none;
+  }
+}
+
+@media (min-width: 1200px) {
+  .tui-answers {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 

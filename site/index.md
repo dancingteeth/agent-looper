@@ -12,7 +12,7 @@ Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode
 
 ## How do Agent Looper worker and judge presets work?
 
-Agent Looper ships named worker/judge presets, or it (or your agent) wires a pair from what's installed. Easy work gets a cheap worker and a strong judge. Work that matters gets a heavier pair. The pair stays for the whole loop.
+Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto.
 
 ## How does Agent Looper keep cost down for indie builders?
 
@@ -21,6 +21,10 @@ Agent Looper is how indie builders get to handoff or production-ready without bu
 ## What happens if Agent Looper's worker is stuck?
 
 Agent Looper starts with the cheap worker. If the same check keeps failing, it steps up thinking where the harness supports it, then switches to a stronger model. Not Auto — a planned ladder after a stuck check, not a new pick every turn.
+
+## What if the code is already broken?
+
+Forward implements, then checks. Reverse starts from a red check and repairs. Clean-room: rebuild toward the frozen goal from tests and the public API. Don't copy the broken internals.
 
 ## How is Agent Looper different from looping in chat?
 
