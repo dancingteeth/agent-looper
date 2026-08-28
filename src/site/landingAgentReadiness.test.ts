@@ -116,4 +116,43 @@ describe('landing agent readiness', () => {
   it('disables Jekyll so markdown files stay markdown on Pages', () => {
     expect(fs.existsSync(path.join(siteRoot, '.nojekyll'))).toBe(true)
   })
+
+  it('install section has For agent / For human switcher with agent as default', () => {
+    const html = readSite('index.html')
+    expect(html).toContain('For agent')
+    expect(html).toContain('For human')
+    expect(html).toMatch(/id="install-view-agent"[^>]*checked/)
+    expect(html).toMatch(/aria-selected="true"[^>]*>For agent</)
+
+    const agentPanel = html.slice(
+      html.indexOf('id="install-panel-agent"'),
+      html.indexOf('id="install-panel-human"'),
+    )
+    expect(agentPanel).toContain('Set up Agent Looper in this repo')
+    expect(agentPanel).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+
+    const humanSnippet = html.slice(
+      html.indexOf('id="install-snippet-human"'),
+      html.indexOf('</pre>', html.indexOf('id="install-snippet-human"')),
+    )
+    expect(humanSnippet).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+    expect(humanSnippet).toContain('export CURSOR_API_KEY=…   # or: doppler run -- …')
+    expect(humanSnippet).toContain('pnpm exec agent-loop-init')
+    expect(humanSnippet).toContain(
+      '# edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest',
+    )
+    expect(humanSnippet).toContain(
+      'pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate',
+    )
+  })
+
+  it('index.md includes agent install prompt before human terminal commands', () => {
+    const md = readSite('index.md')
+    const agentIdx = md.indexOf('Set up Agent Looper in this repo')
+    const humanIdx = md.indexOf('### For human')
+    expect(agentIdx).toBeGreaterThan(-1)
+    expect(humanIdx).toBeGreaterThan(agentIdx)
+    expect(md).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+    expect(md).toContain("Don't loop on subjective taste.")
+  })
 })
