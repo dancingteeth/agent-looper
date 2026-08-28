@@ -117,6 +117,16 @@ describe('landing agent readiness', () => {
     expect(fs.existsSync(path.join(siteRoot, '.nojekyll'))).toBe(true)
   })
 
+  it('robots.txt declares Content-Signal search and ai-input without ai-train', () => {
+    const robots = readSite('robots.txt')
+    expect(robots).toContain('Content-Signal: search=yes, ai-input=yes')
+    expect(robots).not.toMatch(/ai-train/i)
+    expect(robots).toContain('Allow: /')
+    expect(robots).toContain(
+      'Sitemap: https://looper.dancingteeth.net/sitemap.xml',
+    )
+  })
+
   it('install section has For agent / For human switcher with agent as default', () => {
     const html = readSite('index.html')
     expect(html).toContain('For agent')
