@@ -67,7 +67,7 @@ describe('landing agent readiness', () => {
     expect(html).toMatch(/<h1>Not found<\/h1>/)
     expect(html).toContain('noindex')
     expect(html).not.toMatch(/rel="canonical"/)
-    expect(html).toContain('href="/styles.css"')
+    expect(html).toContain('href="/styles.css?v=')
     expect(html).toContain('href="/docs/"')
     expect(html).toContain('href="/llms.txt"')
     expect(html).toContain('href="/sitemap.xml"')
@@ -154,5 +154,23 @@ describe('landing agent readiness', () => {
     expect(humanIdx).toBeGreaterThan(agentIdx)
     expect(md).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
     expect(md).toContain("Don't loop on subjective taste.")
+  })
+
+  it('every HTML page cache-busts styles.css when linked', () => {
+    const htmlFiles: string[] = []
+    function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) walk(full)
+        else if (entry.name.endsWith('.html')) htmlFiles.push(full)
+      }
+    }
+    walk(siteRoot)
+    expect(htmlFiles.length).toBeGreaterThan(0)
+    for (const file of htmlFiles) {
+      const html = fs.readFileSync(file, 'utf8')
+      if (!html.includes('styles.css')) continue
+      expect(html, path.relative(siteRoot, file)).toMatch(/styles\.css\?v=/)
+    }
   })
 })
