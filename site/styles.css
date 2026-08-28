@@ -309,7 +309,8 @@ code {
 .tui-loop-line.pass { color: var(--verify); }
 
 .tui-providers,
-.tui-presets {
+.tui-presets,
+.tui-budget {
   margin: 1.25rem 0 0;
   max-width: 38rem;
   color: var(--muted);
@@ -317,7 +318,8 @@ code {
   line-height: 1.65;
 }
 
-.tui-presets {
+.tui-presets,
+.tui-budget {
   margin-top: 1rem;
 }
 
