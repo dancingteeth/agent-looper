@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Looper — You are the verify step</title>
+  <meta name="description" content="Fix-until-green loop harness for Cursor. Fresh worker each round. Shell verify decides done. Stop when exit 0.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0b'/><path d='M8 16h6l2-4 2 8 2-4h6' stroke='%234ade80' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="/">Agent Looper</a>
+      <nav class="nav">
+        <a href="https://github.com/dancingteeth/agent-looper">GitHub</a>
+        <a href="https://www.npmjs.com/package/@dancingteeth/agent-looper">npm</a>
+        <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.md">Docs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">@dancingteeth/agent-looper</p>
+        <h1>You are the verify step.</h1>
+        <p class="lead">
+          Composer says done. CI is still red. You paste the log and open a new chat.
+          Agent Looper is that loop without you in the middle. Fresh worker each round.
+          A <code>verify.sh</code> you already trust. Stop when it exits&nbsp;0.
+        </p>
+        <ul class="promise">
+          <li>Green verify</li>
+          <li>Bounded spend</li>
+          <li>Inspectable logs</li>
+        </ul>
+        <p class="anti-promise">Not “autonomous digital employees.”</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#install">Install</a>
+          <a class="btn btn-ghost" href="https://github.com/dancingteeth/agent-looper">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="diagram-section">
+      <div class="wrap">
+        <pre class="flow-diagram" aria-label="Loop diagram"><span class="node">GOAL.md</span> <span class="arrow">→</span> <span class="node">WORKER</span> <span class="arrow">→</span> <span class="node node-verify">VERIFY</span>
+                                              <span class="arrow">↓</span>
+                                    <span class="fail">fail: fresh worker</span>
+                                    <span class="pass">pass: done</span></pre>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <p class="section-intro">
+          Frozen <code>GOAL.md</code> → worker (pluggable agent SDK: Cursor, Cline, OpenCode, Pi, Codex, DSH)
+          → shell verify (hard gate, exit&nbsp;0) → optional judge / <code>reviewGate</code> that only reopens on serious findings.
+          Progress lives in git and files, not chat memory.
+        </p>
+        <div class="grid two-col">
+          <div class="card">
+            <h3>Worker</h3>
+            <p>New session every iteration. Implements toward the frozen goal. Progress is the repo — not an accumulating thread.</p>
+          </div>
+          <div class="card">
+            <h3>Verifier</h3>
+            <p>Your shell command. Exit <code>0</code> is the only completion truth. Models approve their own work. Exit codes don’t.</p>
+          </div>
+          <div class="card">
+            <h3>Judge <span class="optional">optional</span></h3>
+            <p>After verify passes, writes <code>review.md</code>. With <code>reviewGate</code>, only error + impact findings reopen the fix loop.</p>
+          </div>
+          <div class="card">
+            <h3>You</h3>
+            <p>Write the goal and verify script. Own outcome, scoreboard, permission, and budget. The harness owns the grind.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="wedge">
+      <div class="wrap">
+        <h2>Wedge vs the category</h2>
+        <table class="compare">
+          <thead>
+            <tr>
+              <th>Agent Looper</th>
+              <th>What you’re used to</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Shell verify is the exit</td>
+              <td>LLM grading itself</td>
+            </tr>
+            <tr>
+              <td>Fresh context each iteration</td>
+              <td>Accumulating chat thread</td>
+            </tr>
+            <tr>
+              <td>One-repo fix harness</td>
+              <td>Team-ops factory</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <blockquote class="pull-quote">
+          You own the finish line — outcome, scoreboard, permission, budget.
+          The harness owns the grind.
+        </blockquote>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="open">
+      <div class="wrap">
+        <h2>Open spine, not rented brain</h2>
+        <p class="section-intro">
+          MIT. Inspectable. Models stay whoever you already pay — Cursor, OpenCode, OpenRouter, Codex, DSH.
+          What you own is the loop: frozen <code>GOAL.md</code>, measurable <code>verify.sh</code>,
+          sparse <code>REVIEWS.md</code> / <code>AGENTS.md</code>, and orchestration that keeps workers fresh and spend bounded.
+        </p>
+      </div>
+    </section>
+
+    <section class="section install-section" id="install">
+      <div class="wrap">
+        <h2>Install</h2>
+        <p class="section-intro">
+          Node 22+, pnpm. Cursor-only 60-second path — other runtimes below.
+        </p>
+        <div class="code-block">
+          <div class="code-header">
+            <span>terminal</span>
+            <button type="button" class="copy-btn" data-copy="install-snippet" aria-label="Copy install commands">Copy</button>
+          </div>
+          <pre id="install-snippet"><code>pnpm add -D @dancingteeth/agent-looper @cursor/sdk
+
+export CURSOR_API_KEY=…   # or: doppler run -- …
+
+pnpm exec agent-loop-init
+# edit .cursor/loops/my-task/GOAL.md
+# edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest
+
+pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></pre>
+        </div>
+        <p class="install-links">
+          <a href="https://www.npmjs.com/package/@dancingteeth/agent-looper">@dancingteeth/agent-looper on npm</a>
+          ·
+          <a href="https://www.npmjs.com/package/@cursor/sdk">@cursor/sdk</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="runtimes">
+      <div class="wrap">
+        <h2>Other runtimes &amp; judge</h2>
+        <p class="section-intro">
+          Worker and judge are independent. Default judge is Cursor (<code>grok-4.6</code> when worker is Cursor).
+          Point <code>reviewRuntime</code> elsewhere to keep the judge off Cursor quota.
+        </p>
+        <ul class="runtime-list">
+          <li><strong>Cursor</strong> — default worker; needs <code>@cursor/sdk</code></li>
+          <li><strong>Cline</strong> — Pass or Credits via <code>@cline/sdk</code></li>
+          <li><strong>OpenCode</strong> — Go + BYOK via <code>@opencode-ai/sdk</code></li>
+          <li><strong>Pi</strong> — BYOK via <code>@earendil-works/pi-coding-agent</code></li>
+          <li><strong>Codex</strong> — ChatGPT / OpenAI via <code>@openai/codex-sdk</code></li>
+          <li><strong>DSH</strong> — DeepSeek Harness CLI on PATH</li>
+        </ul>
+        <p class="docs-pointer">
+          Full flags, threat model, and consumer wiring:
+          <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.md">README.md</a>
+          ·
+          <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.intro.md">README.intro.md</a>
+          ·
+          <a href="https://github.com/dancingteeth/agent-looper/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>MIT · <a href="https://github.com/dancingteeth/agent-looper">dancingteeth/agent-looper</a></p>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-copy');
+        const el = document.getElementById(id);
+        if (!el) return;
+        const text = el.textContent.trim();
+        try {
+          await navigator.clipboard.writeText(text);
+          const prev = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = prev; }, 1500);
+        } catch {
+          btn.textContent = 'Select & copy';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
