@@ -3,44 +3,169 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agent Looper — Finally, you're not the verify step</title>
-  <meta name="description" content="Install Agent Looper. Tell your agent the feature you want. It writes the goal and a determined check, then loops until that check passes.">
+  <title>Agent Looper — a fix-until-green harness for coding agents</title>
+  <meta name="description" content="Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.">
+  <link rel="canonical" href="https://looper.dancingteeth.net/">
+  <link rel="describedby" href="https://looper.dancingteeth.net/llms.txt">
+  <link rel="alternate" type="text/markdown" title="Markdown" href="https://looper.dancingteeth.net/index.md">
+  <link rel="author" href="https://dancingteeth.net/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Agent Looper">
+  <meta property="og:url" content="https://looper.dancingteeth.net/">
+  <meta property="og:title" content="Agent Looper — a fix-until-green harness for coding agents">
+  <meta property="og:description" content="Your coding agent writes a frozen goal and a determined check. A fresh worker loops until that check passes. You are not the verify step.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@dancingteeth">
+  <meta name="twitter:title" content="Agent Looper — a fix-until-green harness for coding agents">
+  <meta name="twitter:description" content="Open-source fix-until-green harness. Frozen goal, determined check, fresh worker each round, budget that stops.">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
+    "@graph": [
       {
-        "@type": "Question",
-        "name": "Which coding agents does Agent Looper work with?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router."
+        "@type": "WebSite",
+        "@id": "https://looper.dancingteeth.net/#website",
+        "url": "https://looper.dancingteeth.net/",
+        "name": "Agent Looper",
+        "description": "Open-source fix-until-green harness for coding agents.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://looper.dancingteeth.net/#org" }
+      },
+      {
+        "@type": ["SoftwareApplication", "SoftwareSourceCode"],
+        "@id": "https://looper.dancingteeth.net/#app",
+        "name": "Agent Looper",
+        "alternateName": ["agent-looper", "agent-loop", "@dancingteeth/agent-looper"],
+        "description": "Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.",
+        "url": "https://looper.dancingteeth.net/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "programmingLanguage": "TypeScript",
+        "runtimePlatform": "Node.js",
+        "license": "https://opensource.org/licenses/MIT",
+        "codeRepository": "https://github.com/dancingteeth/agent-looper",
+        "downloadUrl": "https://www.npmjs.com/package/@dancingteeth/agent-looper",
+        "isAccessibleForFree": true,
+        "author": { "@id": "https://looper.dancingteeth.net/#person" },
+        "publisher": { "@id": "https://looper.dancingteeth.net/#org" },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
         }
       },
       {
-        "@type": "Question",
-        "name": "How do Agent Looper worker and judge presets work?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Agent Looper ships named worker/judge presets, or it (or your agent) wires a pair from what's installed. Easy work gets a cheap worker and a strong judge. Work that matters gets a heavier pair. The pair stays for the whole loop."
+        "@type": "Person",
+        "@id": "https://looper.dancingteeth.net/#person",
+        "name": "Paul Zgordan",
+        "alternateName": "dancingteeth",
+        "url": "https://dancingteeth.net/",
+        "sameAs": [
+          "https://github.com/dancingteeth",
+          "https://dancingteeth.net/",
+          "https://dancingteeth.substack.com/"
+        ]
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://looper.dancingteeth.net/#org",
+        "name": "dancingteeth",
+        "alternateName": "Agent Looper",
+        "url": "https://looper.dancingteeth.net/",
+        "sameAs": [
+          "https://github.com/dancingteeth",
+          "https://dancingteeth.net/",
+          "https://www.npmjs.com/package/@dancingteeth/agent-looper"
+        ],
+        "founder": { "@id": "https://looper.dancingteeth.net/#person" },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "url": "https://github.com/dancingteeth/agent-looper/issues"
         }
       },
       {
-        "@type": "Question",
-        "name": "How does Agent Looper keep cost down for indie builders?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop. Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops."
-        }
+        "@type": "FAQPage",
+        "@id": "https://looper.dancingteeth.net/#faq",
+        "url": "https://looper.dancingteeth.net/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Which coding agents does Agent Looper work with?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do Agent Looper worker and judge presets work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Agent Looper ships named worker/judge presets, or it (or your agent) wires a pair from what's installed. Easy work gets a cheap worker and a strong judge. Work that matters gets a heavier pair. The pair stays for the whole loop."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does Agent Looper keep cost down for indie builders?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop. Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens if Agent Looper's worker is stuck?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Agent Looper starts with the cheap worker. If the same check keeps failing, it steps up thinking where the harness supports it, then switches to a stronger model. Not Auto — a planned ladder after a stuck check, not a new pick every turn."
+            }
+          }
+        ]
       },
       {
-        "@type": "Question",
-        "name": "What happens if Agent Looper's worker is stuck?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Agent Looper starts with the cheap worker. If the same check keeps failing, it steps up thinking where the harness supports it, then switches to a stronger model. Not Auto — a planned ladder after a stuck check, not a new pick every turn."
-        }
+        "@type": "HowTo",
+        "@id": "https://looper.dancingteeth.net/#install",
+        "name": "Install Agent Looper",
+        "description": "Add Agent Looper to a repo, freeze a goal and a determined check, then run the loop.",
+        "url": "https://looper.dancingteeth.net/#install",
+        "totalTime": "PT5M",
+        "tool": {
+          "@type": "HowToTool",
+          "name": "pnpm"
+        },
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Install the package",
+            "text": "Add @dancingteeth/agent-looper and the SDK for your coding agent. For Cursor: pnpm add -D @dancingteeth/agent-looper @cursor/sdk."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Set credentials",
+            "text": "Export an API key for that agent, or run under Doppler."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Initialize a loop",
+            "text": "Run pnpm exec agent-loop-init to scaffold the loop folder."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 4,
+            "name": "Write the finish line",
+            "text": "Edit GOAL.md and verify.sh until bash verify.sh is an honest determined check."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 5,
+            "name": "Run until green",
+            "text": "Run pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate."
+          }
+        ]
       }
     ]
   }
@@ -61,9 +186,10 @@
         </span>
       </a>
       <nav class="nav">
+        <a href="docs/">Docs</a>
+        <a href="about/">About</a>
         <a href="https://github.com/dancingteeth/agent-looper">GitHub</a>
         <a href="https://www.npmjs.com/package/@dancingteeth/agent-looper">npm</a>
-        <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.md">Docs</a>
       </nav>
     </div>
   </header>
@@ -73,6 +199,9 @@
       <div class="wrap">
         <p class="eyebrow">@dancingteeth/agent-looper · <code>agent-loop</code></p>
         <h1>Finally, you're not the verify step.</h1>
+        <p class="definition">
+          Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.
+        </p>
         <p class="lead">
           You heard looping beats prompting. You install Agent Looper. You tell your agent you just want the feature.
           It writes the goal, writes a determined check, and runs until that check passes. No hallucinated “done.”
@@ -141,9 +270,9 @@
             <span class="harness-logo__label">DSH</span>
           </div>
         </div>
-        <div class="tui-answers">
+        <div class="tui-answers" id="faq">
           <article class="tui-answer tui-answer--agents">
-            <h2>Agents you already have</h2>
+            <h2>Which coding agents does Agent Looper work with?</h2>
             <p>
               Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH.
               It detects what's installed. You or your agent pick the model and provider.
@@ -151,7 +280,7 @@
             </p>
           </article>
           <article class="tui-answer tui-answer--presets">
-            <h2>Named worker/judge presets</h2>
+            <h2>How do Agent Looper worker and judge presets work?</h2>
             <p>
               Agent Looper ships named worker/judge presets, or it (or your agent) wires a pair from what's installed.
               Easy work gets a cheap worker and a strong judge. Work that matters gets a heavier pair.
@@ -159,14 +288,14 @@
             </p>
           </article>
           <article class="tui-answer tui-answer--budget">
-            <h2>The real pain is the bill</h2>
+            <h2>How does Agent Looper keep cost down for indie builders?</h2>
             <p>
               Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop.
               Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops.
             </p>
           </article>
           <article class="tui-answer tui-answer--escalation">
-            <h2>If it's stuck, it steps up</h2>
+            <h2>What happens if Agent Looper's worker is stuck?</h2>
             <p>
               Agent Looper starts with the cheap worker. If the same check keeps failing, it steps up thinking where the harness supports it, then switches to a stronger model.
               Not Auto — a planned ladder after a stuck check, not a new pick every turn.
@@ -207,7 +336,7 @@
 
     <section class="section section-alt" id="wedge">
       <div class="wrap">
-        <h2>Wedge vs the category</h2>
+        <h2>How is Agent Looper different from looping in chat?</h2>
         <table class="compare">
           <thead>
             <tr>
@@ -255,10 +384,17 @@
 
     <section class="section install-section" id="install">
       <div class="wrap">
-        <h2>Install</h2>
+        <h2>Install Agent Looper</h2>
         <p class="section-intro">
           Node 22+, pnpm. Tell your agent to set up Agent Looper for the feature you want.
         </p>
+        <ol class="howto-steps">
+          <li>Add <code>@dancingteeth/agent-looper</code> and the SDK for your coding agent (Cursor: <code>@cursor/sdk</code>).</li>
+          <li>Export an API key, or run under Doppler.</li>
+          <li>Run <code>pnpm exec agent-loop-init</code>.</li>
+          <li>Edit <code>GOAL.md</code> and <code>verify.sh</code> until <code>bash verify.sh</code> is an honest determined check.</li>
+          <li>Run <code>pnpm exec agent-loop run</code> until that check is green.</li>
+        </ol>
         <div class="code-block">
           <div class="code-header">
             <span>terminal</span>
@@ -311,7 +447,14 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
 
   <footer class="site-footer">
     <div class="wrap">
-      <p>MIT · <a href="https://github.com/dancingteeth/agent-looper">dancingteeth/agent-looper</a></p>
+      <p>MIT · <a href="https://github.com/dancingteeth/agent-looper">dancingteeth/agent-looper</a> · <a href="https://looper.dancingteeth.net/">looper.dancingteeth.net</a></p>
+      <p class="footer-nav">
+        <a href="about/">About</a> ·
+        <a href="contact/">Contact</a> ·
+        <a href="privacy/">Privacy</a> ·
+        <a href="docs/">Docs</a> ·
+        <a href="llms.txt">llms.txt</a>
+      </p>
     </div>
   </footer>
 

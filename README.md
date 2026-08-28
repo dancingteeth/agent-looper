@@ -9,7 +9,7 @@ tags:
 
 This package is that loop without you in the middle. Fresh Cursor worker each round. A `verify.sh` you already trust. Stop when it exits 0.
 
-**Landing page:** [dancingteeth.github.io/agent-looper](https://dancingteeth.github.io/agent-looper) (static site in [`site/`](./site/)).
+**Landing page:** [looper.dancingteeth.net](https://looper.dancingteeth.net/) (static site in [`site/`](./site/)).
 
 ```bash
 pnpm add -D @dancingteeth/agent-looper @cursor/sdk

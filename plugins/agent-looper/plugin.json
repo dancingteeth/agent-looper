@@ -6,7 +6,7 @@
   "author": {
     "name": "Paul Zgordan (dancingteeth)"
   },
-  "homepage": "https://dancingteeth.github.io/agent-looper/",
+  "homepage": "https://looper.dancingteeth.net/",
   "repository": "https://github.com/dancingteeth/agent-looper",
   "license": "MIT",
   "keywords": ["agent-loop", "agent-looper", "verify", "fix-until-green"]

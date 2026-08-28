@@ -9,7 +9,7 @@
     "type": "git",
     "url": "git+https://github.com/dancingteeth/agent-looper.git"
   },
-  "homepage": "https://dancingteeth.github.io/agent-looper/",
+  "homepage": "https://looper.dancingteeth.net/",
   "bin": {
     "agent-loop": "./dist/cli/run.js",
     "agent-loop-batch": "./dist/cli/run-batch.js",

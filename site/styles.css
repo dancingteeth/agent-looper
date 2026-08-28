@@ -134,6 +134,7 @@ code {
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.25rem;
   font-size: 0.875rem;
 }
@@ -166,6 +167,14 @@ code {
   line-height: 1.15;
   margin: 0 0 1.25rem;
   max-width: 18ch;
+}
+
+.definition {
+  font-size: 1.125rem;
+  color: var(--white);
+  max-width: 42rem;
+  margin: 0 0 1.25rem;
+  line-height: 1.7;
 }
 
 .lead {
@@ -371,11 +380,12 @@ code {
 .tui-answer--escalation { border-left-color: var(--ghost); }
 
 .tui-answer h2 {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--white);
   margin: 0 0 0.75rem;
+  line-height: 1.35;
 }
 
 .tui-answer p {
@@ -422,6 +432,22 @@ code {
   max-width: 44rem;
   margin: 0 0 2rem;
   line-height: 1.7;
+}
+
+.howto-steps {
+  max-width: 44rem;
+  margin: 0 0 1.5rem;
+  padding-left: 1.35rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.howto-steps li {
+  margin: 0 0 0.55rem;
+}
+
+.howto-steps li:last-child {
+  margin-bottom: 0;
 }
 
 .grid.two-col {
@@ -596,6 +622,55 @@ code {
   margin: 0;
   font-size: 0.85rem;
   color: var(--ghost);
+}
+
+.site-footer .footer-nav {
+  margin-top: 0.65rem;
+}
+
+.logo-text {
+  font-family: var(--font-mono);
+  color: var(--white);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.logo-text:hover { color: var(--terracotta); text-decoration: none; }
+
+.prose {
+  padding-top: 3rem;
+  padding-bottom: 4rem;
+}
+
+.prose h1 {
+  font-size: clamp(1.75rem, 4vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 1.25rem;
+  max-width: 28ch;
+}
+
+.prose p, .prose li {
+  color: var(--muted);
+  max-width: 44rem;
+  line-height: 1.7;
+}
+
+.prose p { margin: 0 0 1rem; }
+
+.prose ul, .prose ol {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+}
+
+.md-404 {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--muted);
+  white-space: pre-wrap;
+  margin: 0;
 }
 
 @media (max-width: 600px) {
