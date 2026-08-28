@@ -9,6 +9,7 @@ import {
   reviewGateBlocksCompletion,
   reviewVerdictAllowsCompletion,
   UNPARSEABLE_VERDICT_BLOCKER,
+  warningBlockers,
 } from './reviewVerdict.js'
 
 describe('parseBlockerItem', () => {
@@ -204,6 +205,7 @@ BLOCKERS
     expect(parsed.risk).toBe('high')
     expect(parsed.blockers.length).toBeGreaterThanOrEqual(5)
     expect(blockingBlockers(parsed).length).toBe(4)
+    expect(warningBlockers(parsed).some((b) => b.title.includes('Docs missing'))).toBe(true)
     expect(parsed.blockers.some((b) => b.title.includes('§2.4 task traceability'))).toBe(true)
     expect(parsed.blockers.some((b) => b.title.includes('App-layer unit guard'))).toBe(true)
   })

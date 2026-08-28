@@ -6,6 +6,7 @@ import { loopConfigSchema } from './loopConfig.js'
 import {
   VERIFY_SIDECAR_DIR,
   detectExternalVerifierPaths,
+  formatLoopExtensionPreflight,
   persistVerifyOutput,
   validateLoopExtensionPreflight,
 } from './loopExtensions.js'
@@ -70,6 +71,15 @@ describe('validateLoopExtensionPreflight', () => {
       config,
     )
     expect(result.pendingFeatures.some((f) => f.includes('verifyLogMode'))).toBe(false)
+  })
+
+  it('formats extension preflight warnings and pending features', () => {
+    const formatted = formatLoopExtensionPreflight({
+      warnings: ['verify references paths outside repo'],
+      pendingFeatures: ['smokeScripts'],
+    })
+    expect(formatted).toContain('warn: verify references paths outside repo')
+    expect(formatted).toContain('note: smokeScripts configured')
   })
 })
 

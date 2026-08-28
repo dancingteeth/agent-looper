@@ -5,7 +5,9 @@ import {
   LOOP_NO_COMPLETION_SIGNAL_ENV,
   completionSignalDisabled,
   emitLoopCompletionSignal,
+  exitWithLoopCompletionSignal,
   formatLoopCompletionSignalLine,
+  runReportRelativePath,
   runReportSignalPath,
   shouldEmitLoopCompletionSignal,
 } from './loopCompletionSignal.js'
@@ -72,5 +74,53 @@ describe('loopCompletionSignal', () => {
         include: false,
       }),
     ).toBeUndefined()
+  })
+
+  it('runReportRelativePath is stable under path.join', () => {
+    expect(runReportRelativePath('/repo/.cursor/loops/foo', '/repo')).toBe(
+      '.cursor/loops/foo/run-report.md',
+    )
+  })
+
+  it('exitWithLoopCompletionSignal optionally emits then exits', () => {
+    const writeSync = vi.spyOn(fs, 'writeSync').mockImplementation(() => 0)
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit')
+    }) as typeof process.exit)
+
+    expect(() =>
+      exitWithLoopCompletionSignal({
+        emit: true,
+        exitCode: 0,
+        payload: {
+          v: 1,
+          kind: 'loop',
+          bundle: '.cursor/loops/foo',
+          complete: true,
+          exitCode: 0,
+          reason: 'done',
+        },
+      }),
+    ).toThrow('exit')
+    expect(writeSync).toHaveBeenCalled()
+    expect(exit).toHaveBeenCalledWith(0)
+
+    writeSync.mockClear()
+    expect(() =>
+      exitWithLoopCompletionSignal({
+        emit: false,
+        exitCode: 1,
+        payload: {
+          v: 1,
+          kind: 'loop',
+          bundle: '.cursor/loops/foo',
+          complete: false,
+          exitCode: 1,
+          reason: 'fail',
+        },
+      }),
+    ).toThrow('exit')
+    expect(writeSync).not.toHaveBeenCalled()
+    expect(exit).toHaveBeenCalledWith(1)
   })
 })

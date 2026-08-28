@@ -71,8 +71,9 @@ describe('landing agent readiness', () => {
     expect(html).toContain('href="/docs/"')
     expect(html).toContain('href="/llms.txt"')
     expect(html).toContain('href="/sitemap.xml"')
-    expect(html).toContain('# Not found')
-    expect(readSite('404.md')).toContain('llms.txt')
+    const md = readSite('404.md')
+    expect(md).toContain('# Not found')
+    expect(md).toContain('llms.txt')
   })
 
   it('trust and docs pages have Agent Looper in the H1 and 500+ chars', () => {
