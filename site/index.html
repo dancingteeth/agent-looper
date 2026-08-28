@@ -6,12 +6,14 @@
   <title>Agent Looper — You are the verify step</title>
   <meta name="description" content="Fix-until-green loop harness for Cursor. Fresh worker each round. Shell verify decides done. Stop when exit 0.">
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0b'/><path d='M8 16h6l2-4 2 8 2-4h6' stroke='%234ade80' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23141210'/><text x='16' y='14' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='10' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><text x='22' y='22' text-anchor='middle' font-family='monospace' font-size='7' fill='%23D65D2E'>o</text><circle cx='16' cy='20' r='2' fill='%2376A17B'/></svg>">
 </head>
 <body>
   <header class="site-header">
     <div class="wrap">
-      <a class="logo" href="./">Agent Looper</a>
+      <a class="logo" href="./">
+        Agent L<span class="logo-oo" aria-hidden="true">oo</span>per
+      </a>
       <nav class="nav">
         <a href="https://github.com/dancingteeth/agent-looper">GitHub</a>
         <a href="https://www.npmjs.com/package/@dancingteeth/agent-looper">npm</a>
@@ -23,7 +25,7 @@
   <main>
     <section class="hero">
       <div class="wrap">
-        <p class="eyebrow">@dancingteeth/agent-looper</p>
+        <p class="eyebrow">@dancingteeth/agent-looper · <code>agent-loop</code></p>
         <h1>You are the verify step.</h1>
         <p class="lead">
           Composer says done. CI is still red. You paste the log and open a new chat.
@@ -43,12 +45,35 @@
       </div>
     </section>
 
-    <section class="diagram-section">
+    <section class="tui-section" aria-label="Watch TUI preview">
       <div class="wrap">
-        <pre class="flow-diagram" aria-label="Loop diagram"><span class="node">GOAL.md</span> <span class="arrow">→</span> <span class="node">WORKER</span> <span class="arrow">→</span> <span class="node node-verify">VERIFY</span>
-                                              <span class="arrow">↓</span>
-                                    <span class="fail">fail: fresh worker</span>
-                                    <span class="pass">pass: done</span></pre>
+        <div class="tui-frame">
+          <div class="tui-mark">
+            <span class="tui-word">Agent L</span>
+            <div class="figure8" id="figure8" aria-hidden="true"></div>
+            <span class="tui-word">per</span>
+            <div class="tui-pipeline" aria-label="Stage pipeline">
+              <span class="stage-pill reached-goal">GOAL</span>
+              <span class="stage-arrow">→</span>
+              <span class="stage-pill reached-worker">WORKER</span>
+              <span class="stage-arrow">→</span>
+              <span class="stage-pill current">VERIFY</span>
+              <span class="stage-arrow">→</span>
+              <span class="stage-pill pending">JUDGE</span>
+            </div>
+          </div>
+          <p class="tui-tagline">the harness that owns the grind.</p>
+          <p class="tui-rail" aria-hidden="true">
+            <span class="filled">━━━━━━━━━━━━━━</span><span class="empty">────────</span>
+          </p>
+          <p class="tui-status">VERIFY failed — exit 1</p>
+          <p class="tui-substatus">watching VERIFY — iteration 3/6</p>
+        </div>
+        <p class="tui-loop-note">
+          <span class="fail">fail → fresh worker</span>
+          <span aria-hidden="true"> · </span>
+          <span class="pass">pass → done (optional JUDGE after green verify)</span>
+        </p>
       </div>
     </section>
 
@@ -61,15 +86,15 @@
           Progress lives in git and files, not chat memory.
         </p>
         <div class="grid two-col">
-          <div class="card">
+          <div class="card card--goal">
             <h3>Worker</h3>
             <p>New session every iteration. Implements toward the frozen goal. Progress is the repo — not an accumulating thread.</p>
           </div>
-          <div class="card">
+          <div class="card card--verify">
             <h3>Verifier</h3>
             <p>Your shell command. Exit <code>0</code> is the only completion truth. Models approve their own work. Exit codes don’t.</p>
           </div>
-          <div class="card">
+          <div class="card card--judge">
             <h3>Judge <span class="optional">optional</span></h3>
             <p>After verify passes, writes <code>review.md</code>. With <code>reviewGate</code>, only error + impact findings reopen the fix loop.</p>
           </div>
@@ -192,6 +217,32 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
   </footer>
 
   <script>
+    // Figure-8 dot path from src/cli/loopChrome.tsx
+    const SKELETON = [
+      [' ', 'o', ' ', 'o', ' '],
+      ['o', ' ', ' ', ' ', 'o'],
+      [' ', 'o', ' ', 'o', ' '],
+    ];
+    const PATH = [[1,0],[0,1],[1,2],[0,3],[1,4],[2,3],[1,2],[2,1]];
+
+    function renderFigure8(frame) {
+      const grid = SKELETON.map((row) => [...row]);
+      const slot = PATH[((frame % PATH.length) + PATH.length) % PATH.length];
+      const [row, col] = slot;
+      grid[row][col] = '·';
+      const el = document.getElementById('figure8');
+      if (!el) return;
+      el.innerHTML = grid.flat().map((cell) => {
+        const cls = cell === '·' ? 'dot' : cell === 'o' ? 'o' : 'empty';
+        const ch = cell === ' ' ? '\u00A0' : cell;
+        return `<span class="cell ${cls}">${ch}</span>`;
+      }).join('');
+    }
+
+    let frame = 0;
+    renderFigure8(frame);
+    setInterval(() => { frame += 1; renderFigure8(frame); }, 140);
+
     document.querySelectorAll('[data-copy]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-copy');
