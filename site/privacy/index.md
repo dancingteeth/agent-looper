@@ -1,6 +1,6 @@
 # Agent Looper privacy
 
-The Agent Looper marketing site at https://looper.dancingteeth.net/ is a static site we host. We use first-party PostHog on EU cloud (`eu.i.posthog.com` / eu.posthog.com) in **cookieless** mode: no advertising cookies and no local or session storage for analytics. We only send `$pageview` (page views) and `install_copy_clicked` when you successfully copy an install snippet with the Copy button. Autocapture is off, we do not call `identify`, and session replay is disabled. We do not sell this data.
+The Agent Looper marketing site at https://looper.dancingteeth.net/ is a static site we host. We use first-party PostHog on EU cloud (`eu.i.posthog.com` / eu.posthog.com) in **cookieless** mode: no advertising cookies and no local or session storage for analytics. We only send `$pageview` (page views), `install_copy_clicked` when you successfully copy an install snippet with the Copy button, and `grok_bot_add_clicked` when you open the public Grok Bot from the Harnesses page. Autocapture is off, we do not call `identify`, and session replay is disabled. We do not sell this data.
 
 Copy-to-clipboard on the install snippet uses the browser clipboard API in your session only — that is separate from analytics.
 

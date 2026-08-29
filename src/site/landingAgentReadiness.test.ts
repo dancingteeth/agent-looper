@@ -305,6 +305,7 @@ describe('landing agent readiness', () => {
       expect(body).toMatch(/cookieless/i)
       expect(body).toMatch(/\$pageview|page view/i)
       expect(body).toContain('install_copy_clicked')
+      expect(body).toContain('grok_bot_add_clicked')
     }
   })
 

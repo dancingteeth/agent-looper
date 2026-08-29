@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agent Looper privacy — cookieless PostHog</title>
-  <meta name="description" content="Agent Looper privacy: cookieless first-party PostHog on EU cloud for page views and install snippet copy clicks. No advertising cookies, no session replay.">
+  <meta name="description" content="Agent Looper privacy: cookieless first-party PostHog on EU cloud for page views, install snippet copy clicks, and Grok Bot add clicks. No advertising cookies, no session replay.">
   <link rel="canonical" href="https://looper.dancingteeth.net/privacy/">
   <link rel="describedby" href="https://looper.dancingteeth.net/llms.txt">
   <link rel="alternate" type="text/markdown" href="https://looper.dancingteeth.net/privacy/index.md">
@@ -32,7 +32,7 @@
   <main class="prose">
     <div class="wrap">
       <h1>Agent Looper privacy</h1>
-      <p>The Agent Looper marketing site at <a href="https://looper.dancingteeth.net/">looper.dancingteeth.net</a> is a static site we host. We use first-party PostHog on EU cloud (<code>eu.i.posthog.com</code> / <a href="https://eu.posthog.com/">eu.posthog.com</a>) in <strong>cookieless</strong> mode: no advertising cookies and no local or session storage for analytics. We only send <code>$pageview</code> (page views) and <code>install_copy_clicked</code> when you successfully copy an install snippet with the Copy button. Autocapture is off, we do not call <code>identify</code>, and session replay is disabled. We do not sell this data.</p>
+      <p>The Agent Looper marketing site at <a href="https://looper.dancingteeth.net/">looper.dancingteeth.net</a> is a static site we host. We use first-party PostHog on EU cloud (<code>eu.i.posthog.com</code> / <a href="https://eu.posthog.com/">eu.posthog.com</a>) in <strong>cookieless</strong> mode: no advertising cookies and no local or session storage for analytics. We only send <code>$pageview</code> (page views), <code>install_copy_clicked</code> when you successfully copy an install snippet with the Copy button, and <code>grok_bot_add_clicked</code> when you open the public Grok Bot from the Harnesses page. Autocapture is off, we do not call <code>identify</code>, and session replay is disabled. We do not sell this data.</p>
       <p>Copy-to-clipboard on the install snippet uses the browser clipboard API in your session only — that is separate from analytics.</p>
       <p>The Agent Looper npm package (<code>@dancingteeth/agent-looper</code>) runs on your machine against coding-agent SDKs you configure. API keys, loop folders, <code>GOAL.md</code>, verify output, and git history stay in your environment and with the providers you already pay (Cursor, Cline, OpenCode, Pi, Codex, DSH, OpenRouter, and so on). This site does not proxy those calls.</p>
       <p>CLI telemetry is separate from this site: it is opt-in (<code>AGENT_LOOPER_TELEMETRY=1</code>) and sends anonymous usage events from your machine when you enable it.</p>
