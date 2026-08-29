@@ -4,6 +4,8 @@ Agent Looper ships worker runtimes for the coding agents you already pay for. **
 
 ## Operator — Agent Looper Grok Bot
 
+![Grok Bot operator](../logos/looper-bot.png)
+
 Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.
 
 [Add to Grok Bot](https://x.ai/bot/AETdGbRRNWfckrRGv22LD)

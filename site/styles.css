@@ -418,11 +418,13 @@ a.harness-logo:hover {
     linear-gradient(180deg, #0f1f12 0%, var(--black) 100%);
 }
 
-.harness-operator__hex {
+.harness-operator__shot {
   display: block;
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
   margin: 0 0 1rem;
+  border-radius: 0.75rem;
+  object-fit: contain;
 }
 
 .harness-operator__title {
