@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Grok Bot">
+  <title>Grok Bot</title>
+  <defs>
+    <linearGradient id="grok-hex-top" x1="32" y1="8" x2="32" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7ee07a"/>
+      <stop offset="100%" stop-color="#3d9b45"/>
+    </linearGradient>
+    <linearGradient id="grok-hex-left" x1="12" y1="20" x2="32" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2f8a38"/>
+      <stop offset="100%" stop-color="#1f6b28"/>
+    </linearGradient>
+    <linearGradient id="grok-hex-right" x1="52" y1="20" x2="32" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4cb355"/>
+      <stop offset="100%" stop-color="#2a7a32"/>
+    </linearGradient>
+  </defs>
+  <polygon points="32,10 50,22 50,42 32,54 14,42 14,22" fill="url(#grok-hex-left)"/>
+  <polygon points="32,10 50,22 32,34 14,22" fill="url(#grok-hex-top)"/>
+  <polygon points="32,34 50,22 50,42 32,54" fill="url(#grok-hex-right)"/>
+  <ellipse cx="38" cy="30" rx="2.2" ry="3.4" fill="#0a0a0a"/>
+  <ellipse cx="44" cy="30" rx="2.2" ry="3.4" fill="#0a0a0a"/>
+</svg>

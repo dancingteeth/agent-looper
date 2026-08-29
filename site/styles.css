@@ -423,6 +423,41 @@ a.harness-logo:hover {
   mask: var(--logo) center / contain no-repeat;
 }
 
+.harness-block--operator .harness-block__logo-img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+
+.harness-block--operator .harness-block__tagline {
+  font-size: 1rem;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+
+.harness-block--operator .harness-block__cta {
+  margin: 0 0 1.25rem;
+}
+
+.harness-block--operator .harness-block__add {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--black);
+  background: var(--white);
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.harness-block--operator .harness-block__add:hover {
+  text-decoration: none;
+  opacity: 0.92;
+}
+
 .tui-answers {
   display: flex;
   flex-direction: column;
