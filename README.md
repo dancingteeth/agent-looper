@@ -52,7 +52,9 @@ Verification checklist authoring: [`docs/verification-as-skill.md`](./docs/verif
 
 ## Install
 
-Requires **Node.js 22+**. Install from npm (works in cloud agents and any consumer repo):
+Requires **Node.js 22+**. Install from npm (works in cloud agents and any consumer repo).
+
+**CLI telemetry (opt-in, off by default):** set `AGENT_LOOPER_TELEMETRY=1` to send anonymous usage events (`looper_init`, `looper_run_started`, `looper_run_finished`) to PostHog EU. Requires `POSTHOG_PROJECT_API_KEY` or `AGENT_LOOPER_POSTHOG_KEY`. Sends only package version, runtime, OS platform, Node major version, verify pass/fail, duration, and review-gate flag — never repo paths, prompts, or secrets. The marketing site at [looper.dancingteeth.net](https://looper.dancingteeth.net/) does not use analytics pixels.
 
 ```bash
 # Cursor-only (minimum)
