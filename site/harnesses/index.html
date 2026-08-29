@@ -15,7 +15,7 @@
   <meta property="og:image" content="https://looper.dancingteeth.net/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://looper.dancingteeth.net/og.png">
-  <link rel="stylesheet" href="../styles.css?v=20260830-bot">
+  <link rel="stylesheet" href="../styles.css?v=20260830-catalog">
 </head>
 <body>
   <header class="site-header">
@@ -34,140 +34,166 @@
   <main class="prose">
     <div class="wrap">
       <h1>Harnesses</h1>
-      <p>Agent Looper ships worker runtimes for the coding agents you already pay for. Each block is one shipped runtime — plus Grok Bot, which is an operator, not a <code>--runtime</code> value. Facts come from published repo docs and CLI help.</p>
+      <p>Agent Looper ships worker runtimes for the coding agents you already pay for. <strong>Operators</strong> start the loop on your machine; <strong>runtimes</strong> are the <code>--runtime</code> values the harness drives. Facts come from published repo docs and CLI help.</p>
 
-      <section class="harness-block" id="cursor">
-        <div class="harness-block__head">
-          <span class="harness-block__logo" style="--logo: url('../logos/cursor.svg')" aria-hidden="true"></span>
-          <h2>Cursor</h2>
+      <nav class="harness-logos" aria-label="Jump to runtime">
+        <a class="harness-logo" href="#cursor">
+          <span class="harness-logo__icon" style="--logo: url('../logos/cursor.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">Cursor</span>
+        </a>
+        <a class="harness-logo" href="#dsh">
+          <span class="harness-logo__icon" style="--logo: url('../logos/deepseek.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">DSH</span>
+        </a>
+        <a class="harness-logo" href="#cline">
+          <span class="harness-logo__icon" style="--logo: url('../logos/cline.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">Cline</span>
+        </a>
+        <a class="harness-logo" href="#opencode">
+          <span class="harness-logo__icon" style="--logo: url('../logos/opencode.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">OpenCode</span>
+        </a>
+        <a class="harness-logo" href="#pi">
+          <span class="harness-logo__icon" style="--logo: url('../logos/pi.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">Pi</span>
+        </a>
+        <a class="harness-logo" href="#codex">
+          <span class="harness-logo__icon" style="--logo: url('../logos/openai.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">Codex</span>
+        </a>
+      </nav>
+
+      <section class="harness-operator" id="grok-bot">
+        <p class="harness-section-label">Operator</p>
+        <div class="harness-operator__hero">
+          <img class="harness-operator__hex" src="../logos/grok-bot-hex.png" width="80" height="80" alt="" aria-hidden="true">
+          <h2 class="harness-operator__title">Grok Bot</h2>
+          <p class="harness-operator__tagline">Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.</p>
+          <p class="harness-operator__cta">
+            <a class="harness-operator__add" id="grok-bot-add" href="https://x.ai/bot/AETdGbRRNWfckrRGv22LD" target="_blank" rel="noopener noreferrer">Add to Grok Bot</a>
+          </p>
         </div>
-        <p>Cursor is an IDE subscription. Agent Looper drives it through <code>@cursor/sdk</code> with <code>--runtime cursor</code>.</p>
-        <h3>How to use</h3>
-        <ol>
-          <li>Install: <code>pnpm add -D @dancingteeth/agent-looper @cursor/sdk</code></li>
-          <li>Export <code>CURSOR_API_KEY</code>, or run under Doppler.</li>
-          <li>Initialize: <code>pnpm exec agent-loop-init</code></li>
-          <li>Freeze <code>GOAL.md</code> and <code>verify.sh</code>.</li>
-          <li>Run: <code>pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></li>
-        </ol>
-        <h3>Models</h3>
-        <ul>
-          <li>Worker: <code>composer-2.5</code></li>
-          <li>Judge (when worker is Cursor): Grok 4.6</li>
-        </ul>
-        <p>Set <code>costPreset: "cursor"</code> in <code>loop.json</code> to stay on Cursor for both worker and judge.</p>
+        <div class="harness-operator__body">
+          <p>Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a <code>--runtime</code> enum value. Distinct from the Grok 4.6 model that Cursor uses as judge.</p>
+          <h3>How to use</h3>
+          <ol>
+            <li>Freeze <code>GOAL.md</code> and <code>verify.sh</code>.</li>
+            <li>From the Grok Bot session, start the harness: <code>pnpm exec agent-loop run .cursor/loops/my-task --review-gate</code></li>
+            <li>Worker and judge come from <code>loop.json</code> and what's installed. There is no <code>--runtime grok</code>.</li>
+          </ol>
+          <p>The harness still owns the determined check and a fresh worker each iteration. Grok Bot starts that loop; it does not implement the goal itself.</p>
+        </div>
       </section>
 
-      <section class="harness-block harness-block--operator" id="grok-bot">
-        <div class="harness-block__head">
-          <img class="harness-block__logo-img" src="../logos/grok-bot-hex.png" width="32" height="32" alt="" aria-hidden="true">
-          <h2>Grok Bot</h2>
-        </div>
-        <p class="harness-block__tagline">Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.</p>
-        <p class="harness-block__cta">
-          <a class="harness-block__add" id="grok-bot-add" href="https://x.ai/bot/AETdGbRRNWfckrRGv22LD" target="_blank" rel="noopener noreferrer">Add to Grok Bot</a>
-        </p>
-        <p>Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a <code>--runtime</code> enum value. Distinct from the Grok 4.6 model that Cursor uses as judge.</p>
-        <h3>How to use</h3>
-        <ol>
-          <li>Freeze <code>GOAL.md</code> and <code>verify.sh</code>.</li>
-          <li>From the Grok Bot session, start the harness: <code>pnpm exec agent-loop run .cursor/loops/my-task --review-gate</code></li>
-          <li>Worker and judge come from <code>loop.json</code> and what's installed. There is no <code>--runtime grok</code>.</li>
-        </ol>
-        <p>The harness still owns the determined check and a fresh worker each iteration. Grok Bot starts that loop; it does not implement the goal itself.</p>
-      </section>
+      <section class="harness-runtimes" aria-labelledby="harness-runtimes-heading">
+        <h2 class="harness-section-title" id="harness-runtimes-heading">Runtimes</h2>
+        <p class="harness-runtimes__intro">Each card is one shipped <code>--runtime</code> value. Install once: <code>pnpm add -D @dancingteeth/agent-looper</code>, then add the SDK or CLI named on the card.</p>
 
-      <section class="harness-block" id="dsh">
-        <div class="harness-block__head">
-          <span class="harness-block__logo" style="--logo: url('../logos/deepseek.svg')" aria-hidden="true"></span>
-          <h2>DSH</h2>
-        </div>
-        <p>DSH is the DeepSeek Harness CLI. Agent Looper ships a <code>dsh</code> worker runtime and a <code>dsh-agent-looper</code> plugin for <code>dsh web</code>. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">docs/dsh-plugin.md</a> and <a href="https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper">plugins/dsh-agent-looper/</a>.</p>
-        <h3>How to use</h3>
-        <ol>
-          <li>Install: <code>pnpm add -D @dancingteeth/agent-looper</code>; ensure <code>dsh</code> is on PATH.</li>
-          <li>Run: <code>pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate</code>. The worker process is <code>dsh --profile headless</code>.</li>
-          <li>For <code>dsh web</code>, build the plugin (<code>pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json</code>) and add it (<code>dsh plugin --profile web add ./plugins/dsh-agent-looper</code>).</li>
-        </ol>
-        <h3>Models</h3>
-        <ul>
-          <li>Worker: <code>deepseek-official/deepseek-v4-flash</code> (escalates to <code>deepseek-official/deepseek-v4-pro</code>)</li>
-          <li>Judge: <code>deepseek-official/deepseek-v4-pro</code> (when <code>reviewRuntime: dsh</code>)</li>
-        </ul>
-      </section>
+        <div class="harness-grid">
+          <article class="harness-card" id="cursor">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/cursor.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>Cursor</h3>
+                <span class="harness-card__pill"><code>--runtime cursor</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job">IDE subscription via <code>@cursor/sdk</code>.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Worker <code>composer-2.5</code></span>
+              <span class="harness-chip">Judge Grok 4.6</span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></p>
+            <p class="harness-card__note">Export <code>CURSOR_API_KEY</code> or run under Doppler. Run <code>pnpm exec agent-loop-init</code> once. Set <code>costPreset: "cursor"</code> in <code>loop.json</code> to stay on Cursor for both worker and judge.</p>
+          </article>
 
-      <section class="harness-block" id="cline">
-        <div class="harness-block__head">
-          <span class="harness-block__logo" style="--logo: url('../logos/cline.svg')" aria-hidden="true"></span>
-          <h2>Cline</h2>
-        </div>
-        <p>Cline runs through <code>@cline/sdk</code>. Two runtime values: <code>cline-pass</code> (subscription quota) and <code>cline</code> (credits).</p>
-        <h3>How to use</h3>
-        <ol>
-          <li>Install: <code>pnpm add -D @dancingteeth/agent-looper @cline/sdk</code></li>
-          <li>Run: <code>pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass --review-gate</code> (or <code>--runtime cline</code> for credits)</li>
-        </ol>
-        <h3>Models</h3>
-        <ul>
-          <li><code>cline-pass</code> worker: <code>cline-pass/deepseek-v4-flash</code> → <code>qwen3.7-plus</code></li>
-          <li><code>cline</code> worker: <code>deepseek/deepseek-chat</code> → <code>qwen/qwen3-coder-plus</code></li>
-          <li>Judge: Cursor Composer 2.5 (unless <code>reviewRuntime</code> is set)</li>
-        </ul>
-      </section>
+          <article class="harness-card" id="dsh">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/deepseek.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>DSH</h3>
+                <span class="harness-card__pill"><code>--runtime dsh</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job">DeepSeek Harness CLI — worker is <code>dsh --profile headless</code>; <code>dsh-agent-looper</code> plugin for <code>dsh web</code>.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Worker <code>deepseek-v4-flash</code> → <code>v4-pro</code></span>
+              <span class="harness-chip">Judge <code>deepseek-v4-pro</code></span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate</code></p>
+            <p class="harness-card__note">Ensure <code>dsh</code> is on PATH. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">docs/dsh-plugin.md</a> and <a href="https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper">plugins/dsh-agent-looper/</a>.</p>
+          </article>
 
-      <section class="harness-block" id="opencode">
-        <div class="harness-block__head">
-          <span class="harness-block__logo" style="--logo: url('../logos/opencode.svg')" aria-hidden="true"></span>
-          <h2>OpenCode</h2>
-        </div>
-        <p>OpenCode runs through <code>@opencode-ai/sdk</code> and the <code>opencode</code> CLI. Go quota by default, or BYOK through OpenRouter, Vercel AI Gateway, Ollama, or another OpenAI-compatible router.</p>
-        <h3>How to use</h3>
-        <ol>
-          <li>Install: <code>pnpm add -D @dancingteeth/agent-looper @opencode-ai/sdk</code>; ensure <code>opencode</code> CLI is on PATH.</li>
-          <li>Run: <code>pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode --review-gate</code></li>
-        </ol>
-        <h3>Models</h3>
-        <ul>
-          <li>Go worker: <code>opencode-go/deepseek-v4-flash</code> → <code>qwen3.7-plus</code></li>
-          <li>BYOK: <code>openrouter/…</code>, <code>vercel/…</code>, <code>ollama/…</code></li>
-          <li>Judge: Cursor, or <code>reviewRuntime: opencode</code> (DeepSeek V4 Pro)</li>
-        </ul>
-      </section>
+          <article class="harness-card" id="cline">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/cline.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>Cline</h3>
+                <span class="harness-card__pill"><code>--runtime cline-pass</code> · <code>cline</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job"><code>@cline/sdk</code> — <code>cline-pass</code> for subscription quota, <code>cline</code> for credits.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Pass <code>deepseek-v4-flash</code> → <code>qwen3.7-plus</code></span>
+              <span class="harness-chip">Credits <code>deepseek-chat</code> → <code>qwen3-coder-plus</code></span>
+              <span class="harness-chip">Judge Composer 2.5</span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass --review-gate</code></p>
+            <p class="harness-card__note">Install <code>@cline/sdk</code>. Use <code>--runtime cline</code> for credits.</p>
+          </article>
 
-      <section class="harness-block" id="pi">
-        <div class="harness-block__head">
-          <span class="harness-block__logo" style="--logo: url('../logos/pi.svg')" aria-hidden="true"></span>
-          <h2>Pi</h2>
-        </div>
-        <p>Pi runs through <code>@earendil-works/pi-coding-agent</code>. OpenRouter by default, or another OpenAI-compatible router you configure.</p>
-        <h3>How to use</h3>
-        <ol>
-          <li>Install: <code>pnpm add -D @dancingteeth/agent-looper @earendil-works/pi-coding-agent</code></li>
-          <li>Run: <code>pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-gate</code></li>
-        </ol>
-        <h3>Models</h3>
-        <ul>
-          <li>Worker: <code>openrouter/deepseek/deepseek-chat</code> → <code>openrouter/qwen/qwen3-coder-plus</code></li>
-          <li>Judge: Cursor, or <code>reviewRuntime: pi</code></li>
-        </ul>
-      </section>
+          <article class="harness-card" id="opencode">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/opencode.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>OpenCode</h3>
+                <span class="harness-card__pill"><code>--runtime opencode</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job"><code>@opencode-ai/sdk</code> and <code>opencode</code> CLI — Go quota or BYOK via OpenRouter, Vercel, Ollama, or another OpenAI-compatible router.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Go <code>deepseek-v4-flash</code> → <code>qwen3.7-plus</code></span>
+              <span class="harness-chip">BYOK <code>openrouter/…</code></span>
+              <span class="harness-chip">Judge Cursor or <code>reviewRuntime: opencode</code></span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode --review-gate</code></p>
+            <p class="harness-card__note">Install <code>@opencode-ai/sdk</code>; ensure <code>opencode</code> CLI is on PATH.</p>
+          </article>
 
-      <section class="harness-block" id="codex">
-        <div class="harness-block__head">
-          <span class="harness-block__logo" style="--logo: url('../logos/openai.svg')" aria-hidden="true"></span>
-          <h2>Codex</h2>
+          <article class="harness-card" id="pi">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/pi.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>Pi</h3>
+                <span class="harness-card__pill"><code>--runtime pi</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job"><code>@earendil-works/pi-coding-agent</code> — OpenRouter by default or another OpenAI-compatible router you configure.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Worker <code>openrouter/deepseek-chat</code> → <code>qwen3-coder-plus</code></span>
+              <span class="harness-chip">Judge Cursor or <code>reviewRuntime: pi</code></span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-gate</code></p>
+            <p class="harness-card__note">Install <code>@earendil-works/pi-coding-agent</code>.</p>
+          </article>
+
+          <article class="harness-card" id="codex">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/openai.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>Codex</h3>
+                <span class="harness-card__pill"><code>--runtime codex</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job"><code>@openai/codex-sdk</code> and <code>codex</code> CLI — ChatGPT / OpenAI BYO.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Worker <code>gpt-5.6-luna</code> → <code>gpt-5.6-terra</code></span>
+              <span class="harness-chip">Judge Cursor or <code>reviewRuntime: codex</code> (<code>gpt-5.6-sol</code>)</span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate</code></p>
+            <p class="harness-card__note">Install <code>@openai/codex-sdk</code>; ensure <code>codex</code> CLI is on PATH.</p>
+          </article>
         </div>
-        <p>Codex runs through <code>@openai/codex-sdk</code> and the <code>codex</code> CLI. ChatGPT / OpenAI BYO.</p>
-        <h3>How to use</h3>
-        <ol>
-          <li>Install: <code>pnpm add -D @dancingteeth/agent-looper @openai/codex-sdk</code>; ensure <code>codex</code> CLI is on PATH.</li>
-          <li>Run: <code>pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate</code></li>
-        </ol>
-        <h3>Models</h3>
-        <ul>
-          <li>Worker: <code>gpt-5.6-luna</code> → <code>gpt-5.6-terra</code></li>
-          <li>Judge: Cursor, or <code>reviewRuntime: codex</code> (default judge <code>gpt-5.6-sol</code>)</li>
-        </ul>
       </section>
     </div>
   </main>
