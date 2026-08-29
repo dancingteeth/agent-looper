@@ -6,6 +6,7 @@ import { detectDefaultBranch } from '../context/defaultBranch.js'
 import { resolveRepoContext } from '../context/repoContext.js'
 import { REPO_PROFILE_RELATIVE_PATH } from '../context/repoProfile.js'
 import { parseRepoRootFlag } from './shared.js'
+import { trackLooperInit } from '../telemetry/looperTelemetry.js'
 import { ensureLoopGitignoreBlock } from './initGitignore.js'
 
 /** dist/cli/init.js → package root */
@@ -101,3 +102,5 @@ console.error(`  # OpenCode Go subscription (OPENCODE_API_KEY); optional escalat
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime opencode`)
 console.error(`  # DeepSeek Harness headless (dsh on PATH; Node ≥ 22.15)`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime dsh`)
+
+trackLooperInit()

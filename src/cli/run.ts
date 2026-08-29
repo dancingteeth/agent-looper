@@ -6,6 +6,7 @@ import {
   validateRepoProfile,
 } from '../context/repoProfileDoctor.js'
 import { runAgentLoop } from '../loop/agentLoop.js'
+import type { LoopRuntime } from '../loop/loopAgentConfig.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
 import { detectLoopRuntimes } from './detectRuntimes.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
@@ -25,6 +26,7 @@ import {
 import { formatLoopCompletionReport } from '../loop/loopReport.js'
 import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
 import { WatchHeartbeat, clearWatchStatus, watchStatusPath, writeWatchStatus } from '../loop/loopWatch.js'
+import { trackLooperRunFinished, trackLooperRunStarted } from '../telemetry/looperTelemetry.js'
 import { parseRunArgs, type RunCliOptions } from './runArgs.js'
 import { runWatchCommand } from './watch.js'
 
@@ -58,6 +60,10 @@ let loadedNotifyPrComment: boolean | undefined
 let emitCompletionSignal = shouldEmitLoopCompletionSignal({
   completionSignal: cli.noCompletionSignal ? false : true,
 })
+let telemetryRuntime: LoopRuntime | undefined
+let telemetryReviewGate = false
+let runStartedAt: number | undefined
+let lastCheckPassed: boolean | undefined
 
 async function finishLoopExit(input: {
   exitCode: 0 | 1 | 2
@@ -68,6 +74,14 @@ async function finishLoopExit(input: {
   includeRunReport?: boolean
   report?: string
 }): Promise<never> {
+  if (telemetryRuntime && runStartedAt !== undefined) {
+    trackLooperRunFinished({
+      runtime: telemetryRuntime,
+      reviewGate: telemetryReviewGate,
+      durationMs: Date.now() - runStartedAt,
+      checkPassed: lastCheckPassed,
+    })
+  }
   const runReport = runReportSignalPath({
     loopDir,
     repoRoot: ctx.repoRoot,
@@ -257,6 +271,14 @@ try {
     }
   }
 
+  telemetryRuntime = bundle.config.runtime
+  telemetryReviewGate = Boolean(bundle.config.reviewGate)
+  runStartedAt = Date.now()
+  trackLooperRunStarted({
+    runtime: bundle.config.runtime,
+    reviewGate: telemetryReviewGate,
+  })
+
   const heartbeat = new WatchHeartbeat({ emit: (line) => console.error(line) })
   try {
     const result = await runAgentLoop({
@@ -341,6 +363,8 @@ try {
           hitlLinearTeam: bundle.config.hitlLinearTeam,
         },
       })) ?? result.hitlCheckTaskUuid
+
+    lastCheckPassed = result.lastVerify?.complete
 
     const exitCode: 0 | 2 = result.complete ? 0 : 2
     await finishLoopExit({
