@@ -3,13 +3,30 @@
     typeof window.LOOPER_POSTHOG_KEY === 'string' ? window.LOOPER_POSTHOG_KEY.trim() : '';
   if (!key) return;
 
+  var installCopyQueue = [];
+  var posthogReady = false;
+
+  function captureInstallCopy(snippet) {
+    if (snippet !== 'agent' && snippet !== 'human') return;
+    if (posthogReady && window.posthog) {
+      window.posthog.capture('install_copy_clicked', { snippet: snippet });
+      return;
+    }
+    installCopyQueue.push(snippet);
+  }
+
+  function flushInstallCopyQueue() {
+    if (!window.posthog) return;
+    while (installCopyQueue.length > 0) {
+      var snippet = installCopyQueue.shift();
+      window.posthog.capture('install_copy_clicked', { snippet: snippet });
+    }
+  }
+
   document.addEventListener('looper:install_copy_clicked', function (event) {
     var detail = event && event.detail;
     var snippet = detail && detail.snippet;
-    if (snippet !== 'agent' && snippet !== 'human') return;
-    if (window.posthog) {
-      window.posthog.capture('install_copy_clicked', { snippet: snippet });
-    }
+    captureInstallCopy(snippet);
   });
 
   var script = document.createElement('script');
@@ -29,6 +46,8 @@
       person_profiles: 'never',
       defaults: '2026-05-30',
     });
+    posthogReady = true;
+    flushInstallCopyQueue();
   };
   document.head.appendChild(script);
 })();

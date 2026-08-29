@@ -328,6 +328,17 @@ describe('landing agent readiness', () => {
     expect(js).toContain('autocapture: false')
     expect(js).toContain("person_profiles: 'never'")
     expect(js).toContain('install_copy_clicked')
+    expect(js).toContain('installCopyQueue')
+    expect(js).toContain('flushInstallCopyQueue')
+    expect(js).toMatch(/posthogReady\s*=\s*true/)
+    expect(js).toContain('flushInstallCopyQueue()')
+  })
+
+  it('index.html only emits install copy analytics for install snippet ids', () => {
+    const html = readSite('index.html')
+    const guard = "id === 'install-snippet-agent' || id === 'install-snippet-human'"
+    expect(html).toContain(guard)
+    expect(html.indexOf('looper:install_copy_clicked')).toBeGreaterThan(html.indexOf(guard))
   })
 
   it('every HTML page loads analytics.js', () => {

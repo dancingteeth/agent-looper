@@ -606,10 +606,12 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
         const text = el.textContent.trim();
         try {
           await navigator.clipboard.writeText(text);
-          const snippet = id === 'install-snippet-agent' ? 'agent' : 'human';
-          document.dispatchEvent(
-            new CustomEvent('looper:install_copy_clicked', { detail: { snippet } }),
-          );
+          if (id === 'install-snippet-agent' || id === 'install-snippet-human') {
+            const snippet = id === 'install-snippet-agent' ? 'agent' : 'human';
+            document.dispatchEvent(
+              new CustomEvent('looper:install_copy_clicked', { detail: { snippet } }),
+            );
+          }
           const prev = btn.textContent;
           btn.textContent = 'Copied';
           setTimeout(() => { btn.textContent = prev; }, 1500);
