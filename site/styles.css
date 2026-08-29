@@ -402,6 +402,11 @@ a.harness-logo:hover {
   scroll-margin-top: 5rem;
 }
 
+.harness-operator .harness-section-label {
+  padding: 1.1rem 1.25rem 0.35rem;
+  margin: 0;
+}
+
 .harness-operator__hero {
   display: flex;
   flex-direction: column;

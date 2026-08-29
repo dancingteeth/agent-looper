@@ -2,7 +2,7 @@
 
 Agent Looper ships worker runtimes for the coding agents you already pay for. **Operators** start the loop on your machine; **runtimes** are the `--runtime` values the harness drives. Facts come from published repo docs and CLI help.
 
-## Operator — Grok Bot
+## Operator — Agent Looper Grok Bot
 
 ![Grok Bot operator](../logos/looper-bot.png)
 
