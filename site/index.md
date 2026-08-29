@@ -8,7 +8,7 @@ npm: `@dancingteeth/agent-looper` · CLI: `agent-loop` · site: https://looper.d
 
 ## Which coding agents does Agent Looper work with?
 
-Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router.
+Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router. How-to and default models: [Harnesses](https://looper.dancingteeth.net/harnesses/).
 
 ## How do Agent Looper worker and judge presets work?
 
@@ -96,6 +96,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ## More
 
 - [llms.txt](https://looper.dancingteeth.net/llms.txt)
+- [Harnesses](https://looper.dancingteeth.net/harnesses/)
 - [Developer resources](https://looper.dancingteeth.net/docs/)
 - [GitHub](https://github.com/dancingteeth/agent-looper)
 - [npm](https://www.npmjs.com/package/@dancingteeth/agent-looper)

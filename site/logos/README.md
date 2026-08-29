@@ -5,6 +5,7 @@ Vendored SVG marks for the “works with” row. Sources:
 | File | Source |
 | --- | --- |
 | `cursor.svg` | [Simple Icons](https://github.com/simple-icons/simple-icons) (CC0) |
+| `grok.svg` | xAI monochrome mark (same 24×24 simple-mark style as Simple Icons; Grok Bot is not a Simple Icons slug yet) |
 | `cline.svg` | Simple Icons (CC0) |
 | `openai.svg` | Simple Icons (CC0) — Codex / OpenAI |
 | `deepseek.svg` | Simple Icons (CC0) — DSH |

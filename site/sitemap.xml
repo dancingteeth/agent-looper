@@ -36,6 +36,16 @@
     <priority>0.4</priority>
   </url>
   <url>
+    <loc>https://looper.dancingteeth.net/harnesses/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://looper.dancingteeth.net/harnesses/index.md</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>https://looper.dancingteeth.net/contact/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

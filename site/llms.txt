@@ -19,6 +19,7 @@ How an agent should call it: install `@dancingteeth/agent-looper`, run `pnpm exe
 - [OpenCode providers](https://github.com/dancingteeth/agent-looper/blob/main/docs/opencode-providers.md): OpenRouter, Vercel, Ollama
 - [Pi runtime](https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md): OpenAI-compatible routers
 - [DSH plugin](https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md): DeepSeek Harness companion
+- [Harnesses — Agent Looper worker runtimes](https://looper.dancingteeth.net/harnesses/index.md)
 
 ## Optional
 

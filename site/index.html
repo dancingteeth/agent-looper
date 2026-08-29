@@ -199,7 +199,7 @@
     ]
   }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260829-045">
+  <link rel="stylesheet" href="styles.css?v=20260829-047">
 </head>
 <body>
   <header class="site-header">
@@ -216,6 +216,7 @@
       <nav class="nav">
         <a href="docs/">Docs</a>
         <a href="about/">About</a>
+        <a href="harnesses/">Harnesses</a>
         <a href="https://github.com/dancingteeth/agent-looper">GitHub</a>
         <a href="https://www.npmjs.com/package/@dancingteeth/agent-looper">npm</a>
       </nav>
@@ -274,30 +275,30 @@
           <p class="tui-beat">If it hangs, it switches. Wonder if it's alive? There's a skill. When it finishes, you get a report card.</p>
         </div>
         <div class="harness-logos" aria-label="Works with coding agent harnesses">
-          <div class="harness-logo">
+          <a class="harness-logo" href="harnesses/#cursor">
             <span class="harness-logo__icon" style="--logo: url('logos/cursor.svg')" aria-hidden="true"></span>
             <span class="harness-logo__label">Cursor</span>
-          </div>
-          <div class="harness-logo">
+          </a>
+          <a class="harness-logo" href="harnesses/#cline">
             <span class="harness-logo__icon" style="--logo: url('logos/cline.svg')" aria-hidden="true"></span>
             <span class="harness-logo__label">Cline</span>
-          </div>
-          <div class="harness-logo">
+          </a>
+          <a class="harness-logo" href="harnesses/#opencode">
             <span class="harness-logo__icon" style="--logo: url('logos/opencode.svg')" aria-hidden="true"></span>
             <span class="harness-logo__label">OpenCode</span>
-          </div>
-          <div class="harness-logo">
+          </a>
+          <a class="harness-logo" href="harnesses/#pi">
             <span class="harness-logo__icon" style="--logo: url('logos/pi.svg')" aria-hidden="true"></span>
             <span class="harness-logo__label">Pi</span>
-          </div>
-          <div class="harness-logo">
+          </a>
+          <a class="harness-logo" href="harnesses/#codex">
             <span class="harness-logo__icon" style="--logo: url('logos/openai.svg')" aria-hidden="true"></span>
             <span class="harness-logo__label">Codex</span>
-          </div>
-          <div class="harness-logo">
+          </a>
+          <a class="harness-logo" href="harnesses/#dsh">
             <span class="harness-logo__icon" style="--logo: url('logos/deepseek.svg')" aria-hidden="true"></span>
             <span class="harness-logo__label">DSH</span>
-          </div>
+          </a>
         </div>
         <div class="tui-answers" id="faq">
           <article class="tui-answer tui-answer--agents">
@@ -306,6 +307,7 @@
               Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH.
               It detects what's installed. You or your agent pick the model and provider.
               OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router.
+              How-to and default models: <a href="harnesses/">Harnesses</a>.
             </p>
           </article>
           <article class="tui-answer tui-answer--presets">
@@ -519,6 +521,8 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
           <li><strong>DSH</strong> — DeepSeek Harness CLI, plus a plugin for dsh web</li>
         </ul>
         <p class="docs-pointer">
+          <a href="harnesses/">Harness how-to and default models</a>
+          ·
           <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/opencode-providers.md">OpenCode providers</a>
           ·
           <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md">Pi runtime</a>
@@ -536,6 +540,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
       <p>MIT · <a href="https://github.com/dancingteeth/agent-looper">dancingteeth/agent-looper</a> · <a href="https://looper.dancingteeth.net/">looper.dancingteeth.net</a></p>
       <p class="footer-nav">
         <a href="about/">About</a> ·
+        <a href="harnesses/">Harnesses</a> ·
         <a href="contact/">Contact</a> ·
         <a href="privacy/">Privacy</a> ·
         <a href="docs/">Docs</a> ·
