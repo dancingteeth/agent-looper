@@ -115,6 +115,44 @@ function parseVerdict(section: string | null): ReviewVerdict {
   return 'UNKNOWN'
 }
 
+const VERDICT_HEADING_PREFIX =
+  /^verdict(?:\s*\(\s*PASS\s*\|\s*ADVISORY\s*\|\s*BLOCKERS\s*\))?/i
+
+/**
+ * `### Verdict — ADVISORY` / `### Verdict: PASS`. extractSection treats the
+ * whole line as the Verdict heading, then parseVerdict reads the *body* and
+ * misses the token. Do not treat `### Verdict (PASS | ADVISORY | BLOCKERS)`
+ * as PASS — that is the enum hint, not a verdict.
+ */
+function parseVerdictFromHeadings(text: string): ReviewVerdict {
+  for (const line of text.split('\n')) {
+    const match = line.match(SECTION_HEADING)
+    if (!match) continue
+    const heading = match[1]!.replace(/\*\*/g, '').trim()
+    const rest = heading.replace(VERDICT_HEADING_PREFIX, '').trim()
+    if (rest === heading.trim() || !rest) continue
+    const token = rest.replace(/^[—–\-:|()\s]+/, '').trim().split(/\s+/)[0]
+    if (!token) continue
+    const verdict = tokenToVerdict(token.toUpperCase())
+    if (verdict) return verdict
+  }
+  return 'UNKNOWN'
+}
+
+function parseRiskFromHeadings(text: string): ReviewRisk {
+  for (const line of text.split('\n')) {
+    const match = line.match(SECTION_HEADING)
+    if (!match) continue
+    const heading = match[1]!.replace(/\*\*/g, '').trim()
+    if (!/^risk\b/i.test(heading)) continue
+    const rest = heading.replace(/^risk\b/i, '').replace(/^[—–\-:|\s]+/, '').toLowerCase()
+    if (/\bhigh\b/.test(rest)) return 'high'
+    if (/\bmedium\b/.test(rest)) return 'medium'
+    if (/\blow\b/.test(rest)) return 'low'
+  }
+  return 'unknown'
+}
+
 /**
  * Compact reminder row some judges copy literally:
  * `### Risk | … | ### Verdict (PASS | ADVISORY | BLOCKERS) | …`
@@ -235,11 +273,15 @@ export function parseReviewMarkdown(text: string): ParsedReview {
   const riskSection = extractSection(text, 'Risk')
   const verdictSection = extractSection(text, 'Verdict')
   const blockersSection = extractSection(text, 'Blockers')
-  const fromHeading = parseVerdict(verdictSection)
+  const fromHeading = parseVerdictFromHeadings(text)
+  const fromBody = parseVerdict(verdictSection)
+  const fromTable = parseCompactTableVerdict(text)
+  const fromRiskHeading = parseRiskFromHeadings(text)
+  const fromRiskBody = parseRisk(riskSection)
 
   return {
-    verdict: fromHeading !== 'UNKNOWN' ? fromHeading : parseCompactTableVerdict(text),
-    risk: parseRisk(riskSection),
+    verdict: fromHeading !== 'UNKNOWN' ? fromHeading : fromBody !== 'UNKNOWN' ? fromBody : fromTable,
+    risk: fromRiskHeading !== 'unknown' ? fromRiskHeading : fromRiskBody,
     blockers: parseBlockers(blockersSection),
   }
 }

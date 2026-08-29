@@ -172,6 +172,53 @@ BLOCKERS
     expect(reviewGateBlocksCompletion(parsed)).toBe(true)
   })
 
+  it('parses ADVISORY from ### Verdict — ADVISORY (token on the heading)', () => {
+    const parsed = parseReviewMarkdown(`# Post-loop quality review
+
+### Risk — LOW
+
+Documentation-only restyle.
+
+### Verdict — ADVISORY
+
+No gating blockers. Green verify + shell gate is the hard gate here, and it passes.
+
+### Advisory
+- severity: warning impact: none [should-fix] **Nit** — chip text
+`)
+    expect(parsed.verdict).toBe('ADVISORY')
+    expect(parsed.risk).toBe('low')
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
+  })
+
+  it('parses PASS from ### Verdict: PASS and ### Verdict ADVISORY', () => {
+    expect(
+      parseReviewMarkdown(`### Verdict: PASS
+
+Shipped.
+`).verdict,
+    ).toBe('PASS')
+    expect(
+      parseReviewMarkdown(`### Verdict ADVISORY
+
+Nits only.
+`).verdict,
+    ).toBe('ADVISORY')
+  })
+
+  it('does not treat the enum-hint heading as PASS', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict (PASS | ADVISORY | BLOCKERS)
+**BLOCKERS**
+
+### Blockers
+- severity: error impact: verify-bypass [must-fix] **Guard** — missing
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+  })
+
   it('parses PASS from a compact pipe-row reminder copy', () => {
     const parsed = parseReviewMarkdown(`# Post-loop quality review
 

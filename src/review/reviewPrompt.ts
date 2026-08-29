@@ -26,12 +26,12 @@ ${buildRiskTriageStepFromKeywords(keywords)}
 }
 
 export function buildReviewOutputFormatReminder(): string {
-  return `Output **markdown only**. Put each heading on its own line — not one pipe-separated row. The parser reads \`### Verdict\`, not a table header.
+  return `Output **markdown only**. Put each heading on its own line — not one pipe-separated row.
 ### Risk
 ### What could go wrong?
 ### Review depth
 ### Verdict
-PASS, ADVISORY, or BLOCKERS (first token on this line).
+PASS, ADVISORY, or BLOCKERS — own line under the heading, or \`### Verdict — ADVISORY\` on the heading. Not a table header.
 ### Blockers
 ### Advisory
 optional Code judo / Nits.

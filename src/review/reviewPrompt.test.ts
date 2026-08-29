@@ -15,6 +15,7 @@ describe('reviewPrompt', () => {
       diffStat: '1 file changed',
     })
     expect(prompt).toContain('### Verdict')
+    expect(prompt).toContain('### Verdict — ADVISORY')
     expect(prompt).not.toContain(
       '### Risk | ### What could go wrong? | ### Review depth | ### Verdict',
     )
