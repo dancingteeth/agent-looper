@@ -44,6 +44,7 @@ Bounded preflight is enough: one `ssh … ls` (or a local path), copy the design
 ## GOAL.md must have
 
 - **Four-part finish line:** outcome, scoreboard (`verify.sh`), permission (`maxIterations` / stagnation), **loop budget** (stop when further work is not worth it — not "until perfect"). Separate from this skill's load Budget above.
+- **Wiring (name before freeze):** EDGE DATA, REDUCER (`verify.sh`), FAILURE POLICY, HUMAN GATE
 - One clear **Goal** paragraph with canonical paths
 - **Acceptance criteria** tied to the verifier (not agent self-assessment)
 - **Constraints** + **Out of scope**

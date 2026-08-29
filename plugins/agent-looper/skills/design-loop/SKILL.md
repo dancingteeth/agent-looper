@@ -32,6 +32,7 @@ Agent Looper owns the grind; the human (or this chat) owns the finish line.
 ## GOAL.md must have
 
 - **Four-part finish line:** outcome, scoreboard (`verify.sh`), permission (`maxIterations` / stagnation), **budget** (stop when further work is not worth it — not "until perfect")
+- **Wiring (name before freeze):** EDGE DATA, REDUCER (`verify.sh`), FAILURE POLICY, HUMAN GATE — see `templates/GOAL.template.md`
 - One clear **Goal** paragraph with canonical paths
 - **Acceptance criteria** tied to the verifier (not agent self-assessment)
 - **Constraints** + **Out of scope**

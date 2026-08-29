@@ -18,6 +18,15 @@ Describe what the agent should fix or implement.
 | **Permission** | `loop.json` `maxIterations` / `stagnationThreshold` |
 | **Budget** | Stop when further work is not worth it — not "until perfect" |
 
+## Wiring (optional)
+
+| Field | This loop |
+| --- | --- |
+| **EDGE DATA** | (what crosses writer → checker → judge) |
+| **REDUCER** | `verify.sh` |
+| **FAILURE POLICY** | retry / escalate / abort |
+| **HUMAN GATE** | (send / publish / deploy / none) |
+
 ## Golden (optional)
 
 Path to a screenshot, fixture, or baseline to hold the result against. Omit if verify is enough.

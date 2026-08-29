@@ -36,6 +36,17 @@ If the change lives in an unfamiliar area, freeze [`RESEARCH.md`](./RESEARCH.exa
 - Wall-clock / spend: stop or HITL if exceeded (harness does not meter dollars yet — name the cap for humans)
 - Do **not** set permission to "until perfect"
 
+## Wiring (name before freeze)
+
+Delete any arrow whose only answer is “the previous step finished.”
+
+| Field | This loop |
+| --- | --- |
+| **EDGE DATA** | What object crosses writer → checker → judge (files, verify log, Guide packets) |
+| **REDUCER** | `verify.sh` — code, not another model, before residual review |
+| **FAILURE POLICY** | Retry transient SDK errors; hung worker → `escalateModel`; identical verify → stagnation abort; do not hide missing work |
+| **HUMAN GATE** | Which irreversible actions (send, publish, deploy, spend) stay impossible until HITL |
+
 ## Acceptance criteria
 
 - Success is determined **only** by the verifier in `loop.json` (exit `0`), not by the agent's assessment.

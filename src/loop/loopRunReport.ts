@@ -6,6 +6,7 @@ import { deriveLoopRunStatus } from './agentLoop.js'
 import type { LoopConfig } from './loopConfig.js'
 import {
   isHitlWaitingFailureDomain,
+  readFailureDomainEntries,
   readLatestFailureDomain,
 } from './loopFailureDomain.js'
 import { gitDiffStatSinceBranchBase } from '../review/loopPostReview.js'
@@ -13,23 +14,12 @@ import { readLatestLoopReview, resolveLatestReviewPath } from './loopReport.js'
 import { addUsageRecord, emptyUsageSummary, formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { formatToolSummary, type TranscriptEvent } from '../stream/streamCollect.js'
 import { loopRuntimeLabel } from '../agents/agentRunner.js'
+import { buildLoopRunScoreboard, formatScoreboardMarkdown, readLoopLogEntries } from './loopRunScoreboard.js'
 
 export const RUN_REPORT_FILENAME = 'run-report.md'
 export const TRANSCRIPT_FILENAME = 'transcript.ndjson'
 
-export function readLoopLogEntries(logPath: string): LoopIterationLog[] {
-  if (!fs.existsSync(logPath)) return []
-  const lines = fs.readFileSync(logPath, 'utf8').split('\n').filter(Boolean)
-  const entries: LoopIterationLog[] = []
-  for (const line of lines) {
-    try {
-      entries.push(JSON.parse(line) as LoopIterationLog)
-    } catch {
-      // skip malformed lines
-    }
-  }
-  return entries
-}
+export { readLoopLogEntries } from './loopRunScoreboard.js'
 
 export function readTranscriptEvents(transcriptPath: string): TranscriptEvent[] {
   if (!fs.existsSync(transcriptPath)) return []
@@ -167,6 +157,13 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     `**Reason:** ${input.result.completionReason}`,
     `**Usage:** ${usageLine}`,
     '',
+    ...formatScoreboardMarkdown(
+      buildLoopRunScoreboard({
+        entries,
+        failureDomains: readFailureDomainEntries(input.loopDir),
+        usage: input.result.usage,
+      }),
+    ),
     '## Models',
     '',
     `| Role | Runtime | Model |`,

@@ -261,6 +261,7 @@ describe('buildRunReportMarkdown', () => {
     })
 
     expect(report).toContain('# Loop run report')
+    expect(report).toContain('## Report card')
     expect(report).toContain('Why this is a loop')
     expect(report).toContain('**costPreset:** `minmax`')
     expect(report).toContain('Review gate armed')

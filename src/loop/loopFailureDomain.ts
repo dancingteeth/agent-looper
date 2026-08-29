@@ -6,6 +6,9 @@ import { isTransportErrorMessage } from '../agents/errorFormat.js'
 
 export const FAILURE_DOMAINS_FILENAME = 'failure-domains.ndjson'
 
+/** Synthetic verify command when the worker died before the shell checker ran. */
+export const AGENT_SDK_VERIFY_COMMAND = '(agent SDK)'
+
 export type FailureDomainReason =
   | 'stagnation'
   | 'max_iterations'
@@ -36,17 +39,24 @@ export function failureDomainsPath(loopDir: string): string {
   return path.join(loopDir, FAILURE_DOMAINS_FILENAME)
 }
 
+/** All parseable failure-domain rows (malformed lines skipped). */
+export function readFailureDomainEntries(loopDir: string): FailureDomainEntry[] {
+  const filePath = failureDomainsPath(loopDir)
+  if (!fs.existsSync(filePath)) return []
+  const entries: FailureDomainEntry[] = []
+  for (const line of fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean)) {
+    try {
+      entries.push(JSON.parse(line) as FailureDomainEntry)
+    } catch {
+      // skip malformed lines
+    }
+  }
+  return entries
+}
+
 /** Last failure-domain row in the loop dir, or null when missing/empty. */
 export function readLatestFailureDomain(loopDir: string): FailureDomainEntry | null {
-  const filePath = failureDomainsPath(loopDir)
-  if (!fs.existsSync(filePath)) return null
-  const lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean)
-  if (lines.length === 0) return null
-  try {
-    return JSON.parse(lines.at(-1)!) as FailureDomainEntry
-  } catch {
-    return null
-  }
+  return readFailureDomainEntries(loopDir).at(-1) ?? null
 }
 
 /** True when the loop was parked for human closure (review_gate_hitl / status waiting). */
@@ -135,12 +145,20 @@ export function logFailureDomainFromAgentError(
     reason: 'agent_error',
     fingerprint: `agent_error|${transport ? 'transport|' : ''}${options.message.slice(0, 280)}`,
     verify: {
-      command: '(agent SDK)',
+      command: AGENT_SDK_VERIFY_COMMAND,
       exitCode: null,
       reason: options.message.slice(0, 500),
     },
-    suggestion: transport
-      ? 'Transport/provider failure before verify (e.g. OpenCode session.prompt fetch failed) — not a product test failure. Re-run; harness recycles the local OpenCode server on transport retries. Check OPENCODE_API_KEY / network / Go gateway status.'
-      : undefined,
+    suggestion: suggestionForAgentError(options.message, transport),
   })
+}
+
+function suggestionForAgentError(message: string, transport: boolean): string | undefined {
+  if (transport) {
+    return 'Transport/provider failure before verify (e.g. OpenCode session.prompt fetch failed) — not a product test failure. Re-run; harness recycles the local OpenCode server on transport retries. Check OPENCODE_API_KEY / network / Go gateway status.'
+  }
+  if (/timed out after \d+ms|no tool progress/i.test(message)) {
+    return 'Worker hung or hit the session wall before verify. escalateModel switches on the next iteration when set; this is not a verifier failure.'
+  }
+  return undefined
 }

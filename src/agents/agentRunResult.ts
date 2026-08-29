@@ -9,4 +9,6 @@ export type AgentRunResult = {
   sessionRef?: AgentSessionRef
   toolSummary?: Record<string, number>
   transcriptEvents?: TranscriptEvent[]
+  /** Extra SDK attempts after transient errors (0 when the first call succeeded). */
+  sdkRetries?: number
 }

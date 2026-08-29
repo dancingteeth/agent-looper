@@ -47,15 +47,29 @@ small directed graph:
 | **Worker** | Implement toward frozen `GOAL.md` | Fresh session every visit — context rot stays in one node |
 | **Verify** | Shell `verify` / `finalVerify`, exit `0` | Deterministic edge. Models do not mark their own exam |
 | **Judge** | Residual `review.md` after green verify | Athlete ≠ referee. Optional `reviewGate` is the only edge back to the worker |
-| **Human** | HITL when the gate is stuck | Slow path; not a fourth LLM |
 
-Edges carry **files and git**, not chat stew: prior verifier output, Guide packets,
-`review.md`, `log.ndjson`. Frozen `GOAL.md` + `verify.sh` + permissions are the
-slow-changing **role graph** (who may finish, who may reopen). Iteration order is the
-**work graph** (retries allowed; rewriting the finish line is not).
+The human is **not** a fourth LLM. Approval is an **edge condition** on irreversible
+transitions (`reviewGateHitl`, HITL checkpoints): judge→done stays unreachable until
+the token exists. Not “the model was told to ask first.”
+
+| From | To | What crosses (one sentence) |
+| --- | --- | --- |
+| Worker | Verify | The files + git the worker just wrote |
+| Verify | Worker | Exit code + verify output (or sidecar) — not “it finished” |
+| Verify | Judge | The same, plus that verify passed |
+| Judge | Worker | Guide packets (structured blockers), not the full `review.md` blob |
+| Judge | Done | `review.md`; blocked until HITL when `reviewGateHitl` is on |
+
+Frozen `GOAL.md` + `verify.sh` + permissions are the slow-changing **role graph**
+(who may finish, who may reopen). Iteration order is the **work graph** (retries
+allowed; rewriting the finish line is not). `verify.sh` is the **reducer** (code
+before another model). Hung workers continue onto `escalateModel` instead of
+aborting the batch.
 
 Fan-out is `agent-loop-batch` / meta-review — a sequence of loops, not nested
-orchestrator-workers inside one `GOAL.md`.
+orchestrator-workers inside one `GOAL.md`. After a run, `run-report.md` opens with
+a **report card** (checker bounce-backs vs writer hangs, referee kill rate, writer vs referee $,
+phase time, whether a human was needed).
 
 ---
 
@@ -166,7 +180,9 @@ and steps up by `reasoningEscalationStep` tiers each iteration (from iteration 2
 the `escalateReasoningEffort` ceiling — so e.g. flash runs `medium → high → xhigh` across
 iterations. The **expensive lever** (model switch to `escalateModel`, default `qwen3.7-plus`) only
 fires once reasoning has reached its ceiling **and** identical-failure stagnation persists past
-`escalateAfterStagnation` (default 2). On switch, the escalated model uses
+`escalateAfterStagnation` (default 2). A **hung or timed-out worker** skips that gate and switches
+to `escalateModel` on the next iteration (repeating a dead stream is not a reasoning problem).
+On switch, the escalated model uses
 `escalateModelReasoningEffort` (its own tier) or the ceiling tier. Reasoning is driven by
 iteration count, not by identical-failure signature, so it climbs reliably even when cranking
 effort changes the agent's approach. Cursor loops are pinned to `composer-2.5` and ignore
@@ -187,7 +203,8 @@ Exit code 0 = pass. Output truncated at 64KB.
 
 **Step 8 — On failure:** Append iteration log to `log.ndjson`, run
 `detectStagnation()` on last N failures. If stagnant: log failure domain, abort.
-Otherwise: loop.
+Otherwise: loop. A worker timeout / no-tool stall is an iteration failure, not a
+loop abort, when `escalateModel` is set and the current model is not already it.
 
 **Step 9 — On success:** Run `finalVerify` (if configured), then decide whether to run
 `postQualityReview`:
@@ -210,8 +227,9 @@ restart (up to `maxReviewCycles`). Otherwise: success. Preview: `agent-loop-revi
 When `exportTranscript` is true, append worker tool events to `transcript.ndjson` and enrich
 `log.ndjson` per iteration. Regenerate later with `agent-loop-export-run`.
 
-**Step 11 — Failure exits:** Max iterations, stagnation, or agent SDK error — each
-aborts and logs a failure domain.
+**Step 11 — Failure exits:** Max iterations, stagnation, or a non-recoverable agent SDK
+error — each aborts and logs a failure domain. Recoverable worker hangs (session
+timeout / no-tool stall) continue onto `escalateModel` when that lever remains.
 
 ### 4.3 Session Lifecycle
 

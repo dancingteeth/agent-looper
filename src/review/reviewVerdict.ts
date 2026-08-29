@@ -40,14 +40,19 @@ const SECTION_HEADING = /^###\s+(.+)\s*$/
 const STRUCTURED_BLOCKER_PREFIX =
   /^severity:\s*(error|warning)\s+impact:\s*([\w-]+)\s+/i
 
+function headingMatches(found: string, target: string): boolean {
+  const heading = found.trim().toLowerCase()
+  const want = target.trim().toLowerCase()
+  return heading === want || heading.startsWith(`${want} `) || heading.startsWith(`${want}(`)
+}
+
 function extractSection(text: string, heading: string): string | null {
   const lines = text.split('\n')
-  const target = heading.toLowerCase()
   let start = -1
 
   for (let i = 0; i < lines.length; i++) {
     const match = lines[i]!.match(SECTION_HEADING)
-    if (match && match[1]!.trim().toLowerCase() === target) {
+    if (match && headingMatches(match[1]!, heading)) {
       start = i + 1
       break
     }

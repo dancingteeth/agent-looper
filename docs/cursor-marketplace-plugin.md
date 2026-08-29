@@ -21,7 +21,7 @@ It packages **skills / rules / commands** that teach Cursor how to design loops 
 | [`.cursor-plugin/marketplace.json`](../.cursor-plugin/marketplace.json) | Multi-plugin marketplace manifest |
 | [`plugins/agent-looper/.cursor-plugin/plugin.json`](../plugins/agent-looper/.cursor-plugin/plugin.json) | Cursor Plugin manifest |
 | [`plugins/agent-looper/plugin.json`](../plugins/agent-looper/plugin.json) | Portable Agent Plugins 1.0.0 manifest (skills) |
-| `plugins/agent-looper/skills/` | `design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops` |
+| `plugins/agent-looper/skills/` | `design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops` (also in the npm tarball; `agent-loop-init` copies it into consumer `.cursor/skills/` and `.agents/skills/`) |
 | `plugins/agent-looper/rules/` | Sparse working agreements |
 | `plugins/agent-looper/commands/loop-scaffold.md` | Guided scaffold command |
 

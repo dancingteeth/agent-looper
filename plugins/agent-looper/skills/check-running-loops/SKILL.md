@@ -20,13 +20,14 @@ Do **not** answer loop health from memory, an IDE job list, Cursor terminal `sta
 
 ## Must run first
 
-From the **consumer repo root** (the project being looped). The script sits next to this `SKILL.md`:
+From the **consumer repo root** (the project being looped). The heartbeat script is `scripts/check-running-loops.sh` next to this `SKILL.md`. After `agent-loop-init` that is:
 
 ```bash
-sh "<this-skill-dir>/scripts/check-running-loops.sh" "$(pwd)"
+sh ".cursor/skills/check-running-loops/scripts/check-running-loops.sh" "$(pwd)"
+# or: .agents/skills/check-running-loops/scripts/check-running-loops.sh
 ```
 
-In this harness checkout that path is `plugins/agent-looper/skills/check-running-loops/scripts/check-running-loops.sh`.
+In this harness checkout the same files also live at `plugins/agent-looper/skills/check-running-loops/scripts/check-running-loops.sh`.
 
 Optional: `STALE_SECS=180 HUNG_SECS=600` (defaults: 3 min stale, 10 min hung).
 

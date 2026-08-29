@@ -42,9 +42,9 @@ GOAL (frozen) → WORKER edits code → VERIFY (shell exit 0?) → if fail, new 
 
 Optional after green verify: a **judge** reviews quality. With `reviewGate`, only serious findings reopen the fix loop. Cosmetic nits don’t thrash forever.
 
-That’s the product. Everything else is cost control and false-positive control around that spine.
+After a run, `run-report.md` is a **report card**, not a chat dump: how often the checker sent work back, whether the writer hung before verify, whether the referee bounced it, writer vs referee $, and whether it needed you. Hung workers switch to `escalateModel` instead of aborting the batch. Ask “is the loop actually alive?” with the `check-running-loops` skill — do not trust the IDE job list.
 
----
+That’s the product. Everything else is cost control and false-positive control around that spine.
 
 ## Why open
 

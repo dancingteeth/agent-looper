@@ -26,6 +26,7 @@ export type { OpencodeAgentRunOptions } from './opencodeTurn.js'
 export {
   OPENCODE_SESSION_TIMEOUT_MS,
   OPENCODE_STALL_MS,
+  OPENCODE_NO_TOOL_STALL_MS,
   OPENCODE_HEARTBEAT_MS,
 } from './opencodeTurn.js'
 

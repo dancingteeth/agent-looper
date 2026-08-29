@@ -19,7 +19,7 @@ Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "opencod
 | Field | Default |
 | --- | --- |
 | `model` | `opencode-go/deepseek-v4-flash` |
-| `escalateModel` | `opencode-go/qwen3.7-plus` (after stagnation) |
+| `escalateModel` | `opencode-go/qwen3.7-plus` (after stagnation **or** a hung/timed-out worker) |
 | `reviewModel` (when `reviewRuntime: "opencode"`) | `opencode-go/deepseek-v4-pro` (not Flash) |
 
 Go slugs must appear in `OPENCODE_GO_LOOP_MODELS` (see [OpenCode Go docs](https://opencode.ai/docs/go/)). **Hy3** (`opencode-go/hy3`) is on that list — slower than Flash, large monthly quota. `costPreset: "minmax"` binds Hy3 as the Go worker (not Flash) plus a Grok judge when Cursor is installed.
@@ -122,11 +122,13 @@ If iteration 1 dies with `OpenCode session.prompt failed …: fetch failed` **or
 Harness behavior (0.1.11+):
 
 1. Uses **`session.promptAsync`** + waits for **`session.idle`** (HTTP returns immediately; no undici headers timeout on a 45‑minute turn)
-2. **Heartbeat** every ~30s: `still working session=… elapsed=…s phase=awaiting_first_byte|in_turn …`
-3. **TTFB stall** (~3 min with **no session-scoped events yet**) → transport error + local server recycle. After the turn is alive (`session.status` / messages), long quiet tools are allowed until the **45m** overall timeout — stall does **not** re-arm mid-turn
+2. **Heartbeat** every ~30s: `still working session=… elapsed=…s phase=awaiting_first_byte|awaiting_first_tool|in_turn …`
+3. **TTFB stall** (~3 min with **no session-scoped events yet**) → transport error + local server recycle. After the turn is alive (`session.status` / messages), **no-tool stall** (~8 min of text streaming without a tool part) kills a rambling model so the loop can switch to `escalateModel`. Quiet tool runs after the first tool are allowed until the **45m** overall timeout.
 4. Sid-less SSE noise is ignored for activity; sid-less `session.idle` is accepted for the single waiter
 5. Error messages include the `Error.cause` chain plus `[layer=transport]`
 6. `failure-domains.ndjson` fingerprints `agent_error|transport|…`
+
+A 45-minute `timed out after` or an 8-minute no-tool stall is **not** retried on the same model. The iteration is recorded as a worker fault and the next iteration uses `escalateModel` when set. Heartbeats can look alive the whole time (`phase=awaiting_first_tool`).
 
 Cloud poll tip: match `EXIT:` / `finished complete=` / `Verifier passed` — **not** `layer=transport` (that’s a retry, not done).
 

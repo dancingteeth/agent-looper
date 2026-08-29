@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  isOpencodeToolProgressEvent,
   pickLatestAssistantMessage,
   resolveOpencodeEventSessionId,
   waitForOpencodeSessionTurn,
@@ -42,6 +43,66 @@ describe('resolveOpencodeEventSessionId', () => {
     ).toBe('ses_b')
   })
 })
+
+  it('treats tool, file, patch, and live OpenCode work parts as progress', () => {
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'tool' } },
+      }),
+    ).toBe(true)
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'permission.updated',
+        properties: { sessionID: 'ses_a' },
+      }),
+    ).toBe(true)
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'subtask' } },
+      }),
+    ).toBe(true)
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'agent' } },
+      }),
+    ).toBe(true)
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'snapshot' } },
+      }),
+    ).toBe(true)
+  })
+
+  it('does not treat text, reasoning, or step markers as progress', () => {
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'text', text: 'thinking…' } },
+      }),
+    ).toBe(false)
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'reasoning', text: 'hmm' } },
+      }),
+    ).toBe(false)
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'step-start' } },
+      }),
+    ).toBe(false)
+    expect(
+      isOpencodeToolProgressEvent({
+        type: 'message.updated',
+        properties: { info: { sessionID: 'ses_a' } },
+      }),
+    ).toBe(false)
+  })
 
 describe('waitForOpencodeSessionTurn', () => {
   it('resolves on session.idle for the target session', async () => {
@@ -158,10 +219,10 @@ describe('waitForOpencodeSessionTurn', () => {
           properties: { sessionID: 'ses_a', status: { type: 'busy' } },
         }
         yield {
-          type: 'message.updated',
-          properties: { info: { sessionID: 'ses_a' } },
+          type: 'message.part.updated',
+          properties: { info: { sessionID: 'ses_a' }, part: { type: 'tool' } },
         }
-        // Long quiet tool — previously tripped a re-armed 3m stall.
+        // Long quiet tool — must not trip TTFB or no-tool stall.
         await idleGate
         yield { type: 'session.idle', properties: { sessionID: 'ses_a' } }
       })(),
@@ -174,6 +235,34 @@ describe('waitForOpencodeSessionTurn', () => {
     releaseIdle?.()
     const result = await pending
     expect(result).toEqual({ kind: 'idle' })
+    vi.useRealTimers()
+  })
+
+  it('stalls when the model streams text without starting a tool', async () => {
+    vi.useFakeTimers()
+    const pending = waitForOpencodeSessionTurn({
+      sessionId: 'ses_a',
+      events: (async function* () {
+        yield {
+          type: 'message.part.updated',
+          properties: { info: { sessionID: 'ses_a' }, part: { type: 'text', text: 'ramble' } },
+        }
+        await new Promise<void>(() => {
+          /* hang while streaming */
+        })
+      })(),
+      heartbeatMs: 60_000,
+      stallMs: 60_000,
+      noToolStallMs: 2000,
+      timeoutMs: 60_000,
+    })
+    await vi.advanceTimersByTimeAsync(2000)
+    const result = await pending
+    expect(result.kind).toBe('error')
+    if (result.kind === 'error') {
+      expect(result.message).toMatch(/no tool progress after 2000ms/)
+      expect(result.message).not.toContain('[layer=transport]')
+    }
     vi.useRealTimers()
   })
 })

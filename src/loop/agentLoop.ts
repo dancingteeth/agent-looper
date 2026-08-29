@@ -12,6 +12,7 @@ import type { ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
 import { detectStagnation } from '../loop/loopStagnation.js'
 import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
 import {
+  AGENT_SDK_VERIFY_COMMAND,
   logFailureDomainFromVerify,
   logFailureDomainFromAgentError,
 } from '../loop/loopFailureDomain.js'
@@ -82,6 +83,14 @@ export type LoopIterationLog = {
   reasoningEffort?: string
   workerSession?: AgentSessionRef
   toolSummary?: Record<string, number>
+  /** Transient SDK retries before this iteration's worker call succeeded (0 omitted). */
+  sdkRetries?: number
+  /** Wall-clock per phase for this iteration (ms). */
+  durationsMs?: {
+    worker?: number
+    verify?: number
+    judge?: number
+  }
 }
 
 /**
@@ -157,6 +166,60 @@ export function isTransientAgentError(err: unknown): boolean {
   return TRANSIENT_AGENT_ERROR_PATTERN.test(message) || isTransportAgentError(err)
 }
 
+/**
+ * Hung or wall-clock worker turns. Not retried on the same model (that would
+ * re-burn the 45m cap). The loop continues onto `escalateModel` instead.
+ */
+const RECOVERABLE_WORKER_FAULT_PATTERN = /timed out after \d+ms|no tool progress/i
+
+export function isRecoverableWorkerFault(err: unknown): boolean {
+  return RECOVERABLE_WORKER_FAULT_PATTERN.test(formatErrorChain(err))
+}
+
+function shouldEscalateAfterWorkerFault(
+  err: unknown,
+  config: { escalateModel?: string; maxIterations: number },
+  iterationAgent: ResolvedLoopAgent,
+  iteration: number,
+): boolean {
+  if (!isRecoverableWorkerFault(err)) return false
+  if (!config.escalateModel) return false
+  if (iterationAgent.model === config.escalateModel) return false
+  if (iteration >= config.maxIterations) return false
+  return true
+}
+
+function workerSdkVerifyResult(message: string, escalateModel?: string): VerifyResult {
+  const hung = RECOVERABLE_WORKER_FAULT_PATTERN.test(message)
+  let reason: string
+  if (escalateModel) {
+    reason = `Worker timed out or made no tool progress — next iteration uses ${escalateModel}.`
+  } else if (hung) {
+    reason = 'Worker timed out or made no tool progress — loop stopped.'
+  } else {
+    reason = 'Agent SDK error before verify.'
+  }
+  return {
+    complete: false,
+    command: AGENT_SDK_VERIFY_COMMAND,
+    exitCode: null,
+    stdout: '',
+    stderr: message,
+    reason,
+  }
+}
+
+async function recycleWorkerSession(session: LoopAgentSession): Promise<void> {
+  if (!session.recycle) return
+  try {
+    await session.recycle()
+  } catch (recycleErr) {
+    console.error(
+      `[agent-loop] warn: agent session recycle failed: ${formatErrorChain(recycleErr)}`,
+    )
+  }
+}
+
 async function runIterationWithRetry(
   session: LoopAgentSession,
   prompt: string,
@@ -166,7 +229,8 @@ async function runIterationWithRetry(
   let lastError: unknown
   for (let attempt = 0; attempt <= SDK_RETRY_DELAYS_MS.length; attempt++) {
     try {
-      return await session.runIterationPrompt(prompt, iterationAgent, options)
+      const result = await session.runIterationPrompt(prompt, iterationAgent, options)
+      return attempt > 0 ? { ...result, sdkRetries: attempt } : result
     } catch (err) {
       lastError = err
       if (attempt >= SDK_RETRY_DELAYS_MS.length || !isTransientAgentError(err)) {
@@ -198,6 +262,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function elapsedMs(startedAt: number): number {
+  return Math.max(0, Date.now() - startedAt)
+}
+
 function appendLog(logPath: string, entry: LoopIterationLog): void {
   fs.appendFileSync(logPath, `${JSON.stringify(entry)}\n`, 'utf8')
 }
@@ -217,6 +285,8 @@ function buildIterationLog(input: {
   reasoningEffort?: string
   workerSession?: AgentSessionRef
   toolSummary?: Record<string, number>
+  sdkRetries?: number
+  durationsMs?: LoopIterationLog['durationsMs']
 }): LoopIterationLog {
   return {
     at: new Date().toISOString(),
@@ -235,6 +305,11 @@ function buildIterationLog(input: {
     ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {}),
     ...(input.workerSession ? { workerSession: input.workerSession } : {}),
     ...(input.toolSummary ? { toolSummary: input.toolSummary } : {}),
+    ...(input.sdkRetries ? { sdkRetries: input.sdkRetries } : {}),
+    ...(input.durationsMs &&
+    (input.durationsMs.worker || input.durationsMs.verify || input.durationsMs.judge)
+      ? { durationsMs: input.durationsMs }
+      : {}),
   }
 }
 
@@ -351,6 +426,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const priorFailures: VerifyResult[] = []
   let lastVerify: VerifyResult | null = null
   let iterations = 0
+  let workerFaults = 0
   let reviewBlockers: string[] | undefined
   let guidePackets: GuidePacket[] | undefined
   let reviewCyclesUsed = 0
@@ -486,6 +562,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         i,
         stagnation.escalationRepeatCount,
         reviewCyclesUsed,
+        workerFaults > 0,
       )
 
       const git = captureGitWorkspaceSnapshot(repoRoot)
@@ -529,16 +606,50 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       const collector = config.exportTranscript
         ? new StreamCollector({ phase: 'implement', iteration: i })
         : undefined
-      const assistantRun = await runIterationWithRetry(
-        agentSession,
-        prompt,
-        iterationAgent,
-        {
-          verbose,
-          assistantOutput: 'none',
-          collector,
-        },
-      )
+      const workerStartedAt = Date.now()
+      let assistantRun: AgentRunResult
+      try {
+        assistantRun = await runIterationWithRetry(
+          agentSession,
+          prompt,
+          iterationAgent,
+          {
+            verbose,
+            assistantOutput: 'none',
+            collector,
+          },
+        )
+      } catch (err) {
+        const escalate = shouldEscalateAfterWorkerFault(err, config, iterationAgent, i)
+        const message = formatErrorChain(err)
+        const workerFaultVerify = workerSdkVerifyResult(
+          message,
+          escalate ? config.escalateModel : undefined,
+        )
+        lastVerify = workerFaultVerify
+        priorFailures.push(workerFaultVerify)
+        appendLog(
+          logPath,
+          buildIterationLog({
+            iteration: i,
+            git,
+            verify: workerFaultVerify,
+            assistantText: '',
+            model: iterationAgent.model,
+            reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+            durationsMs: { worker: elapsedMs(workerStartedAt) },
+          }),
+        )
+        if (!escalate) throw err
+        console.error(
+          `[agent-loop] worker fault during iteration ${i} — switching to ${config.escalateModel} next: ${message}`,
+        )
+        logFailureDomainFromAgentError(bundle.loopDir, { iteration: i, message })
+        workerFaults += 1
+        await recycleWorkerSession(agentSession)
+        await maybePauseAfterIteration(config, i)
+        continue
+      }
       usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
       const budgetStop = await stopOnBudget(i)
       if (budgetStop) return budgetStop
@@ -551,6 +662,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         workerSession: assistantRun.sessionRef,
         toolSummary: assistantRun.toolSummary,
       }
+      const workerMs = elapsedMs(workerStartedAt)
 
       if (innerAgent && !innerAgent.complete) {
         console.error(
@@ -569,6 +681,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         maxIterations: config.maxIterations,
         costUsd: usageSummary.totalCostUsd,
       })
+      const verifyStartedAt = Date.now()
       const verify =
         config.verifyMode === 'skill'
           ? await runVerifySkill({
@@ -591,6 +704,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         finalVerify = runVerifyCommand(config.finalVerify, repoRoot)
         lastVerify = finalVerify
       }
+      const verifyMs = elapsedMs(verifyStartedAt)
 
       const passed = finalVerify ? finalVerify.complete : verify.complete
       const siblingRepos = siblingReposForIterationLog(config)
@@ -607,6 +721,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       let reviewLog: LoopIterationLog['review'] | undefined
+      let judgeMs: number | undefined
 
       // Every iteration-log call site below shares these fields; only `review` varies.
       const appendCurrentIterationLog = (review?: LoopIterationLog['review']): void => {
@@ -625,6 +740,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             usage: assistantRun.usage,
             model: iterationAgent.model,
             reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+            sdkRetries: assistantRun.sdkRetries,
+            durationsMs: {
+              worker: workerMs,
+              verify: verifyMs,
+              ...(judgeMs != null ? { judge: judgeMs } : {}),
+            },
             ...workerLogFields,
           }),
         )
@@ -637,6 +758,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           maxIterations: config.maxIterations,
           costUsd: usageSummary.totalCostUsd,
         })
+        const judgeStartedAt = Date.now()
         const reviewPhase = await runPostSuccessReviewPhase({
           config,
           goal,
@@ -649,6 +771,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           usageSummary,
           reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
         })
+        judgeMs = elapsedMs(judgeStartedAt)
         usageSummary = reviewPhase.usageSummary
         reviewLog = reviewPhase.reviewLog
 

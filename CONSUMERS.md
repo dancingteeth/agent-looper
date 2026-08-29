@@ -42,6 +42,7 @@ From the consumer root:
 pnpm exec agent-loop-init
 # edit .cursor/agent-loop.repo.json (hitlProvider, syncCommand, notify hooks, …)
 # edit .cursor/loops/example-fix/ — GOAL.md, verify.sh, VERIFY.skill.md
+# check-running-loops lands in .cursor/skills/ and .agents/skills/
 ```
 
 Configure HITL / completion notify in the repo profile — see [`docs/hitl-providers.md`](./docs/hitl-providers.md).

@@ -7,8 +7,14 @@ import { parseReviewMarkdown, blockingBlockers } from '../review/reviewVerdict.j
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import {
   formatFailureDomainLine,
+  readFailureDomainEntries,
   readLatestFailureDomain,
 } from './loopFailureDomain.js'
+import {
+  buildLoopRunScoreboard,
+  formatScoreboardTelegramLine,
+  readLoopLogEntries,
+} from './loopRunScoreboard.js'
 
 const TELEGRAM_MAX_MESSAGE = 4096
 const VERIFY_SNIPPET_MAX = 600
@@ -150,6 +156,15 @@ export function formatLoopCompletionReport(input: {
     `Reason: ${result.completionReason}`,
     formatUsageSummaryLine(result.usage),
   ]
+
+  const scoreboard = buildLoopRunScoreboard({
+    entries: readLoopLogEntries(result.logPath),
+    failureDomains: readFailureDomainEntries(loopDir),
+    usage: result.usage,
+  })
+  if (scoreboard.iterations > 0) {
+    lines.push(formatScoreboardTelegramLine(scoreboard))
+  }
 
   const reviewLine = formatReviewLine(
     readLatestLoopReview(loopDir),

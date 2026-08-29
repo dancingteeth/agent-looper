@@ -181,7 +181,7 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
   verify.sh                # measurable shell checks (exit 0 = pass)
   VERIFY.skill.md          # agent-readable verify procedure (optional; required for verifyMode: skill)
   log.ndjson               # append-only iteration log (runtime)
-  run-report.md            # human-readable run summary (when exportRunReport)
+  run-report.md            # report card + iteration timeline (when exportRunReport)
   transcript.ndjson        # tool timeline (when exportTranscript)
   verify-logs/             # optional — sidecar verify stdout/stderr (`verifyLogMode`)
   failure-domains.ndjson   # optional — stagnation / max iterations / gate exhaust
@@ -208,7 +208,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | --- | --- | --- |
 | `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`. Unset when `costPreset` is set so detection can bind. See [`docs/runtime-map.md`](./docs/runtime-map.md). Same-task cost method: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). |
 | `costPreset` | — | Named worker+judge stack: `minmax` (efficiency — cheapest *capable* worker + strongest included judge; Grok whenever Cursor is installed), `balanced` (escalate-tier worker, same judge), `cursor` (Composer + Grok). Detect-bound at parse when `runtime`/`model` are unset; explicit keys win. Not Auto. |
-| `model` / `escalateModel` | (defaults) | Worker model; escalate on stagnation (OpenCode/Pi/Codex/DSH: after threshold; Cline: after reasoning ceiling). |
+| `model` / `escalateModel` | (defaults) | Worker model; escalate on identical verifier stagnation **or** immediately after a hung/timed-out worker (OpenCode/Pi/Codex/DSH: after threshold; Cline: after reasoning ceiling — worker fault skips the ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
 | `maxCostUsd` | — | Dollar cap: refuse to start a billed **worker** call whose predicted cost exceeds remaining budget; after a finished worker (or billed review) that still crosses it, stop `waiting` + HITL `budget` (`--max-cost`). Omit = no cap. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
@@ -228,7 +228,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `escalateReasoningEffort` | — | Reasoning ladder ceiling (same runtimes as `reasoningEffort`). Applies to the worker **and** skill-verify. |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
-| `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling) |
+| `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling). Worker timeout / no-tool stall switches immediately and does not wait for this count. |
 | `skills` | — | Explicit `…/SKILL.md` paths (merged with GOAL refs). Default prompt is an **index** (name, description, path) — worker **Read**s the file when needed. |
 | `skillDisclosure` | `index` | `index` = progressive disclosure (0.4.0 default; 0.3.0 always inlined). `inline` = paste full SKILL.md bodies. Pin the field on any loop that must keep the old in-prompt runbook. |
 | `plugins` | — | Agent Plugins package dirs — discovers `skills/*/SKILL.md` ([`docs/agent-plugins.md`](./docs/agent-plugins.md)) |
@@ -253,7 +253,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reviewSecondaryRuntime` | (unset) | Second residual judge (`cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`); unset = off |
 | `reviewSecondaryModel` | (default) | Model for secondary review (defaults per that runtime) |
 | `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate) |
-| `exportRunReport` | `true` | Write `run-report.md` when the loop finishes |
+| `exportRunReport` | `true` | Write `run-report.md` when the loop finishes (report card + timeline) |
 | `exportTranscript` | `true` | Record tool events in `transcript.ndjson` and per-iteration tool counts in `log.ndjson` |
 
 Blocker grammar: ship `REVIEWS.md` from `templates/REVIEWS.md`. Library: `reviewVerdictAllowsCompletion` takes a full `ParsedReview` for impact-severity gating.
@@ -387,7 +387,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | `agent-loop watch <dir>` | Live progress: Ink watch view (TTY) or structured phase lines; `--snapshot` prints one frame and exits |
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
 | `agent-check cursor\|cline\|opencode\|pi\|codex\|dsh` | SDK + API key smoke (`dsh`: PATH CLI + Node ≥ 22.15) |
-| `agent-loop-init` | Scaffold templates |
+| `agent-loop-init` | Scaffold templates + `check-running-loops` skill (`.cursor/skills` and `.agents/skills`) |
 | `agent-loop-setup` | Ink TUI / `--plain` / `--answers` wizard: repo `defaults` in `.cursor/agent-loop.repo.json` plus `loop.json` for `--out` |
 | `agent-loop-doctor` | Validate install / `dist/` integrity; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
@@ -475,7 +475,7 @@ Optional second message: attach `review.md` as a document. Opt out with `"telegr
 
 ## Running from Cursor chat
 
-Cursor’s **agent Shell** is not a terminal. `block_until_ms: 0` (or the IDE **background** button) is a child the IDE reaps at **~5 minutes** (`status: aborted`, `exit_code: unknown`, often pnpm **255`) while the worker is still mid-turn. That is not the harness: TTFB stall is 3 min with no events; overall timeout is **45 min**.
+Cursor’s **agent Shell** is not a terminal. `block_until_ms: 0` (or the IDE **background** button) is a child the IDE reaps at **~5 minutes** (`status: aborted`, `exit_code: unknown`, often pnpm **255`) while the worker is still mid-turn. That is not the harness: TTFB stall is 3 min with no events; OpenCode no-tool stall is 8 min of text without tools; overall timeout is **45 min**.
 
 **If you are the agent in this chat, you start the loop. Do not print a command and tell the human to run it.** Walk-away is not your fallback.
 

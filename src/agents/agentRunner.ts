@@ -171,7 +171,7 @@ export async function createLoopAgentSession(
     return {
       runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),
       recycle: async () => {
-        console.error('[agent-loop:opencode] recycling local server after transport error')
+        console.error('[agent-loop:opencode] recycling local server')
         await opencode.dispose()
         opencode = await createOpencodeLoopSession(ctx)
         runner = createOpencodeRunner(opencode)

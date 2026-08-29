@@ -10,7 +10,7 @@ import {
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
 import { captureGitWorkspaceSnapshot } from './loopGit.js'
-import { isTransientAgentError, runAgentLoop } from './agentLoop.js'
+import { isTransientAgentError, isRecoverableWorkerFault, runAgentLoop } from './agentLoop.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
 import { runVerifySkill } from './loopVerifySkill.js'
@@ -448,6 +448,97 @@ describe('runAgentLoop', () => {
     expect(recycle).toHaveBeenCalledOnce()
     expect(runIterationPrompt).toHaveBeenCalledTimes(2)
     vi.useRealTimers()
+  })
+
+  it('continues onto escalateModel after a worker timeout instead of aborting', async () => {
+    const recycle = vi.fn().mockResolvedValue(undefined)
+    const runIterationPrompt = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error(
+          'OpenCode session.prompt failed (provider=opencode-go model=opencode-go/deepseek-v4-flash session=ses_x): OpenCode session timed out after 2700000ms',
+        ),
+      )
+      .mockResolvedValueOnce({ text: 'qwen recovered' })
+    mockSession(runIterationPrompt, { recycle })
+    mockedRunVerify.mockReturnValue(passVerify())
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+        escalateModel: 'opencode-go/qwen3.7-plus',
+        maxIterations: 3,
+      }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(result.iterations).toBe(2)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
+    expect(runIterationPrompt.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ model: 'opencode-go/deepseek-v4-flash' }),
+    )
+    expect(runIterationPrompt.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({ model: 'opencode-go/qwen3.7-plus' }),
+    )
+    expect(recycle).toHaveBeenCalledOnce()
+  })
+
+  it('aborts a worker timeout when escalateModel is unset', async () => {
+    const runIterationPrompt = vi
+      .fn()
+      .mockRejectedValue(new Error('OpenCode session timed out after 1000ms'))
+    mockSession(runIterationPrompt)
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+        maxIterations: 3,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/Agent SDK error during iteration 1/)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+    const abortLog = JSON.parse(fs.readFileSync(path.join(tmpLoopDir, 'log.ndjson'), 'utf8'))
+    expect(abortLog.verify.command).toBe('(agent SDK)')
+    expect(abortLog.iteration).toBe(1)
+  })
+
+  it('aborts when the escalated model also times out', async () => {
+    const runIterationPrompt = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('OpenCode session made no tool progress after 480000ms'))
+      .mockRejectedValueOnce(new Error('OpenCode session timed out after 2700000ms'))
+    mockSession(runIterationPrompt)
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-flash',
+        escalateModel: 'opencode-go/qwen3.7-plus',
+        maxIterations: 3,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/Agent SDK error during iteration 2/)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
+    expect(runIterationPrompt.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({ model: 'opencode-go/qwen3.7-plus' }),
+    )
+    const lines = fs
+      .readFileSync(path.join(tmpLoopDir, 'log.ndjson'), 'utf8')
+      .trim()
+      .split('\n')
+    expect(lines).toHaveLength(2)
+    const last = JSON.parse(lines[1]!) as { iteration: number; verify: { command: string } }
+    expect(last.iteration).toBe(2)
+    expect(last.verify.command).toBe('(agent SDK)')
   })
 
   it('marks taskwarrior done, creates HITL check, and runs sync on success', async () => {
@@ -933,6 +1024,26 @@ describe('isTransientAgentError', () => {
   it('accepts non-Error values', () => {
     expect(isTransientAgentError('ETIMEDOUT')).toBe(true)
     expect(isTransientAgentError(42)).toBe(false)
+  })
+})
+
+describe('isRecoverableWorkerFault', () => {
+  it('matches session wall-clock and no-tool stalls', () => {
+    expect(isRecoverableWorkerFault(new Error('OpenCode session timed out after 2700000ms'))).toBe(
+      true,
+    )
+    expect(
+      isRecoverableWorkerFault(new Error('OpenCode session made no tool progress after 480000ms')),
+    ).toBe(true)
+    expect(isRecoverableWorkerFault(new Error('Cursor agent run timed out after 2700000ms'))).toBe(
+      true,
+    )
+  })
+
+  it('does not match transport or validation errors', () => {
+    expect(isRecoverableWorkerFault(new Error('fetch failed [layer=transport]'))).toBe(false)
+    expect(isRecoverableWorkerFault(new Error('Invalid API key'))).toBe(false)
+    expect(isRecoverableWorkerFault(new Error('Cursor agent returned empty result'))).toBe(false)
   })
 })
 

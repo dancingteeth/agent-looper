@@ -43,14 +43,18 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
    not worth it). Optional **golden** artifact (screenshot, fixture, baseline).
    Metric loops: revert if worse than baseline. If you cannot name the shell
    assertion, you do not have a loop yet.
-2. **Failure modes** — Ask an agent (or yourself): how can this verify lie, flake,
+2. **Wiring** — EDGE DATA (what crosses writer→checker→judge), REDUCER (`verify.sh`,
+   not another model), FAILURE POLICY (retry / escalate / abort; do not hide missing
+   work), HUMAN GATE (which irreversible actions need you). Delete any edge whose
+   answer is only “the previous step finished.”
+3. **Failure modes** — Ask an agent (or yourself): how can this verify lie, flake,
    or miss the real bug? List unknowns (auth, clocks, network, fixture drift).
-3. **Human read** — Read the failure-mode list yourself. Do not trust a one-shot plan.
-4. **Kill or accept** — Turn unknowns into constraints, fixtures, or out-of-scope.
+4. **Human read** — Read the failure-mode list yourself. Do not trust a one-shot plan.
+5. **Kill or accept** — Turn unknowns into constraints, fixtures, or out-of-scope.
    Accept residual risk only explicitly.
-5. **Permissions** — Default-deny MCP/extra tools and writes beyond scope; name
+6. **Permissions** — Default-deny MCP/extra tools and writes beyond scope; name
    opt-ins (see `templates/LOOP.permissions.example.md`).
-6. **Brownfield research** (optional) — If the worker would otherwise spend the
+7. **Brownfield research** (optional) — If the worker would otherwise spend the
    first iteration Grep-hunting, freeze a short map as `RESEARCH.md` beside
    GOAL.md ([`templates/RESEARCH.example.md`](../templates/RESEARCH.example.md)):
    relevant files, data flow, likely cause, how this repo tests this area. A
@@ -59,7 +63,7 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
    do not paste the body into GOAL. This is **not** an inner
    Research→Plan→Implement graph; the Ralph node still implements until verify
    is green.
-7. **Freeze** — Commit `GOAL.md` + `verify.sh` (+ `VERIFY.skill.md`, optional
+8. **Freeze** — Commit `GOAL.md` + `verify.sh` (+ `VERIFY.skill.md`, optional
    `RESEARCH.md`). Then run.
 
 ## After a run: steer the harness

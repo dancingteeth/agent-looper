@@ -31,7 +31,7 @@ Node **22+**. Package: `@dancingteeth/agent-looper`. Confirm with `pnpm exec age
 pnpm exec agent-loop-init
 ```
 
-Then edit `.cursor/agent-loop.repo.json` (HITL, notify, **`defaults`** for runtime/models) and replace `.cursor/loops/example-fix/`. Humans run `pnpm exec agent-loop-setup` once; agents skip the TUI and use `--answers` or a sparse `loop.json` (`verify` + overrides).
+Then edit `.cursor/agent-loop.repo.json` (HITL, notify, **`defaults`** for runtime/models) and replace `.cursor/loops/example-fix/`. Humans run `pnpm exec agent-loop-setup` once; agents skip the TUI and use `--answers` or a sparse `loop.json` (`verify` + overrides). Init also copies **check-running-loops** to `.cursor/skills/` and `.agents/skills/`.
 
 ## Keys (env, not Doppler dumps)
 

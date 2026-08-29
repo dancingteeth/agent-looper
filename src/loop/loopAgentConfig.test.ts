@@ -111,6 +111,18 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(itr3Stuck.reasoningEffort).toBe('high')
   })
 
+  it('switches model on worker fault even before the reasoning ceiling', () => {
+    const config = clinePassConfig({
+      reasoningEffort: 'medium',
+      escalateReasoningEffort: 'xhigh',
+      escalateModel: 'cline-pass/qwen3.7-max',
+      escalateModelReasoningEffort: 'high',
+    })
+    const agent = resolveIterationAgent(config, 1, undefined, 0, true)
+    expect(agent.model).toBe('cline-pass/qwen3.7-max')
+    expect(agent.reasoningEffort).toBe('high')
+  })
+
   it('switches model on stagnation even without a reasoning ladder', () => {
     const config = clinePassConfig({
       escalateModel: 'cline-pass/qwen3.7-max',
@@ -422,6 +434,21 @@ describe('resolveIterationAgent opencode', () => {
       runtime: 'opencode',
       model: 'opencode-go/qwen3.7-plus',
     })
+  })
+
+  it('switches model on worker fault without waiting for verifier stagnation', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      model: 'opencode-go/deepseek-v4-flash',
+      escalateModel: 'opencode-go/qwen3.7-plus',
+    })
+    expect(resolveIterationAgent(config, 2, undefined, 0, false).model).toBe(
+      'opencode-go/deepseek-v4-flash',
+    )
+    expect(resolveIterationAgent(config, 2, undefined, 0, true).model).toBe(
+      'opencode-go/qwen3.7-plus',
+    )
   })
 })
 

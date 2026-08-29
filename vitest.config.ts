@@ -11,7 +11,7 @@ export default defineConfig({
         'src/**/*.test.ts',
         'src/**/*.test.tsx',
         // CLI entrypoints are side-effecting wiring on import — their logic lives
-        // in tested modules (runArgs, runBatchArgs, initGitignore, shared) and the
+        // in tested modules (runArgs, runBatchArgs, initGitignore, initSkills, shared) and the
         // meta-review e2e spawns dist/ as a subprocess (not instrumentable).
         'src/cli/run.ts',
         'src/cli/run-batch.ts',

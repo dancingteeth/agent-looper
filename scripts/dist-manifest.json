@@ -18,6 +18,7 @@
     "dist/cli/export-run.js",
     "dist/integrations/telegramNotify.js",
     "dist/loop/loopReport.js",
+    "dist/loop/loopRunScoreboard.js",
     "dist/loop/agentLoop.js",
     "dist/loop/loopConfig.js",
     "dist/loop/costPreset.js",
@@ -26,6 +27,8 @@
     "dist/loop/loopSkills.js",
     "dist/loop/loopExtensions.js",
     "dist/context/repoContext.js",
-    "templates/agent-loop.repo.json"
+    "templates/agent-loop.repo.json",
+    "plugins/agent-looper/skills/check-running-loops/SKILL.md",
+    "plugins/agent-looper/skills/check-running-loops/scripts/check-running-loops.sh"
   ]
 }

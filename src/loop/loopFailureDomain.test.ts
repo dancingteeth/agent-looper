@@ -10,6 +10,7 @@ import {
   isHitlWaitingFailureDomain,
   logFailureDomainFromAgentError,
   logFailureDomainFromVerify,
+  readFailureDomainEntries,
   readLatestFailureDomain,
 } from './loopFailureDomain.js'
 
@@ -120,6 +121,29 @@ describe('loopFailureDomain', () => {
     expect(isHitlWaitingFailureDomain(latest)).toBe(true)
   })
 
+  it('reads every parseable failure-domain row', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
+    logFailureDomainFromVerify(tmpDir, {
+      iteration: 1,
+      reason: 'stagnation',
+      verify: {
+        complete: false,
+        command: 'true',
+        exitCode: 1,
+        stdout: '',
+        stderr: '',
+        reason: 'fail',
+      },
+    })
+    logFailureDomainFromAgentError(tmpDir, {
+      iteration: 2,
+      message: 'OpenCode session timed out after 2700000ms',
+    })
+    const entries = readFailureDomainEntries(tmpDir)
+    expect(entries.map((e) => e.reason)).toEqual(['stagnation', 'agent_error'])
+    expect(readFailureDomainEntries(path.join(tmpDir, 'missing'))).toEqual([])
+  })
+
   it('formats a one-line domain summary', () => {
     expect(formatFailureDomainLine(null)).toBeUndefined()
     expect(
@@ -156,5 +180,16 @@ describe('loopFailureDomain', () => {
     expect(entry?.reason).toBe('agent_error')
     expect(entry?.fingerprint).toContain('transport|')
     expect(entry?.suggestion).toMatch(/Transport\/provider failure before verify/)
+  })
+
+  it('tags hung-worker agent_error with an escalate hint', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
+    logFailureDomainFromAgentError(tmpDir, {
+      iteration: 1,
+      message: 'OpenCode session made no tool progress after 480000ms (text stream without tools)',
+    })
+    const entry = readLatestFailureDomain(tmpDir)
+    expect(entry?.reason).toBe('agent_error')
+    expect(entry?.suggestion).toMatch(/escalateModel switches on the next iteration/)
   })
 })

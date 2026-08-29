@@ -362,6 +362,7 @@ PR that lands #1.
 | **M7** | Intervention + Guide packets | **Shipped** — Proceed/Guide/Deny/Confirm; Guide packets; `status` done\|continue\|waiting; trivial-verify warn |
 | **M8** | Batch rubrics / Auto model (optional) | **Shipped** — batch `{path,rubric}`; computer-use templates; Auto **blocked** pending SDK (`docs/cursor-auto-router.md`) |
 | **M9** | Linear Loops governance steals | **Shipped (docs/templates)** — prove→freeze, draft discipline, run-report as audit surface, `LOOP.permissions.example.md`, tool default-deny. No harness publish-snapshot yet — see [`competitive-steal-backlog.md`](./competitive-steal-backlog.md) P3 |
+| **M10** | Lunar graph scoreboard | **0.4.5** — docs (edge sentences + GOAL/preflight spec fields) + `run-report.md` report card (phase time, kill rate, retries, HITL, writer vs referee $). Hung-worker escalate + `check-running-loops` skill ship in the same patch. See backlog **P9** |
 
 ### M6–M8 context (2026-07 competitive session)
 
@@ -379,6 +380,16 @@ Linear Loops ([docs](https://linear.app/docs/loops)) is team-ops automation with
 UX (draft→publish, run history, permission matrix). Adopt governance patterns only;
 do not adopt LLM-as-exit or issue-graph scope. Details in backlog **P3** —
 docs/templates shipped; optional publish-snapshot harness deferred.
+
+### M10 context (2026-08 Lunar graph guide)
+
+Lunar’s [Graph Engineering guide](https://x.com/LunarResearcher/status/2086071302272528833)
+is dependency vs order, typed edge payloads, a width budget, a code reducer, an
+adversarial verifier, failure domains, human approval as an edge, and graph
+metrics. The Ralph node + shell verify + `reviewGate` already *are* that graph.
+M10 makes the edges and the scoreboard visible. Do not market “graph
+engineering”; market a report card after the run. **Shipped in 0.4.5** with
+hung-worker escalate and the `check-running-loops` skill. Details in backlog **P9**.
 
 ## Non-goals
 

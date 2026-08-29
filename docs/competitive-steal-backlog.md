@@ -13,8 +13,10 @@ Mastra Factory/Goals, AI Maker (Wyndo), [Linear Loops](https://linear.app/docs/l
 NeMo validated-assistant posts, T3 Code automations,
 [TrueForge](https://github.com/truefoundry/trueforge),
 [Nouri’s production harness notes](https://www.linkedin.com/pulse/production-ready-enterprise-ai-agent-coding-harness-steve-nouri-1x92c/),
-and [Simmons / Cherny ultraprompting](https://blockbuster.thoughtleader.school/p/ultraprompting-how-the-worlds-top) (Aug 2026).
+[Simmons / Cherny ultraprompting](https://blockbuster.thoughtleader.school/p/ultraprompting-how-the-worlds-top) (Aug 2026),
+and [LunarResearcher, Graph Engineering](https://x.com/LunarResearcher/status/2086071302272528833) (8 Aug 2026).
 Merge canvas: `session-steal-decisions` under the workspace canvases dir.
+Lunar map: `lunar-graph-steal` + `lunar-graph-roadmap` under the workspace canvases dir.
 
 ## Wedge (never trade)
 
@@ -211,6 +213,29 @@ and Fowler’s steering language (sensor before prompt).
 - Force TDD inside the worker prompt (Fowler’s eval: design-first beat red-green theater; human-owned tests in `verify.sh` already cover the useful half)
 - 40–60% context-utilization gate (no reliable Cursor fill telemetry; fresh sessions already bound rot)
 
+## P9 — M10 (Lunar graph observability)
+
+Source: [LunarResearcher, Graph Engineering](https://x.com/LunarResearcher/status/2086071302272528833) (8 Aug 2026) + vault copy.
+Control-flow graph of loops (not GraphRAG, not LangGraph). Inner node is already Ralph.
+Steal **named edges + a scoreboard**, not more nodes. Marketing: report card for the loop, not “graph engineering.”
+
+| Item | Adopt as | Deliverable | Notes |
+| --- | --- | --- | --- |
+| Edge sentences + human-as-edge | Docs | **0.4.5** — ARCHITECTURE §1.1 edge table; HITL is a gated edge on judge→done | Lunar §2–3, §9. Do not add `HUMAN` to `AgentLoopPhase`. |
+| Graph spec fields on freeze | Template | **0.4.5** — Unknowns preflight + `GOAL.template.md`: **EDGE DATA**, **REDUCER**, **FAILURE POLICY**, **HUMAN GATE** | Lunar §13. Four-part finish line stays; these name the wiring. |
+| Failure-domain policy named | Docs | **0.4.5** — retry / escalate / structured fail / abort; no silent “done” | Skip quorum (no inner fan-out). |
+| Graph header on `run-report.md` | Harness | **0.4.5** — report card: phase wall-clock, SDK retries, reviewGate kill rate, HITL, failure-domain rollup, writer vs referee $ | Lunar §11. Telegram completion line uses the same fold. |
+| Cost on the critical path | Harness | **0.4.5** — folded into the report card from existing `implement` / `review` usage records | Not a new cost pipeline. |
+
+### Explicit skips (Lunar)
+
+- LangGraph / ADK / AutoGen GraphFlow as the runtime
+- Fork/join or parallel `agent-loop-batch` on one git checkout (the dirty tree is a real dependency)
+- Tournament / judge council
+- Knowledge graph / Neo4j / GraphRAG
+- Quorum (“9 of 10 researchers”) — we are not that product
+- Marketing the word “graph engineering” to non-builders — the scoreboard is the product
+
 ## Verify this backlog
 
-P3–P8 harness hooks are covered by focused vitest (`loopPostReview`, `reviewPrompt`, `loopRunReport`, `loopRiskProfile`, `loopSkills`, `loopResearch`, `loopPrompt`, `loopConfig`). Docs/templates are not runtime-enforced (permissions matrix is governance docs; `REVIEWS.md` laws are judge prompt text). P6 sidecar and progressive skills are shipped (dogfood n≥3 cost numbers still planned).
+P3–P8 harness hooks are covered by focused vitest (`loopPostReview`, `reviewPrompt`, `loopRunReport`, `loopRiskProfile`, `loopSkills`, `loopResearch`, `loopPrompt`, `loopConfig`). Docs/templates are not runtime-enforced (permissions matrix is governance docs; `REVIEWS.md` laws are judge prompt text). P6 sidecar and progressive skills are shipped (dogfood n≥3 cost numbers still planned). P9 report card + hung-worker escalate + `check-running-loops` ship in **0.4.5**.

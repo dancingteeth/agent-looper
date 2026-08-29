@@ -941,6 +941,7 @@ export function resolveIterationAgent(
   iteration: number,
   escalationRepeatCount: number | undefined,
   reviewCycleEscalation = 0,
+  escalateForWorkerFault = false,
 ): ResolvedLoopAgent {
   const base = resolveLoopAgent(config)
   if (base.runtime === LOOP_RUNTIME_CURSOR) {
@@ -963,18 +964,19 @@ export function resolveIterationAgent(
     // only once reasoning has reached its ceiling AND hard stagnation (identical
     // consecutive verifier failures) persists past the threshold. When no reasoning
     // ladder is configured, model escalation keeps its prior stagnation-gated behavior.
+    // A hung/timed-out worker skips that gate — repeating the same dead model is
+    // not a reasoning problem.
     const reasoningConfigured =
       config.reasoningEffort !== undefined && config.reasoningEffort !== 'none'
     const atCeiling =
       !reasoningConfigured || tier === (config.escalateReasoningEffort ?? tier)
     const threshold = config.escalateAfterStagnation ?? 2
-
-    if (
-      config.escalateModel &&
+    const switchForStagnation =
       atCeiling &&
       escalationRepeatCount !== undefined &&
       escalationRepeatCount >= threshold
-    ) {
+
+    if (config.escalateModel && (escalateForWorkerFault || switchForStagnation)) {
       assertLoopModelAllowed(base.runtime, config.escalateModel)
       const reasoningEffort = config.escalateModelReasoningEffort ?? tier
       agent = {
@@ -989,8 +991,8 @@ export function resolveIterationAgent(
   const threshold = config.escalateAfterStagnation ?? 2
   const switchModel =
     config.escalateModel &&
-    escalationRepeatCount !== undefined &&
-    escalationRepeatCount >= threshold
+    (escalateForWorkerFault ||
+      (escalationRepeatCount !== undefined && escalationRepeatCount >= threshold))
       ? config.escalateModel
       : undefined
   if (switchModel) {

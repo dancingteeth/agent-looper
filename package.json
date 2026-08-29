@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
@@ -32,7 +32,9 @@
     "dist",
     "templates",
     "scripts/dist-manifest.json",
-    "scripts/prepare-package.mjs"
+    "scripts/prepare-package.mjs",
+    "plugins/agent-looper/skills/check-running-loops/SKILL.md",
+    "plugins/agent-looper/skills/check-running-loops/scripts"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

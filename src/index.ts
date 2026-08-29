@@ -49,7 +49,9 @@ export {
   appendFailureDomain,
   failureDomainsPath,
   logFailureDomainFromVerify,
+  readFailureDomainEntries,
   FAILURE_DOMAINS_FILENAME,
+  AGENT_SDK_VERIFY_COMMAND,
 } from './loop/loopFailureDomain.js'
 export type { FailureDomainEntry, FailureDomainReason, FailureDomainStatus } from './loop/loopFailureDomain.js'
 
@@ -414,3 +416,9 @@ export {
   readTranscriptEvents,
   reconstructAgentLoopResultFromLog,
 } from './loop/loopRunReport.js'
+export {
+  buildLoopRunScoreboard,
+  formatScoreboardMarkdown,
+  formatScoreboardTelegramLine,
+  isAgentSdkVerify,
+} from './loop/loopRunScoreboard.js'

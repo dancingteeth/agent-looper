@@ -8,6 +8,7 @@ import { REPO_PROFILE_RELATIVE_PATH } from '../context/repoProfile.js'
 import { parseRepoRootFlag } from './shared.js'
 import { trackLooperInit } from '../telemetry/looperTelemetry.js'
 import { ensureLoopGitignoreBlock } from './initGitignore.js'
+import { copyCheckRunningLoopsSkill } from './initSkills.js'
 
 /** dist/cli/init.js → package root */
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -16,7 +17,7 @@ const templatesDir = path.join(packageRoot, 'templates')
 function usage(): string {
   return `Usage: agent-loop-init [options]
 
-Scaffolds .cursor/agent-loop.repo.json, GOAL.template.md, REVIEWS.md (if missing), and example loop bundle.
+Scaffolds .cursor/agent-loop.repo.json, GOAL.template.md, REVIEWS.md (if missing), example loop bundle, and the check-running-loops skill.
 
 Options:
   --repo-root <path>   Target repo (default: process.cwd())
@@ -81,6 +82,14 @@ if (fs.existsSync(exampleVerifySh)) {
   fs.chmodSync(exampleVerifySh, 0o755)
 }
 copyTemplate('VERIFY.skill.md', path.join(exampleDir, 'VERIFY.skill.md'), force)
+
+for (const row of copyCheckRunningLoopsSkill(ctx.repoRoot, packageRoot, force)) {
+  console.error(
+    row.action === 'written'
+      ? `[agent-loop-init] wrote ${row.dest}`
+      : `[agent-loop-init] skip (exists): ${row.dest}`,
+  )
+}
 
 const gitignore = ensureLoopGitignoreBlock(ctx.repoRoot)
 console.error(

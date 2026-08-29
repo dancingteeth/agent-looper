@@ -36,6 +36,8 @@ Then edit:
 - `.cursor/agent-loop.repo.json` — HITL, notify, `syncCommand`, `defaultBranch`, and `defaults` (runtime/models/review). Humans: `pnpm exec agent-loop-setup` once; agents skip the TUI.
 - `.cursor/loops/example-fix/` — replace with a real GOAL + verify (`loop.json` only needs `verify` plus per-loop overrides)
 
+`agent-loop-init` also copies **check-running-loops** to `.cursor/skills/check-running-loops/` and `.agents/skills/check-running-loops/` (heartbeat script included). Re-run init after upgrading the package if those dirs are missing.
+
 ## Scripts (recommended)
 
 ```json

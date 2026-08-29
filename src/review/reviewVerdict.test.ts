@@ -55,16 +55,19 @@ describe('parseReviewMarkdown', () => {
     expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
   })
 
-  it('parses ADVISORY verdict', () => {
+  it('parses ADVISORY when the verdict heading includes the enum hint', () => {
     const parsed = parseReviewMarkdown(`### Risk
-**MEDIUM**
+**HIGH**
 
-### Verdict
-**ADVISORY**
+### Verdict (PASS | ADVISORY | BLOCKERS)
+**ADVISORY** — intervention mode **Proceed**. Verifier is green.
 
 ### Blockers
+None.
 `)
     expect(parsed.verdict).toBe('ADVISORY')
+    expect(parsed.risk).toBe('high')
+    expect(parsed.blockers).toEqual([])
     expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
   })
 

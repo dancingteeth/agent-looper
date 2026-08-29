@@ -17,6 +17,21 @@ describe('validatePackageDist', () => {
     expect(validatePackageDist(packageRoot)).toEqual([])
   })
 
+  it('ships check-running-loops and omits the marketing site', () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'),
+    ) as { files: string[] }
+    expect(pkg.files).toEqual(
+      expect.arrayContaining([
+        'plugins/agent-looper/skills/check-running-loops/SKILL.md',
+        'plugins/agent-looper/skills/check-running-loops/scripts',
+      ]),
+    )
+    expect(pkg.files.some((entry) => entry === 'site' || entry.startsWith('site/'))).toBe(
+      false,
+    )
+  })
+
   it('resolves agentLoop import graph for a built checkout', () => {
     expect(validatePackageDistRuntime(packageRoot)).toEqual([])
   })
