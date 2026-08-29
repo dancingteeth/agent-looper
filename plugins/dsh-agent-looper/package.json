@@ -9,6 +9,7 @@
   "files": [
     "dist",
     "skills",
+    "overlays",
     "cordis.patch.yml"
   ],
   "engines": {
@@ -16,7 +17,7 @@
   },
   "scripts": {
     "build": "node scripts/materialize-skills.mjs && tsc -p tsconfig.json",
-    "prepare": "tsc -p tsconfig.json",
+    "prepare": "node scripts/materialize-skills.mjs && tsc -p tsconfig.json",
     "skills:materialize": "node scripts/materialize-skills.mjs",
     "prepack": "node scripts/materialize-skills.mjs"
   },

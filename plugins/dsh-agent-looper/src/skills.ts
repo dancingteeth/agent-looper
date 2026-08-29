@@ -62,4 +62,21 @@ export function resolveSkillsDir(configured: string, pluginRoot: string): string
   return path.resolve(pluginRoot, configured)
 }
 
+export function resolveOverlaysDir(packageRoot: string): string {
+  return path.join(packageRoot, 'overlays')
+}
+
+export function loadSkillOverlay(skillName: string, overlaysDir: string): string {
+  const overlayPath = path.join(overlaysDir, `${skillName}.md`)
+  if (!fs.existsSync(overlayPath)) return ''
+  return `\n\n${fs.readFileSync(overlayPath, 'utf8').trimStart()}`
+}
+
+export function applySkillOverlays(skills: ParsedSkill[], overlaysDir: string): ParsedSkill[] {
+  return skills.map((skill) => ({
+    ...skill,
+    content: skill.content + loadSkillOverlay(skill.name, overlaysDir),
+  }))
+}
+
 export const pluginRoot = path.dirname(fileURLToPath(import.meta.url))

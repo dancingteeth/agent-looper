@@ -3,7 +3,7 @@ import path from 'node:path'
 import { loopScaffoldGuidance } from './loop-scaffold.js'
 import { nestedAgentLoopRunReason, secretDumpReason } from './nested-run.js'
 import { AGENT_LOOPER_PROMPT_NAME, AGENT_LOOPER_PROMPT_ORDER, agentLooperPromptSection } from './prompt.js'
-import { discoverSkills, pluginRoot, resolveSkillsDir } from './skills.js'
+import { discoverSkills, applySkillOverlays, pluginRoot, resolveOverlaysDir, resolveSkillsDir } from './skills.js'
 
 /** DSH injects services after `inject` resolves; Cordis `Context` does not declare them. */
 export type AgentLooperContext = {
@@ -62,8 +62,10 @@ export function apply(ctx: AgentLooperContext, config: Config) {
     return nestedAgentLoopRunReason(execution.name, execution.arguments)
   })
 
-  const skillsDir = resolveSkillsDir(config.skillsDir, path.join(pluginRoot, '..'))
-  const skills = discoverSkills(skillsDir)
+  const packageRoot = path.join(pluginRoot, '..')
+  const skillsDir = resolveSkillsDir(config.skillsDir, packageRoot)
+  const overlaysDir = resolveOverlaysDir(packageRoot)
+  const skills = applySkillOverlays(discoverSkills(skillsDir), overlaysDir)
 
   for (const skill of skills) {
     ctx.skills.register({

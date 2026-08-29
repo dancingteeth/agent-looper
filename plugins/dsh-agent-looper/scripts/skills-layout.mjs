@@ -48,10 +48,23 @@ export function copySkillFromSsot(name) {
 
 export function materializeSharedSkills() {
   fs.mkdirSync(skillsDir, { recursive: true })
+  const fromSsot = fs.existsSync(ssotRoot)
   for (const name of SHARED_SKILLS) {
-    copySkillFromSsot(name)
+    if (fromSsot) {
+      copySkillFromSsot(name)
+    } else if (!isSkillMaterialized(name)) {
+      throw new Error(
+        `SSOT missing at ${ssotRoot} and skills/${name} not materialized — run from monorepo checkout`,
+      )
+    }
   }
   assertNativeSkills()
+}
+
+function isSkillMaterialized(name) {
+  const dest = path.join(skillsDir, name)
+  if (!fs.existsSync(dest) || fs.lstatSync(dest).isSymbolicLink()) return false
+  return fs.existsSync(path.join(dest, 'SKILL.md'))
 }
 
 export function assertNativeSkills() {

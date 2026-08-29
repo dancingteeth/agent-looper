@@ -14,7 +14,7 @@ Guidance for designing and wiring **[Agent Looper](https://www.npmjs.com/package
 
 | Component | Purpose |
 | --- | --- |
-| Skill `design-loop` | Freeze measurable `GOAL.md` + `verify.sh` |
+| Skill `design-loop` | Freeze measurable `GOAL.md` + `verify.sh` (SSOT body + DSH overlay at register time) |
 | Skill `install-agent-looper` | npm install, init, scripts (not the grind) |
 | Skill `review-gate` | `postQualityReview` / `reviewGate` without thrash |
 | Skill `check-running-loops` | Is `agent-loop` actually alive vs stale/hung/dead (copied from Cursor companion SSOT) |
@@ -26,7 +26,7 @@ Shell **`verify`** (via `agent-loop run`) remains the finish line. DSH built-in 
 
 ## Install locally
 
-Shared skills (`design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops`) are **copied** from [`plugins/agent-looper/skills/`](../agent-looper/skills/) (SSOT) into this package by `scripts/materialize-skills.mjs`. Only `run-loop-in-dsh` is native and committed in git.
+Shared skills (`design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops`) are **copied** from [`plugins/agent-looper/skills/`](../agent-looper/skills/) (SSOT) into this package by `scripts/materialize-skills.mjs`. Only `run-loop-in-dsh` is native and committed in git. DSH-only text for `design-loop` lives in [`overlays/design-loop.md`](overlays/design-loop.md) and is appended when the plugin registers the skill (SSOT `SKILL.md` on disk is unchanged).
 
 **Before** `dsh plugin add` or `npm pack`, materialize real in-tree skill files (symlinks are not valid for pack/add):
 

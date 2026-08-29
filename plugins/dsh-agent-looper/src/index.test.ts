@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { apply, inject, name } from './index.js'
 import { isAgentLoopRunCommand, isBashRunInBackground, isSecretDumpCommand, nestedAgentLoopRunReason, secretDumpReason } from './nested-run.js'
 import { AGENT_LOOPER_PROMPT_NAME, agentLooperPromptSection } from './prompt.js'
-import { discoverSkills, parseSkillFile, pluginRoot, resolveSkillsDir } from './skills.js'
+import { discoverSkills, loadSkillOverlay, parseSkillFile, pluginRoot, resolveOverlaysDir, resolveSkillsDir } from './skills.js'
 
 function mockCtx() {
   const registeredSkills: Array<{ name: string; description: string; content: string }> = []
@@ -90,6 +90,24 @@ describe('dsh-agent-looper plugin', () => {
       expect(skill.content.length).toBeGreaterThan(0)
     }
 
+    const designLoop = registeredSkills.find((s) => s.name === 'design-loop')
+    if (!designLoop) throw new Error('expected design-loop registration')
+    expect(designLoop.content).toMatch(/Do not foreground-bash `agent-loop run`/)
+    expect(designLoop.content).toMatch(/run-loop-in-dsh/)
+    const ssotSkillMd = fs.readFileSync(
+      path.join(pluginRoot, '..', '..', 'agent-looper', 'skills', 'design-loop', 'SKILL.md'),
+      'utf8',
+    )
+    expect(ssotSkillMd).toMatch(/^---[\s\S]*?---\n/)
+    expect(designLoop.content).toContain(
+      ssotSkillMd.replace(/^---[\s\S]*?---\r?\n/, '').trimStart().split('\n')[0] ?? '',
+    )
+    const onDisk = fs.readFileSync(
+      path.join(pluginRoot, '..', 'skills', 'design-loop', 'SKILL.md'),
+      'utf8',
+    )
+    expect(onDisk).toBe(ssotSkillMd)
+
     expect(ctx.commands.register).toHaveBeenCalledTimes(1)
     const command = registeredCommands[0]
     if (!command) throw new Error('expected loop-scaffold registration')
@@ -163,6 +181,18 @@ description: Design loops.
     const native = path.join(skillsDir, 'run-loop-in-dsh')
     expect(fs.lstatSync(native).isSymbolicLink()).toBe(false)
     expect(fs.existsSync(path.join(native, 'SKILL.md'))).toBe(true)
+  })
+
+  it('loads DSH overlay for design-loop without mutating materialized SKILL.md', () => {
+    const packageRoot = path.join(pluginRoot, '..')
+    const overlaysDir = resolveOverlaysDir(packageRoot)
+    const overlay = loadSkillOverlay('design-loop', overlaysDir)
+    expect(overlay).toMatch(/Do not foreground-bash `agent-loop run`/)
+    expect(overlay).toMatch(/run-loop-in-dsh/)
+
+    const skillMd = path.join(packageRoot, 'skills', 'design-loop', 'SKILL.md')
+    const before = fs.readFileSync(skillMd, 'utf8')
+    expect(before).not.toMatch(/Do not foreground-bash/)
   })
 })
 
