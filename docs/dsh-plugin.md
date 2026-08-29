@@ -18,7 +18,7 @@ From `dsh web`, switch the session to **Full Access** (or start the grind bash w
 
 | Component | Purpose |
 | --- | --- |
-| Skills `design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops`, `run-loop-in-dsh` | Shared four symlink [`plugins/agent-looper/skills/`](../plugins/agent-looper/skills/) (SSOT); `run-loop-in-dsh` is DSH-only |
+| Skills `design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops`, `run-loop-in-dsh` | Shared four copied from [`plugins/agent-looper/skills/`](../plugins/agent-looper/skills/) (SSOT) via `materialize-skills`; `run-loop-in-dsh` is DSH-only |
 | Command `loop-scaffold` | Guided GOAL + verify scaffold (direct UI handler — not sent to the model) |
 | System prompt `plugin:agent-looper` | Always-on routing: plugin is already loaded; do not inspect DSH internals |
 | Bash guard | Denies *foreground* `agent-loop run` and Doppler / DSH credentials-local / OpenCode secret dumps. Background grind is allowed (`blockNestedRun` toggles the foreground deny). |
@@ -33,9 +33,8 @@ DSH’s production loader imports `package.json` `"main"` as Node ESM — it doe
 From this repository checkout:
 
 ```bash
+node plugins/dsh-agent-looper/scripts/materialize-skills.mjs
 pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json
-# Shared skills are symlinks into plugins/agent-looper/skills/ — restore with:
-#   pnpm --dir plugins/dsh-agent-looper skills:link
 dsh plugin --profile web add ./plugins/dsh-agent-looper
 dsh --profile web --dump-config   # layer present without booting
 dsh web

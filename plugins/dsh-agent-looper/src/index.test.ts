@@ -146,18 +146,18 @@ description: Design loops.
     ])
   })
 
-  it('links shared skills from agent-looper SSOT; run-loop-in-dsh stays native', () => {
+  it('materializes shared skills as real files matching agent-looper SSOT', () => {
     const skillsDir = resolveSkillsDir('./skills', path.join(pluginRoot, '..'))
     const ssotRoot = path.join(pluginRoot, '..', '..', 'agent-looper', 'skills')
     const shared = ['design-loop', 'install-agent-looper', 'review-gate', 'check-running-loops']
 
     for (const name of shared) {
       const entry = path.join(skillsDir, name)
-      expect(fs.lstatSync(entry).isSymbolicLink()).toBe(true)
-      expect(fs.realpathSync(entry)).toBe(path.join(ssotRoot, name))
-      const linked = fs.readFileSync(path.join(entry, 'SKILL.md'), 'utf8')
+      expect(fs.lstatSync(entry).isSymbolicLink()).toBe(false)
+      expect(fs.statSync(entry).isDirectory()).toBe(true)
+      const materialized = fs.readFileSync(path.join(entry, 'SKILL.md'), 'utf8')
       const ssot = fs.readFileSync(path.join(ssotRoot, name, 'SKILL.md'), 'utf8')
-      expect(linked).toBe(ssot)
+      expect(materialized).toBe(ssot)
     }
 
     const native = path.join(skillsDir, 'run-loop-in-dsh')

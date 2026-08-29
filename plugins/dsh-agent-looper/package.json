@@ -15,11 +15,10 @@
     "node": ">=22.15.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/materialize-skills.mjs && tsc -p tsconfig.json",
     "prepare": "tsc -p tsconfig.json",
-    "skills:link": "node scripts/materialize-skills.mjs link",
-    "prepack": "node scripts/materialize-skills.mjs copy",
-    "postpack": "node scripts/materialize-skills.mjs link"
+    "skills:materialize": "node scripts/materialize-skills.mjs",
+    "prepack": "node scripts/materialize-skills.mjs"
   },
   "keywords": [
     "dsh-plugin",

@@ -1,0 +1,5 @@
+# Copied from plugins/agent-looper/skills/ by scripts/materialize-skills.mjs — do not edit here.
+skills/design-loop/
+skills/install-agent-looper/
+skills/review-gate/
+skills/check-running-loops/
