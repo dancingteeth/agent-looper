@@ -355,6 +355,7 @@ describe('landing agent readiness', () => {
     expect(html).toContain('grok-bot-hex.png')
     expect(html).toContain('Add to Grok Bot')
     expect(html).toMatch(/width="80"/)
+    expect(html).toContain('harness-operator__title">Agent Looper Grok Bot')
     expect(html).toContain('harness-section-label">Operator')
     expect(html).toContain('id="harness-runtimes-heading">Runtimes')
     expect(html).toContain('class="harness-grid"')
@@ -369,7 +370,7 @@ describe('landing agent readiness', () => {
     expect(md).toContain(
       'Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.',
     )
-    expect(md).toContain('## Operator — Grok Bot')
+    expect(md).toContain('## Operator — Agent Looper Grok Bot')
     expect(md).toContain('## Runtimes')
   })
 
