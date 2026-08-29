@@ -63,30 +63,41 @@ export function toTelemetryRuntime(runtime: LoopRuntime): TelemetryRuntime {
   return runtime
 }
 
-export function readPackageVersion(packageRoot?: string): string {
+export function readPackageVersion(packageRoot?: string): string | undefined {
   if (cachedPackageVersion) return cachedPackageVersion
-  const root =
-    packageRoot ??
-    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-  const raw = fs.readFileSync(path.join(root, 'package.json'), 'utf8')
-  const version = (JSON.parse(raw) as { version?: string }).version
-  if (!version) throw new Error('package.json missing version')
-  cachedPackageVersion = version
-  return version
+  try {
+    const root =
+      packageRoot ??
+      path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
+    const raw = fs.readFileSync(path.join(root, 'package.json'), 'utf8')
+    const version = (JSON.parse(raw) as { version?: string }).version?.trim()
+    if (!version) return undefined
+    cachedPackageVersion = version
+    return version
+  } catch {
+    return undefined
+  }
 }
 
 export function baseTelemetryProperties(input?: {
   packageRoot?: string
 }): LooperTelemetryProperties {
+  const packageVersion = readPackageVersion(input?.packageRoot)
   return {
-    package_version: readPackageVersion(input?.packageRoot),
+    ...(packageVersion ? { package_version: packageVersion } : {}),
     os_platform: process.platform,
     node_major_version: Number.parseInt(process.version.slice(1).split('.')[0] ?? '', 10),
   }
 }
 
+/** @internal Resets module caches between unit tests. */
+export function resetLooperTelemetryStateForTest(): void {
+  cachedPackageVersion = undefined
+  cachedDistinctIds.clear()
+}
+
 function sanitizeProperties(
-  properties: LooperTelemetryProperties,
+  properties: Record<string, unknown>,
 ): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {}
   for (const [key, value] of Object.entries(properties)) {
@@ -132,7 +143,7 @@ export function buildPosthogCaptureBody(input: {
   apiKey: string
   event: LooperTelemetryEvent
   distinctId: string
-  properties: LooperTelemetryProperties
+  properties: Record<string, unknown>
 }): Record<string, unknown> {
   return {
     api_key: input.apiKey,
@@ -151,6 +162,8 @@ export type CaptureLooperTelemetryInput = {
   env?: NodeJS.ProcessEnv
   fetchImpl?: typeof fetch
   distinctId?: string
+  /** Override package root for version lookup (tests / advanced installs). */
+  packageRoot?: string
   now?: () => number
 }
 
@@ -158,42 +171,46 @@ export type CaptureLooperTelemetryInput = {
  * Fire-and-forget PostHog capture. Never throws; telemetry must not block the CLI.
  */
 export function captureLooperTelemetry(input: CaptureLooperTelemetryInput): void {
-  const env = input.env ?? process.env
-  if (!shouldCaptureTelemetry(env)) return
+  try {
+    const env = input.env ?? process.env
+    if (!shouldCaptureTelemetry(env)) return
 
-  const apiKey = resolvePosthogApiKey(env)
-  if (!apiKey) return
+    const apiKey = resolvePosthogApiKey(env)
+    if (!apiKey) return
 
-  const properties = {
-    ...baseTelemetryProperties(),
-    ...input.properties,
+    const properties: Record<string, unknown> = {
+      ...baseTelemetryProperties({ packageRoot: input.packageRoot }),
+      ...input.properties,
+    }
+
+    const body = buildPosthogCaptureBody({
+      apiKey,
+      event: input.event,
+      distinctId: input.distinctId ?? readOrCreateTelemetryDistinctId(),
+      properties,
+    })
+
+    const fetchImpl = input.fetchImpl ?? globalThis.fetch
+    if (typeof fetchImpl !== 'function') return
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 2_000)
+
+    void fetchImpl(POSTHOG_EU_CAPTURE_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+      .catch(() => {
+        // fail open
+      })
+      .finally(() => {
+        clearTimeout(timeout)
+      })
+  } catch {
+    // fail open — version lookup, distinct-id IO, JSON.stringify, etc.
   }
-
-  const body = buildPosthogCaptureBody({
-    apiKey,
-    event: input.event,
-    distinctId: input.distinctId ?? readOrCreateTelemetryDistinctId(),
-    properties,
-  })
-
-  const fetchImpl = input.fetchImpl ?? globalThis.fetch
-  if (typeof fetchImpl !== 'function') return
-
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 2_000)
-
-  void fetchImpl(POSTHOG_EU_CAPTURE_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  })
-    .catch(() => {
-      // fail open
-    })
-    .finally(() => {
-      clearTimeout(timeout)
-    })
 }
 
 export function trackLooperInit(): void {
