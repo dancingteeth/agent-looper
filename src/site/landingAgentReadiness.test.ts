@@ -305,6 +305,7 @@ describe('landing agent readiness', () => {
       expect(body).toMatch(/cookieless/i)
       expect(body).toMatch(/\$pageview|page view/i)
       expect(body).toContain('install_copy_clicked')
+      expect(body).toContain('grok_bot_add_clicked')
     }
   })
 
@@ -339,6 +340,22 @@ describe('landing agent readiness', () => {
     const guard = "id === 'install-snippet-agent' || id === 'install-snippet-human'"
     expect(html).toContain(guard)
     expect(html.indexOf('looper:install_copy_clicked')).toBeGreaterThan(html.indexOf(guard))
+  })
+
+  it('harnesses Grok Bot operator card links to the public x.ai bot', () => {
+    const html = readSite('harnesses/index.html')
+    expect(html).toContain('https://x.ai/bot/AETdGbRRNWfckrRGv22LD')
+    expect(html).toContain('id="grok-bot-add"')
+    expect(html).toContain('harness-block--operator')
+    expect(html).toContain('grok-bot-hex.png')
+    expect(html).toContain('Add to Grok Bot')
+
+    const md = readSite('harnesses/index.md')
+    expect(md).toContain('https://x.ai/bot/AETdGbRRNWfckrRGv22LD')
+    expect(md).toContain('[Add to Grok Bot]')
+    expect(md).toContain(
+      'Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.',
+    )
   })
 
   it('every HTML page loads analytics.js', () => {

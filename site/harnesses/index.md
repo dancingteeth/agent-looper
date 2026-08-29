@@ -23,6 +23,10 @@ Set `costPreset: "cursor"` in `loop.json` to stay on Cursor for both worker and 
 
 ## Grok Bot
 
+Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.
+
+[Add to Grok Bot](https://x.ai/bot/AETdGbRRNWfckrRGv22LD)
+
 Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a `--runtime` enum value. Distinct from the Grok 4.6 model that Cursor uses as judge.
 
 ### How to use
