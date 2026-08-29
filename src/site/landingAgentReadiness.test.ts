@@ -351,9 +351,17 @@ describe('landing agent readiness', () => {
     const html = readSite('harnesses/index.html')
     expect(html).toContain('https://x.ai/bot/AETdGbRRNWfckrRGv22LD')
     expect(html).toContain('id="grok-bot-add"')
-    expect(html).toContain('harness-block--operator')
+    expect(html).toContain('harness-operator')
     expect(html).toContain('grok-bot-hex.png')
     expect(html).toContain('Add to Grok Bot')
+    expect(html).toMatch(/width="80"/)
+    expect(html).toContain('harness-section-label">Operator')
+    expect(html).toContain('id="harness-runtimes-heading">Runtimes')
+    expect(html).toContain('class="harness-grid"')
+    const jumpRow = html.match(/<nav class="harness-logos"[\s\S]*?<\/nav>/)?.[0] ?? ''
+    expect(jumpRow).not.toMatch(/grok-bot/i)
+    expect(jumpRow).not.toContain('grok-bot-hex')
+    expect(html).not.toContain('href="#grok-bot"')
 
     const md = readSite('harnesses/index.md')
     expect(md).toContain('https://x.ai/bot/AETdGbRRNWfckrRGv22LD')
@@ -361,6 +369,8 @@ describe('landing agent readiness', () => {
     expect(md).toContain(
       'Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.',
     )
+    expect(md).toContain('## Operator — Grok Bot')
+    expect(md).toContain('## Runtimes')
   })
 
   it('every HTML page loads analytics.js', () => {

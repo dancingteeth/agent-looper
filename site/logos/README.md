@@ -6,7 +6,7 @@ Vendored SVG marks for the “works with” row. Sources:
 | --- | --- |
 | `cursor.svg` | [Simple Icons](https://github.com/simple-icons/simple-icons) (CC0) |
 | `grok.svg` | xAI monochrome mark (same 24×24 simple-mark style as Simple Icons; Grok Bot is not a Simple Icons slug yet) |
-| `grok-bot-hex.png` | xAI Grok Bot share-card hex avatar (operator harness on `/harnesses/#grok-bot`; source SVG: `grok-bot-hex.svg`) |
+| `grok-bot-hex.png` | xAI Grok Bot share-card hex avatar (flat green hex with eyes; operator harness on `/harnesses/#grok-bot`; source SVG: `grok-bot-hex.svg`) |
 | `cline.svg` | Simple Icons (CC0) |
 | `openai.svg` | Simple Icons (CC0) — Codex / OpenAI |
 | `deepseek.svg` | Simple Icons (CC0) — DSH |

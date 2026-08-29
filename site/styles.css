@@ -377,33 +377,92 @@ a.harness-logo:hover {
   text-decoration: none;
 }
 
-.harness-block {
-  border: 1px solid var(--ghost);
-  padding: var(--space);
-  margin: 0 0 var(--space);
-  max-width: 44rem;
-  scroll-margin-top: 5rem;
+.harness-section-label {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--verify);
 }
 
-.harness-block:last-child {
-  margin-bottom: 0;
-}
-
-.harness-block__head {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 1rem;
-}
-
-.harness-block__head h2 {
-  margin: 0;
-  font-size: 1.25rem;
+.harness-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
-.harness-block h3 {
+.harness-operator {
+  margin: 2.5rem 0 3rem;
+  border: 1px solid #2a5c30;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  scroll-margin-top: 5rem;
+}
+
+.harness-operator__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.25rem 1.5rem 1.75rem;
+  background:
+    radial-gradient(ellipse 70% 90% at 50% 35%, rgba(118, 225, 123, 0.28) 0%, rgba(47, 138, 56, 0.08) 55%, transparent 100%),
+    linear-gradient(180deg, #0f1f12 0%, var(--black) 100%);
+}
+
+.harness-operator__hex {
+  display: block;
+  width: 80px;
+  height: 80px;
+  margin: 0 0 1rem;
+}
+
+.harness-operator__title {
+  margin: 0 0 0.65rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.harness-operator__tagline {
+  margin: 0 0 1.25rem;
+  max-width: 28rem;
+  font-size: 1rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.harness-operator__cta {
+  margin: 0;
+}
+
+.harness-operator__add {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--black);
+  background: var(--white);
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.harness-operator__add:hover {
+  text-decoration: none;
+  opacity: 0.92;
+}
+
+.harness-operator__body {
+  padding: var(--space);
+  border-top: 1px solid #2a5c30;
+}
+
+.harness-operator__body h3 {
   font-size: 0.8rem;
   font-family: var(--font-mono);
   font-weight: 600;
@@ -413,49 +472,126 @@ a.harness-logo:hover {
   margin: 1.25rem 0 0.5rem;
 }
 
-.harness-block__logo {
+.harness-operator__body h3:first-of-type {
+  margin-top: 0;
+}
+
+.harness-runtimes {
+  margin: 0 0 2rem;
+}
+
+.harness-runtimes__intro {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  max-width: 44rem;
+}
+
+.harness-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.harness-card {
+  border: 1px solid var(--ghost);
+  padding: 1.25rem;
+  scroll-margin-top: 5rem;
+}
+
+.harness-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin: 0 0 0.85rem;
+}
+
+.harness-card__logo {
   display: block;
   width: 32px;
   height: 32px;
   flex: 0 0 auto;
-  background-color: var(--muted);
+  margin-top: 0.1rem;
+  background-color: var(--white);
   -webkit-mask: var(--logo) center / contain no-repeat;
   mask: var(--logo) center / contain no-repeat;
 }
 
-.harness-block--operator .harness-block__logo-img {
-  display: block;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 auto;
-}
-
-.harness-block--operator .harness-block__tagline {
-  font-size: 1rem;
-  color: var(--muted);
-  margin: 0 0 1rem;
-}
-
-.harness-block--operator .harness-block__cta {
-  margin: 0 0 1.25rem;
-}
-
-.harness-block--operator .harness-block__add {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.6rem 1.35rem;
-  font-size: 0.9rem;
+.harness-card__titles h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--black);
-  background: var(--white);
-  border-radius: 9999px;
-  text-decoration: none;
-  transition: opacity 0.15s;
+  letter-spacing: -0.02em;
 }
 
-.harness-block--operator .harness-block__add:hover {
-  text-decoration: none;
-  opacity: 0.92;
+.harness-card__pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.harness-card__pill code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+
+.harness-card__job {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.harness-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 0.85rem;
+}
+
+.harness-chip {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  border: 1px solid var(--ghost);
+  border-radius: 9999px;
+  line-height: 1.4;
+}
+
+.harness-chip code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+
+.harness-card__run {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.harness-card__run code {
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.harness-card__note {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+@media (min-width: 960px) {
+  .harness-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem 1.5rem;
+  }
 }
 
 .tui-answers {
