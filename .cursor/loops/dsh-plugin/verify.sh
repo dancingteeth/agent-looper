@@ -79,9 +79,23 @@ grep_src() {
 grep_src 'design-loop' || fail "must register skill design-loop"
 grep_src 'install-agent-looper' || fail "must register skill install-agent-looper"
 grep_src 'review-gate' || fail "must register skill review-gate"
+grep_src 'check-running-loops' || fail "must expose skill check-running-loops"
 grep_src 'run-loop-in-dsh' || fail "must register skill run-loop-in-dsh"
 grep_src 'loop-scaffold' || fail "must register command loop-scaffold"
 grep_src 'plugin:agent-looper' || fail "must register system prompt plugin:agent-looper"
+
+step "6b — shared skills symlink SSOT; run-loop-in-dsh is native"
+SSOT="../../agent-looper/skills"
+for skill in design-loop install-agent-looper review-gate check-running-loops; do
+  entry="$PLUGIN_DIR/skills/$skill"
+  [[ -L "$entry" ]] || fail "$entry must be a symlink to agent-looper SSOT"
+  target="$(readlink "$entry")"
+  [[ "$target" == "$SSOT/$skill" ]] || fail "$entry must link to $SSOT/$skill (got $target)"
+  need_file "$PLUGIN_DIR/skills/$skill/SKILL.md"
+done
+native="$PLUGIN_DIR/skills/run-loop-in-dsh"
+[[ -d "$native" && ! -L "$native" ]] || fail "$native must be a real directory (DSH-only skill)"
+need_file "$native/SKILL.md"
 
 step "7 — docs cross-links"
 grep -q 'dsh-plugin.md' docs/cursor-marketplace-plugin.md \

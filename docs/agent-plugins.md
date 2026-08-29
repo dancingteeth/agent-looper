@@ -40,7 +40,7 @@ See [`templates/agent-plugin.example/`](../templates/agent-plugin.example/) for 
 
 Cursor marketplace companion (skills + rules + commands): [`plugins/agent-looper/`](../plugins/agent-looper/) — see [`docs/cursor-marketplace-plugin.md`](./cursor-marketplace-plugin.md).
 
-DeepSeek Harness companion (skills + human command, Cordis bundle): [`plugins/dsh-agent-looper/`](../plugins/dsh-agent-looper/) — see [`docs/dsh-plugin.md`](./dsh-plugin.md).
+DeepSeek Harness companion (skills + human command, Cordis bundle): [`plugins/dsh-agent-looper/`](../plugins/dsh-agent-looper/) — see [`docs/dsh-plugin.md`](./dsh-plugin.md). Shared skill bodies are symlinked from [`plugins/agent-looper/skills/`](../plugins/agent-looper/skills/) (SSOT); only `run-loop-in-dsh` is DSH-native.
 
 ## Spec links
 

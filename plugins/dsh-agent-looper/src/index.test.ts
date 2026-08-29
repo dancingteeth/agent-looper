@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { apply, inject, name } from './index.js'
@@ -76,8 +77,9 @@ describe('dsh-agent-looper plugin', () => {
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'agent-loop --help' } })).toBeUndefined()
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'doppler secrets' } })).toMatch(/Blocked/)
 
-    expect(ctx.skills.register).toHaveBeenCalledTimes(4)
+    expect(ctx.skills.register).toHaveBeenCalledTimes(5)
     expect(registeredSkills.map((s) => s.name).sort()).toEqual([
+      'check-running-loops',
       'design-loop',
       'install-agent-looper',
       'review-gate',
@@ -136,11 +138,31 @@ description: Design loops.
     const skillsDir = resolveSkillsDir('./skills', path.join(pluginRoot, '..'))
     const names = discoverSkills(skillsDir).map((s) => s.name)
     expect(names).toEqual([
+      'check-running-loops',
       'design-loop',
       'install-agent-looper',
       'review-gate',
       'run-loop-in-dsh',
     ])
+  })
+
+  it('links shared skills from agent-looper SSOT; run-loop-in-dsh stays native', () => {
+    const skillsDir = resolveSkillsDir('./skills', path.join(pluginRoot, '..'))
+    const ssotRoot = path.join(pluginRoot, '..', '..', 'agent-looper', 'skills')
+    const shared = ['design-loop', 'install-agent-looper', 'review-gate', 'check-running-loops']
+
+    for (const name of shared) {
+      const entry = path.join(skillsDir, name)
+      expect(fs.lstatSync(entry).isSymbolicLink()).toBe(true)
+      expect(fs.realpathSync(entry)).toBe(path.join(ssotRoot, name))
+      const linked = fs.readFileSync(path.join(entry, 'SKILL.md'), 'utf8')
+      const ssot = fs.readFileSync(path.join(ssotRoot, name, 'SKILL.md'), 'utf8')
+      expect(linked).toBe(ssot)
+    }
+
+    const native = path.join(skillsDir, 'run-loop-in-dsh')
+    expect(fs.lstatSync(native).isSymbolicLink()).toBe(false)
+    expect(fs.existsSync(path.join(native, 'SKILL.md'))).toBe(true)
   })
 })
 

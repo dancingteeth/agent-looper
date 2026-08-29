@@ -39,8 +39,16 @@ export function discoverSkills(skillsDir: string): ParsedSkill[] {
 
   const skills: ParsedSkill[] = []
   for (const entry of fs.readdirSync(skillsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    const skillMd = path.join(skillsDir, entry.name, 'SKILL.md')
+    const entryPath = path.join(skillsDir, entry.name)
+    let stat: fs.Stats
+    try {
+      stat = fs.statSync(entryPath)
+    } catch {
+      continue
+    }
+    if (!stat.isDirectory()) continue
+
+    const skillMd = path.join(entryPath, 'SKILL.md')
     if (!fs.existsSync(skillMd)) continue
     const parsed = parseSkillFile(skillMd, fs.readFileSync(skillMd, 'utf8'))
     if (parsed) skills.push(parsed)

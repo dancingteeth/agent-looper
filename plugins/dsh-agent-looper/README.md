@@ -17,13 +17,18 @@ Guidance for designing and wiring **[Agent Looper](https://www.npmjs.com/package
 | Skill `design-loop` | Freeze measurable `GOAL.md` + `verify.sh` |
 | Skill `install-agent-looper` | npm install, init, scripts (not the grind) |
 | Skill `review-gate` | `postQualityReview` / `reviewGate` without thrash |
-| Skill `run-loop-in-dsh` | After freeze, start `agent-loop` as bash `run_in_background: true` |
+| Skill `check-running-loops` | Is `agent-loop` actually alive vs stale/hung/dead (symlink to Cursor companion SSOT) |
+| Skill `run-loop-in-dsh` | After freeze, start `agent-loop` as bash `run_in_background: true` (DSH-only) |
 | Command `loop-scaffold` | Guided GOAL + verify scaffold (direct UI — not sent to the model) |
 | Prompt + bash guard | Always-on routing; block *foreground* `agent-loop run`; allow background jobs. `runtime: dsh` grinds need **Full Access** (nested headless writes `~/.dsh/profiles/headless/`). |
 
 Shell **`verify`** (via `agent-loop run`) remains the finish line. DSH built-in `/loop` and `/goal` are not the exit wedge.
 
 ## Install locally
+
+Shared skills (`design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops`) are **symlinks** into [`plugins/agent-looper/skills/`](../agent-looper/skills/) — one body per skill. Only `run-loop-in-dsh` is native to this package.
+
+After a fresh clone, if links are missing, run `pnpm skills:link` inside this package (or `node scripts/materialize-skills.mjs link`). `npm pack` / publish runs `prepack` to copy shared skills into the tarball (then `postpack` restores links).
 
 Build JS first (`"main"` is `dist/index.js` — DSH will not load `.ts`). Use **Node ≥ 22.15**.
 

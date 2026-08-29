@@ -16,7 +16,10 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepare": "tsc -p tsconfig.json"
+    "prepare": "tsc -p tsconfig.json",
+    "skills:link": "node scripts/materialize-skills.mjs link",
+    "prepack": "node scripts/materialize-skills.mjs copy",
+    "postpack": "node scripts/materialize-skills.mjs link"
   },
   "keywords": [
     "dsh-plugin",
