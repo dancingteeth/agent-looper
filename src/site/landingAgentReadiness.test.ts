@@ -295,4 +295,66 @@ describe('landing agent readiness', () => {
     expect(html).toContain('tui-answer--alive')
     expect(html).toContain('tui-answer--report')
   })
+
+  it('privacy pages describe cookieless PostHog EU analytics', () => {
+    const html = readSite('privacy/index.html')
+    const md = readSite('privacy/index.md')
+    for (const body of [html, md]) {
+      expect(body).toMatch(/PostHog/i)
+      expect(body).toMatch(/EU|eu\.i\.posthog\.com/i)
+      expect(body).toMatch(/cookieless/i)
+      expect(body).toMatch(/\$pageview|page view/i)
+      expect(body).toContain('install_copy_clicked')
+    }
+  })
+
+  it('site tree has no committed PostHog project keys', () => {
+    function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) walk(full)
+        else {
+          const body = fs.readFileSync(full, 'utf8')
+          expect(body, path.relative(siteRoot, full)).not.toMatch(/phc_/)
+        }
+      }
+    }
+    walk(siteRoot)
+  })
+
+  it('analytics.js uses cookieless PostHog with install copy capture', () => {
+    const js = readSite('analytics.js')
+    expect(js).toContain("cookieless_mode: 'always'")
+    expect(js).toContain('autocapture: false')
+    expect(js).toContain("person_profiles: 'never'")
+    expect(js).toContain('install_copy_clicked')
+    expect(js).toContain('installCopyQueue')
+    expect(js).toContain('flushInstallCopyQueue')
+    expect(js).toMatch(/posthogReady\s*=\s*true/)
+    expect(js).toContain('flushInstallCopyQueue()')
+  })
+
+  it('index.html only emits install copy analytics for install snippet ids', () => {
+    const html = readSite('index.html')
+    const guard = "id === 'install-snippet-agent' || id === 'install-snippet-human'"
+    expect(html).toContain(guard)
+    expect(html.indexOf('looper:install_copy_clicked')).toBeGreaterThan(html.indexOf(guard))
+  })
+
+  it('every HTML page loads analytics.js', () => {
+    const htmlFiles: string[] = []
+    function walk(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) walk(full)
+        else if (entry.name.endsWith('.html')) htmlFiles.push(full)
+      }
+    }
+    walk(siteRoot)
+    expect(htmlFiles.length).toBeGreaterThanOrEqual(6)
+    for (const file of htmlFiles) {
+      const html = fs.readFileSync(file, 'utf8')
+      expect(html, path.relative(siteRoot, file)).toContain('analytics.js')
+    }
+  })
 })
