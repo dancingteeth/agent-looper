@@ -317,6 +317,12 @@ code {
 .tui-loop-line.fail { color: var(--terracotta); }
 .tui-loop-line.pass { color: var(--verify); }
 
+.tui-beat {
+  color: var(--muted);
+  margin: 0.65rem 0 0;
+  font-size: 0.92rem;
+}
+
 .harness-logos {
   display: flex;
   flex-wrap: wrap;
@@ -379,6 +385,8 @@ code {
 .tui-answer--budget { border-left-color: var(--verify); }
 .tui-answer--escalation { border-left-color: var(--ghost); }
 .tui-answer--reverse { border-left-color: var(--terracotta); }
+.tui-answer--alive { border-left-color: var(--verify); }
+.tui-answer--report { border-left-color: var(--tan); }
 
 .tui-answer h2 {
   font-size: 1.05rem;

@@ -123,7 +123,7 @@
             "name": "What happens if Agent Looper's worker is stuck?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Agent Looper starts with the cheap worker. If the same check keeps failing, it steps up thinking where the harness supports it, then switches to a stronger model. Not Auto — a planned ladder after a stuck check, not a new pick every turn."
+              "text": "Starts cheap. Same check keeps failing → more thinking, then a stronger model. If the worker hangs or times out, it switches right away — it does not wait for the stuck-check count. Not Auto. A planned ladder."
             }
           },
           {
@@ -132,6 +132,22 @@
             "acceptedAnswer": {
               "@type": "Answer",
               "text": "Forward implements, then checks. Reverse starts from a red check and repairs. Clean-room: rebuild toward the frozen goal from tests and the public API. Don't copy the broken internals."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I know if a loop is still alive?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The IDE job list will lie. Ask your agent to use the check-running-loops skill. It looks at the harness process, not a spinner that stays green after the process died."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What do I get when a loop finishes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A report card, not a chat dump. How often the check sent work back, whether the worker hung, whether the judge bounced it, what it cost, and whether it needed you."
             }
           }
         ]
@@ -183,7 +199,7 @@
     ]
   }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260828-reverse">
+  <link rel="stylesheet" href="styles.css?v=20260829-045">
 </head>
 <body>
   <header class="site-header">
@@ -255,6 +271,7 @@
           </p>
           <p class="tui-loop-line fail">fail → fresh worker</p>
           <p class="tui-loop-line pass">pass → done</p>
+          <p class="tui-beat">If it hangs, it switches. Wonder if it's alive? There's a skill. When it finishes, you get a report card.</p>
         </div>
         <div class="harness-logos" aria-label="Works with coding agent harnesses">
           <div class="harness-logo">
@@ -307,14 +324,25 @@
           <article class="tui-answer tui-answer--escalation">
             <h2>What happens if Agent Looper's worker is stuck?</h2>
             <p>
-              Agent Looper starts with the cheap worker. If the same check keeps failing, it steps up thinking where the harness supports it, then switches to a stronger model.
-              Not Auto — a planned ladder after a stuck check, not a new pick every turn.
+              Starts cheap. Same check keeps failing → more thinking, then a stronger model. If the worker hangs or times out, it switches right away — it does not wait for the stuck-check count. Not Auto. A planned ladder.
             </p>
           </article>
           <article class="tui-answer tui-answer--reverse">
             <h2>What if the code is already broken?</h2>
             <p>
               Forward implements, then checks. Reverse starts from a red check and repairs. Clean-room: rebuild toward the frozen goal from tests and the public API. Don't copy the broken internals.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--alive">
+            <h2>How do I know if a loop is still alive?</h2>
+            <p>
+              The IDE job list will lie. Ask your agent to use the check-running-loops skill. It looks at the harness process, not a spinner that stays green after the process died.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--report">
+            <h2>What do I get when a loop finishes?</h2>
+            <p>
+              A report card, not a chat dump. How often the check sent work back, whether the worker hung, whether the judge bounced it, what it cost, and whether it needed you.
             </p>
           </article>
         </div>

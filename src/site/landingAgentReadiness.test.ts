@@ -246,4 +246,53 @@ describe('landing agent readiness', () => {
       "Don't copy the broken internals",
     )
   })
+
+  it('names 0.4.5 hang switch, alive skill, and report card in HTML, markdown, and JSON-LD', () => {
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    const graph = jsonLdGraph(html)
+
+    const faq = graph.find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as {
+      mainEntity?: Array<{
+        name?: string
+        acceptedAnswer?: { text?: string }
+      }>
+    }
+
+    const stuckQuestion = faq?.mainEntity?.find(
+      (q) => q.name === "What happens if Agent Looper's worker is stuck?",
+    )
+    const aliveQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'How do I know if a loop is still alive?',
+    )
+    const reportQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'What do I get when a loop finishes?',
+    )
+
+    const hangSwitch =
+      'switches right away — it does not wait for the stuck-check count'
+    const aliveSkill = 'check-running-loops'
+    const reportCard = 'report card'
+
+    for (const surface of [html, md] as const) {
+      expect(surface).toContain(hangSwitch)
+      expect(surface).toContain(aliveSkill)
+      expect(surface.toLowerCase()).toContain(reportCard)
+    }
+
+    expect(stuckQuestion?.acceptedAnswer?.text).toContain(hangSwitch)
+    expect(aliveQuestion?.acceptedAnswer?.text).toContain(aliveSkill)
+    expect(aliveQuestion?.acceptedAnswer?.text).toContain('IDE job list will lie')
+    expect(reportQuestion?.acceptedAnswer?.text?.toLowerCase()).toContain(
+      reportCard,
+    )
+
+    expect(html).toContain('tui-answer--alive')
+    expect(html).toContain('tui-answer--report')
+  })
 })

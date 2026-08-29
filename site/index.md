@@ -20,11 +20,19 @@ Agent Looper is how indie builders get to handoff or production-ready without bu
 
 ## What happens if Agent Looper's worker is stuck?
 
-Agent Looper starts with the cheap worker. If the same check keeps failing, it steps up thinking where the harness supports it, then switches to a stronger model. Not Auto — a planned ladder after a stuck check, not a new pick every turn.
+Starts cheap. Same check keeps failing → more thinking, then a stronger model. If the worker hangs or times out, it switches right away — it does not wait for the stuck-check count. Not Auto. A planned ladder.
 
 ## What if the code is already broken?
 
 Forward implements, then checks. Reverse starts from a red check and repairs. Clean-room: rebuild toward the frozen goal from tests and the public API. Don't copy the broken internals.
+
+## How do I know if a loop is still alive?
+
+The IDE job list will lie. Ask your agent to use the check-running-loops skill. It looks at the harness process, not a spinner that stays green after the process died.
+
+## What do I get when a loop finishes?
+
+A report card, not a chat dump. How often the check sent work back, whether the worker hung, whether the judge bounced it, what it cost, and whether it needed you.
 
 ## How is Agent Looper different from looping in chat?
 
