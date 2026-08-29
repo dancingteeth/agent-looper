@@ -172,6 +172,25 @@ BLOCKERS
     expect(reviewGateBlocksCompletion(parsed)).toBe(true)
   })
 
+  it('parses PASS from a compact pipe-row reminder copy', () => {
+    const parsed = parseReviewMarkdown(`# Post-loop quality review
+
+### Risk | ### What could go wrong? | ### Review depth | ### Verdict (PASS | ADVISORY | BLOCKERS) | ### Blockers | ### Advisory | optional Code judo / Nits
+LOW (static site CSS / docs) | Additive CSS using tokens. | Skim — 3 rule blocks. | PASS | — | — | Nit: logo size duplicates img attrs.
+
+**Verification:** verify.sh exit 0.
+`)
+    expect(parsed.verdict).toBe('PASS')
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(true)
+  })
+
+  it('does not treat the compact header enum as the verdict', () => {
+    const parsed = parseReviewMarkdown(`### Risk | ### Verdict (PASS | ADVISORY | BLOCKERS)
+MEDIUM — auth | BLOCKERS
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+  })
+
   it('parses singular BLOCKER headline as BLOCKERS', () => {
     const parsed = parseReviewMarkdown(`### Risk
 **HIGH**

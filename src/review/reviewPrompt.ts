@@ -26,8 +26,15 @@ ${buildRiskTriageStepFromKeywords(keywords)}
 }
 
 export function buildReviewOutputFormatReminder(): string {
-  return `Output **markdown only**:
-### Risk | ### What could go wrong? | ### Review depth | ### Verdict (PASS | ADVISORY | BLOCKERS) | ### Blockers | ### Advisory | optional Code judo / Nits.
+  return `Output **markdown only**. Put each heading on its own line — not one pipe-separated row. The parser reads \`### Verdict\`, not a table header.
+### Risk
+### What could go wrong?
+### Review depth
+### Verdict
+PASS, ADVISORY, or BLOCKERS (first token on this line).
+### Blockers
+### Advisory
+optional Code judo / Nits.
 
 **Blocker contract (required for ### Blockers bullets):**
 - Start each bullet with \`severity: error|warning\` and \`impact: <tag>\`.

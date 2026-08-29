@@ -115,6 +115,33 @@ function parseVerdict(section: string | null): ReviewVerdict {
   return 'UNKNOWN'
 }
 
+/**
+ * Compact reminder row some judges copy literally:
+ * `### Risk | … | ### Verdict (PASS | ADVISORY | BLOCKERS) | …`
+ * That line is not a `### Verdict` heading, so extractSection misses it.
+ * Take the next pipe row and read a short PASS/ADVISORY/BLOCKERS cell.
+ */
+function parseCompactTableVerdict(text: string): ReviewVerdict {
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const header = lines[i]!
+    if (!header.includes('|') || !/###\s*Verdict/i.test(header)) continue
+    for (let j = i + 1; j < lines.length; j++) {
+      const row = lines[j]!.trim()
+      if (!row) continue
+      if (!row.includes('|')) return 'UNKNOWN'
+      for (const cell of row.split('|')) {
+        const normalized = normalizeVerdictLine(cell)
+        if (!normalized || normalized.length > 24) continue
+        const verdict = tokenToVerdict(normalized.toUpperCase())
+        if (verdict) return verdict
+      }
+      return 'UNKNOWN'
+    }
+  }
+  return 'UNKNOWN'
+}
+
 function isEmptyBlockersDeclaration(item: string): boolean {
   const plain = item.replace(/\*\*/g, '').trim().toLowerCase()
   return (
@@ -208,9 +235,10 @@ export function parseReviewMarkdown(text: string): ParsedReview {
   const riskSection = extractSection(text, 'Risk')
   const verdictSection = extractSection(text, 'Verdict')
   const blockersSection = extractSection(text, 'Blockers')
+  const fromHeading = parseVerdict(verdictSection)
 
   return {
-    verdict: parseVerdict(verdictSection),
+    verdict: fromHeading !== 'UNKNOWN' ? fromHeading : parseCompactTableVerdict(text),
     risk: parseRisk(riskSection),
     blockers: parseBlockers(blockersSection),
   }

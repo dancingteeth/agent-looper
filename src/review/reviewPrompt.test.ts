@@ -7,6 +7,19 @@ import {
 } from './reviewPrompt.js'
 
 describe('reviewPrompt', () => {
+  it('asks for a ### Verdict heading, not a compact pipe row', () => {
+    const ctx = resolveRepoContext()
+    const prompt = buildQualityReviewPrompt({
+      ctx,
+      context: 'Test context',
+      diffStat: '1 file changed',
+    })
+    expect(prompt).toContain('### Verdict')
+    expect(prompt).not.toContain(
+      '### Risk | ### What could go wrong? | ### Review depth | ### Verdict',
+    )
+  })
+
   it('puts risk triage before repository review standards in shared prompt', () => {
     const ctx = resolveRepoContext()
     const prompt = buildQualityReviewPrompt({
