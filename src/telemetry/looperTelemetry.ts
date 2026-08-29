@@ -195,12 +195,14 @@ export function captureLooperTelemetry(input: CaptureLooperTelemetryInput): void
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 2_000)
+    timeout.unref()
 
     void fetchImpl(POSTHOG_EU_CAPTURE_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
       signal: controller.signal,
+      keepalive: true,
     })
       .catch(() => {
         // fail open

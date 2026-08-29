@@ -21,6 +21,15 @@ import {
 
 const envKeys = [TELEMETRY_ENABLED_ENV, POSTHOG_PROJECT_API_KEY_ENV, POSTHOG_KEY_FALLBACK_ENV]
 
+function firstFetchCallInit(fetchImpl: ReturnType<typeof vi.fn>): RequestInit | undefined {
+  const firstCall = fetchImpl.mock.calls[0] as unknown as [string, RequestInit] | undefined
+  return firstCall?.[1]
+}
+
+function parseFetchBody(fetchImpl: ReturnType<typeof vi.fn>): unknown {
+  return JSON.parse(String(firstFetchCallInit(fetchImpl)?.body ?? ''))
+}
+
 afterEach(() => {
   for (const key of envKeys) delete process.env[key]
   resetLooperTelemetryStateForTest()
@@ -154,7 +163,7 @@ describe('captureLooperTelemetry', () => {
         headers: { 'content-type': 'application/json' },
       }),
     )
-    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as {
+    const body = parseFetchBody(fetchImpl) as {
       event: string
       api_key: string
       properties: Record<string, unknown>
@@ -182,7 +191,7 @@ describe('captureLooperTelemetry', () => {
         }),
       ).not.toThrow()
       await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalled())
-      const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as {
+      const body = parseFetchBody(fetchImpl) as {
         properties: Record<string, unknown>
       }
       expect(body.properties.package_version).toBeUndefined()
