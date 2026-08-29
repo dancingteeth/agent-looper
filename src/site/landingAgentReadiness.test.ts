@@ -371,7 +371,7 @@ describe('landing agent readiness', () => {
     expect(htmlFiles.length).toBeGreaterThanOrEqual(6)
     for (const file of htmlFiles) {
       const html = fs.readFileSync(file, 'utf8')
-      expect(html, path.relative(siteRoot, file)).toContain('analytics.js')
+      expect(html, path.relative(siteRoot, file)).toMatch(/analytics\.js\?v=/)
     }
   })
 })
