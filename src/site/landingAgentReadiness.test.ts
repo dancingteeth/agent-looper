@@ -323,7 +323,7 @@ describe('landing agent readiness', () => {
     walk(siteRoot)
   })
 
-  it('analytics.js uses cookieless PostHog with install copy capture', () => {
+  it('analytics.js uses cookieless PostHog with install copy and Grok Bot add capture', () => {
     const js = readSite('analytics.js')
     expect(js).toContain("cookieless_mode: 'always'")
     expect(js).toContain('autocapture: false')
@@ -331,8 +331,13 @@ describe('landing agent readiness', () => {
     expect(js).toContain('install_copy_clicked')
     expect(js).toContain('installCopyQueue')
     expect(js).toContain('flushInstallCopyQueue')
+    expect(js).toContain('grok_bot_add_clicked')
+    expect(js).toContain('grokBotAddQueue')
+    expect(js).toContain('flushGrokBotAddQueue')
+    expect(js).toContain('#grok-bot-add')
     expect(js).toMatch(/posthogReady\s*=\s*true/)
     expect(js).toContain('flushInstallCopyQueue()')
+    expect(js).toContain('flushGrokBotAddQueue()')
   })
 
   it('index.html only emits install copy analytics for install snippet ids', () => {
