@@ -396,6 +396,24 @@ describe('landing agent readiness', () => {
     expect(md).toContain('looper-bot.png')
   })
 
+  it('Cline runtime card names Cursor judge, not Composer', () => {
+    const html = readSite('harnesses/index.html')
+    const clineCard =
+      html.match(/<article class="harness-card" id="cline">[\s\S]*?<\/article>/)?.[0] ?? ''
+    expect(clineCard).toContain('reviewRuntime: cline')
+    expect(clineCard).toMatch(/Judge Cursor/)
+    expect(clineCard).not.toMatch(/Composer/i)
+
+    const md = readSite('harnesses/index.md')
+    const clineSection = md.slice(
+      md.indexOf('### Cline'),
+      md.indexOf('### OpenCode'),
+    )
+    expect(clineSection).toContain('`reviewRuntime: cline`')
+    expect(clineSection).toMatch(/Judge: Cursor/)
+    expect(clineSection).not.toMatch(/Composer/i)
+  })
+
   it('help section leads with dep, issues, optional telemetry, and Ko-fi', () => {
     const html = readSite('index.html')
     expect(html).toContain('id="help"')
