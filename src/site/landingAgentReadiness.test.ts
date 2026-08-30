@@ -396,22 +396,26 @@ describe('landing agent readiness', () => {
     expect(md).toContain('looper-bot.png')
   })
 
-  it('Cline runtime card names Cursor judge, not Composer', () => {
+  it('Cline runtime card describes judge as optional, not a Cursor default', () => {
     const html = readSite('harnesses/index.html')
     const clineCard =
       html.match(/<article class="harness-card" id="cline">[\s\S]*?<\/article>/)?.[0] ?? ''
-    expect(clineCard).toContain('reviewRuntime: cline')
-    expect(clineCard).toMatch(/Judge Cursor/)
+    expect(clineCard).toMatch(/any runtime/i)
+    expect(clineCard).toMatch(/optional/i)
     expect(clineCard).not.toMatch(/Composer/i)
+    expect(clineCard).not.toMatch(/Judge Cursor/)
+    expect(clineCard).not.toMatch(/reviewRuntime:\s*cline/i)
 
     const md = readSite('harnesses/index.md')
     const clineSection = md.slice(
       md.indexOf('### Cline'),
       md.indexOf('### OpenCode'),
     )
-    expect(clineSection).toContain('`reviewRuntime: cline`')
-    expect(clineSection).toMatch(/Judge: Cursor/)
+    expect(clineSection).toMatch(/any runtime/i)
+    expect(clineSection).toMatch(/optional/i)
     expect(clineSection).not.toMatch(/Composer/i)
+    expect(clineSection).not.toMatch(/Judge: Cursor/)
+    expect(clineSection).not.toMatch(/reviewRuntime:\s*cline/i)
   })
 
   it('help section leads with dep, issues, optional telemetry, and Ko-fi', () => {

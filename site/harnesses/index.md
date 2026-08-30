@@ -48,7 +48,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 - `cline-pass` worker: `cline-pass/deepseek-v4-flash` → `qwen3.7-plus`
 - `cline` worker: `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus`
-- Judge: Cursor, or `reviewRuntime: cline`
+- Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass --review-gate` (or `--runtime cline` for credits)
 
 ### OpenCode (`--runtime opencode`)
