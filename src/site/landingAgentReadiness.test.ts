@@ -161,12 +161,20 @@ describe('landing agent readiness', () => {
     )
     expect(agentPanel).toContain('Set up Agent Looper in this repo')
     expect(agentPanel).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+    expect(agentPanel).toContain(
+      'Keep @dancingteeth/agent-looper in package.json even if you gitignore',
+    )
+    expect(agentPanel).toContain("Don't only npx it.")
 
     const humanSnippet = html.slice(
       html.indexOf('id="install-snippet-human"'),
       html.indexOf('</pre>', html.indexOf('id="install-snippet-human"')),
     )
     expect(humanSnippet).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
+    expect(humanSnippet).toContain(
+      '# keep @dancingteeth/agent-looper in package.json even if .cursor/loops is gitignored',
+    )
+    expect(humanSnippet).toContain("don't only npx it")
     expect(humanSnippet).toContain('export CURSOR_API_KEY=…   # or: doppler run -- …')
     expect(humanSnippet).toContain('pnpm exec agent-loop-init')
     expect(humanSnippet).toContain(
@@ -185,6 +193,12 @@ describe('landing agent readiness', () => {
     expect(humanIdx).toBeGreaterThan(agentIdx)
     expect(md).toContain('pnpm add -D @dancingteeth/agent-looper @cursor/sdk')
     expect(md).toContain("Don't loop on subjective taste.")
+    expect(md).toContain(
+      'Keep @dancingteeth/agent-looper in package.json even if you gitignore',
+    )
+    expect(md).toContain(
+      '# keep @dancingteeth/agent-looper in package.json even if .cursor/loops is gitignored',
+    )
   })
 
   it('every HTML page cache-busts styles.css when linked', () => {

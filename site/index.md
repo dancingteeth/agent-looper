@@ -58,13 +58,14 @@ Set up Agent Looper in this repo for the feature I want. I don't want to babysit
 Requirements: Node 22+ and pnpm.
 
 1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH).
-2. Use an API key already on this machine, or run under Doppler. Don't invent keys.
-3. Run: pnpm exec agent-loop-init
-4. Write GOAL.md for the feature and freeze it. Don't rewrite the goal mid-loop.
-5. Write a determined check until `bash verify.sh` is an honest pass/fail that the feature actually works. The model does not get to say done.
-6. Start the loop:
+2. Keep @dancingteeth/agent-looper in package.json even if you gitignore `.cursor/loops`. Don't only npx it.
+3. Use an API key already on this machine, or run under Doppler. Don't invent keys.
+4. Run: pnpm exec agent-loop-init
+5. Write GOAL.md for the feature and freeze it. Don't rewrite the goal mid-loop.
+6. Write a determined check until `bash verify.sh` is an honest pass/fail that the feature actually works. The model does not get to say done.
+7. Start the loop:
    pnpm exec agent-loop run .cursor/loops/<task> --runtime <cursor|cline|opencode|pi|codex|dsh> --review-gate
-7. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
+8. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
 
 Cursor example (swap the SDK, key, and --runtime if this machine isn't Cursor):
 
@@ -83,6 +84,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 
 ```bash
 pnpm add -D @dancingteeth/agent-looper @cursor/sdk
+# keep @dancingteeth/agent-looper in package.json even if .cursor/loops is gitignored — don't only npx it
 
 export CURSOR_API_KEY=…   # or: doppler run -- …
 
