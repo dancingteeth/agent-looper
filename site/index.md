@@ -93,6 +93,16 @@ pnpm exec agent-loop-init
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
 
+## If this is useful
+
+This tool is free. We keep building it when the community actually uses it and tells us when it's broken.
+
+1. Keep `@dancingteeth/agent-looper` in public `package.json` even if you gitignore the loop folder. Don't only npx it.
+2. Open an issue or a PR when you hit a gap or a bug — https://github.com/dancingteeth/agent-looper/issues
+3. Optional: `AGENT_LOOPER_TELEMETRY=1` so we see real runs, not just npm noise. Off by default. [Privacy](https://looper.dancingteeth.net/privacy/).
+
+[Support on Ko-fi](https://ko-fi.com/dancingteeth)
+
 ## More
 
 - [llms.txt](https://looper.dancingteeth.net/llms.txt)

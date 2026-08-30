@@ -199,7 +199,7 @@
     ]
   }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260830-bot">
+  <link rel="stylesheet" href="styles.css?v=20260830-help">
 </head>
 <body>
   <header class="site-header">
@@ -506,6 +506,29 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
       </div>
     </section>
 
+    <section class="section help" id="help">
+      <div class="wrap">
+        <h2>If this is useful</h2>
+        <p class="section-intro">
+          This tool is free. We keep building it when the community actually uses it and tells us when it's broken.
+        </p>
+        <ol class="help-list">
+          <li>Keep <code>@dancingteeth/agent-looper</code> in public <code>package.json</code> even if you gitignore the loop folder. Don't only npx it.</li>
+          <li>Open an issue or a PR when you hit a gap or a bug — <a href="https://github.com/dancingteeth/agent-looper/issues">github.com/dancingteeth/agent-looper/issues</a></li>
+          <li>Optional: <code>AGENT_LOOPER_TELEMETRY=1</code> so we see real runs, not just npm noise. Off by default. <a href="privacy/">Privacy</a>.</li>
+        </ol>
+        <a class="kofi-btn" href="https://ko-fi.com/dancingteeth" target="_blank" rel="noopener noreferrer">
+          <span class="kofi-btn__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/></svg>
+          </span>
+          <span class="kofi-btn__text">
+            <span class="kofi-btn__label">Support on</span>
+            <span class="kofi-btn__brand">Ko-fi</span>
+          </span>
+        </a>
+      </div>
+    </section>
+
     <section class="section section-alt" id="runtimes">
       <div class="wrap">
         <h2>Workers &amp; judge</h2>
@@ -543,6 +566,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
         <a href="harnesses/">Harnesses</a> ·
         <a href="contact/">Contact</a> ·
         <a href="privacy/">Privacy</a> ·
+        <a href="https://ko-fi.com/dancingteeth">Ko-fi</a> ·
         <a href="docs/">Docs</a> ·
         <a href="llms.txt">llms.txt</a>
       </p>
