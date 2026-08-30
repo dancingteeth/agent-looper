@@ -396,6 +396,56 @@ describe('landing agent readiness', () => {
     expect(md).toContain('looper-bot.png')
   })
 
+  it('Cline runtime card describes judge as optional, not a Cursor default', () => {
+    const html = readSite('harnesses/index.html')
+    const clineCard =
+      html.match(/<article class="harness-card" id="cline">[\s\S]*?<\/article>/)?.[0] ?? ''
+    expect(clineCard).toMatch(/any runtime/i)
+    expect(clineCard).toMatch(/optional/i)
+    expect(clineCard).not.toMatch(/Composer/i)
+    expect(clineCard).not.toMatch(/Judge Cursor/)
+    expect(clineCard).not.toMatch(/reviewRuntime:\s*cline/i)
+
+    const md = readSite('harnesses/index.md')
+    const clineSection = md.slice(
+      md.indexOf('### Cline'),
+      md.indexOf('### OpenCode'),
+    )
+    expect(clineSection).toMatch(/any runtime/i)
+    expect(clineSection).toMatch(/optional/i)
+    expect(clineSection).not.toMatch(/Composer/i)
+    expect(clineSection).not.toMatch(/Judge: Cursor/)
+    expect(clineSection).not.toMatch(/reviewRuntime:\s*cline/i)
+  })
+
+  it('OpenCode, Pi, and Codex runtime cards describe judge as optional, not a Cursor default', () => {
+    const html = readSite('harnesses/index.html')
+    const md = readSite('harnesses/index.md')
+    const cases = [
+      { id: 'opencode', mdHeading: '### OpenCode', mdEnd: '### Pi' },
+      { id: 'pi', mdHeading: '### Pi', mdEnd: '### Codex' },
+      { id: 'codex', mdHeading: '### Codex', mdEnd: undefined },
+    ] as const
+
+    for (const { id, mdHeading, mdEnd } of cases) {
+      const card =
+        html.match(
+          new RegExp(`<article class="harness-card" id="${id}">[\\s\\S]*?<\\/article>`),
+        )?.[0] ?? ''
+      expect(card, id).toMatch(/any runtime/i)
+      expect(card, id).toMatch(/optional/i)
+      expect(card, id).not.toMatch(/Judge Cursor/)
+      expect(card, id).not.toMatch(new RegExp(`reviewRuntime:\\s*${id}`, 'i'))
+
+      const mdStart = md.indexOf(mdHeading)
+      const mdSlice = mdEnd ? md.slice(mdStart, md.indexOf(mdEnd)) : md.slice(mdStart)
+      expect(mdSlice, id).toMatch(/any runtime/i)
+      expect(mdSlice, id).toMatch(/optional/i)
+      expect(mdSlice, id).not.toMatch(/Judge: Cursor/)
+      expect(mdSlice, id).not.toMatch(new RegExp(`reviewRuntime:\\s*${id}`, 'i'))
+    }
+  })
+
   it('help section leads with dep, issues, optional telemetry, and Ko-fi', () => {
     const html = readSite('index.html')
     expect(html).toContain('id="help"')
