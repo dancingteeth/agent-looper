@@ -923,6 +923,74 @@ a.harness-logo:hover {
   margin: 0;
 }
 
+.help-list {
+  max-width: 44rem;
+  margin: 0 0 1.75rem;
+  padding-left: 1.35rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.help-list li {
+  margin: 0 0 0.55rem;
+}
+
+.help-list li:last-child {
+  margin-bottom: 0;
+}
+
+.kofi-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--ghost);
+  color: var(--white);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 12.5rem;
+}
+
+.kofi-btn:hover {
+  text-decoration: none;
+  border-color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.kofi-btn__icon {
+  display: flex;
+  padding: 0.5rem;
+  border: 1px solid var(--ghost);
+  color: var(--tan);
+  flex-shrink: 0;
+}
+
+.kofi-btn__icon svg {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.kofi-btn__text {
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+}
+
+.kofi-btn__label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.kofi-btn__brand {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .site-footer {
   padding: 2.5rem 0;
   border-top: 1px solid var(--ghost);

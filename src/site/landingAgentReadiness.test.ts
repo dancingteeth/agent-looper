@@ -396,6 +396,45 @@ describe('landing agent readiness', () => {
     expect(md).toContain('looper-bot.png')
   })
 
+  it('help section leads with dep, issues, optional telemetry, and Ko-fi', () => {
+    const html = readSite('index.html')
+    expect(html).toContain('id="help"')
+    expect(html).toContain('public <code>package.json</code>')
+    expect(html).toContain('gitignore')
+    expect(html).toContain('AGENT_LOOPER_TELEMETRY=1')
+    expect(html).toContain('https://ko-fi.com/dancingteeth')
+    expect(html).toContain('class="kofi-btn"')
+
+    const footer = html.slice(html.indexOf('class="site-footer"'))
+    expect(footer).toContain('https://ko-fi.com/dancingteeth')
+
+    const md = readSite('index.md')
+    expect(md).toContain('## If this is useful')
+    expect(md).toContain('package.json')
+    expect(md).toContain('gitignore')
+    expect(md).toContain('AGENT_LOOPER_TELEMETRY=1')
+    expect(md).toContain('https://ko-fi.com/dancingteeth')
+  })
+
+  it('footer Ko-fi link on every page with site-footer', () => {
+    const pages = [
+      'index.html',
+      'about/index.html',
+      'contact/index.html',
+      'docs/index.html',
+      'privacy/index.html',
+      'harnesses/index.html',
+      '404.html',
+    ]
+    for (const page of pages) {
+      const html = readSite(page)
+      expect(html, page).toContain('class="site-footer"')
+      const footer = html.slice(html.indexOf('class="site-footer"'))
+      expect(footer, page).toContain('https://ko-fi.com/dancingteeth')
+      expect(footer, page).toMatch(/Privacy[\s\S]{0,120}Ko-fi/)
+    }
+  })
+
   it('every HTML page loads analytics.js', () => {
     const htmlFiles: string[] = []
     function walk(dir: string) {
