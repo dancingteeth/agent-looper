@@ -368,9 +368,15 @@ describe('landing agent readiness', () => {
     const md = readSite('harnesses/index.md')
     expect(md).toContain('https://x.ai/bot/AETdGbRRNWfckrRGv22LD')
     expect(md).toContain('[Add to Grok Bot]')
-    expect(md).toContain(
-      'Runs Agent Looper on your computer. Frozen goal, determined check, fresh worker every round.',
-    )
+    const operatorTagline =
+      "You say what to build and how to know it's done. It keeps a coding agent working on your computer until that check passes."
+    expect(html).toContain(operatorTagline)
+    expect(md).toContain(operatorTagline)
+    const taglineText =
+      html.match(/class="harness-operator__tagline">([^<]+)/)?.[1]?.trim() ?? ''
+    expect(taglineText).toBe(operatorTagline)
+    expect(taglineText).not.toMatch(/\bloop\b/i)
+    expect(taglineText).not.toMatch(/fresh worker/i)
     expect(md).toContain('## Operator — Agent Looper Grok Bot')
     expect(md).toContain('## Runtimes')
     expect(md).toContain('looper-bot.png')
