@@ -58,4 +58,4 @@ Loads the Agent Plugins `plugin.json` + `skills/*/SKILL.md` into worker prompts 
 
 ## DeepSeek Harness twin
 
-The same three skills and a `loop-scaffold` command ship as a DSH Cordis bundle at [`plugins/dsh-agent-looper/`](../plugins/dsh-agent-looper/) — see [`docs/dsh-plugin.md`](./dsh-plugin.md).
+The same shared skills (materialized copies) plus DSH-only `run-loop-in-dsh` and a `loop-scaffold` command ship as a DSH Cordis bundle at [`plugins/dsh-agent-looper/`](../plugins/dsh-agent-looper/) — see [`docs/dsh-plugin.md`](./dsh-plugin.md). Shared skill bodies live only under `plugins/agent-looper/skills/`.

@@ -14,10 +14,11 @@ Guidance for designing and wiring **[Agent Looper](https://www.npmjs.com/package
 
 | Component | Purpose |
 | --- | --- |
-| Skill `design-loop` | Freeze measurable `GOAL.md` + `verify.sh` |
+| Skill `design-loop` | Freeze measurable `GOAL.md` + `verify.sh` (SSOT body + DSH overlay at register time) |
 | Skill `install-agent-looper` | npm install, init, scripts (not the grind) |
 | Skill `review-gate` | `postQualityReview` / `reviewGate` without thrash |
-| Skill `run-loop-in-dsh` | After freeze, start `agent-loop` as bash `run_in_background: true` |
+| Skill `check-running-loops` | Is `agent-loop` actually alive vs stale/hung/dead (copied from Cursor companion SSOT) |
+| Skill `run-loop-in-dsh` | After freeze, start `agent-loop` as bash `run_in_background: true` (DSH-only) |
 | Command `loop-scaffold` | Guided GOAL + verify scaffold (direct UI — not sent to the model) |
 | Prompt + bash guard | Always-on routing; block *foreground* `agent-loop run`; allow background jobs. `runtime: dsh` grinds need **Full Access** (nested headless writes `~/.dsh/profiles/headless/`). |
 
@@ -25,11 +26,23 @@ Shell **`verify`** (via `agent-loop run`) remains the finish line. DSH built-in 
 
 ## Install locally
 
-Build JS first (`"main"` is `dist/index.js` — DSH will not load `.ts`). Use **Node ≥ 22.15**.
+Shared skills (`design-loop`, `install-agent-looper`, `review-gate`, `check-running-loops`) are **copied** from [`plugins/agent-looper/skills/`](../agent-looper/skills/) (SSOT) into this package by `scripts/materialize-skills.mjs`. Only `run-loop-in-dsh` is native and committed in git. DSH-only text for `design-loop` lives in [`overlays/design-loop.md`](overlays/design-loop.md) and is appended when the plugin registers the skill (SSOT `SKILL.md` on disk is unchanged).
+
+**Before** `dsh plugin add` or `npm pack`, materialize real in-tree skill files (symlinks are not valid for pack/add):
+
+```bash
+node plugins/dsh-agent-looper/scripts/materialize-skills.mjs
+# or: pnpm --dir plugins/dsh-agent-looper skills:materialize
+```
+
+`prepare` / `prepack` run this automatically when installing or publishing the plugin package.
+
+Build JS (`"main"` is `dist/index.js` — DSH will not load `.ts`). Use **Node ≥ 22.15**.
 
 From this repository checkout (plugin package has no local `tsc` — use the repo TypeScript):
 
 ```bash
+node plugins/dsh-agent-looper/scripts/materialize-skills.mjs
 pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json
 dsh plugin --profile web add ./plugins/dsh-agent-looper
 dsh web

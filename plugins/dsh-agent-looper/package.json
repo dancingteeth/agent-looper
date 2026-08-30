@@ -9,14 +9,17 @@
   "files": [
     "dist",
     "skills",
+    "overlays",
     "cordis.patch.yml"
   ],
   "engines": {
     "node": ">=22.15.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "prepare": "tsc -p tsconfig.json"
+    "build": "node scripts/materialize-skills.mjs && tsc -p tsconfig.json",
+    "prepare": "node scripts/materialize-skills.mjs && tsc -p tsconfig.json",
+    "skills:materialize": "node scripts/materialize-skills.mjs",
+    "prepack": "node scripts/materialize-skills.mjs"
   },
   "keywords": [
     "dsh-plugin",

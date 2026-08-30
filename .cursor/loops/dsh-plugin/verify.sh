@@ -79,9 +79,25 @@ grep_src() {
 grep_src 'design-loop' || fail "must register skill design-loop"
 grep_src 'install-agent-looper' || fail "must register skill install-agent-looper"
 grep_src 'review-gate' || fail "must register skill review-gate"
+grep_src 'check-running-loops' || fail "must expose skill check-running-loops"
 grep_src 'run-loop-in-dsh' || fail "must register skill run-loop-in-dsh"
 grep_src 'loop-scaffold' || fail "must register command loop-scaffold"
 grep_src 'plugin:agent-looper' || fail "must register system prompt plugin:agent-looper"
+
+step "6b — shared skills materialized as real files (no symlinks)"
+node "$PLUGIN_DIR/scripts/materialize-skills.mjs"
+node --input-type=module -e "
+  import { verifyMaterializedSkillsLayout } from './$PLUGIN_DIR/scripts/skills-layout.mjs';
+  verifyMaterializedSkillsLayout();
+"
+native="$PLUGIN_DIR/skills/run-loop-in-dsh"
+[[ -d "$native" && ! -L "$native" ]] || fail "$native must be a real directory (DSH-only skill)"
+need_file "$native/SKILL.md"
+for skill in design-loop install-agent-looper review-gate check-running-loops; do
+  entry="$PLUGIN_DIR/skills/$skill"
+  [[ -d "$entry" && ! -L "$entry" ]] || fail "$entry must be a materialized directory (not a symlink)"
+  need_file "$PLUGIN_DIR/skills/$skill/SKILL.md"
+done
 
 step "7 — docs cross-links"
 grep -q 'dsh-plugin.md' docs/cursor-marketplace-plugin.md \
@@ -96,5 +112,6 @@ pnpm test:dsh-plugin:deps
 test_count="$(find "$PLUGIN_DIR" \( -name '*.test.ts' -o -name '*.test.js' -o -name '*.test.mjs' \) | wc -l | tr -d ' ')"
 [[ "$test_count" -gt 0 ]] || fail "need at least one unit test under $PLUGIN_DIR"
 pnpm exec vitest run "$PLUGIN_DIR"
+node --test "$PLUGIN_DIR/scripts/skills-pack.test.mjs"
 
 step "done — dsh-plugin verify passed"

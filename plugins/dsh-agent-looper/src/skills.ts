@@ -39,8 +39,16 @@ export function discoverSkills(skillsDir: string): ParsedSkill[] {
 
   const skills: ParsedSkill[] = []
   for (const entry of fs.readdirSync(skillsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    const skillMd = path.join(skillsDir, entry.name, 'SKILL.md')
+    const entryPath = path.join(skillsDir, entry.name)
+    let stat: fs.Stats
+    try {
+      stat = fs.statSync(entryPath)
+    } catch {
+      continue
+    }
+    if (!stat.isDirectory()) continue
+
+    const skillMd = path.join(entryPath, 'SKILL.md')
     if (!fs.existsSync(skillMd)) continue
     const parsed = parseSkillFile(skillMd, fs.readFileSync(skillMd, 'utf8'))
     if (parsed) skills.push(parsed)
@@ -52,6 +60,23 @@ export function discoverSkills(skillsDir: string): ParsedSkill[] {
 export function resolveSkillsDir(configured: string, pluginRoot: string): string {
   if (path.isAbsolute(configured)) return configured
   return path.resolve(pluginRoot, configured)
+}
+
+export function resolveOverlaysDir(packageRoot: string): string {
+  return path.join(packageRoot, 'overlays')
+}
+
+export function loadSkillOverlay(skillName: string, overlaysDir: string): string {
+  const overlayPath = path.join(overlaysDir, `${skillName}.md`)
+  if (!fs.existsSync(overlayPath)) return ''
+  return `\n\n${fs.readFileSync(overlayPath, 'utf8').trimStart()}`
+}
+
+export function applySkillOverlays(skills: ParsedSkill[], overlaysDir: string): ParsedSkill[] {
+  return skills.map((skill) => ({
+    ...skill,
+    content: skill.content + loadSkillOverlay(skill.name, overlaysDir),
+  }))
 }
 
 export const pluginRoot = path.dirname(fileURLToPath(import.meta.url))

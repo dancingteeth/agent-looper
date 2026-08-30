@@ -1,9 +1,10 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { apply, inject, name } from './index.js'
 import { isAgentLoopRunCommand, isBashRunInBackground, isSecretDumpCommand, nestedAgentLoopRunReason, secretDumpReason } from './nested-run.js'
 import { AGENT_LOOPER_PROMPT_NAME, agentLooperPromptSection } from './prompt.js'
-import { discoverSkills, parseSkillFile, pluginRoot, resolveSkillsDir } from './skills.js'
+import { discoverSkills, loadSkillOverlay, parseSkillFile, pluginRoot, resolveOverlaysDir, resolveSkillsDir } from './skills.js'
 
 function mockCtx() {
   const registeredSkills: Array<{ name: string; description: string; content: string }> = []
@@ -76,8 +77,9 @@ describe('dsh-agent-looper plugin', () => {
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'agent-loop --help' } })).toBeUndefined()
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'doppler secrets' } })).toMatch(/Blocked/)
 
-    expect(ctx.skills.register).toHaveBeenCalledTimes(4)
+    expect(ctx.skills.register).toHaveBeenCalledTimes(5)
     expect(registeredSkills.map((s) => s.name).sort()).toEqual([
+      'check-running-loops',
       'design-loop',
       'install-agent-looper',
       'review-gate',
@@ -87,6 +89,24 @@ describe('dsh-agent-looper plugin', () => {
       expect(skill.description.length).toBeGreaterThan(0)
       expect(skill.content.length).toBeGreaterThan(0)
     }
+
+    const designLoop = registeredSkills.find((s) => s.name === 'design-loop')
+    if (!designLoop) throw new Error('expected design-loop registration')
+    expect(designLoop.content).toMatch(/Do not foreground-bash `agent-loop run`/)
+    expect(designLoop.content).toMatch(/run-loop-in-dsh/)
+    const ssotSkillMd = fs.readFileSync(
+      path.join(pluginRoot, '..', '..', 'agent-looper', 'skills', 'design-loop', 'SKILL.md'),
+      'utf8',
+    )
+    expect(ssotSkillMd).toMatch(/^---[\s\S]*?---\n/)
+    expect(designLoop.content).toContain(
+      ssotSkillMd.replace(/^---[\s\S]*?---\r?\n/, '').trimStart().split('\n')[0] ?? '',
+    )
+    const onDisk = fs.readFileSync(
+      path.join(pluginRoot, '..', 'skills', 'design-loop', 'SKILL.md'),
+      'utf8',
+    )
+    expect(onDisk).toBe(ssotSkillMd)
 
     expect(ctx.commands.register).toHaveBeenCalledTimes(1)
     const command = registeredCommands[0]
@@ -136,11 +156,43 @@ description: Design loops.
     const skillsDir = resolveSkillsDir('./skills', path.join(pluginRoot, '..'))
     const names = discoverSkills(skillsDir).map((s) => s.name)
     expect(names).toEqual([
+      'check-running-loops',
       'design-loop',
       'install-agent-looper',
       'review-gate',
       'run-loop-in-dsh',
     ])
+  })
+
+  it('materializes shared skills as real files matching agent-looper SSOT', () => {
+    const skillsDir = resolveSkillsDir('./skills', path.join(pluginRoot, '..'))
+    const ssotRoot = path.join(pluginRoot, '..', '..', 'agent-looper', 'skills')
+    const shared = ['design-loop', 'install-agent-looper', 'review-gate', 'check-running-loops']
+
+    for (const name of shared) {
+      const entry = path.join(skillsDir, name)
+      expect(fs.lstatSync(entry).isSymbolicLink()).toBe(false)
+      expect(fs.statSync(entry).isDirectory()).toBe(true)
+      const materialized = fs.readFileSync(path.join(entry, 'SKILL.md'), 'utf8')
+      const ssot = fs.readFileSync(path.join(ssotRoot, name, 'SKILL.md'), 'utf8')
+      expect(materialized).toBe(ssot)
+    }
+
+    const native = path.join(skillsDir, 'run-loop-in-dsh')
+    expect(fs.lstatSync(native).isSymbolicLink()).toBe(false)
+    expect(fs.existsSync(path.join(native, 'SKILL.md'))).toBe(true)
+  })
+
+  it('loads DSH overlay for design-loop without mutating materialized SKILL.md', () => {
+    const packageRoot = path.join(pluginRoot, '..')
+    const overlaysDir = resolveOverlaysDir(packageRoot)
+    const overlay = loadSkillOverlay('design-loop', overlaysDir)
+    expect(overlay).toMatch(/Do not foreground-bash `agent-loop run`/)
+    expect(overlay).toMatch(/run-loop-in-dsh/)
+
+    const skillMd = path.join(packageRoot, 'skills', 'design-loop', 'SKILL.md')
+    const before = fs.readFileSync(skillMd, 'utf8')
+    expect(before).not.toMatch(/Do not foreground-bash/)
   })
 })
 
