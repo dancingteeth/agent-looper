@@ -416,6 +416,32 @@ describe('landing agent readiness', () => {
     expect(md).toContain('https://ko-fi.com/dancingteeth')
   })
 
+  it('each page with nav has header Ko-fi link with coffee SVG', () => {
+    const pages = [
+      'index.html',
+      'about/index.html',
+      'contact/index.html',
+      'docs/index.html',
+      'privacy/index.html',
+      'harnesses/index.html',
+      '404.html',
+    ]
+    const coffeeSvg = '<path d="M10 2v2"/>'
+    for (const page of pages) {
+      const html = readSite(page)
+      expect(html, page).toContain('<nav class="nav">')
+      const navStart = html.indexOf('<nav class="nav">')
+      const navEnd = html.indexOf('</nav>', navStart)
+      const nav = html.slice(navStart, navEnd)
+      expect(nav, page).toContain('class="nav-kofi"')
+      expect(nav, page).toContain('https://ko-fi.com/dancingteeth')
+      expect(nav, page).toContain(coffeeSvg)
+      expect(nav, page).toMatch(/aria-label="Support on Ko-fi"/)
+      expect(nav, page).toContain('target="_blank"')
+      expect(nav, page).toContain('rel="noopener noreferrer"')
+    }
+  })
+
   it('footer Ko-fi link on every page with site-footer', () => {
     const pages = [
       'index.html',
