@@ -57,7 +57,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 - Go worker: `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`
 - BYOK: `openrouter/…`, `vercel/…`, `ollama/…`
-- Judge: Cursor, or `reviewRuntime: opencode` (DeepSeek V4 Pro)
+- Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode --review-gate`
 
 ### Pi (`--runtime pi`)
@@ -65,7 +65,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 `@earendil-works/pi-coding-agent` — OpenRouter by default, or another OpenAI-compatible router you configure.
 
 - Worker: `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus`
-- Judge: Cursor, or `reviewRuntime: pi`
+- Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-gate`
 
 ### Codex (`--runtime codex`)
@@ -73,5 +73,5 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 `@openai/codex-sdk` and `codex` CLI — ChatGPT / OpenAI BYO.
 
 - Worker: `gpt-5.6-luna` → `gpt-5.6-terra`
-- Judge: Cursor, or `reviewRuntime: codex` (default judge `gpt-5.6-sol`)
+- Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate`
