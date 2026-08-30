@@ -146,6 +146,32 @@ code {
 
 .nav a:hover { color: var(--white); text-decoration: none; }
 
+.nav-kofi {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--ghost);
+  color: var(--muted);
+  text-decoration: none;
+  line-height: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.nav-kofi:hover {
+  color: var(--white);
+  border-color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+}
+
+.nav-kofi svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+  color: var(--tan);
+}
+
 /* Hero */
 
 .hero {
