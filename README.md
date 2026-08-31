@@ -328,7 +328,7 @@ primary review (reviewRuntime + reviewModel; default cursor)
   → else PASS / ADVISORY → complete
 ```
 
-Unparseable verdicts retry (`unparseableReviewRetries`). Gate exhaust can escalate to HITL (`reviewGateHitl`).
+Unparseable verdicts retry (`unparseableReviewRetries`). Gate exhaust can escalate to HITL (`reviewGateHitl`). Gating bullets (`severity: error` + a recognized impact tag) keep the gate open even if a later `### Verdict — PASS` heading appears in the same `review.md`. Heading vs body token disagreement with no gating bullets is unparseable.
 
 ## Ralph loop alignment
 
@@ -408,7 +408,7 @@ GOAL.md + loop.json
   → repeat
 ```
 
-Post-success (when `postQualityReview` runs): quality review → `review.md` using the repo `REVIEWS.md` overlay. With `reviewGate: true`, only **gating** blockers re-enter the fix loop; completion requires **PASS** or **ADVISORY** with no gating blockers. Then: optional linked-task completion (e.g. Taskwarrior `done`) → `hitlCheck` (via `hitlProvider`) → `syncCommand`.
+Post-success (when `postQualityReview` runs): quality review → `review.md` using the repo `REVIEWS.md` overlay. With `reviewGate: true`, only **gating** blockers re-enter the fix loop; a quoted `### Verdict — PASS` cannot close the gate while those bullets remain. Completion requires **PASS** or **ADVISORY** with no gating blockers. Then: optional linked-task completion (e.g. Taskwarrior `done`) → `hitlCheck` (via `hitlProvider`) → `syncCommand`.
 
 Stderr prints token totals and estimated USD (ClinePass may include cached-input counts).
 

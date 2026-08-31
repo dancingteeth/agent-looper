@@ -22,8 +22,10 @@ skill into gate prompts.
 Canonical template: `templates/REVIEWS.md`. Meta-review brief: `docs/meta-review-prompt.md`.
 
 **Sensor contract:** `PASS` | `ADVISORY` | `BLOCKERS`. Omit empty sections.
-Non-empty `### Blockers` ⇒ verdict `BLOCKERS`. Guide / HITL act on **gating**
-blockers; Advisory/Nits are for humans unless explicitly asked.
+Non-empty `### Blockers` ⇒ verdict `BLOCKERS`. The harness treats gating
+(`error` + impact) bullets as `BLOCKERS` even if a quoted heading says `PASS`.
+Guide / HITL act on **gating** blockers; Advisory/Nits are for humans unless
+explicitly asked.
 
 ## Rubric wins (stop at first hit)
 

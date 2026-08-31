@@ -22,8 +22,10 @@ skill here. Cross-loop residual: `docs/meta-review-prompt.md` (when shipped).
 
 **Sensor contract:** verdict tokens `PASS` | `ADVISORY` | `BLOCKERS`. Omit empty
 `### Blockers` / `### Advisory` / `### Nits`. Non-empty `### Blockers` ⇒ verdict
-**must** be `BLOCKERS`. Guide / HITL / autofix act on **gating** blockers;
-Advisory and Nits are for humans unless the user explicitly asks otherwise.
+**must** be `BLOCKERS`. The harness treats gating (`error` + impact) bullets as
+`BLOCKERS` even if a quoted heading says `PASS`. Guide / HITL / autofix act on
+**gating** blockers; Advisory and Nits are for humans unless the user explicitly
+asks otherwise.
 
 ## Rubric wins (stop at first hit)
 
