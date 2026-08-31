@@ -269,6 +269,29 @@ function parseBlockers(section: string | null): ParsedBlocker[] {
   return blockers
 }
 
+/**
+ * Overlay lock: gating ### Blockers ⇒ BLOCKERS. Heading vs body disagreement
+ * with no gating bullets ⇒ UNKNOWN (fail closed). Else one known token, heading
+ * first so `### Verdict — ADVISORY` with a prose body still parses.
+ */
+function reconcileReviewVerdict(input: {
+  fromHeading: ReviewVerdict
+  fromBody: ReviewVerdict
+  fromTable: ReviewVerdict
+  blockers: ParsedBlocker[]
+}): ReviewVerdict {
+  if (input.blockers.some(isBlockingBlocker)) return 'BLOCKERS'
+
+  const headingKnown = input.fromHeading !== 'UNKNOWN'
+  const bodyKnown = input.fromBody !== 'UNKNOWN'
+  if (headingKnown && bodyKnown && input.fromHeading !== input.fromBody) {
+    return 'UNKNOWN'
+  }
+  if (headingKnown) return input.fromHeading
+  if (bodyKnown) return input.fromBody
+  return input.fromTable
+}
+
 export function parseReviewMarkdown(text: string): ParsedReview {
   const riskSection = extractSection(text, 'Risk')
   const verdictSection = extractSection(text, 'Verdict')
@@ -278,11 +301,12 @@ export function parseReviewMarkdown(text: string): ParsedReview {
   const fromTable = parseCompactTableVerdict(text)
   const fromRiskHeading = parseRiskFromHeadings(text)
   const fromRiskBody = parseRisk(riskSection)
+  const blockers = parseBlockers(blockersSection)
 
   return {
-    verdict: fromHeading !== 'UNKNOWN' ? fromHeading : fromBody !== 'UNKNOWN' ? fromBody : fromTable,
+    verdict: reconcileReviewVerdict({ fromHeading, fromBody, fromTable, blockers }),
     risk: fromRiskHeading !== 'unknown' ? fromRiskHeading : fromRiskBody,
-    blockers: parseBlockers(blockersSection),
+    blockers,
   }
 }
 
@@ -292,9 +316,8 @@ export type ReviewVerdictCompletionOptions = {
 }
 
 export function reviewGateBlocksCompletion(parsed: ParsedReview): boolean {
-  if (parsed.verdict === 'UNKNOWN') return true
-  if (parsed.verdict !== 'BLOCKERS') return false
-  return blockingBlockers(parsed).length > 0
+  if (blockingBlockers(parsed).length > 0) return true
+  return parsed.verdict === 'UNKNOWN'
 }
 
 export function reviewVerdictAllowsCompletion(

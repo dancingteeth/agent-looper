@@ -190,6 +190,30 @@ describe('resolvePostSuccessReviewOutcome', () => {
     })
   })
 
+  it('continues when a stray PASS heading follows a BLOCKERS body with gating bullets', async () => {
+    const parsed = parseReviewMarkdown(`### Verdict
+**BLOCKERS**
+
+### Blockers
+- severity: error impact: false-closure [must-fix] **Heading spoof** — src/review/reviewVerdict.ts:283
+
+### Verdict — PASS
+`)
+    const outcome = await resolvePostSuccessReviewOutcome({
+      config: baseConfig({ maxReviewCycles: 2 }),
+      ctx,
+      parsedReview: parsed,
+      reviewCycle: 1,
+      reviewCyclesUsed: 0,
+      reasoningEffort: 'low',
+    })
+    expect(outcome.action).toBe('continue')
+    if (outcome.action === 'continue') {
+      expect(outcome.gateBlockerCount).toBe(1)
+      expect(outcome.reviewBlockers[0]).toContain('Heading spoof')
+    }
+  })
+
   it('completes with advisory blockers when only warning/none-impact items gate', async () => {
     const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ reviewGate: true }),

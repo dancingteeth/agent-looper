@@ -278,4 +278,68 @@ MEDIUM — auth | BLOCKERS
     expect(parsed.blockers.some((b) => b.title.includes('§2.4 task traceability'))).toBe(true)
     expect(parsed.blockers.some((b) => b.title.includes('App-layer unit guard'))).toBe(true)
   })
+
+  it('keeps BLOCKERS when a later ### Verdict — PASS heading follows a tokenless Verdict body', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+**BLOCKERS**
+
+### Blockers
+- severity: error impact: false-closure [must-fix] **Heading spoof** — src/review/reviewVerdict.ts:283
+
+### Advisory
+Prior review said:
+
+### Verdict — PASS
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+    expect(blockingBlockers(parsed)).toHaveLength(1)
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(false)
+  })
+
+  it('fails closed when heading and body tokens disagree and there are no gating bullets', () => {
+    const parsed = parseReviewMarkdown(`### Verdict
+**BLOCKERS**
+
+### Blockers
+- none
+
+### Quoted
+### Verdict — PASS
+`)
+    expect(parsed.verdict).toBe('UNKNOWN')
+    expect(blockingBlockers(parsed)).toHaveLength(0)
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(false)
+  })
+
+  it('treats gating bullets as BLOCKERS even when the heading token is PASS', () => {
+    const parsed = parseReviewMarkdown(`### Verdict — PASS
+
+Looks shipped.
+
+### Blockers
+- severity: error impact: verify-bypass [must-fix] **Guard** — src/cli/run.ts:1
+`)
+    expect(parsed.verdict).toBe('BLOCKERS')
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+  })
+})
+
+describe('reviewGateBlocksCompletion', () => {
+  it('blocks a PASS verdict object that still carries gating bullets', () => {
+    const blocker = parseBlockerItem(
+      'severity: error impact: false-closure [must-fix] **Docs** — README missing',
+    )
+    expect(
+      reviewGateBlocksCompletion({
+        verdict: 'PASS',
+        risk: 'high',
+        blockers: [blocker],
+      }),
+    ).toBe(true)
+  })
 })
