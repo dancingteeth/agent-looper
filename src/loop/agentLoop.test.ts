@@ -623,6 +623,20 @@ describe('runAgentLoop', () => {
     expect(JSON.parse(domains[0]!).reason).toBe('agent_error')
   })
 
+  it('disposes the agent session when onPhase throws before the first iteration', async () => {
+    const { dispose } = mockSession()
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 1 }),
+      onPhase: () => {
+        throw new Error('phase boom')
+      },
+    })
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/phase boom/)
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
   it('continues loop when review gate returns BLOCKERS then completes on a re-check PASS', async () => {
     const { runIterationPrompt } = mockSession()
     mockedRunVerify.mockReturnValue(passVerify())

@@ -543,14 +543,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     return parkOnBudget(Math.max(0, startedIteration - 1), reason)
   }
 
-  options.onPhase?.({
-    phase: 'GOAL',
-    iteration: 1,
-    maxIterations: config.maxIterations,
-    costUsd: 0,
-  })
-
   try {
+    options.onPhase?.({
+      phase: 'GOAL',
+      iteration: 1,
+      maxIterations: config.maxIterations,
+      costUsd: 0,
+    })
+
     for (let i = 1; i <= config.maxIterations; i++) {
       iterations = i
       options.onIterationStart?.(i)

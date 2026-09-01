@@ -76,6 +76,8 @@ describe('killProcessGroup', () => {
 })
 
 describe('spawnDshHeadless', () => {
+  const noopReaper = () => ({ pid: undefined, close: () => undefined })
+
   it('SIGTERMs the process group on timeout, then rejects after close', async () => {
     const child = new EventEmitter() as EventEmitter & {
       pid: number
@@ -87,6 +89,7 @@ describe('spawnDshHeadless', () => {
     child.stderr = new PassThrough()
 
     const kills: Array<[number | undefined, NodeJS.Signals]> = []
+    const trees: Array<[number | undefined, NodeJS.Signals]> = []
     const run = spawnDshHeadless({
       repoRoot: '/repo',
       patchPath: '/tmp/p.yml',
@@ -97,10 +100,15 @@ describe('spawnDshHeadless', () => {
       killGroup: (pid, signal) => {
         kills.push([pid, signal])
       },
+      signalTree: (pid, signal) => {
+        trees.push([pid, signal])
+      },
+      spawnReaper: noopReaper,
     })
 
     await new Promise((resolve) => setTimeout(resolve, 40))
     expect(kills[0]).toEqual([4242, 'SIGTERM'])
+    expect(trees[0]).toEqual([4242, 'SIGTERM'])
     child.emit('close', 1)
     await expect(run).rejects.toThrow(/timed out after 20ms/)
   })
@@ -124,6 +132,10 @@ describe('spawnDshHeadless', () => {
       killGroup: () => {
         throw new Error('should not kill')
       },
+      signalTree: () => {
+        throw new Error('should not kill tree')
+      },
+      spawnReaper: noopReaper,
     })
 
     child.stdout.write('assistant done')
@@ -150,6 +162,10 @@ describe('spawnDshHeadless', () => {
       killGroup: () => {
         throw new Error('should not kill')
       },
+      signalTree: () => {
+        throw new Error('should not kill tree')
+      },
+      spawnReaper: noopReaper,
     })
 
     child.stdout.write('late chunk')

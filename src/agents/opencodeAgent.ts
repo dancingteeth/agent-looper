@@ -1,6 +1,4 @@
 import net from 'node:net'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { RepoContext } from '../context/repoContext.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
@@ -21,6 +19,11 @@ import {
   type OpencodeAgentRunOptions,
 } from './opencodeTurn.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
+import {
+  pathWithLocalOpencodeBins,
+  startOpencodeServe,
+} from './opencodeServe.js'
+import { spawnParentDeathReaper, trackSpawnedRoot } from './processTree.js'
 
 export type { OpencodeAgentRunOptions } from './opencodeTurn.js'
 export {
@@ -33,6 +36,19 @@ export {
 export type OpencodeLoopSession = {
   runPrompt(prompt: string, options: OpencodeAgentRunOptions): Promise<AgentRunResult>
   dispose(): Promise<void>
+}
+
+/** Close reaper, untrack, kill the serve tree, restore PATH. Safe to call twice. */
+export async function releaseOpencodeServe(input: {
+  reaper: { close(): void }
+  untrack: () => void
+  close: () => Promise<void>
+  restorePath: () => void
+}): Promise<void> {
+  input.reaper.close()
+  input.untrack()
+  await input.close()
+  input.restorePath()
 }
 
 async function reserveFreePort(): Promise<number> {
@@ -53,19 +69,6 @@ async function reserveFreePort(): Promise<number> {
     })
     server.on('error', reject)
   })
-}
-
-/** Prefer local node_modules/.bin so `opencode` resolves without a global install. */
-function pathWithLocalOpencodeBins(repoRoot: string): string {
-  const here = path.dirname(fileURLToPath(import.meta.url))
-  // dist/agents → package root; src/agents under vitest → same shape after build
-  const packageRoot = path.resolve(here, '../..')
-  const bins = [
-    path.join(repoRoot, 'node_modules', '.bin'),
-    path.join(packageRoot, 'node_modules', '.bin'),
-  ]
-  const existing = process.env.PATH ?? ''
-  return [...bins, existing].join(path.delimiter)
 }
 
 function extractTextFromParts(parts: ReadonlyArray<{ type?: string; text?: string }> | undefined): string {
@@ -150,32 +153,34 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const directory = ctx.repoRoot
 
-  const { createOpencode, createOpencodeClient } = await import('@opencode-ai/sdk')
+  const { createOpencodeClient } = await import('@opencode-ai/sdk')
   const port = await reserveFreePort()
   const previousPath = process.env.PATH
-  process.env.PATH = pathWithLocalOpencodeBins(directory)
+  const servePath = pathWithLocalOpencodeBins(directory)
+  process.env.PATH = servePath
 
-  let server: { url: string; close(): void }
-  let client: Awaited<ReturnType<typeof createOpencode>>['client']
+  const serveConfig = {
+    autoupdate: false,
+    model: DEFAULT_OPENCODE_GO_LOOP_MODEL,
+    permission: {
+      edit: 'allow',
+      bash: 'allow',
+      webfetch: 'allow',
+      doom_loop: 'allow',
+      external_directory: 'deny',
+    },
+  }
+
+  let server: { url: string; pid: number | undefined; close(): Promise<void> }
   try {
-    const started = await createOpencode({
+    server = await startOpencodeServe({
       hostname: '127.0.0.1',
       port,
-      timeout: 30_000,
-      config: {
-        autoupdate: false,
-        model: DEFAULT_OPENCODE_GO_LOOP_MODEL,
-        permission: {
-          edit: 'allow',
-          bash: 'allow',
-          webfetch: 'allow',
-          doom_loop: 'allow',
-          external_directory: 'deny',
-        },
-      },
+      timeoutMs: 30_000,
+      config: serveConfig,
+      cwd: directory,
+      env: { ...process.env, PATH: servePath },
     })
-    server = started.server
-    client = started.client
   } catch (err) {
     process.env.PATH = previousPath
     const message = err instanceof Error ? err.message : String(err)
@@ -185,23 +190,39 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
     )
   }
 
-  // Re-bind client with project directory (createOpencode client may omit it).
-  client = createOpencodeClient({
-    baseUrl: server.url,
-    directory,
-    throwOnError: false,
+  const untrackServe = trackSpawnedRoot(server.pid)
+  const parentDeathReaper = spawnParentDeathReaper({
+    parentPid: process.pid,
+    rootPid: server.pid ?? 0,
   })
-
-  const wiredProviders = await bootstrapOpencodeProviderAuth(client, directory)
-  if (wiredProviders.length > 0) {
-    console.error(`[agent-loop:opencode] auth wired for: ${wiredProviders.join(', ')}`)
+  const restorePath = () => {
+    process.env.PATH = previousPath
   }
+  const releaseServe = () =>
+    releaseOpencodeServe({
+      reaper: parentDeathReaper,
+      untrack: untrackServe,
+      close: () => server.close(),
+      restorePath,
+    })
 
-  const permissionAbort = new AbortController()
-  await autoApprovePermissions(client, directory, permissionAbort.signal)
+  try {
+    const client = createOpencodeClient({
+      baseUrl: server.url,
+      directory,
+      throwOnError: false,
+    })
 
-  return {
-    async runPrompt(prompt, options) {
+    const wiredProviders = await bootstrapOpencodeProviderAuth(client, directory)
+    if (wiredProviders.length > 0) {
+      console.error(`[agent-loop:opencode] auth wired for: ${wiredProviders.join(', ')}`)
+    }
+
+    const permissionAbort = new AbortController()
+    await autoApprovePermissions(client, directory, permissionAbort.signal)
+
+    return {
+      async runPrompt(prompt, options) {
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const assistantOutput = options.assistantOutput ?? 'stdout'
       const phase = options.phase ?? 'implement'
@@ -342,12 +363,12 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
     },
     async dispose() {
       permissionAbort.abort()
-      try {
-        server.close()
-      } finally {
-        process.env.PATH = previousPath
-      }
+      await releaseServe()
     },
+    }
+  } catch (err) {
+    await releaseServe()
+    throw err
   }
 }
 

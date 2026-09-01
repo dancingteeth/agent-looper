@@ -10,7 +10,7 @@ tags:
 ---
 # OpenCode worker — Go, BYOK gateways, Ollama
 
-`runtime: opencode` uses `@opencode-ai/sdk` + the `opencode` CLI. The harness starts a local OpenCode server per loop session, wires API keys from env when present, and passes `provider/model` from `loop.json` to each worker iteration.
+`runtime: opencode` uses `@opencode-ai/sdk` + the `opencode` CLI. The harness starts a **local OpenCode server per loop session** by spawning `opencode.exe` (not the pnpm shell shim). Dispose SIGTERMs the serve **process tree** (MCP children included), SIGKILLs leftovers, and a parent-death reaper cleans up if the harness Node process is SIGKILL’d. SDK `server.close()` alone is not enough: it only kills the shim, which orphaned `opencode.exe` + Toolport/githits MCP processes under PID 1.
 
 Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "opencode"` to judge on Go (defaults to **`opencode-go/deepseek-v4-pro`**, not Flash). BYOK OpenCode judges still need an explicit `reviewModel`.
 

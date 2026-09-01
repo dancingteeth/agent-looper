@@ -24,7 +24,7 @@ Then:
 dsh --profile headless --patch /tmp/agent-loop-dsh-….yml "<system + user prompt>"
 ```
 
-Stdout is the last assistant message (no tool timeline). Exit non-zero fails the iteration. The harness waits on the process **`close`** event so piped stdout/stderr finish draining before the exit code is read. On the 45-minute cap, it SIGTERMs the headless **process group**, then SIGKILL after 3s.
+Stdout is the last assistant message (no tool timeline). Exit non-zero fails the iteration. The harness waits on the process **`close`** event so piped stdout/stderr finish draining before the exit code is read. On the 45-minute cap, it SIGTERMs the headless **process group and descendant PIDs** (MCP grandchildren that left the group), then SIGKILL after 3s. A parent-death reaper kills the tree if the harness process is SIGKILL’d.
 
 ## Web session Full Access
 

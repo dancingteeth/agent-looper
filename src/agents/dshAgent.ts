@@ -1,4 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import {
+  killProcessGroup,
+  signalProcessTree,
+  spawnParentDeathReaper,
+  trackSpawnedRoot,
+} from './processTree.js'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -145,19 +151,7 @@ export function nodeMeetsDshMinimum(version = process.versions.node): boolean {
   return major === DSH_MIN_NODE_MAJOR && minor >= DSH_MIN_NODE_MINOR
 }
 
-/** POSIX: `detached` spawn makes `pid` a process-group leader; `-pid` kills the tree. */
-export function killProcessGroup(pid: number | undefined, signal: NodeJS.Signals): void {
-  if (pid === undefined || pid <= 0) return
-  try {
-    process.kill(-pid, signal)
-  } catch {
-    try {
-      process.kill(pid, signal)
-    } catch {
-      // already gone
-    }
-  }
-}
+export { killProcessGroup } from './processTree.js'
 
 export function spawnDshHeadless(input: {
   repoRoot: string
@@ -167,9 +161,13 @@ export function spawnDshHeadless(input: {
   killGraceMs?: number
   spawnImpl?: SpawnDshFn
   killGroup?: typeof killProcessGroup
+  signalTree?: typeof signalProcessTree
+  spawnReaper?: typeof spawnParentDeathReaper
 }): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const spawnImpl = input.spawnImpl ?? (spawn as SpawnDshFn)
   const killGroup = input.killGroup ?? killProcessGroup
+  const signalTree = input.signalTree ?? signalProcessTree
+  const spawnReaper = input.spawnReaper ?? spawnParentDeathReaper
   const killGraceMs = input.killGraceMs ?? DSH_KILL_GRACE_MS
 
   return new Promise((resolve, reject) => {
@@ -183,6 +181,11 @@ export function spawnDshHeadless(input: {
         detached: true,
       },
     )
+    const untrack = trackSpawnedRoot(child.pid)
+    const parentDeathReaper = spawnReaper({
+      parentPid: process.pid,
+      rootPid: child.pid ?? 0,
+    })
 
     let stdout = ''
     let stderr = ''
@@ -198,8 +201,10 @@ export function spawnDshHeadless(input: {
     const timer = setTimeout(() => {
       timedOut = true
       killGroup(child.pid, 'SIGTERM')
+      signalTree(child.pid, 'SIGTERM')
       killTimer = setTimeout(() => {
         killGroup(child.pid, 'SIGKILL')
+        signalTree(child.pid, 'SIGKILL')
       }, killGraceMs)
       killTimer.unref?.()
     }, input.timeoutMs)
@@ -208,6 +213,8 @@ export function spawnDshHeadless(input: {
     const finish = (code: number | null) => {
       clearTimeout(timer)
       if (killTimer) clearTimeout(killTimer)
+      untrack()
+      parentDeathReaper.close()
       if (timedOut) {
         reject(new Error(`DSH headless timed out after ${input.timeoutMs}ms`))
         return
@@ -218,6 +225,8 @@ export function spawnDshHeadless(input: {
     child.on('error', (err) => {
       clearTimeout(timer)
       if (killTimer) clearTimeout(killTimer)
+      untrack()
+      parentDeathReaper.close()
       const message = err instanceof Error ? err.message : String(err)
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
         reject(
