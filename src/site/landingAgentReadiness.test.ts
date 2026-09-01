@@ -424,7 +424,7 @@ describe('landing agent readiness', () => {
     const cases = [
       { id: 'opencode', mdHeading: '### OpenCode', mdEnd: '### Pi' },
       { id: 'pi', mdHeading: '### Pi', mdEnd: '### Codex' },
-      { id: 'codex', mdHeading: '### Codex', mdEnd: undefined },
+      { id: 'codex', mdHeading: '### Codex', mdEnd: '### Muse Code' },
     ] as const
 
     for (const { id, mdHeading, mdEnd } of cases) {
@@ -444,6 +444,82 @@ describe('landing agent readiness', () => {
       expect(mdSlice, id).not.toMatch(/Judge: Cursor/)
       expect(mdSlice, id).not.toMatch(new RegExp(`reviewRuntime:\\s*${id}`, 'i'))
     }
+  })
+
+  it('Muse Code runtime card is in testing with contributor worker and optional judge', () => {
+    const html = readSite('harnesses/index.html')
+    const museCard =
+      html.match(/<article class="harness-card" id="muse">[\s\S]*?<\/article>/)?.[0] ?? ''
+    expect(museCard).toContain('id="muse"')
+    expect(museCard).toContain('Muse Code')
+    expect(museCard).toMatch(/in testing/i)
+    expect(museCard).toContain('harness-card__status')
+    expect(museCard).toContain('--runtime muse')
+    expect(museCard).toContain('muse-spark-1.2-contributor')
+    expect(museCard).toMatch(/any runtime/i)
+    expect(museCard).toMatch(/optional/i)
+    expect(museCard).not.toMatch(/Composer/i)
+    expect(museCard).not.toMatch(/Judge Cursor/)
+    expect(museCard).not.toMatch(/reviewRuntime:\s*muse/i)
+    expect(museCard).toContain('https://dev.meta.ai/docs/muse-code')
+    expect(museCard).toContain('@muse-code/sdk')
+    expect(museCard).toMatch(/Not on minmax/i)
+    expect(museCard).not.toMatch(/\bMCP\b/i)
+
+    const md = readSite('harnesses/index.md')
+    const museSection = md.slice(md.indexOf('### Muse Code'))
+    expect(museSection).toMatch(/in testing/i)
+    expect(museSection).toContain('muse-spark-1.2-contributor')
+    expect(museSection).toMatch(/any runtime/i)
+    expect(museSection).toMatch(/optional/i)
+    expect(museSection).not.toMatch(/Composer/i)
+    expect(museSection).not.toMatch(/Judge: Cursor/)
+    expect(museSection).not.toMatch(/reviewRuntime:\s*muse/i)
+    expect(museSection).not.toMatch(/\bMCP\b/i)
+
+    const jumpRow = html.match(/<nav class="harness-logos"[\s\S]*?<\/nav>/)?.[0] ?? ''
+    expect(jumpRow).toContain('href="#muse"')
+    expect(jumpRow).toContain('Muse Code')
+    expect(jumpRow).toContain('harness-logo--text-only')
+  })
+
+  it('homepage and llms.txt list Muse Code in testing and include muse in runtime union', () => {
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    const llms = readSite('llms.txt')
+    const graph = jsonLdGraph(html)
+
+    const faq = graph.find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as {
+      mainEntity?: Array<{
+        name?: string
+        acceptedAnswer?: { text?: string }
+      }>
+    }
+
+    const agentsQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'Which coding agents does Agent Looper work with?',
+    )
+
+    for (const surface of [html, md, llms, agentsQuestion?.acceptedAnswer?.text ?? ''] as const) {
+      expect(surface).toMatch(/Muse Code/i)
+      expect(surface).toMatch(/in testing/i)
+    }
+
+    for (const surface of [html, md, llms] as const) {
+      expect(surface).toMatch(/codex\|dsh\|muse/)
+    }
+
+    for (const surface of [html, md] as const) {
+      expect(surface).toMatch(/detect what's installed.*Muse/i)
+    }
+
+    expect(html).toContain('harnesses/#muse')
+    expect(html).not.toMatch(/\bMCP\b/i)
   })
 
   it('help section leads with dep, issues, optional telemetry, and Ko-fi', () => {

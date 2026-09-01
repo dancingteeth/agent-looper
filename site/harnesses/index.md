@@ -75,3 +75,13 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 - Worker: `gpt-5.6-luna` → `gpt-5.6-terra`
 - Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate`
+
+### Muse Code (`--runtime muse`) — in testing
+
+Meta's terminal/CI coding agent — PATH `muse` plus `@muse-code/sdk`. [Muse Code docs](https://dev.meta.ai/docs/muse-code).
+
+- Worker: `muse-spark-1.2-contributor`
+- Judge: any runtime, optional
+- Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate`
+
+Install Muse Code: `curl -fsSL https://dev.meta.ai/install.sh | sh`, then `muse --version`. Add `pnpm add -D @muse-code/sdk`. `META_API_KEY` optional; `muse` login is enough. In testing. Not on minmax.

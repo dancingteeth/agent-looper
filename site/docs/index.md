@@ -10,6 +10,7 @@ Agent Looper is the npm package `@dancingteeth/agent-looper` and the CLI `agent-
 - OpenCode providers (OpenRouter, Vercel, Ollama): https://github.com/dancingteeth/agent-looper/blob/main/docs/opencode-providers.md
 - Pi runtime: https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md
 - DSH plugin (DeepSeek Harness): https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md
+- Muse Code docs (in testing): https://dev.meta.ai/docs/muse-code
 - Agent Looper llms.txt: https://looper.dancingteeth.net/llms.txt
 - Agent Looper homepage (markdown): https://looper.dancingteeth.net/index.md
 

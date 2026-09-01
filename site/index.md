@@ -8,7 +8,7 @@ npm: `@dancingteeth/agent-looper` · CLI: `agent-loop` · site: https://looper.d
 
 ## Which coding agents does Agent Looper work with?
 
-Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router. How-to and default models: [Harnesses](https://looper.dancingteeth.net/harnesses/).
+Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, DSH, and Muse Code (in testing). It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router. How-to and default models: [Harnesses](https://looper.dancingteeth.net/harnesses/).
 
 ## How do Agent Looper worker and judge presets work?
 
@@ -57,14 +57,14 @@ Set up Agent Looper in this repo for the feature I want. I don't want to babysit
 
 Requirements: Node 22+ and pnpm.
 
-1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH).
+1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse).
 2. Keep @dancingteeth/agent-looper in package.json even if you gitignore `.cursor/loops`. Don't only npx it.
 3. Use an API key already on this machine, or run under Doppler. Don't invent keys.
 4. Run: pnpm exec agent-loop-init
 5. Write GOAL.md for the feature and freeze it. Don't rewrite the goal mid-loop.
 6. Write a determined check until `bash verify.sh` is an honest pass/fail that the feature actually works. The model does not get to say done.
 7. Start the loop:
-   pnpm exec agent-loop run .cursor/loops/<task> --runtime <cursor|cline|opencode|pi|codex|dsh> --review-gate
+   pnpm exec agent-loop run .cursor/loops/<task> --runtime <cursor|cline|opencode|pi|codex|dsh|muse> --review-gate
 8. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
 
 Cursor example (swap the SDK, key, and --runtime if this machine isn't Cursor):

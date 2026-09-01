@@ -2,11 +2,11 @@
 
 > Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.
 
-When to use Agent Looper: a human wants a feature finished without babysitting Composer; the finish line can be a shell check (`verify.sh`, tests, a metric script); you already pay for Cursor, Cline, OpenCode, Pi, Codex, or DSH; you want a cheap worker and a stronger judge, a budget that stops, and progress in git instead of an accumulating chat thread.
+When to use Agent Looper: a human wants a feature finished without babysitting Composer; the finish line can be a shell check (`verify.sh`, tests, a metric script); you already pay for Cursor, Cline, OpenCode, Pi, Codex, DSH, or Muse Code (in testing); you want a cheap worker and a stronger judge, a budget that stops, and progress in git instead of an accumulating chat thread.
 
 When not to use Agent Looper: there is no determined check (pure taste with no script or vision gate); you need a team-ops factory, shared org cloud, or multi-repo orchestration; you want the model to grade itself as “done.”
 
-How an agent should call it: install `@dancingteeth/agent-looper`, run `pnpm exec agent-loop-init`, freeze `.cursor/loops/<task>/GOAL.md` and `verify.sh`, then `pnpm exec agent-loop run .cursor/loops/<task> --runtime <cursor|cline|opencode|pi|codex|dsh>`. Optional `--review-gate` re-opens the loop only on blocking review findings. CLI binary: `agent-loop`.
+How an agent should call it: install `@dancingteeth/agent-looper`, run `pnpm exec agent-loop-init`, freeze `.cursor/loops/<task>/GOAL.md` and `verify.sh`, then `pnpm exec agent-loop run .cursor/loops/<task> --runtime <cursor|cline|opencode|pi|codex|dsh|muse>`. Optional `--review-gate` re-opens the loop only on blocking review findings. CLI binary: `agent-loop`.
 
 ## Developer resources
 
@@ -19,6 +19,7 @@ How an agent should call it: install `@dancingteeth/agent-looper`, run `pnpm exe
 - [OpenCode providers](https://github.com/dancingteeth/agent-looper/blob/main/docs/opencode-providers.md): OpenRouter, Vercel, Ollama
 - [Pi runtime](https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md): OpenAI-compatible routers
 - [DSH plugin](https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md): DeepSeek Harness companion
+- [Muse Code docs](https://dev.meta.ai/docs/muse-code): Meta terminal/CI coding agent (in testing)
 - [Harnesses — Agent Looper worker runtimes](https://looper.dancingteeth.net/harnesses/index.md)
 
 ## Optional

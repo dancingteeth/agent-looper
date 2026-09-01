@@ -4,7 +4,7 @@ The Agent Looper marketing site at https://looper.dancingteeth.net/ is a static 
 
 Copy-to-clipboard on the install snippet uses the browser clipboard API in your session only — that is separate from analytics.
 
-The Agent Looper npm package (`@dancingteeth/agent-looper`) runs on your machine against coding-agent SDKs you configure. API keys, loop folders, `GOAL.md`, verify output, and git history stay in your environment and with the providers you already pay (Cursor, Cline, OpenCode, Pi, Codex, DSH, OpenRouter, and so on). This site does not proxy those calls.
+The Agent Looper npm package (`@dancingteeth/agent-looper`) runs on your machine against coding-agent SDKs you configure. API keys, loop folders, `GOAL.md`, verify output, and git history stay in your environment and with the providers you already pay (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse Code, OpenRouter, and so on). This site does not proxy those calls.
 
 CLI telemetry is separate from this site: it is opt-in (`AGENT_LOOPER_TELEMETRY=1`) and sends anonymous usage events from your machine when you enable it.
 

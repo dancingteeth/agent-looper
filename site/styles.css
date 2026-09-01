@@ -403,6 +403,22 @@ a.harness-logo:hover {
   text-decoration: none;
 }
 
+.harness-logo--text-only {
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--ghost);
+  border-radius: 4px;
+}
+
+.harness-logo--text-only .harness-logo__label {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.harness-logo--text-only:hover .harness-logo__label,
+.harness-logo--text-only:focus-within .harness-logo__label {
+  color: var(--white);
+}
+
 .harness-section-label {
   margin: 0 0 0.75rem;
   font-family: var(--font-mono);
@@ -554,6 +570,21 @@ a.harness-logo:hover {
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.harness-card__status {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.08rem 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 500;
+  color: var(--tan);
+  border: 1px solid var(--tan);
+  border-radius: 9999px;
+  vertical-align: middle;
+  letter-spacing: 0;
+  text-transform: lowercase;
 }
 
 .harness-card__pill {

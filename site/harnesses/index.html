@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Harnesses — Agent Looper worker runtimes and Grok Bot</title>
-  <meta name="description" content="How to run Agent Looper with each worker harness: Cursor, Grok Bot, DSH, Cline, OpenCode, Pi, and Codex. Published models and how-to for each.">
+  <meta name="description" content="How to run Agent Looper with each worker harness: Cursor, Grok Bot, DSH, Cline, OpenCode, Pi, Codex, and Muse Code (in testing). Published models and how-to for each.">
   <link rel="canonical" href="https://looper.dancingteeth.net/harnesses/">
   <link rel="describedby" href="https://looper.dancingteeth.net/llms.txt">
   <link rel="alternate" type="text/markdown" href="https://looper.dancingteeth.net/harnesses/index.md">
@@ -15,7 +15,7 @@
   <meta property="og:image" content="https://looper.dancingteeth.net/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://looper.dancingteeth.net/og.png">
-  <link rel="stylesheet" href="../styles.css?v=20260830-navkofi">
+  <link rel="stylesheet" href="../styles.css?v=20260901-muse">
 </head>
 <body>
   <header class="site-header">
@@ -63,6 +63,9 @@
         <a class="harness-logo" href="#codex">
           <span class="harness-logo__icon" style="--logo: url('../logos/openai.svg')" aria-hidden="true"></span>
           <span class="harness-logo__label">Codex</span>
+        </a>
+        <a class="harness-logo harness-logo--text-only" href="#muse">
+          <span class="harness-logo__label">Muse Code</span>
         </a>
       </nav>
 
@@ -195,6 +198,22 @@
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate</code></p>
             <p class="harness-card__note">Install <code>@openai/codex-sdk</code>; ensure <code>codex</code> CLI is on PATH.</p>
+          </article>
+
+          <article class="harness-card" id="muse">
+            <header class="harness-card__head">
+              <div class="harness-card__titles">
+                <h3>Muse Code <span class="harness-card__status">in testing</span></h3>
+                <span class="harness-card__pill"><code>--runtime muse</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job">Meta's terminal/CI coding agent — PATH <code>muse</code> plus <code>@muse-code/sdk</code>. <a href="https://dev.meta.ai/docs/muse-code">Muse Code docs</a>.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Worker <code>muse-spark-1.2-contributor</code></span>
+              <span class="harness-chip">Judge any runtime, optional</span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate</code></p>
+            <p class="harness-card__note">PATH <code>muse</code> (<code>curl -fsSL https://dev.meta.ai/install.sh | sh</code>, then <code>muse --version</code>) + <code>pnpm add -D @muse-code/sdk</code>. <code>META_API_KEY</code> optional; <code>muse</code> login is enough. In testing. Not on minmax.</p>
           </article>
         </div>
       </section>
