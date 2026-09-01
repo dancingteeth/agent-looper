@@ -174,9 +174,6 @@ describe('createMuseLoopSession', () => {
       }),
     )
     expect(spawn.mock.calls[0][0].clientInfo.name).toMatch(/^[a-z0-9_]+$/)
-        clientInfo: expect.objectContaining({ name: 'agent-looper' }),
-      }),
-    )
     expect(startSession).toHaveBeenCalledWith({
       workspaceRoot: '/repo',
       modelId: 'muse-spark-1.2-contributor',

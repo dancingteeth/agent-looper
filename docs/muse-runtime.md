@@ -31,7 +31,7 @@ const client = await MuseClient.spawn({
   museBin: 'muse',
   args: ['serve'],
   env: { ...process.env },
-  clientInfo: { name: 'agent-looper', version },
+  clientInfo: { name: 'agent_looper', version },
 })
 const session = await client.startSession({
   workspaceRoot: repoRoot,
@@ -44,6 +44,8 @@ const turn = await session.sendUserTurn({
 })
 await turn.completed
 ```
+
+`clientInfo.name` must match `^[a-z0-9_]+$` (MSP SS1.4.1) — hyphenated npm names are rejected.
 
 Unattended loops use `approvalMode: "allowAll"` **and** an `onApproval` handler (no handler
 defaults to deny and hangs). The harness still owns git / verify. Do not nest Muse

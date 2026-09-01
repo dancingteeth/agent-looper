@@ -271,7 +271,7 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     const { probeMuseServeHandshake } = await import('../agents/museAgent.js')
     const { fingerprint } = await probeMuseServeHandshake(process.cwd())
     if (fingerprint) {
-      console.log('[agent-check] muse serve handshake schema=', fingerprint)
+      console.log(`[agent-check] muse serve handshake schema=${fingerprint}`)
     } else {
       console.log('[agent-check] muse serve handshake OK')
     }
