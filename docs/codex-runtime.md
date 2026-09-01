@@ -34,6 +34,10 @@ const turn = await thread.run(`${systemPrompt}\n\n---\n\n${userPrompt}`)
 // turn.finalResponse, turn.items, turn.usage
 ```
 
+Each turn spawns `codex exec` (not a loop-lived server). Abort/timeout SIGTERMs that child;
+the harness also watches new children of the Node process and kills the tree (MCP grandchildren
+included), plus a parent-death reaper if the harness itself is SIGKILL’d mid-turn.
+
 Unattended loops use `approvalPolicy: "never"` and `sandboxMode: "workspace-write"` so Codex can
 edit the repo without interactive approval. The harness passes `skipGitRepoCheck: true` so Codex
 works on any `repoRoot` the harness already resolved (not only Git trees). The harness still owns

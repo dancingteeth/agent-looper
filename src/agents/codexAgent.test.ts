@@ -1,6 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoProfileSchema } from '../context/repoProfile.js'
 
+const { watchRelease, watchSpawnedChildren, listChildPids, withSpawnedChildrenPoll } = vi.hoisted(
+  () => {
+    const watchRelease = vi.fn().mockResolvedValue(undefined)
+    const watchSpawnedChildren = vi.fn(() => ({
+      pids: [] as number[],
+      adopt: vi.fn(),
+      release: watchRelease,
+    }))
+    const listChildPids = vi.fn(() => [] as number[])
+    const withSpawnedChildrenPoll = vi.fn(async (_watch: unknown, work: () => Promise<unknown>) =>
+      work(),
+    )
+    return { watchRelease, watchSpawnedChildren, listChildPids, withSpawnedChildrenPoll }
+  },
+)
+
+vi.mock('./processTree.js', () => ({
+  listChildPids,
+  watchSpawnedChildren,
+  withSpawnedChildrenPoll,
+}))
+
 const { Codex } = vi.hoisted(() => {
   const run = vi.fn()
   const startThread = vi.fn(() => ({
@@ -33,6 +55,14 @@ const testCtx = {
 describe('createCodexLoopSession', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    watchRelease.mockResolvedValue(undefined)
+    listChildPids.mockReturnValue([])
+    watchSpawnedChildren.mockImplementation(() => ({
+      pids: [],
+      adopt: vi.fn(),
+      release: watchRelease,
+    }))
+    withSpawnedChildrenPoll.mockImplementation(async (_watch, work) => work())
     Codex.mockImplementation(function Codex() {
       return {
         startThread: vi.fn(() => ({
@@ -89,5 +119,6 @@ describe('createCodexLoopSession', () => {
     )
     expect(thread.run.mock.calls[0]![0]).toContain('do the thing')
     await session.dispose()
+    expect(watchRelease).toHaveBeenCalledOnce()
   })
 })

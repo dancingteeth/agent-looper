@@ -6,6 +6,11 @@ import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import { LOOP_RUNTIME_CODEX } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
+import {
+  listChildPids,
+  watchSpawnedChildren,
+  withSpawnedChildrenPoll,
+} from './processTree.js'
 
 const SESSION_TIMEOUT_MS = 45 * 60 * 1000
 
@@ -125,10 +130,14 @@ export async function createCodexLoopSession(ctx: RepoContext): Promise<CodexLoo
       }, SESSION_TIMEOUT_MS)
       timeoutHandle.unref?.()
 
+      const before = listChildPids(process.pid)
+      const watch = watchSpawnedChildren(before)
       try {
-        const turn = (await thread.run(composeCodexPrompt(systemPrompt, prompt), {
-          signal: controller.signal,
-        })) as CodexTurn
+        const turn = (await withSpawnedChildrenPoll(watch, () =>
+          thread.run(composeCodexPrompt(systemPrompt, prompt), {
+            signal: controller.signal,
+          }),
+        )) as CodexTurn
 
         const text = extractCodexText(turn)
         if (assistantOutput === 'stdout' || verbose) {
@@ -160,6 +169,7 @@ export async function createCodexLoopSession(ctx: RepoContext): Promise<CodexLoo
         throw err
       } finally {
         if (timeoutHandle) clearTimeout(timeoutHandle)
+        await watch.release()
       }
     },
     async dispose() {

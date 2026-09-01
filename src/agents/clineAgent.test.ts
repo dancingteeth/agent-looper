@@ -1,6 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoProfileSchema } from '../context/repoProfile.js'
 
+const { watchRelease, watchSpawnedChildren, listChildPids, withSpawnedChildrenPoll } = vi.hoisted(
+  () => {
+    const watchRelease = vi.fn().mockResolvedValue(undefined)
+    const watchSpawnedChildren = vi.fn(() => ({
+      pids: [] as number[],
+      adopt: vi.fn(),
+      release: watchRelease,
+    }))
+    const listChildPids = vi.fn(() => [] as number[])
+    const withSpawnedChildrenPoll = vi.fn(async (_watch: unknown, work: () => Promise<unknown>) =>
+      work(),
+    )
+    return { watchRelease, watchSpawnedChildren, listChildPids, withSpawnedChildrenPoll }
+  },
+)
+
+vi.mock('./processTree.js', () => ({
+  listChildPids,
+  watchSpawnedChildren,
+  withSpawnedChildrenPoll,
+}))
+
 const mockDispose = vi.fn().mockResolvedValue(undefined)
 const mockStart = vi.fn().mockResolvedValue({
   sessionId: 'sess-1',
@@ -42,6 +64,14 @@ describe('clineAgent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubEnv('CLINE_API_KEY', 'test-key')
+    watchRelease.mockResolvedValue(undefined)
+    listChildPids.mockReturnValue([])
+    watchSpawnedChildren.mockImplementation(() => ({
+      pids: [],
+      adopt: vi.fn(),
+      release: watchRelease,
+    }))
+    withSpawnedChildrenPoll.mockImplementation(async (_watch, work) => work())
   })
 
   it('throws when CLINE_API_KEY is unset', async () => {
@@ -128,5 +158,13 @@ describe('clineAgent', () => {
     const config = mockStart.mock.calls[0]?.[0]?.config
     expect(config.reasoningEffort).toBeUndefined()
     expect(config.thinking).toBeUndefined()
+  })
+
+  it('reaps children spawned after ClineCore.create on dispose', async () => {
+    const { createClineLoopSession } = await import('./clineAgent.js')
+    const session = await createClineLoopSession(ctx)
+    await session.dispose()
+    expect(mockDispose).toHaveBeenCalledOnce()
+    expect(watchRelease).toHaveBeenCalledOnce()
   })
 })

@@ -16,6 +16,11 @@ import {
   type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
+import {
+  listChildPids,
+  watchSpawnedChildren,
+  withSpawnedChildrenPoll,
+} from './processTree.js'
 
 export { CLINE_INNER_MAX_ITERATIONS }
 const SESSION_TIMEOUT_MS = 45 * 60 * 1000
@@ -152,10 +157,21 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const clientName = ctx.profile.clientName
 
-  const cline = await ClineCore.create({
-    clientName,
-    backendMode: 'local',
-  })
+  // backendMode: local is in-process (no Cline hub daemon). Still watch children of
+  // this Node — MCP tool processes — and never hunt PID-1 `.cline --cline-hub-daemon`
+  // leftovers from other apps.
+  const before = listChildPids(process.pid)
+  let cline: ClineCoreType
+  try {
+    cline = await ClineCore.create({
+      clientName,
+      backendMode: 'local',
+    })
+  } catch (err) {
+    await watchSpawnedChildren(before).release()
+    throw err
+  }
+  const watch = watchSpawnedChildren(before)
 
   return {
     async runPrompt(prompt, options) {
@@ -164,73 +180,79 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
       const phase = options.phase ?? 'implement'
       const providerId = resolveClineProviderId(options.providerId)
 
-      const started = await cline.start({
-        prompt,
-        interactive: false,
-        config: {
-          providerId,
-          modelId: options.modelId,
-          apiKey,
-          systemPrompt,
-          cwd: ctx.repoRoot,
-          workspaceRoot: ctx.repoRoot,
-          enableTools: true,
-          enableSpawnAgent: false,
-          enableAgentTeams: false,
-          yolo: true,
-          maxIterations: CLINE_INNER_MAX_ITERATIONS,
-          checkpoint: { enabled: false },
-          ...(options.reasoningEffort !== undefined && options.reasoningEffort !== 'none'
-            ? { reasoningEffort: options.reasoningEffort, thinking: true }
-            : {}),
-        },
-        toolPolicies: { ...CLINE_LOOP_TOOL_POLICIES },
-      })
+      return withSpawnedChildrenPoll(watch, async () => {
+        const started = await cline.start({
+          prompt,
+          interactive: false,
+          config: {
+            providerId,
+            modelId: options.modelId,
+            apiKey,
+            systemPrompt,
+            cwd: ctx.repoRoot,
+            workspaceRoot: ctx.repoRoot,
+            enableTools: true,
+            enableSpawnAgent: false,
+            enableAgentTeams: false,
+            yolo: true,
+            maxIterations: CLINE_INNER_MAX_ITERATIONS,
+            checkpoint: { enabled: false },
+            ...(options.reasoningEffort !== undefined && options.reasoningEffort !== 'none'
+              ? { reasoningEffort: options.reasoningEffort, thinking: true }
+              : {}),
+          },
+          toolPolicies: { ...CLINE_LOOP_TOOL_POLICIES },
+        })
 
-      console.error(
-        `[agent-loop:cline] provider=${providerId} session_id=${started.sessionId} model=${options.modelId}`,
-      )
-
-      try {
-        let text: string
-        if (started.result?.text?.trim()) {
-          text = started.result.text.trim()
-        } else {
-          text = await waitForClineSession(cline, started.sessionId, {
-            verbose,
-            assistantOutput,
-            collector: options.collector,
-          })
-        }
-
-        const usage = await readSessionUsage(
-          cline,
-          started.sessionId,
-          options.modelId,
-          phase,
-          providerId,
+        console.error(
+          `[agent-loop:cline] provider=${providerId} session_id=${started.sessionId} model=${options.modelId}`,
         )
-        if (usage) {
-          console.error(
-            `[agent-loop:cline] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
-          )
-        }
 
-        return {
-          text,
-          usage,
-          innerAgent: resolveInnerAgentStatus(text, 'cline'),
-          sessionRef: { provider: 'cline', sessionId: started.sessionId },
-          toolSummary: options.collector?.toolSummary,
-          transcriptEvents: options.collector?.events,
+        try {
+          let text: string
+          if (started.result?.text?.trim()) {
+            text = started.result.text.trim()
+          } else {
+            text = await waitForClineSession(cline, started.sessionId, {
+              verbose,
+              assistantOutput,
+              collector: options.collector,
+            })
+          }
+
+          const usage = await readSessionUsage(
+            cline,
+            started.sessionId,
+            options.modelId,
+            phase,
+            providerId,
+          )
+          if (usage) {
+            console.error(
+              `[agent-loop:cline] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
+            )
+          }
+
+          return {
+            text,
+            usage,
+            innerAgent: resolveInnerAgentStatus(text, 'cline'),
+            sessionRef: { provider: 'cline', sessionId: started.sessionId },
+            toolSummary: options.collector?.toolSummary,
+            transcriptEvents: options.collector?.events,
+          }
+        } finally {
+          await cline.stop(started.sessionId).catch(() => undefined)
+          await cline.delete(started.sessionId).catch(() => undefined)
         }
-      } finally {
-        await cline.stop(started.sessionId).catch(() => undefined)
-        await cline.delete(started.sessionId).catch(() => undefined)
-      }
+      })
     },
     async dispose() {
-      await cline.dispose(`${clientName} done`)
+      try {
+        await cline.dispose(`${clientName} done`)
+      } finally {
+        await watch.release()
+      }
     },
   }
 }
