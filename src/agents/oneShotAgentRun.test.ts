@@ -9,6 +9,7 @@ const {
   createPiLoopSession,
   createCodexLoopSession,
   createDshLoopSession,
+  createMuseLoopSession,
 } = vi.hoisted(() => ({
   runCursorAgentPrompt: vi.fn(),
   createClineLoopSession: vi.fn(),
@@ -16,6 +17,7 @@ const {
   createPiLoopSession: vi.fn(),
   createCodexLoopSession: vi.fn(),
   createDshLoopSession: vi.fn(),
+  createMuseLoopSession: vi.fn(),
 }))
 
 vi.mock('./cursorAgent.js', () => ({
@@ -40,6 +42,10 @@ vi.mock('./codexAgent.js', () => ({
 
 vi.mock('./dshAgent.js', () => ({
   createDshLoopSession,
+}))
+
+vi.mock('./museAgent.js', () => ({
+  createMuseLoopSession,
 }))
 
 const testCtx = {
@@ -170,6 +176,31 @@ describe('runOneShotAgentPrompt', () => {
       'go',
       expect.objectContaining({
         providerId: 'cline-pass',
+        reasoningEffort: 'high',
+        phase: 'review',
+      }),
+    )
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it('passes Muse reasoningEffort through to the session', async () => {
+    const dispose = vi.fn().mockResolvedValue(undefined)
+    const runPrompt = vi.fn().mockResolvedValue({ text: 'muse' })
+    createMuseLoopSession.mockResolvedValue({ runPrompt, dispose })
+
+    await runOneShotAgentPrompt(
+      testCtx,
+      'go',
+      {
+        runtime: 'muse',
+        model: 'muse-spark-1.2',
+        reasoningEffort: 'high',
+      },
+      { phase: 'review' },
+    )
+    expect(runPrompt).toHaveBeenCalledWith(
+      'go',
+      expect.objectContaining({
         reasoningEffort: 'high',
         phase: 'review',
       }),

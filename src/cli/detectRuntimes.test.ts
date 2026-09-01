@@ -8,7 +8,7 @@ describe('detectLoopRuntimes', () => {
       which: () => true,
     })
     expect(Object.keys(result).sort()).toEqual(
-      (['cursor', 'cline', 'opencode', 'pi', 'codex', 'dsh'] as DetectableRuntime[]).sort(),
+      (['cursor', 'cline', 'opencode', 'pi', 'codex', 'dsh', 'muse'] as DetectableRuntime[]).sort(),
     )
     expect(result).toEqual({
       cursor: 'detected',
@@ -17,6 +17,7 @@ describe('detectLoopRuntimes', () => {
       pi: 'detected',
       codex: 'detected',
       dsh: 'detected',
+      muse: 'detected',
     })
   })
 
@@ -67,6 +68,7 @@ describe('emptyDetection / detectionOf', () => {
       pi: 'missing',
       codex: 'missing',
       dsh: 'missing',
+      muse: 'missing',
     })
     expect(detectionOf({ cursor: 'detected' }).cursor).toBe('detected')
     expect(detectionOf({ cursor: 'detected' }).opencode).toBe('missing')

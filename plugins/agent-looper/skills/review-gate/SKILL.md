@@ -40,7 +40,8 @@ Proceed / Guide / Deny / Confirm — Guide packets feed the next worker when the
 - Default judge: Cursor (`reviewRuntime` unset → `cursor`)
 - `reviewRuntime: opencode` without `reviewModel` → `opencode-go/deepseek-v4-pro` (do not copy the Flash worker slug)
 - `reviewRuntime: dsh` without `reviewModel` → `deepseek-official/deepseek-v4-pro`
-- Set `reviewRuntime` + `reviewModel` to keep the judge off Cursor quota (Pi, OpenCode BYOK, Cline, DSH, …)
+- `reviewRuntime: muse` without `reviewModel` → `muse-spark-1.2`
+- Set `reviewRuntime` + `reviewModel` to keep the judge off Cursor quota (Pi, OpenCode BYOK, Cline, DSH, Muse, …)
 - Never use Composer Fast as the judge
 
 ## Reproduce filters (opt-in)

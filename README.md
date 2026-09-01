@@ -26,7 +26,7 @@ Other workers, judges, and flags are below. You do not need them for a first gre
 
 How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md).
 
-Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). DSH companion for `dsh web` (skills + scaffold, not a second harness): [`docs/dsh-plugin.md`](./docs/dsh-plugin.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
+Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`), **Muse** (PATH `muse`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). DSH companion for `dsh web` (skills + scaffold, not a second harness): [`docs/dsh-plugin.md`](./docs/dsh-plugin.md). Muse Code: [`docs/muse-runtime.md`](./docs/muse-runtime.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 
 ## Features at a glance
 
@@ -65,6 +65,7 @@ pnpm add -D @cline/sdk                                    # Cline Pass / Credits
 pnpm add -D @opencode-ai/sdk opencode-ai                  # OpenCode Go / BYOK
 pnpm add -D @earendil-works/pi-coding-agent               # Pi BYOK
 pnpm add -D @openai/codex-sdk                             # Codex (ChatGPT / OpenAI)
+pnpm add -D @muse-code/sdk                                # Muse Code (PATH `muse`)
 ```
 
 Use CLIs via `pnpm exec` (or `npx`) so you do not need a global install:
@@ -123,6 +124,11 @@ export DEEPSEEK_API_KEY=…   # or DSH credentials-local
 pnpm exec agent-check dsh
 pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh
 # runtime: docs/dsh-runtime.md — dsh web companion: docs/dsh-plugin.md
+
+# Muse Code (needs `muse` CLI + @muse-code/sdk)
+export META_API_KEY=…   # optional; `muse` login is enough
+pnpm exec agent-check muse
+pnpm exec agent-loop run .cursor/loops/my-task --runtime muse
 ```
 
 Target another checkout:
@@ -206,9 +212,9 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`. Unset when `costPreset` is set so detection can bind. See [`docs/runtime-map.md`](./docs/runtime-map.md). Same-task cost method: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). |
+| `runtime` | `cursor` | Worker: `cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh` \| `muse`. Unset when `costPreset` is set so detection can bind. See [`docs/runtime-map.md`](./docs/runtime-map.md). Same-task cost method: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). |
 | `costPreset` | — | Named worker+judge stack: `minmax` (efficiency — cheapest *capable* worker + strongest included judge; Grok whenever Cursor is installed), `balanced` (escalate-tier worker, same judge), `cursor` (Composer + Grok). Detect-bound at parse when `runtime`/`model` are unset; explicit keys win. Not Auto. |
-| `model` / `escalateModel` | (defaults) | Worker model; escalate on identical verifier stagnation **or** immediately after a hung/timed-out worker (OpenCode/Pi/Codex/DSH: after threshold; Cline: after reasoning ceiling — worker fault skips the ceiling). |
+| `model` / `escalateModel` | (defaults) | Worker model; escalate on identical verifier stagnation **or** immediately after a hung/timed-out worker (OpenCode/Pi/Codex/DSH/Muse: after threshold; Cline: after reasoning ceiling — worker fault skips the ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
 | `maxCostUsd` | — | Dollar cap: refuse to start a billed **worker** call whose predicted cost exceeds remaining budget; after a finished worker (or billed review) that still crosses it, stop `waiting` + HITL `budget` (`--max-cost`). Omit = no cap. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
@@ -224,7 +230,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `notifyCommand` | — | Override repo profile `notifyCommand` for this loop |
 | `exportPack` | `true` | Copy curated artifacts to `.cursor/loop-exports/<slug>/` (commit-friendly) |
 | `notifyPrComment` | — | Override profile `notifyPrComment` for this loop |
-| `reasoningEffort` | — | `low` \| `medium` \| `high` \| `xhigh` \| `none` when the runtime honors it (Cline, Pi). Omit or `none` = no extra thinking. Cursor / OpenCode / Codex / DSH ignore it. |
+| `reasoningEffort` | — | `low` \| `medium` \| `high` \| `xhigh` \| `none` when the runtime honors it (Cline, Pi, Muse). Omit or `none` = no extra thinking. Cursor / OpenCode / Codex / DSH ignore it. |
 | `escalateReasoningEffort` | — | Reasoning ladder ceiling (same runtimes as `reasoningEffort`). Applies to the worker **and** skill-verify. |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
@@ -243,14 +249,14 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `loopRiskProfile` | — | Per-loop keyword merge for risk inference (`high` / `medium` / `low` arrays) |
 | `reviewGate` | `false` | When `true`, gating blockers re-enter the fix loop (up to `maxReviewCycles`) |
 | `reviewRuntime` | `cursor` | Primary judge runtime (same enum as `runtime`). Unset → cursor. |
-| `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.6` when worker is `cursor`, else `composer-2.5`. OpenCode judge (`reviewRuntime: "opencode"`) defaults to **`opencode-go/deepseek-v4-pro`** (worker stays Flash). DSH judge (`reviewRuntime: "dsh"`) defaults to **`deepseek-official/deepseek-v4-pro`**. Codex judge (`reviewRuntime: "codex"`) defaults to **`gpt-5.6-sol`** (worker stays Luna). Pi / Cline judges use that runtime’s worker default. Never Composer Fast on cursor. |
+| `reviewModel` | (resolved) | Judge model for `reviewRuntime`. Cursor defaults: `grok-4.6` when worker is `cursor`, else `composer-2.5`. OpenCode judge (`reviewRuntime: "opencode"`) defaults to **`opencode-go/deepseek-v4-pro`** (worker stays Flash). DSH judge (`reviewRuntime: "dsh"`) defaults to **`deepseek-official/deepseek-v4-pro`**. Codex judge (`reviewRuntime: "codex"`) defaults to **`gpt-5.6-sol`** (worker stays Luna). Muse judge (`reviewRuntime: "muse"`) defaults to **`muse-spark-1.2`** (worker stays contributor). Pi / Cline judges use that runtime’s worker default. Never Composer Fast on cursor. |
 | `maxReviewCycles` | `2` | Review-triggered fix rounds when `reviewGate` is on |
 | `reviewGateHitl` | `false` | On gate exhaust, open a HITL checkpoint (`hitlProvider`) instead of hard-fail only |
 | `unparseableReviewRetries` | `2` | Retries when verdict cannot be parsed |
 | `reviewBlockerRecheck` | `true` | On BLOCKERS fix rounds, lighter scope-limited re-check |
 | `reviewReproduce` | `false` | Path filter on error+impact blockers (changed-files set) |
 | `reviewReproduceAgent` | `false` | Fresh KEEP/DROP session on gating blockers (needs `reviewReproduce`; uses primary `reviewRuntime`) |
-| `reviewSecondaryRuntime` | (unset) | Second residual judge (`cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh`); unset = off |
+| `reviewSecondaryRuntime` | (unset) | Second residual judge (`cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh` \| `muse`); unset = off |
 | `reviewSecondaryModel` | (default) | Model for secondary review (defaults per that runtime) |
 | `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate) |
 | `exportRunReport` | `true` | Write `run-report.md` when the loop finishes (report card + timeline) |
@@ -386,7 +392,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | `agent-loop run <dir>` | Single loop |
 | `agent-loop watch <dir>` | Live progress: Ink watch view (TTY) or structured phase lines; `--snapshot` prints one frame and exits |
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
-| `agent-check cursor\|cline\|opencode\|pi\|codex\|dsh` | SDK + API key smoke (`dsh`: PATH CLI + Node ≥ 22.15) |
+| `agent-check cursor\|cline\|opencode\|pi\|codex\|dsh\|muse` | SDK + API key smoke (`dsh`: PATH CLI + Node ≥ 22.15; `muse`: PATH `muse` + `@muse-code/sdk`) |
 | `agent-loop-init` | Scaffold templates + `check-running-loops` skill (`.cursor/skills` and `.agents/skills`) |
 | `agent-loop-setup` | Ink TUI / `--plain` / `--answers` wizard: repo `defaults` in `.cursor/agent-loop.repo.json` plus `loop.json` for `--out` |
 | `agent-loop-doctor` | Validate install / `dist/` integrity; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
@@ -444,8 +450,10 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 | `OPENROUTER_API_KEY` | OpenRouter BYOK for OpenCode / Pi workers and judges |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway BYOK for OpenCode (`vercel/…` models; harness `auth.set`) |
 | `CODEX_API_KEY` / `OPENAI_API_KEY` | Codex SDK auth (optional; else ChatGPT CLI login) |
+| `META_API_KEY` | Muse Code Model API (optional; else `muse` CLI login) |
 | `AGENT_LOOP_VERBOSE` | `1` / `true` — extra stderr stream detail |
 | `AGENT_LOOP_CURSOR_TIMEOUT_MS` | Cursor run timeout in milliseconds (default **2700000** = 45m). Must be a positive number; validated before `Agent.create` so a bad value fails without burning a paid run. On timeout the harness cancels the remote run. |
+| `AGENT_LOOP_MUSE_TIMEOUT_MS` | Muse run timeout in milliseconds (default **2700000** = 45m). On timeout the harness closes `muse serve` immediately. |
 | `AGENT_LOOP_TRUST_CONFIG` | `1` — treat shell config as reviewed/trusted |
 | `AGENT_LOOP_REQUIRE_TRUST_CONFIG` | `1` — abort unless trust is set (CLI / env / `loop.json`) |
 | `AGENT_LOOP_TELEGRAM_BOT_TOKEN` | Telegram bot token (fallback: `TELEGRAM_BOT_TOKEN`) |

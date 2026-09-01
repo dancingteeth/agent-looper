@@ -234,3 +234,96 @@ export function spawnParentDeathReaper(input: {
     },
   }
 }
+
+/** Direct children of `parentPid` that were not in `before`. */
+export function newlySpawnedPids(
+  before: readonly number[],
+  parentPid = process.pid,
+  listChildren: (pid: number) => number[] = listChildPids,
+): number[] {
+  const prev = new Set(before)
+  return listChildren(parentPid).filter((pid) => !prev.has(pid) && pid > 0)
+}
+
+export type SpawnedSubtreeWatch = {
+  readonly pids: readonly number[]
+  adopt(): void
+  release(): Promise<void>
+}
+
+export type WatchSpawnedChildrenOptions = {
+  parentPid?: number
+  listChildren?: (pid: number) => number[]
+  spawnReaper?: typeof spawnParentDeathReaper
+  track?: typeof trackSpawnedRoot
+  killTree?: typeof killProcessTree
+}
+
+/**
+ * Track new children of this process after a spawn the SDK does not expose a pid for.
+ * Parent-death reapers we start are excluded so they are not adopted as runtime roots.
+ * Only reaps children of `parentPid` — never a PID-1 daemon from another app.
+ */
+export function watchSpawnedChildren(
+  before: readonly number[],
+  options: WatchSpawnedChildrenOptions = {},
+): SpawnedSubtreeWatch {
+  const parentPid = options.parentPid ?? process.pid
+  const listChildren = options.listChildren ?? listChildPids
+  const spawnReaper = options.spawnReaper ?? spawnParentDeathReaper
+  const track = options.track ?? trackSpawnedRoot
+  const killTree = options.killTree ?? killProcessTree
+  const beforeSet = new Set(before)
+  const seen = new Set<number>()
+  const reaperPids = new Set<number>()
+  const untracks: Array<() => void> = []
+  const reapers: Array<{ close(): void }> = []
+  let released = false
+
+  const adopt = () => {
+    if (released) return
+    for (const pid of listChildren(parentPid)) {
+      if (pid <= 0 || beforeSet.has(pid) || seen.has(pid) || reaperPids.has(pid)) continue
+      seen.add(pid)
+      untracks.push(track(pid))
+      const reaper = spawnReaper({ parentPid, rootPid: pid })
+      if (reaper.pid !== undefined && reaper.pid > 0) reaperPids.add(reaper.pid)
+      reapers.push(reaper)
+    }
+  }
+  adopt()
+
+  return {
+    get pids() {
+      return [...seen]
+    },
+    adopt,
+    release: async () => {
+      if (released) return
+      adopt()
+      released = true
+      for (const reaper of reapers) reaper.close()
+      for (const untrack of untracks) untrack()
+      await Promise.all([...seen].map((pid) => killTree(pid)))
+    },
+  }
+}
+
+/** Poll `watch.adopt()` while `work` runs so late MCP children get a parent-death reaper. */
+export async function withSpawnedChildrenPoll<T>(
+  watch: SpawnedSubtreeWatch,
+  work: () => Promise<T>,
+  intervalMs = 250,
+): Promise<T> {
+  const timer = setInterval(() => {
+    watch.adopt()
+  }, intervalMs)
+  timer.unref?.()
+  try {
+    watch.adopt()
+    return await work()
+  } finally {
+    clearInterval(timer)
+    watch.adopt()
+  }
+}

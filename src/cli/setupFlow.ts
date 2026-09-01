@@ -5,6 +5,7 @@ import {
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_MUSE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   runtimeHonorsReasoningEffort,
@@ -84,6 +85,7 @@ const RUNTIME_DETECT_KEY: Record<string, DetectableRuntime> = {
   [LOOP_RUNTIME_PI]: 'pi',
   [LOOP_RUNTIME_CODEX]: 'codex',
   [LOOP_RUNTIME_DSH]: 'dsh',
+  [LOOP_RUNTIME_MUSE]: 'muse',
 }
 
 /** Tag runtime-menu choices `detected` / `missing`; never drops a choice. */
@@ -154,7 +156,7 @@ export async function collectSetupAnswers(
       'Custom worker model slug',
     )
     let escalateModel: string | undefined
-    if (runtime !== LOOP_RUNTIME_CURSOR) {
+    if (runtime !== LOOP_RUNTIME_CURSOR && runtime !== LOOP_RUNTIME_MUSE) {
       escalateModel = await askOptionalSlug(
         'Escalate model',
         `Stronger ${runtime} model after repeated identical verify failures. Omit for the default.`,

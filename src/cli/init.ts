@@ -111,5 +111,7 @@ console.error(`  # OpenCode Go subscription (OPENCODE_API_KEY); optional escalat
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime opencode`)
 console.error(`  # DeepSeek Harness headless (dsh on PATH; Node ≥ 22.15)`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime dsh`)
+console.error(`  # Muse Code (muse on PATH + @muse-code/sdk; login or META_API_KEY)`)
+console.error(`  agent-loop run .cursor/loops/example-fix --runtime muse`)
 
 trackLooperInit()

@@ -13,6 +13,8 @@ export const LOOP_RUNTIME_PI = 'pi' as const
 export const LOOP_RUNTIME_CODEX = 'codex' as const
 /** DeepSeek Harness worker — spawn `dsh --profile headless` (PATH CLI, no npm dep). */
 export const LOOP_RUNTIME_DSH = 'dsh' as const
+/** Muse Code (`@muse-code/sdk` + PATH `muse serve`) — Muse Spark slugs (e.g. muse-spark-1.2). */
+export const LOOP_RUNTIME_MUSE = 'muse' as const
 
 /** Canonical runtime ids — CLI flags, loop.json, and `loopRuntimeSchema` share this list. */
 export const LOOP_RUNTIME_VALUES = [
@@ -23,6 +25,7 @@ export const LOOP_RUNTIME_VALUES = [
   LOOP_RUNTIME_PI,
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_MUSE,
 ] as const
 
 export type LoopRuntime = (typeof LOOP_RUNTIME_VALUES)[number]
@@ -115,8 +118,18 @@ export const DEFAULT_DSH_ESCALATE_MODEL = 'deepseek-official/deepseek-v4-pro'
 /** Default DSH judge — V4 Pro (same split as Flash worker / Pro judge). */
 export const DEFAULT_DSH_REVIEW_MODEL = 'deepseek-official/deepseek-v4-pro'
 
+/** Default Muse worker — Spark 1.2 contributor (CLI login / discounted tokens). */
+export const DEFAULT_MUSE_LOOP_MODEL = 'muse-spark-1.2-contributor'
+/** Default Muse judge — PAYG Spark 1.2 (same weights as contributor; billing/privacy, not a stronger model). */
+export const DEFAULT_MUSE_REVIEW_MODEL = 'muse-spark-1.2'
+/** Prior Spark slug the adapter still prices and accepts. */
+export const MUSE_SPARK_1_1_MODEL = 'muse-spark-1.1'
+
 /** Codex CLI model slug (not provider/model). */
 const CODEX_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/
+
+/** Muse Spark model id (not provider/model). */
+const MUSE_MODEL_RE = /^muse-spark-[0-9]+(\.[0-9]+)?(-[a-z0-9]+)?$/
 
 /** OpenRouter-style `provider/model` (Cline usage-billing / API). */
 const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
@@ -182,6 +195,11 @@ export type ResolvedLoopAgent =
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
+  | {
+      runtime: typeof LOOP_RUNTIME_MUSE
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
 
 export function isClineSdkRuntime(
   runtime: LoopRuntime,
@@ -207,6 +225,10 @@ export function isDshRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTI
   return runtime === LOOP_RUNTIME_DSH
 }
 
+export function isMuseRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTIME_MUSE {
+  return runtime === LOOP_RUNTIME_MUSE
+}
+
 /**
  * Whether the worker runner actually sends `reasoningEffort` to the provider.
  * Wizard, resolveLoopAgent, and the iteration ladder all use this — do not
@@ -217,6 +239,7 @@ export function runtimeHonorsReasoningEffort(runtime: LoopRuntime): boolean {
     case LOOP_RUNTIME_CLINE:
     case LOOP_RUNTIME_CLINE_PASS:
     case LOOP_RUNTIME_PI:
+    case LOOP_RUNTIME_MUSE:
       return true
     case LOOP_RUNTIME_CURSOR:
     case LOOP_RUNTIME_OPENCODE:
@@ -244,6 +267,8 @@ export function defaultModelForRuntime(runtime: LoopRuntime): string {
       return DEFAULT_CODEX_LOOP_MODEL
     case LOOP_RUNTIME_DSH:
       return DEFAULT_DSH_LOOP_MODEL
+    case LOOP_RUNTIME_MUSE:
+      return DEFAULT_MUSE_LOOP_MODEL
     case LOOP_RUNTIME_CURSOR:
       return CURSOR_LOOP_MODEL
     default: {
@@ -294,6 +319,11 @@ export type ResolvedReviewAgent =
     }
   | {
       runtime: typeof LOOP_RUNTIME_DSH
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_MUSE
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
@@ -385,6 +415,15 @@ function assertReviewModelForRuntime(
     }
     return model
   }
+  if (runtime === LOOP_RUNTIME_MUSE) {
+    if (!isMuseLoopModel(model)) {
+      throw new Error(
+        `Invalid ${modelField} "${model}" for ${runtimeField} "muse". Expected a Muse Spark slug ` +
+          `(e.g. "${DEFAULT_MUSE_REVIEW_MODEL}") — https://dev.meta.ai/docs/muse-code`,
+      )
+    }
+    return model
+  }
   const _exhaustive: never = runtime
   return _exhaustive
 }
@@ -402,6 +441,8 @@ function defaultReviewModel(
       return DEFAULT_OPENCODE_GO_REVIEW_MODEL
     case LOOP_RUNTIME_DSH:
       return DEFAULT_DSH_REVIEW_MODEL
+    case LOOP_RUNTIME_MUSE:
+      return DEFAULT_MUSE_REVIEW_MODEL
     case LOOP_RUNTIME_CLINE_PASS:
     case LOOP_RUNTIME_CLINE:
     case LOOP_RUNTIME_PI:
@@ -460,6 +501,9 @@ export function resolveReviewAgent(
   }
   if (reviewRuntime === LOOP_RUNTIME_DSH) {
     return { runtime: reviewRuntime, model: assertDshLoopModel(model, 'model') }
+  }
+  if (reviewRuntime === LOOP_RUNTIME_MUSE) {
+    return { runtime: reviewRuntime, model: assertMuseLoopModel(model, 'model') }
   }
   return {
     runtime: LOOP_RUNTIME_CLINE_PASS,
@@ -551,6 +595,14 @@ export function isDshLoopModel(model: string): boolean {
   return true
 }
 
+/** Valid `loop.json` model for runtime `muse` (Muse Spark slug). */
+export function isMuseLoopModel(model: string): boolean {
+  if (!MUSE_MODEL_RE.test(model)) return false
+  if (model.includes('/')) return false
+  if (model.toLowerCase().includes('fast')) return false
+  return true
+}
+
 /** Valid `loop.json` model for runtime `opencode`. */
 export function isOpencodeLoopModel(model: string): boolean {
   if (!isOpencodeLoopModelShape(model)) return false
@@ -579,6 +631,8 @@ export function modelCompatibleWithRuntime(
       return isCodexLoopModel(model)
     case LOOP_RUNTIME_DSH:
       return isDshLoopModel(model)
+    case LOOP_RUNTIME_MUSE:
+      return isMuseLoopModel(model)
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -753,6 +807,16 @@ function assertDshLoopModel(model: string, field: 'model' | 'escalateModel'): st
   return model
 }
 
+function assertMuseLoopModel(model: string, field: 'model' | 'escalateModel'): string {
+  if (!isMuseLoopModel(model)) {
+    throw new Error(
+      `Invalid Muse ${field} "${model}". Expected a Muse Spark slug ` +
+        `(e.g. "${DEFAULT_MUSE_LOOP_MODEL}") — https://dev.meta.ai/docs/muse-code`,
+    )
+  }
+  return model
+}
+
 function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'): string {
   if (!isOpencodeLoopModel(model)) {
     const { providerID } = (() => {
@@ -823,6 +887,14 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
     }
   }
 
+  if (runtime === LOOP_RUNTIME_MUSE) {
+    return {
+      runtime,
+      model: assertMuseLoopModel(model, 'model'),
+      reasoningEffort: config.reasoningEffort,
+    }
+  }
+
   return {
     runtime,
     model: assertClinePassModel(model, 'model'),
@@ -890,9 +962,14 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
     return
   }
 
+  if (runtime === LOOP_RUNTIME_MUSE) {
+    assertMuseLoopModel(config.escalateModel, 'escalateModel')
+    return
+  }
+
   if (config.escalateModel !== CURSOR_LOOP_MODEL) {
     throw new Error(
-      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", "pi", "codex", or "dsh" ` +
+      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", "pi", "codex", "dsh", or "muse" ` +
         `(got runtime "cursor" and escalateModel "${config.escalateModel}")`,
     )
   }

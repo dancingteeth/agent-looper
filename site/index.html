@@ -99,7 +99,7 @@
             "name": "Which coding agents does Agent Looper work with?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router."
+              "text": "Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, DSH, and Muse. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router."
             }
           },
           {
@@ -302,12 +302,16 @@
             <span class="harness-logo__icon" style="--logo: url('logos/deepseek.svg')" aria-hidden="true"></span>
             <span class="harness-logo__label">DSH</span>
           </a>
+          <a class="harness-logo" href="harnesses/#muse">
+            <span class="harness-logo__icon" style="--logo: url('logos/meta.svg')" aria-hidden="true"></span>
+            <span class="harness-logo__label">Muse</span>
+          </a>
         </div>
         <div class="tui-answers" id="faq">
           <article class="tui-answer tui-answer--agents">
             <h2>Which coding agents does Agent Looper work with?</h2>
             <p>
-              Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, and DSH.
+              Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, DSH, and Muse.
               It detects what's installed. You or your agent pick the model and provider.
               OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router.
               How-to and default models: <a href="harnesses/">Harnesses</a>.
@@ -424,7 +428,7 @@
       <div class="wrap">
         <h2>Open spine, not rented brain</h2>
         <p class="section-intro">
-          MIT. Inspectable. Models stay whoever you already pay — Cursor, OpenCode, OpenRouter, Codex, DSH.
+          MIT. Inspectable. Models stay whoever you already pay — Cursor, OpenCode, OpenRouter, Codex, DSH, Muse.
           What you own is the loop: frozen <code>GOAL.md</code>, measurable <code>verify.sh</code>,
           sparse <code>REVIEWS.md</code> / <code>AGENTS.md</code>, and orchestration that keeps workers fresh and spend bounded.
         </p>
@@ -461,14 +465,14 @@
 
 Requirements: Node 22+ and pnpm.
 
-1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH).
+1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse).
 2. Keep @dancingteeth/agent-looper in package.json even if you gitignore `.cursor/loops`. Don't only npx it.
 3. Use an API key already on this machine, or run under Doppler. Don't invent keys.
 4. Run: pnpm exec agent-loop-init
 5. Write GOAL.md for the feature and freeze it. Don't rewrite the goal mid-loop.
 6. Write a determined check until `bash verify.sh` is an honest pass/fail that the feature actually works. The model does not get to say done.
 7. Start the loop:
-   pnpm exec agent-loop run .cursor/loops/&lt;task&gt; --runtime &lt;cursor|cline|opencode|pi|codex|dsh&gt; --review-gate
+   pnpm exec agent-loop run .cursor/loops/&lt;task&gt; --runtime &lt;cursor|cline|opencode|pi|codex|dsh|muse&gt; --review-gate
 8. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
 
 Cursor example (swap the SDK, key, and --runtime if this machine isn't Cursor):
@@ -547,6 +551,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
           <li><strong>Pi</strong> — OpenRouter by default, or another OpenAI-compatible router you configure</li>
           <li><strong>Codex</strong> — ChatGPT / OpenAI</li>
           <li><strong>DSH</strong> — DeepSeek Harness CLI, plus a plugin for dsh web</li>
+          <li><strong>Muse</strong> — Muse Code CLI, explicit <code>runtime: muse</code> (not minmax)</li>
         </ul>
         <p class="docs-pointer">
           <a href="harnesses/">Harness how-to and default models</a>
@@ -556,6 +561,8 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
           <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md">Pi runtime</a>
           ·
           <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">DSH plugin</a>
+          ·
+          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md">Muse runtime</a>
           ·
           <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.md">README.md</a>
         </p>

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Harnesses — Agent Looper worker runtimes and Grok Bot</title>
-  <meta name="description" content="How to run Agent Looper with each worker harness: Cursor, Grok Bot, DSH, Cline, OpenCode, Pi, and Codex. Published models and how-to for each.">
+  <meta name="description" content="How to run Agent Looper with each worker harness: Cursor, Grok Bot, DSH, Cline, OpenCode, Pi, Codex, and Muse. Published models and how-to for each.">
   <link rel="canonical" href="https://looper.dancingteeth.net/harnesses/">
   <link rel="describedby" href="https://looper.dancingteeth.net/llms.txt">
   <link rel="alternate" type="text/markdown" href="https://looper.dancingteeth.net/harnesses/index.md">
@@ -63,6 +63,10 @@
         <a class="harness-logo" href="#codex">
           <span class="harness-logo__icon" style="--logo: url('../logos/openai.svg')" aria-hidden="true"></span>
           <span class="harness-logo__label">Codex</span>
+        </a>
+        <a class="harness-logo" href="#muse">
+          <span class="harness-logo__icon" style="--logo: url('../logos/meta.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">Muse</span>
         </a>
       </nav>
 
@@ -195,6 +199,23 @@
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate</code></p>
             <p class="harness-card__note">Install <code>@openai/codex-sdk</code>; ensure <code>codex</code> CLI is on PATH.</p>
+          </article>
+
+          <article class="harness-card" id="muse">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/meta.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>Muse</h3>
+                <span class="harness-card__pill"><code>--runtime muse</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job"><code>@muse-code/sdk</code> and <code>muse</code> CLI — Meta Muse Code. Not on <code>costPreset</code> minmax.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Worker <code>muse-spark-1.2-contributor</code></span>
+              <span class="harness-chip">Judge <code>muse-spark-1.2</code></span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate</code></p>
+            <p class="harness-card__note">Install <code>@muse-code/sdk</code>; ensure <code>muse</code> is on PATH. Climb <code>reasoningEffort</code> — PAYG Spark is the same weights. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md">docs/muse-runtime.md</a>.</p>
           </article>
         </div>
       </section>

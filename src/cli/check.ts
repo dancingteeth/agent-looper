@@ -3,12 +3,13 @@ import { OPENCODE_PROVIDER_API_KEY_ENV } from '../agents/opencodeAuth.js'
 import { assertOpencodeAgentSkillsReadable } from '../agents/opencodeSkillPreflight.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
-type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
+type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse'
 
 function usage(): string {
-  return `Usage: agent-check <cursor|cline|opencode|pi|codex|dsh>
+  return `Usage: agent-check <cursor|cline|opencode|pi|codex|dsh|muse>
 
-Verifies SDK install and API key env var. Does not call remote APIs.`
+Verifies SDK install and API key env var. Does not call remote APIs.
+Muse also spawns local \`muse serve\` for the SDK handshake, then closes it.`
 }
 
 const target = process.argv[2]?.trim()
@@ -24,7 +25,8 @@ if (
   target !== 'opencode' &&
   target !== 'pi' &&
   target !== 'codex' &&
-  target !== 'dsh'
+  target !== 'dsh' &&
+  target !== 'muse'
 ) {
   console.error(usage())
   process.exit(1)
@@ -222,6 +224,57 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     }
 
     console.log('[agent-check] dsh CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
+    console.log('[agent-check] shell preflight OK')
+    return
+  }
+
+  if (runtime === 'muse') {
+    const nodeMajor = Number(process.versions.node.split('.')[0] ?? 0)
+    if (nodeMajor < 20) {
+      console.error(
+        `[agent-check] Node.js 20+ required for @muse-code/sdk (current: ${process.versions.node})`,
+      )
+      process.exit(1)
+    }
+
+    let MuseClient: unknown
+    try {
+      ;({ MuseClient } = await import('@muse-code/sdk'))
+    } catch {
+      console.error('[agent-check] @muse-code/sdk is not installed (pnpm add -D @muse-code/sdk)')
+      process.exit(1)
+    }
+
+    await assertPosixShell()
+
+    const { spawnSync } = await import('node:child_process')
+    const which = spawnSync('muse', ['--version'], { encoding: 'utf8' })
+    if (which.error || which.status !== 0) {
+      console.error(
+        '[agent-check] `muse` CLI not on PATH. Install Muse Code (https://dev.meta.ai/docs/muse-code).',
+      )
+      process.exit(1)
+    }
+
+    const metaKey = process.env.META_API_KEY?.trim()
+    if (metaKey) {
+      console.log('[agent-check] META_API_KEY present (prefix):', `${metaKey.slice(0, 4)}…`)
+    } else {
+      console.log(
+        '[agent-check] no META_API_KEY — will rely on Muse Code CLI login (`muse` / ~/.muse)',
+      )
+    }
+
+    console.log('[agent-check] @muse-code/sdk OK — MuseClient:', typeof MuseClient)
+    console.log('[agent-check] muse CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
+
+    const { probeMuseServeHandshake } = await import('../agents/museAgent.js')
+    const { fingerprint } = await probeMuseServeHandshake(process.cwd())
+    if (fingerprint) {
+      console.log('[agent-check] muse serve handshake schema=', fingerprint)
+    } else {
+      console.log('[agent-check] muse serve handshake OK')
+    }
     console.log('[agent-check] shell preflight OK')
     return
   }

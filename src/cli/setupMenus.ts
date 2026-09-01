@@ -11,6 +11,9 @@ import {
   DEFAULT_DSH_LOOP_MODEL,
   DEFAULT_DSH_REVIEW_MODEL,
   DSH_VISION_LOOP_MODEL,
+  DEFAULT_MUSE_LOOP_MODEL,
+  DEFAULT_MUSE_REVIEW_MODEL,
+  MUSE_SPARK_1_1_MODEL,
   DEFAULT_OPENCODE_GO_REVIEW_MODEL,
   DEFAULT_PI_ESCALATE_MODEL,
   DEFAULT_PI_LOOP_MODEL,
@@ -20,6 +23,7 @@ import {
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_MUSE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   OPENCODE_GO_LOOP_MODELS,
@@ -121,6 +125,11 @@ export const WORKER_RUNTIME_CHOICES: readonly MenuChoice[] = [
     description: 'OpenAI Codex CLI. ChatGPT login or an OpenAI API key.',
   },
   {
+    value: LOOP_RUNTIME_MUSE,
+    title: 'Muse Code (muse)',
+    description: 'Meta Muse Code CLI. `muse` login or META_API_KEY.',
+  },
+  {
     value: LOOP_RUNTIME_CLINE_PASS,
     title: 'Cline (cline-pass)',
     description: 'Cline Pass subscription. Uses cline-pass/ model slugs.',
@@ -157,6 +166,11 @@ export const JUDGE_RUNTIME_CHOICES: readonly MenuChoice[] = [
     value: LOOP_RUNTIME_CODEX,
     title: 'Codex (codex)',
     description: 'Codex judge. Default gpt-5.6-sol.',
+  },
+  {
+    value: LOOP_RUNTIME_MUSE,
+    title: 'Muse Code (muse)',
+    description: 'Muse Code judge. Default muse-spark-1.2.',
   },
   {
     value: LOOP_RUNTIME_CLINE_PASS,
@@ -287,6 +301,12 @@ const MODEL_BLURBS: Record<string, string> = {
     'GPT 5.6 Terra — balanced escalate when Luna stalls.',
   'gpt-5.6-sol':
     'GPT 5.6 Sol — frontier judge. Do not use as a cheap worker.',
+  'muse-spark-1.2-contributor':
+    'Muse Spark 1.2 contributor — same model as PAYG. Discounted CLI login; content may train. Default Muse worker.',
+  'muse-spark-1.2':
+    'Muse Spark 1.2 PAYG — same weights as contributor, billed list price, no contributor training share. Not a stronger model.',
+  'muse-spark-1.1':
+    'Muse Spark 1.1 — previous Spark slug. Same adapter; prefer 1.2 unless you still have quota here.',
   'deepseek-chat':
     'DeepSeek Chat — cheap OpenRouter-style worker. Not a Cline Pass slug.',
   'qwen3-coder-plus':
@@ -401,6 +421,25 @@ export function workerModelChoices(runtime: LoopRuntime): MenuChoice[] {
           description: modelChoiceDescription(DEFAULT_CODEX_REVIEW_MODEL),
         },
       ]
+    case LOOP_RUNTIME_MUSE:
+      return [
+        omit,
+        {
+          value: DEFAULT_MUSE_LOOP_MODEL,
+          title: DEFAULT_MUSE_LOOP_MODEL,
+          description: modelChoiceDescription(DEFAULT_MUSE_LOOP_MODEL),
+        },
+        {
+          value: DEFAULT_MUSE_REVIEW_MODEL,
+          title: DEFAULT_MUSE_REVIEW_MODEL,
+          description: modelChoiceDescription(DEFAULT_MUSE_REVIEW_MODEL),
+        },
+        {
+          value: MUSE_SPARK_1_1_MODEL,
+          title: MUSE_SPARK_1_1_MODEL,
+          description: modelChoiceDescription(MUSE_SPARK_1_1_MODEL),
+        },
+      ]
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -409,6 +448,9 @@ export function workerModelChoices(runtime: LoopRuntime): MenuChoice[] {
 }
 
 export function escalateModelChoices(runtime: LoopRuntime): MenuChoice[] {
+  if (runtime === LOOP_RUNTIME_MUSE) {
+    return [omitChoice(defaultModelForRuntime(runtime))]
+  }
   return workerModelChoices(runtime)
 }
 
@@ -424,6 +466,8 @@ export function judgeModelChoices(reviewRuntime: LoopRuntime, workerRuntime: Loo
           ? DEFAULT_OPENCODE_GO_REVIEW_MODEL
           : reviewRuntime === LOOP_RUNTIME_CODEX
             ? DEFAULT_CODEX_REVIEW_MODEL
+            : reviewRuntime === LOOP_RUNTIME_MUSE
+              ? DEFAULT_MUSE_REVIEW_MODEL
             : defaultModelForRuntime(reviewRuntime)
   const omit = omitChoice(omitDefault)
   switch (reviewRuntime) {
@@ -442,6 +486,7 @@ export function judgeModelChoices(reviewRuntime: LoopRuntime, workerRuntime: Loo
     case LOOP_RUNTIME_OPENCODE:
     case LOOP_RUNTIME_PI:
     case LOOP_RUNTIME_CODEX:
+    case LOOP_RUNTIME_MUSE:
       return workerModelChoices(reviewRuntime).map((choice, index) =>
         index === 0
           ? omit

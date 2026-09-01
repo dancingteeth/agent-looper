@@ -2,7 +2,7 @@ export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
 export type LoopUsageRecord = {
   phase: AgentRunPhase
-  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode' | 'pi' | 'codex' | 'dsh'
+  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse'
   model: string
   inputTokens: number
   outputTokens: number
@@ -69,6 +69,10 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'deepseek-official/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash-vision-exp': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-pro': { input: 0.435, output: 0.87 },
+  // Muse Spark — PAYG list price (contributor login uses the same estimate)
+  'muse-spark-1.1': { input: 1.25, output: 4.25 },
+  'muse-spark-1.2': { input: 1.25, output: 4.25 },
+  'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
 }
 
 const TOKENS_PER_MILLION = 1_000_000

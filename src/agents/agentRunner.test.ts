@@ -8,6 +8,7 @@ const createOpencodeLoopSession = vi.fn()
 const createPiLoopSession = vi.fn()
 const createCodexLoopSession = vi.fn()
 const createDshLoopSession = vi.fn()
+const createMuseLoopSession = vi.fn()
 
 vi.mock('./cursorAgent.js', () => ({
   runCursorAgentPrompt,
@@ -31,6 +32,10 @@ vi.mock('./codexAgent.js', () => ({
 
 vi.mock('./dshAgent.js', () => ({
   createDshLoopSession,
+}))
+
+vi.mock('./museAgent.js', () => ({
+  createMuseLoopSession,
 }))
 
 const testCtx = {
@@ -62,6 +67,11 @@ describe('createLoopAgentSession', () => {
       runPrompt: vi.fn().mockResolvedValue({ text: 'dsh-ok' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     })
+    createMuseLoopSession.mockResolvedValue({
+      runPrompt: vi.fn().mockResolvedValue({ text: 'muse-ok' }),
+      recycle: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    })
   })
 
   it('dispatches cursor runtime to runCursorAgentPrompt', async () => {
@@ -82,6 +92,7 @@ describe('createLoopAgentSession', () => {
     expect(createPiLoopSession).not.toHaveBeenCalled()
     expect(createCodexLoopSession).not.toHaveBeenCalled()
     expect(createDshLoopSession).not.toHaveBeenCalled()
+    expect(createMuseLoopSession).not.toHaveBeenCalled()
     await session.dispose()
   })
 
@@ -94,6 +105,7 @@ describe('createLoopAgentSession', () => {
     expect(createPiLoopSession).not.toHaveBeenCalled()
     expect(createCodexLoopSession).not.toHaveBeenCalled()
     expect(createDshLoopSession).not.toHaveBeenCalled()
+    expect(createMuseLoopSession).not.toHaveBeenCalled()
   })
 
   it('dispatches cline-pass runtime to Cline session', async () => {
@@ -265,5 +277,36 @@ describe('createLoopAgentSession', () => {
     )
     await session.dispose()
     expect(dshSession.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches muse runtime to Muse session', async () => {
+    const { createLoopAgentSession } = await import('./agentRunner.js')
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'muse' })
+    const museSession = {
+      runPrompt: vi.fn().mockResolvedValue({ text: 'muse-ok' }),
+      recycle: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    }
+    createMuseLoopSession.mockResolvedValue(museSession)
+
+    const session = await createLoopAgentSession(config, testCtx)
+    const result = await session.runIterationPrompt(
+      'prompt',
+      { runtime: 'muse', model: 'muse-spark-1.2-contributor', reasoningEffort: 'medium' },
+      { assistantOutput: 'none' },
+    )
+
+    expect(result.text).toBe('muse-ok')
+    expect(createMuseLoopSession).toHaveBeenCalledOnce()
+    expect(createDshLoopSession).not.toHaveBeenCalled()
+    expect(museSession.runPrompt).toHaveBeenCalledWith(
+      'prompt',
+      expect.objectContaining({
+        modelId: 'muse-spark-1.2-contributor',
+        reasoningEffort: 'medium',
+      }),
+    )
+    await session.dispose()
+    expect(museSession.dispose).toHaveBeenCalledOnce()
   })
 })

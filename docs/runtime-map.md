@@ -12,7 +12,7 @@ tags:
 
 Audience: indie builders and small teams who want **fix-until-green** without frontier-model spend. The harness stays the same: shell verify is law; most tokens go to a **cheap worker**; the **judge** runs selectively after green verify.
 
-Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped runtimes in [Worker vs judge](../README.intro.md#worker-vs-judge-by-runtime). Detail: [`opencode-providers.md`](./opencode-providers.md), [`pi-runtime.md`](./pi-runtime.md), [`codex-runtime.md`](./codex-runtime.md). Same-task cost method: [`runtime-cost-bench.md`](./runtime-cost-bench.md).
+Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped runtimes in [Worker vs judge](../README.intro.md#worker-vs-judge-by-runtime). Detail: [`opencode-providers.md`](./opencode-providers.md), [`pi-runtime.md`](./pi-runtime.md), [`codex-runtime.md`](./codex-runtime.md), [`muse-runtime.md`](./muse-runtime.md). Same-task cost method: [`runtime-cost-bench.md`](./runtime-cost-bench.md).
 
 ## Shipped today
 
@@ -25,6 +25,7 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 | `pi` | `@earendil-works/pi-coding-agent` | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | Cursor judge, or `reviewRuntime: pi` | BYOK OpenRouter-class — [`pi-runtime.md`](./pi-runtime.md) |
 | `codex` | `@openai/codex-sdk` + `codex` CLI | `gpt-5.6-luna` → `gpt-5.6-terra` | Cursor judge, or `reviewRuntime: codex` (default judge `gpt-5.6-sol`) | ChatGPT / OpenAI BYO — [`codex-runtime.md`](./codex-runtime.md) |
 | `dsh` | `dsh` CLI (`--profile headless`) | `deepseek-official/deepseek-v4-flash` (also `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Cursor judge, or `reviewRuntime: dsh` (default judge V4 Pro) | DeepSeek official — [`dsh-runtime.md`](./dsh-runtime.md); `dsh web` companion [`dsh-plugin.md`](./dsh-plugin.md) |
+| `muse` | `@muse-code/sdk` + `muse` CLI | `muse-spark-1.2-contributor` (climb `reasoningEffort`; no stronger Spark slug) | Cursor judge, or `reviewRuntime: muse` (default judge PAYG `muse-spark-1.2` — same model, different billing) | Meta Muse Code — [`muse-runtime.md`](./muse-runtime.md). **Not** on minmax. |
 
 Philosophy: **cheap worker iterations, selective judge, never LLM-as-verify.** To
 *measure* that, use [`runtime-cost-bench.md`](./runtime-cost-bench.md) (frozen GOAL,
@@ -60,6 +61,7 @@ minmax is **not** cheapest-cheapest: never Composer-as-judge while Grok is in th
 | **Codex + Codex** | `runtime: codex`, `reviewRuntime: codex` (judge defaults to Sol) | ChatGPT / OpenAI stack; cheap Luna worker, frontier Sol judge |
 | **Codex worker + Cursor judge** | `runtime: codex`, omit `reviewRuntime` | Codex implement; Cursor subscription for review |
 | **DSH Flash + DSH Pro** | `runtime: dsh`, `reviewRuntime: dsh` (omit `reviewModel`) | Stay on DeepSeek official; Flash worker / Pro judge |
+| **Muse + Muse** | `runtime: muse`, `reviewRuntime: muse` (set `reasoningEffort` / `escalateReasoningEffort`; omit `escalateModel`) | Same Spark weights; contributor vs PAYG is billing/privacy, not a capability step |
 
 ## Default stack (“people like us”)
 
@@ -81,6 +83,7 @@ Use Cursor worker when you want one bill and IDE-native dogfood; use another `ru
 | Pi `WorkerRuntime` | Shipped — [`pi-runtime.md`](./pi-runtime.md) |
 | Codex `WorkerRuntime` | Shipped — [`codex-runtime.md`](./codex-runtime.md) |
 | DSH `WorkerRuntime` | Shipped — [`dsh-runtime.md`](./dsh-runtime.md) |
+| Muse `WorkerRuntime` | Shipped — [`muse-runtime.md`](./muse-runtime.md) |
 | Variable primary judge (`reviewRuntime` + `reviewModel`) | Shipped |
 
 ## Roadmap — integrate next (ranked)

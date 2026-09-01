@@ -5,6 +5,7 @@ import {
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_MUSE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   type ResolvedLoopAgent,
@@ -110,6 +111,18 @@ export async function runOneShotAgentPrompt(
           modelId: agent.model,
           assistantOutput: 'none',
           phase: options.phase,
+        }),
+      )
+    }
+    case LOOP_RUNTIME_MUSE: {
+      const { createMuseLoopSession } = await import('./museAgent.js')
+      return withDisposableSession(createMuseLoopSession(ctx), (muse) =>
+        muse.runPrompt(prompt, {
+          verbose: options.verbose,
+          modelId: agent.model,
+          assistantOutput: 'none',
+          phase: options.phase,
+          reasoningEffort: agent.reasoningEffort,
         }),
       )
     }

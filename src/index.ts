@@ -116,6 +116,7 @@ export {
   LOOP_RUNTIME_PI,
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_MUSE,
   LOOP_RUNTIME_VALUES,
   resolveLoopAgent,
   resolveReviewAgent,
@@ -127,6 +128,7 @@ export {
   isOpencodeRuntime,
   isCodexRuntime,
   isDshRuntime,
+  isMuseRuntime,
   parseOpencodeGoModel,
   parseOpencodeModel,
   parseProviderModel,
@@ -134,6 +136,7 @@ export {
   isPiLoopModel,
   isCodexLoopModel,
   isDshLoopModel,
+  isMuseLoopModel,
   isPiRuntime,
   isOpencodeGoModel,
   CLINE_PASS_LOOP_MODELS,
@@ -154,6 +157,8 @@ export {
   DEFAULT_DSH_LOOP_MODEL,
   DEFAULT_DSH_ESCALATE_MODEL,
   DEFAULT_DSH_REVIEW_MODEL,
+  DEFAULT_MUSE_LOOP_MODEL,
+  DEFAULT_MUSE_REVIEW_MODEL,
 } from './loop/loopAgentConfig.js'
 export type { ResolvedLoopAgent, ResolvedReviewAgent, LoopRuntime } from './loop/loopAgentConfig.js'
 

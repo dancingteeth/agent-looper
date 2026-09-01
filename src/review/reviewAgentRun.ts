@@ -9,7 +9,7 @@ export type ReviewAgentPromptOptions = {
 
 /**
  * Run a single judge prompt on the configured review runtime
- * (cursor | cline-pass | cline | opencode | pi | codex | dsh).
+ * (cursor | cline-pass | cline | opencode | pi | codex | dsh | muse).
  * Used for primary residual review and optional secondary review.
  */
 export async function runReviewAgentPrompt(

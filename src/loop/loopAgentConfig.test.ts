@@ -26,6 +26,7 @@ describe('runtimeHonorsReasoningEffort', () => {
     expect(runtimeHonorsReasoningEffort('cline')).toBe(true)
     expect(runtimeHonorsReasoningEffort('cline-pass')).toBe(true)
     expect(runtimeHonorsReasoningEffort('pi')).toBe(true)
+    expect(runtimeHonorsReasoningEffort('muse')).toBe(true)
     expect(runtimeHonorsReasoningEffort('cursor')).toBe(false)
     expect(runtimeHonorsReasoningEffort('opencode')).toBe(false)
     expect(runtimeHonorsReasoningEffort('codex')).toBe(false)
@@ -266,6 +267,42 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(resolveReviewAgent(config)).toEqual({
       runtime: 'codex',
       model: 'gpt-5.6-sol',
+    })
+  })
+
+  it('resolveReviewAgent defaults Muse judge to Spark 1.2 when reviewRuntime is muse', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'muse',
+      reviewRuntime: 'muse',
+    })
+    expect(resolveLoopAgent(config)).toEqual({
+      runtime: 'muse',
+      model: 'muse-spark-1.2-contributor',
+    })
+    expect(resolveReviewAgent(config)).toEqual({
+      runtime: 'muse',
+      model: 'muse-spark-1.2',
+    })
+    expect(config.escalateModel).toBeUndefined()
+  })
+
+  it('climbs Muse reasoning effort without switching Spark slugs', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'muse',
+      reasoningEffort: 'low',
+      escalateReasoningEffort: 'high',
+    })
+    expect(resolveIterationAgent(config, 1, undefined)).toMatchObject({
+      runtime: 'muse',
+      model: 'muse-spark-1.2-contributor',
+      reasoningEffort: 'low',
+    })
+    expect(resolveIterationAgent(config, 3, 2)).toMatchObject({
+      runtime: 'muse',
+      model: 'muse-spark-1.2-contributor',
+      reasoningEffort: 'high',
     })
   })
 

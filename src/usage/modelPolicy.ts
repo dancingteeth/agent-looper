@@ -5,6 +5,7 @@ import {
   isCodexRuntime,
   isCursorSdkModel,
   isDshRuntime,
+  isMuseRuntime,
   isOpencodeRuntime,
   isPiRuntime,
   LOOP_RUNTIME_CURSOR,
@@ -47,7 +48,8 @@ export function assertLoopModelAllowed(runtime: LoopRuntime, model: string): voi
       isOpencodeRuntime(runtime) ||
       isPiRuntime(runtime) ||
       isCodexRuntime(runtime) ||
-      isDshRuntime(runtime)) &&
+      isDshRuntime(runtime) ||
+      isMuseRuntime(runtime)) &&
     isBannedCursorLoopModel(model)
   ) {
     throw new Error(

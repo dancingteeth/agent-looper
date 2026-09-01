@@ -3,12 +3,15 @@ import {
   collectDescendantPids,
   killProcessGroup,
   killProcessTree,
+  newlySpawnedPids,
   PARENT_DEATH_REAPER_SCRIPT,
   shouldInstallProcessSignalHandlers,
   signalProcessTree,
   spawnParentDeathReaper,
   trackSpawnedRoot,
   trackedSpawnedRoots,
+  watchSpawnedChildren,
+  withSpawnedChildrenPoll,
   type ProcessTreeIo,
 } from './processTree.js'
 
@@ -123,5 +126,62 @@ describe('parent-death reaper', () => {
     const reaper = spawnParentDeathReaper({ parentPid: process.pid, rootPid: 0 })
     expect(reaper.pid).toBeUndefined()
     reaper.close()
+  })
+})
+
+describe('newlySpawnedPids', () => {
+  it('returns children missing from the snapshot', () => {
+    expect(newlySpawnedPids([1, 2], 10, (pid) => (pid === 10 ? [2, 3] : []))).toEqual([3])
+  })
+})
+
+describe('watchSpawnedChildren', () => {
+  it('tracks new children, skips reaper pids, and kills the tree on release', async () => {
+    let children = [11, 12]
+    const tracked: number[] = []
+    const killed: number[] = []
+    const reaperClosed: number[] = []
+    const watch = watchSpawnedChildren([10], {
+      parentPid: 1,
+      listChildren: () => children,
+      track: (pid) => {
+        if (pid !== undefined) tracked.push(pid)
+        return () => undefined
+      },
+      spawnReaper: ({ rootPid }) => {
+        const reaperPid = rootPid === 11 ? 99 : 100
+        return {
+          pid: reaperPid,
+          close: () => {
+            reaperClosed.push(rootPid)
+          },
+        }
+      },
+      killTree: async (pid) => {
+        killed.push(pid ?? 0)
+      },
+    })
+    expect(watch.pids).toEqual([11, 12])
+    children = [11, 12, 99, 13]
+    watch.adopt()
+    expect(watch.pids).toEqual([11, 12, 13])
+    await watch.release()
+    expect(reaperClosed).toEqual([11, 12, 13])
+    expect(killed).toEqual([11, 12, 13])
+    await watch.release()
+    expect(killed).toEqual([11, 12, 13])
+  })
+})
+
+describe('withSpawnedChildrenPoll', () => {
+  it('adopts before and after work', async () => {
+    const adopt = vi.fn()
+    const result = await withSpawnedChildrenPoll(
+      { pids: [], adopt, release: async () => undefined },
+      async () => 'ok',
+      10_000,
+    )
+    expect(result).toBe('ok')
+    expect(adopt.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 })

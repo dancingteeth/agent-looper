@@ -8,6 +8,8 @@ import {
   judgeModelChoices,
   parseMenuSelection,
   workerModelChoices,
+  escalateModelChoices,
+  modelChoiceDescription,
   WORKER_RUNTIME_CHOICES,
   SECONDARY_REVIEW_RUNTIME_CHOICES,
 } from './setupMenus.js'
@@ -83,6 +85,7 @@ describe('agent-loop-setup', () => {
     expect(menu).toMatch(/Pi coding agent \(pi\)/)
     expect(menu).toMatch(/Cline \(cline-pass\)/)
     expect(menu).toMatch(/Cline \(credits\)/)
+    expect(menu).toMatch(/Muse Code \(muse\)/)
   })
 
   it('keeps both Cline families on secondary review and adds the rest of the judge list', () => {
@@ -96,6 +99,7 @@ describe('agent-loop-setup', () => {
       'opencode',
       'pi',
       'codex',
+      'muse',
     ])
     expect(SECONDARY_REVIEW_RUNTIME_CHOICES.map((choice) => choice.title)).toEqual([
       'none',
@@ -106,11 +110,12 @@ describe('agent-loop-setup', () => {
       'OpenCode (opencode)',
       'Pi coding agent (pi)',
       'Codex (codex)',
+      'Muse Code (muse)',
     ])
   })
 
   it('gives every catalog model a what/when description, not filler', () => {
-    const runtimes = ['cline-pass', 'opencode', 'dsh', 'codex', 'cursor', 'cline', 'pi'] as const
+    const runtimes = ['cline-pass', 'opencode', 'dsh', 'codex', 'cursor', 'cline', 'pi', 'muse'] as const
     for (const runtime of runtimes) {
       for (const choice of workerModelChoices(runtime)) {
         if (choice.value === '' || choice.value === '__custom__') continue
@@ -120,6 +125,15 @@ describe('agent-loop-setup', () => {
         expect(choice.description, choice.value).toMatch(/—/)
       }
     }
+  })
+
+  it('does not offer a Muse model escalate — PAYG Spark is a billing pick, not a stronger slug', () => {
+    expect(escalateModelChoices('muse').map((choice) => choice.value)).toEqual([''])
+    const muse = workerModelChoices('muse').map((choice) => choice.value)
+    expect(muse).toContain('muse-spark-1.2-contributor')
+    expect(muse).toContain('muse-spark-1.2')
+    expect(modelChoiceDescription('muse-spark-1.2')).toMatch(/same weights/i)
+    expect(modelChoiceDescription('muse-spark-1.2')).not.toMatch(/escalate/i)
   })
 
   it('offers DSH vision-exp alongside Flash and Pro', () => {

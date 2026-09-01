@@ -5,6 +5,7 @@ import {
   isClineSdkRuntime,
   isCodexRuntime,
   isDshRuntime,
+  isMuseRuntime,
   isOpencodeRuntime,
   isPiRuntime,
   LOOP_RUNTIME_CLINE,
@@ -12,6 +13,7 @@ import {
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
+  LOOP_RUNTIME_MUSE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   resolveLoopAgent,
@@ -23,6 +25,7 @@ import type { LoopConfig } from '../loop/loopConfig.js'
 import type { ClineLoopSession } from './clineAgent.js'
 import type { CodexLoopSession } from './codexAgent.js'
 import type { DshLoopSession } from './dshAgent.js'
+import type { MuseLoopSession } from './museAgent.js'
 import type { OpencodeLoopSession } from './opencodeAgent.js'
 import type { PiLoopSession } from './piAgent.js'
 
@@ -148,6 +151,22 @@ function createCodexRunner(codex: CodexLoopSession): PromptRunner {
   }
 }
 
+function createMuseRunner(muse: MuseLoopSession): PromptRunner {
+  return (prompt, agent, options) => {
+    if (!isMuseRuntime(agent.runtime)) {
+      throw new Error('Muse runner invoked for non-muse agent')
+    }
+    return muse.runPrompt(prompt, {
+      verbose: options.verbose,
+      modelId: agent.model,
+      assistantOutput: options.assistantOutput,
+      phase: options.phase ?? 'implement',
+      collector: options.collector,
+      reasoningEffort: agent.reasoningEffort,
+    })
+  }
+}
+
 export async function createLoopAgentSession(
   config: LoopConfig,
   ctx: RepoContext,
@@ -210,6 +229,17 @@ export async function createLoopAgentSession(
     }
   }
 
+  if (runtime === LOOP_RUNTIME_MUSE) {
+    const { createMuseLoopSession } = await import('./museAgent.js')
+    const muse = await createMuseLoopSession(ctx)
+    const runner = createMuseRunner(muse)
+    return {
+      runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),
+      recycle: () => muse.recycle(),
+      dispose: () => muse.dispose(),
+    }
+  }
+
   // Dynamic import: @cline/sdk is an optional peer. Cursor-only consumers must not
   // load clineAgent (and thus @cline/sdk) at module evaluation time.
   const { createClineLoopSession } = await import('./clineAgent.js')
@@ -237,6 +267,8 @@ export function loopRuntimeLabel(runtime: LoopRuntime): string {
       return 'codex'
     case LOOP_RUNTIME_DSH:
       return 'dsh'
+    case LOOP_RUNTIME_MUSE:
+      return 'muse'
     default: {
       const _exhaustive: never = runtime
       return _exhaustive

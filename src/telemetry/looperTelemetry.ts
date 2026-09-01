@@ -23,7 +23,7 @@ const ALLOWED_PROPERTY_KEYS = new Set([
   'review_gate',
 ])
 
-export type TelemetryRuntime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh'
+export type TelemetryRuntime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse'
 
 export type LooperTelemetryProperties = {
   package_version?: string
