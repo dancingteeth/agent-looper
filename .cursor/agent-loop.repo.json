@@ -45,5 +45,14 @@
     "reviewGateHitl": false
   },
   "hitlProvider": "taskwarrior",
-  "hitlFileDir": ".cursor/hitl"
+  "hitlFileDir": ".cursor/hitl",
+  "costPresets": {
+    "or-free": {
+      "runtime": "opencode",
+      "model": "openrouter/minimax/minimax-m3:free",
+      "escalateModel": "openrouter/poolside/laguna-s-2.1:free",
+      "reviewRuntime": "opencode",
+      "reviewModel": "openrouter/poolside/laguna-s-2.1:free"
+    }
+  }
 }

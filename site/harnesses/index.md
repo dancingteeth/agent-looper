@@ -56,7 +56,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 `@opencode-ai/sdk` and `opencode` CLI — Go quota by default, or BYOK through OpenRouter, Vercel AI Gateway, Ollama, or another OpenAI-compatible router.
 
 - Go worker: `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`
-- BYOK: `openrouter/…`, `vercel/…`, `ollama/…`
+- BYOK: `openrouter/…`, `openrouter/…:free`, `vercel/…`, `ollama/…`
 - Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode --review-gate`
 

@@ -376,7 +376,7 @@ function assertReviewModelForRuntime(
     if (!isOpencodeLoopModel(model)) {
       throw new Error(
         `Invalid ${modelField} "${model}" for ${runtimeField} "opencode". Expected provider/model ` +
-          `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, vercel/…, ollama/… — ` +
+          `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, openrouter/…:free, vercel/…, ollama/… — ` +
           `https://opencode.ai/docs/providers/).`,
       )
     }
@@ -540,7 +540,8 @@ export function isClineCreditsModelShape(model: string): boolean {
 }
 
 /** OpenCode / Pi `provider/model` shape (BYOK). Go slugs use a separate curated list. */
-const OPENCODE_BYOK_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
+const OPENCODE_BYOK_MODEL_RE =
+  /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/:-]*$/
 
 /** Split `provider/model` (OpenCode / Pi) for the SDK prompt body. */
 export function parseProviderModel(model: string): {
@@ -834,7 +835,7 @@ function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'
     }
     throw new Error(
       `Invalid OpenCode ${field} "${model}". Expected provider/model ` +
-        `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, vercel/…, ollama/… — ` +
+        `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, openrouter/…:free, vercel/…, ollama/… — ` +
         `https://opencode.ai/docs/providers/).`,
     )
   }

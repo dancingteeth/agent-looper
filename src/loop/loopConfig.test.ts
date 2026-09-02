@@ -125,6 +125,17 @@ describe('loopConfigSchema', () => {
     expect(resolveLoopAgent(parsed).model).toBe('openrouter/deepseek/deepseek-chat')
   })
 
+  it('accepts OpenRouter :free opencode worker models', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      model: 'openrouter/minimax/minimax-m3:free',
+      escalateModel: 'openrouter/poolside/laguna-s-2.1:free',
+    })
+    expect(resolveLoopAgent(parsed).model).toBe('openrouter/minimax/minimax-m3:free')
+    expect(parsed.escalateModel).toBe('openrouter/poolside/laguna-s-2.1:free')
+  })
+
   it('accepts Vercel AI Gateway opencode worker models', () => {
     const parsed = loopConfigSchema.parse({
       verify: 'true',

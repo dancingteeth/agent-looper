@@ -31,7 +31,7 @@ Auth also lives in `~/.pi/agent/auth.json` after `pi` /connect.
 | `model` | `openrouter/deepseek/deepseek-chat` |
 | `escalateModel` | `openrouter/qwen/qwen3-coder-plus` |
 
-Use `provider/model` ids from Pi’s catalog (`getModel` / pi TUI). **Do not** use `opencode-go/*` on this runtime — use `runtime: opencode` for OpenCode Go.
+Use `provider/model` ids from Pi’s catalog (`getModel` / pi TUI). **Do not** use `opencode-go/*` on this runtime — use `runtime: opencode` for OpenCode Go. OpenRouter `:free` suffixes (`openrouter/minimax/minimax-m3:free`) are valid here too — pin worker and judge; unset `reviewRuntime` still means Cursor. See [`opencode-providers.md`](./opencode-providers.md).
 
 ## Custom OpenAI-compatible gateways
 

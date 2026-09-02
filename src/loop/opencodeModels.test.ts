@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isOpencodeGoModel,
   isOpencodeLoopModel,
+  isPiLoopModel,
   parseProviderModel,
   OPENCODE_GO_LOOP_MODELS,
 } from '../loop/loopAgentConfig.js'
@@ -20,6 +21,10 @@ describe('parseProviderModel', () => {
       providerID: 'vercel',
       modelID: 'anthropic/claude-sonnet-4',
     })
+    expect(parseProviderModel('openrouter/minimax/minimax-m3:free')).toEqual({
+      providerID: 'openrouter',
+      modelID: 'minimax/minimax-m3:free',
+    })
   })
 
   it('rejects malformed ids', () => {
@@ -34,6 +39,16 @@ describe('isOpencodeLoopModel', () => {
     expect(isOpencodeLoopModel('openrouter/deepseek/deepseek-chat')).toBe(true)
     expect(isOpencodeLoopModel('vercel/anthropic/claude-sonnet-4')).toBe(true)
     expect(isOpencodeLoopModel('ollama/llama3.2')).toBe(true)
+  })
+
+  it('accepts OpenRouter :free suffixes', () => {
+    expect(isOpencodeLoopModel('openrouter/minimax/minimax-m3:free')).toBe(true)
+    expect(isOpencodeLoopModel('openrouter/poolside/laguna-s-2.1:free')).toBe(true)
+    expect(isPiLoopModel('openrouter/minimax/minimax-m3:free')).toBe(true)
+  })
+
+  it('rejects a colon in the provider id', () => {
+    expect(isOpencodeLoopModel('open:router/minimax-m3:free')).toBe(false)
   })
 
   it('rejects unknown Go slugs and ClinePass ids', () => {

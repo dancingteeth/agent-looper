@@ -31,6 +31,7 @@ Any other OpenCode provider id is allowed in `provider/model` form, for example:
 | Example `model` | Auth |
 | --- | --- |
 | `openrouter/deepseek/deepseek-chat` | `OPENROUTER_API_KEY` (harness calls `auth.set`; CLI also reads env) |
+| `openrouter/minimax/minimax-m3:free` | Same key. Hosted $0 rows — see [OpenRouter `:free`](#openrouter-free) |
 | `vercel/anthropic/claude-sonnet-4` | `AI_GATEWAY_API_KEY` (Vercel AI Gateway — same `auth.set` path) |
 | `cloudflare-workers-ai/…` | OpenCode `/connect` (account id + API token) or `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_KEY`. Cloudflare GPU inference — not AI Gateway. Not a harness env alias. |
 | `ollama/llama3.2` | Local Ollama — no key; use `opencode /connect` or host config |
@@ -89,6 +90,51 @@ Vercel AI Gateway (list price, no markup) — OpenCode’s native `vercel` provi
 }
 ```
 
+## OpenRouter `:free`
+
+Hosted $0 OpenRouter rows use the `:free` suffix (OpenRouter’s own tag, not a Kilo runtime). The harness already wires `OPENROUTER_API_KEY`; `loop.json` accepts those slugs on `runtime: opencode` and `runtime: pi`.
+
+Pin a pair. Do **not** use a rotating “auto free” router — the catalog shifts, some upstreams log prompts (`mayTrainOnYourPrompts`), and a grind loop needs a stable worker. Unset `reviewRuntime` still defaults to Cursor — this stack must set it to `opencode` with an explicit `:free` `reviewModel`, or OpenCode’s judge default is Go V4 Pro (paid). Residual review is weaker than Grok; that is the $0 deal. This is **not** `costPreset: minmax` (that stays Go Hy3 + Grok when those runtimes are installed).
+
+| Role | Pin |
+| --- | --- |
+| Worker | `openrouter/minimax/minimax-m3:free` |
+| Escalate | `openrouter/poolside/laguna-s-2.1:free` |
+| Judge | `openrouter/poolside/laguna-s-2.1:free` (`reviewRuntime: "opencode"`) |
+
+```json
+{
+  "runtime": "opencode",
+  "model": "openrouter/minimax/minimax-m3:free",
+  "escalateModel": "openrouter/poolside/laguna-s-2.1:free",
+  "reviewRuntime": "opencode",
+  "reviewModel": "openrouter/poolside/laguna-s-2.1:free",
+  "verify": "bash .cursor/loops/my-task/verify.sh",
+  "postQualityReview": "auto",
+  "reviewGate": true
+}
+```
+
+Coming from **Kilo**: their `:free` catalog is this same OpenRouter pool. Use `openrouter/…:free` + `OPENROUTER_API_KEY`. There is no `runtime: kilo` and no Kilo Gateway provider in the harness.
+
+Optional named stack in the repo profile (`costPresets.or-free`) so setup can pick it:
+
+```json
+{
+  "costPresets": {
+    "or-free": {
+      "runtime": "opencode",
+      "model": "openrouter/minimax/minimax-m3:free",
+      "escalateModel": "openrouter/poolside/laguna-s-2.1:free",
+      "reviewRuntime": "opencode",
+      "reviewModel": "openrouter/poolside/laguna-s-2.1:free"
+    }
+  }
+}
+```
+
+Then `"costPreset": "or-free"` in `loop.json`. 429s already retry. Skip NVIDIA `:free` rows (prompt logging). Skip Hy3 on Kilo Gateway — it is paid; Go Hy3 is the minmax worker.
+
 ## Check
 
 ```bash
@@ -106,6 +152,7 @@ The harness does **not** add a new runtime for LLM proxies. Point OpenCode at an
 | **LiteLLM** (self-hosted) | Same custom-provider shape, or OpenCode’s community LiteLLM plugin if you already run a proxy. |
 | **Portkey** (Prisma AIRS) | Custom OpenAI-compatible `baseURL`. Enterprise governance — not a harness default. |
 | **Cloudflare AI Gateway** | Native OpenCode `/connect` (account id + gateway id + token). Proxy in front of providers — distinct from **Workers AI** inference in the table above. |
+| **Kilo Gateway** | Same OpenRouter `:free` pool — use `openrouter/…:free`, not a custom `kilo` provider. |
 
 See [OpenCode custom providers](https://opencode.ai/docs/providers/#custom-provider).
 

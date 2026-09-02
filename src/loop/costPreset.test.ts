@@ -268,6 +268,14 @@ const cheapPi = {
   reviewModel: 'openrouter/qwen/qwen3-coder-plus',
 }
 
+const orFree = {
+  runtime: 'opencode',
+  model: 'openrouter/minimax/minimax-m3:free',
+  escalateModel: 'openrouter/poolside/laguna-s-2.1:free',
+  reviewRuntime: 'opencode',
+  reviewModel: 'openrouter/poolside/laguna-s-2.1:free',
+}
+
 describe('user costPresets', () => {
   it('reserves built-in and custom names', () => {
     expect(isReservedCostPresetName('minmax')).toBe(true)
@@ -363,6 +371,19 @@ describe('parseLoopConfig user costPreset', () => {
     expect(parsed.reviewRuntime).toBe('pi')
     expect(parsed.reviewModel).toBe('openrouter/qwen/qwen3-coder-plus')
     expect(parsed.costPreset).toBe('cheap-pi')
+  })
+
+  it('resolves an OpenRouter :free user stack', () => {
+    const parsed = parseLoopConfig(
+      { verify: 'true', costPreset: 'or-free' },
+      { detection: emptyDetection(), costPresets: { 'or-free': orFree } },
+    )
+    expect(parsed.runtime).toBe('opencode')
+    expect(parsed.model).toBe('openrouter/minimax/minimax-m3:free')
+    expect(parsed.escalateModel).toBe('openrouter/poolside/laguna-s-2.1:free')
+    expect(parsed.reviewRuntime).toBe('opencode')
+    expect(parsed.reviewModel).toBe('openrouter/poolside/laguna-s-2.1:free')
+    expect(parsed.costPreset).toBe('or-free')
   })
 
   it('rejects a reserved name defined in the costPresets map', () => {

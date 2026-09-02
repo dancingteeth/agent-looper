@@ -56,6 +56,7 @@ minmax is **not** cheapest-cheapest: never Composer-as-judge while Grok is in th
 | **OpenCode Go + Cursor** | `runtime: opencode` (Go model), default judge | Go worker quota; familiar Cursor judge |
 | **OpenCode Go + OpenCode judge** | `runtime: opencode`, `reviewRuntime: opencode` (omit `reviewModel`) | Go worker Flash; Go judge **DeepSeek V4 Pro** |
 | **OpenCode OpenRouter + OpenCode judge** | `runtime: opencode`, `model: openrouter/…`, `reviewRuntime: opencode`, explicit `reviewModel` | Full BYOK off Cursor — same OpenRouter key for worker and judge |
+| **OpenRouter `:free`** | `costPreset: or-free` (profile) or pin M3 :free worker → Laguna S 2.1 :free escalate **and** judge (`reviewRuntime: opencode`) | Hosted $0 OpenCode stack; no Cursor. Not minmax. [`opencode-providers.md`](./opencode-providers.md) |
 | **OpenCode Vercel + OpenCode judge** | `runtime: opencode`, `model: vercel/…`, `reviewRuntime: opencode` | Full BYOK off Cursor — Vercel AI Gateway (`AI_GATEWAY_API_KEY`, list price) |
 | **OpenCode Go + Pi judge** | `runtime: opencode`, `reviewRuntime: pi` | Mix Go implement with Pi BYOK review |
 | **Codex + Codex** | `runtime: codex`, `reviewRuntime: codex` (judge defaults to Sol) | ChatGPT / OpenAI stack; cheap Luna worker, frontier Sol judge |
@@ -106,6 +107,7 @@ Keep this file and `README.intro.md` / `README.md` worker–judge tables in sync
 | **Claude Code / sealed agents as default worker** | Closed personalization wall; hook-only extension |
 | **Frontier Opus / GPT-class as default worker** | Wrong economics for grind loops; judge-only if ever |
 | **Gemini (Flash / Pro) as worker or judge** | Weak relative to DeepSeek / Qwen / Composer / Grok on fix-until-green; keep out of defaults — opt in only if you insist |
+| **Kilo Gateway / `runtime: kilo`** | Same OpenRouter `:free` pool. Use `openrouter/…:free` + `OPENROUTER_API_KEY` — [`opencode-providers.md`](./opencode-providers.md). No second runtime. |
 | **TrueForge (`@truefoundry/trueforge-sdk`)** | Competing agent *platform* (sessions, MCP, Daytona, chat UI), not a repo-editing worker. Steal lean-context bits in [`competitive-steal-backlog.md`](./competitive-steal-backlog.md) P6 — do not nest as `runtime: trueforge` |
 
 ## Open-source positioning (share / fork)

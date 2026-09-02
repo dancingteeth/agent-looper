@@ -451,7 +451,7 @@ Only run on repos and loop bundles you trust. Review `loop.json` and `.cursor/ag
 | `CURSOR_API_KEY` | Cursor SDK auth (worker and/or default judge) |
 | `CLINE_API_KEY` | Cline SDK auth (optional peer runtime / secondary judge) |
 | `OPENCODE_API_KEY` | OpenCode Go auth (optional peer; https://opencode.ai/go) |
-| `OPENROUTER_API_KEY` | OpenRouter BYOK for OpenCode / Pi workers and judges |
+| `OPENROUTER_API_KEY` | OpenRouter BYOK for OpenCode / Pi workers and judges (including `:free` slugs) |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway BYOK for OpenCode (`vercel/…` models; harness `auth.set`) |
 | `CODEX_API_KEY` / `OPENAI_API_KEY` | Codex SDK auth (optional; else ChatGPT CLI login) |
 | `META_API_KEY` | Muse Code Model API (optional; else `muse` CLI login) |
