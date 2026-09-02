@@ -31,6 +31,7 @@ describe('runtimeHonorsReasoningEffort', () => {
     expect(runtimeHonorsReasoningEffort('opencode')).toBe(false)
     expect(runtimeHonorsReasoningEffort('codex')).toBe(false)
     expect(runtimeHonorsReasoningEffort('dsh')).toBe(false)
+    expect(runtimeHonorsReasoningEffort('claude')).toBe(false)
   })
 })
 
@@ -285,6 +286,22 @@ describe('resolveIterationAgent reasoning effort', () => {
       model: 'muse-spark-1.2',
     })
     expect(config.escalateModel).toBeUndefined()
+  })
+
+  it('resolveReviewAgent defaults Claude judge to opus when reviewRuntime is claude', () => {
+    const config = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'claude',
+      reviewRuntime: 'claude',
+    })
+    expect(resolveLoopAgent(config)).toEqual({
+      runtime: 'claude',
+      model: 'sonnet',
+    })
+    expect(resolveReviewAgent(config)).toEqual({
+      runtime: 'claude',
+      model: 'opus',
+    })
   })
 
   it('climbs Muse reasoning effort without switching Spark slugs', () => {

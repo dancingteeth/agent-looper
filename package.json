@@ -1,7 +1,7 @@
 {
   "name": "@dancingteeth/agent-looper",
   "version": "0.5.0",
-  "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH / Muse; configurable reviewRuntime judge)",
+  "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH / Muse / Claude; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
   "author": "Paul Zgordan",
@@ -59,6 +59,7 @@
     "agent:check:codex": "doppler run --project agent-looper --config dev -- node dist/cli/check.js codex",
     "agent:check:dsh": "doppler run --project agent-looper --config dev -- node dist/cli/check.js dsh",
     "agent:check:muse": "doppler run --project agent-looper --config dev -- node dist/cli/check.js muse",
+    "agent:check:claude": "doppler run --project agent-looper --config dev -- node dist/cli/check.js claude",
     "agent:doctor": "doppler run --project agent-looper --config dev -- node dist/cli/doctor.js",
     "test:cursor-plugin": "node scripts/validate-cursor-plugin.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"

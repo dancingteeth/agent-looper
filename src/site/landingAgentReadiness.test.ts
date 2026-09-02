@@ -424,7 +424,9 @@ describe('landing agent readiness', () => {
     const cases = [
       { id: 'opencode', mdHeading: '### OpenCode', mdEnd: '### Pi' },
       { id: 'pi', mdHeading: '### Pi', mdEnd: '### Codex' },
-      { id: 'codex', mdHeading: '### Codex', mdEnd: undefined },
+      { id: 'codex', mdHeading: '### Codex', mdEnd: '### Muse' },
+      { id: 'muse', mdHeading: '### Muse', mdEnd: '### Claude' },
+      { id: 'claude', mdHeading: '### Claude', mdEnd: undefined },
     ] as const
 
     for (const { id, mdHeading, mdEnd } of cases) {

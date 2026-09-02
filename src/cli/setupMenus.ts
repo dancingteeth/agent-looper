@@ -14,6 +14,11 @@ import {
   DEFAULT_MUSE_LOOP_MODEL,
   DEFAULT_MUSE_REVIEW_MODEL,
   MUSE_SPARK_1_1_MODEL,
+  DEFAULT_CLAUDE_LOOP_MODEL,
+  DEFAULT_CLAUDE_ESCALATE_MODEL,
+  DEFAULT_CLAUDE_REVIEW_MODEL,
+  CLAUDE_HAIKU_MODEL,
+  CLAUDE_FABLE_MODEL,
   DEFAULT_OPENCODE_GO_REVIEW_MODEL,
   DEFAULT_PI_ESCALATE_MODEL,
   DEFAULT_PI_LOOP_MODEL,
@@ -24,6 +29,7 @@ import {
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
   LOOP_RUNTIME_MUSE,
+  LOOP_RUNTIME_CLAUDE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   OPENCODE_GO_LOOP_MODELS,
@@ -130,6 +136,11 @@ export const WORKER_RUNTIME_CHOICES: readonly MenuChoice[] = [
     description: 'Meta Muse Code CLI. `muse` login or META_API_KEY.',
   },
   {
+    value: LOOP_RUNTIME_CLAUDE,
+    title: 'Claude Code (claude)',
+    description: 'Claude Code CLI. `claude login` (subscription). Needs 2.1.169+.',
+  },
+  {
     value: LOOP_RUNTIME_CLINE_PASS,
     title: 'Cline (cline-pass)',
     description: 'Cline Pass subscription. Uses cline-pass/ model slugs.',
@@ -171,6 +182,11 @@ export const JUDGE_RUNTIME_CHOICES: readonly MenuChoice[] = [
     value: LOOP_RUNTIME_MUSE,
     title: 'Muse Code (muse)',
     description: 'Muse Code judge. Default muse-spark-1.2.',
+  },
+  {
+    value: LOOP_RUNTIME_CLAUDE,
+    title: 'Claude Code (claude)',
+    description: 'Claude Code judge. Default opus. Subscription quota.',
   },
   {
     value: LOOP_RUNTIME_CLINE_PASS,
@@ -307,6 +323,14 @@ const MODEL_BLURBS: Record<string, string> = {
     'Muse Spark 1.2 PAYG — same weights as contributor, billed list price, no contributor training share. Not a stronger model.',
   'muse-spark-1.1':
     'Muse Spark 1.1 — previous Spark slug. Same adapter; prefer 1.2 unless you still have quota here.',
+  sonnet:
+    'Claude Sonnet — daily coding. Default Claude worker; burns Max/Pro quota, not Console tokens.',
+  opus:
+    'Claude Opus — stronger than Sonnet. Default Claude judge and escalate.',
+  haiku:
+    'Claude Haiku — faster/cheaper Claude alias. Narrow fixes; weaker than Sonnet on hard diffs.',
+  fable:
+    'Claude Fable — long-horizon / hard-project judge. Same Max/Pro pool as interactive Claude Code.',
   'deepseek-chat':
     'DeepSeek Chat — cheap OpenRouter-style worker. Not a Cline Pass slug.',
   'qwen3-coder-plus':
@@ -440,6 +464,30 @@ export function workerModelChoices(runtime: LoopRuntime): MenuChoice[] {
           description: modelChoiceDescription(MUSE_SPARK_1_1_MODEL),
         },
       ]
+    case LOOP_RUNTIME_CLAUDE:
+      return [
+        omit,
+        {
+          value: DEFAULT_CLAUDE_LOOP_MODEL,
+          title: DEFAULT_CLAUDE_LOOP_MODEL,
+          description: modelChoiceDescription(DEFAULT_CLAUDE_LOOP_MODEL),
+        },
+        {
+          value: DEFAULT_CLAUDE_ESCALATE_MODEL,
+          title: DEFAULT_CLAUDE_ESCALATE_MODEL,
+          description: modelChoiceDescription(DEFAULT_CLAUDE_ESCALATE_MODEL),
+        },
+        {
+          value: CLAUDE_FABLE_MODEL,
+          title: CLAUDE_FABLE_MODEL,
+          description: modelChoiceDescription(CLAUDE_FABLE_MODEL),
+        },
+        {
+          value: CLAUDE_HAIKU_MODEL,
+          title: CLAUDE_HAIKU_MODEL,
+          description: modelChoiceDescription(CLAUDE_HAIKU_MODEL),
+        },
+      ]
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -468,6 +516,8 @@ export function judgeModelChoices(reviewRuntime: LoopRuntime, workerRuntime: Loo
             ? DEFAULT_CODEX_REVIEW_MODEL
             : reviewRuntime === LOOP_RUNTIME_MUSE
               ? DEFAULT_MUSE_REVIEW_MODEL
+              : reviewRuntime === LOOP_RUNTIME_CLAUDE
+                ? DEFAULT_CLAUDE_REVIEW_MODEL
             : defaultModelForRuntime(reviewRuntime)
   const omit = omitChoice(omitDefault)
   switch (reviewRuntime) {
@@ -487,6 +537,7 @@ export function judgeModelChoices(reviewRuntime: LoopRuntime, workerRuntime: Loo
     case LOOP_RUNTIME_PI:
     case LOOP_RUNTIME_CODEX:
     case LOOP_RUNTIME_MUSE:
+    case LOOP_RUNTIME_CLAUDE:
       return workerModelChoices(reviewRuntime).map((choice, index) =>
         index === 0
           ? omit

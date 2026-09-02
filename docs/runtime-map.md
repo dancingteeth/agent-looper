@@ -12,7 +12,7 @@ tags:
 
 Audience: indie builders and small teams who want **fix-until-green** without frontier-model spend. The harness stays the same: shell verify is law; most tokens go to a **cheap worker**; the **judge** runs selectively after green verify.
 
-Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped runtimes in [Worker vs judge](../README.intro.md#worker-vs-judge-by-runtime). Detail: [`opencode-providers.md`](./opencode-providers.md), [`pi-runtime.md`](./pi-runtime.md), [`codex-runtime.md`](./codex-runtime.md), [`muse-runtime.md`](./muse-runtime.md). Same-task cost method: [`runtime-cost-bench.md`](./runtime-cost-bench.md).
+Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped runtimes in [Worker vs judge](../README.intro.md#worker-vs-judge-by-runtime). Detail: [`opencode-providers.md`](./opencode-providers.md), [`pi-runtime.md`](./pi-runtime.md), [`codex-runtime.md`](./codex-runtime.md), [`muse-runtime.md`](./muse-runtime.md), [`claude-runtime.md`](./claude-runtime.md). Same-task cost method: [`runtime-cost-bench.md`](./runtime-cost-bench.md).
 
 ## Shipped today
 
@@ -26,6 +26,7 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 | `codex` | `@openai/codex-sdk` + `codex` CLI | `gpt-5.6-luna` → `gpt-5.6-terra` | Cursor judge, or `reviewRuntime: codex` (default judge `gpt-5.6-sol`) | ChatGPT / OpenAI BYO — [`codex-runtime.md`](./codex-runtime.md) |
 | `dsh` | `dsh` CLI (`--profile headless`) | `deepseek-official/deepseek-v4-flash` (also `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Cursor judge, or `reviewRuntime: dsh` (default judge V4 Pro) | DeepSeek official — [`dsh-runtime.md`](./dsh-runtime.md); `dsh web` companion [`dsh-plugin.md`](./dsh-plugin.md) |
 | `muse` | `@muse-code/sdk` + `muse` CLI | `muse-spark-1.2-contributor` (climb `reasoningEffort`; no stronger Spark slug) | Cursor judge, or `reviewRuntime: muse` (default judge PAYG `muse-spark-1.2` — same model, different billing) | Meta Muse Code — [`muse-runtime.md`](./muse-runtime.md). **Not** on minmax. |
+| `claude` | PATH `claude` (`-p` + `--safe-mode`) | `sonnet` → `opus` | Cursor judge, or `reviewRuntime: claude` (default judge `opus`) | Claude Code subscription — [`claude-runtime.md`](./claude-runtime.md). **Not** on minmax. |
 
 Philosophy: **cheap worker iterations, selective judge, never LLM-as-verify.** To
 *measure* that, use [`runtime-cost-bench.md`](./runtime-cost-bench.md) (frozen GOAL,
@@ -63,6 +64,8 @@ minmax is **not** cheapest-cheapest: never Composer-as-judge while Grok is in th
 | **Codex worker + Cursor judge** | `runtime: codex`, omit `reviewRuntime` | Codex implement; Cursor subscription for review |
 | **DSH Flash + DSH Pro** | `runtime: dsh`, `reviewRuntime: dsh` (omit `reviewModel`) | Stay on DeepSeek official; Flash worker / Pro judge |
 | **Muse + Muse** | `runtime: muse`, `reviewRuntime: muse` (set `reasoningEffort` / `escalateReasoningEffort`; omit `escalateModel`) | Same Spark weights; contributor vs PAYG is billing/privacy, not a capability step |
+| **Hy3 worker + Claude judge** | `runtime: opencode`, `reviewRuntime: claude` (omit `reviewModel` → opus) | Cheap implement; Max/Pro quota for residual review |
+| **Claude + Claude** | `runtime: claude`, `reviewRuntime: claude` | Stay on Claude Code; Sonnet worker / Opus judge |
 
 ## Default stack (“people like us”)
 
@@ -85,6 +88,7 @@ Use Cursor worker when you want one bill and IDE-native dogfood; use another `ru
 | Codex `WorkerRuntime` | Shipped — [`codex-runtime.md`](./codex-runtime.md) |
 | DSH `WorkerRuntime` | Shipped — [`dsh-runtime.md`](./dsh-runtime.md) |
 | Muse `WorkerRuntime` | Shipped — [`muse-runtime.md`](./muse-runtime.md) |
+| Claude `WorkerRuntime` | Shipped — [`claude-runtime.md`](./claude-runtime.md) |
 | Variable primary judge (`reviewRuntime` + `reviewModel`) | Shipped |
 
 ## Roadmap — integrate next (ranked)
@@ -104,7 +108,7 @@ Keep this file and `README.intro.md` / `README.md` worker–judge tables in sync
 | **Roo Code / IDE-only agents** | No stable programmatic worker API for the harness |
 | **`@openrouter/agent` alone** | Primitives only; you rebuild the coding agent (**L**, overlaps OpenCode/Pi) |
 | **Vercel AI SDK alone** | LLM client ≠ agentic edit/bash loop. Vercel **AI Gateway** as an OpenCode provider (`vercel/…`) is the supported path — [`opencode-providers.md`](./opencode-providers.md) |
-| **Claude Code / sealed agents as default worker** | Closed personalization wall; hook-only extension |
+| **Claude Code as default worker** | Opt-in only (`runtime: claude` / `reviewRuntime: claude`). Frontier tokens per grind iteration; `--safe-mode` spawn is the adapter, not minmax |
 | **Frontier Opus / GPT-class as default worker** | Wrong economics for grind loops; judge-only if ever |
 | **Gemini (Flash / Pro) as worker or judge** | Weak relative to DeepSeek / Qwen / Composer / Grok on fix-until-green; keep out of defaults — opt in only if you insist |
 | **Kilo Gateway / `runtime: kilo`** | Same OpenRouter `:free` pool. Use `openrouter/…:free` + `OPENROUTER_API_KEY` — [`opencode-providers.md`](./opencode-providers.md). No second runtime. |

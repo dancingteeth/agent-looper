@@ -478,10 +478,10 @@ describe('parseLoopRuntimeCli', () => {
 
   it('builds CLI error copy from the enum', () => {
     expect(formatLoopRuntimeCliList()).toBe(
-      'cursor, cline-pass, cline, opencode, pi, codex, dsh, or muse',
+      'cursor, cline-pass, cline, opencode, pi, codex, dsh, muse, or claude',
     )
     expect(loopRuntimeFlagError('--runtime')).toBe(
-      '--runtime must be cursor, cline-pass, cline, opencode, pi, codex, dsh, or muse',
+      '--runtime must be cursor, cline-pass, cline, opencode, pi, codex, dsh, muse, or claude',
     )
   })
 })

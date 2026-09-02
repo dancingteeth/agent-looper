@@ -9,6 +9,7 @@ const createPiLoopSession = vi.fn()
 const createCodexLoopSession = vi.fn()
 const createDshLoopSession = vi.fn()
 const createMuseLoopSession = vi.fn()
+const createClaudeLoopSession = vi.fn()
 
 vi.mock('./cursorAgent.js', () => ({
   runCursorAgentPrompt,
@@ -36,6 +37,10 @@ vi.mock('./dshAgent.js', () => ({
 
 vi.mock('./museAgent.js', () => ({
   createMuseLoopSession,
+}))
+
+vi.mock('./claudeAgent.js', () => ({
+  createClaudeLoopSession,
 }))
 
 const testCtx = {
@@ -70,6 +75,10 @@ describe('createLoopAgentSession', () => {
     createMuseLoopSession.mockResolvedValue({
       runPrompt: vi.fn().mockResolvedValue({ text: 'muse-ok' }),
       recycle: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    })
+    createClaudeLoopSession.mockResolvedValue({
+      runPrompt: vi.fn().mockResolvedValue({ text: 'claude-ok' }),
       dispose: vi.fn().mockResolvedValue(undefined),
     })
   })
@@ -308,5 +317,34 @@ describe('createLoopAgentSession', () => {
     )
     await session.dispose()
     expect(museSession.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches claude runtime to Claude session', async () => {
+    const { createLoopAgentSession } = await import('./agentRunner.js')
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'claude' })
+    const claudeSession = {
+      runPrompt: vi.fn().mockResolvedValue({ text: 'claude-ok' }),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    }
+    createClaudeLoopSession.mockResolvedValue(claudeSession)
+
+    const session = await createLoopAgentSession(config, testCtx)
+    const result = await session.runIterationPrompt(
+      'prompt',
+      { runtime: 'claude', model: 'sonnet' },
+      { assistantOutput: 'none' },
+    )
+
+    expect(result.text).toBe('claude-ok')
+    expect(createClaudeLoopSession).toHaveBeenCalledOnce()
+    expect(createMuseLoopSession).not.toHaveBeenCalled()
+    expect(claudeSession.runPrompt).toHaveBeenCalledWith(
+      'prompt',
+      expect.objectContaining({
+        modelId: 'sonnet',
+      }),
+    )
+    await session.dispose()
+    expect(claudeSession.dispose).toHaveBeenCalledOnce()
   })
 })

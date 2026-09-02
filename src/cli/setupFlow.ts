@@ -6,6 +6,7 @@ import {
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
   LOOP_RUNTIME_MUSE,
+  LOOP_RUNTIME_CLAUDE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   runtimeHonorsReasoningEffort,
@@ -86,6 +87,7 @@ const RUNTIME_DETECT_KEY: Record<string, DetectableRuntime> = {
   [LOOP_RUNTIME_CODEX]: 'codex',
   [LOOP_RUNTIME_DSH]: 'dsh',
   [LOOP_RUNTIME_MUSE]: 'muse',
+  [LOOP_RUNTIME_CLAUDE]: 'claude',
 }
 
 /** Tag runtime-menu choices `detected` / `missing`; never drops a choice. */

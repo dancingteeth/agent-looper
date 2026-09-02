@@ -92,6 +92,7 @@ describe('agent-loop-setup', () => {
     expect(menu).toMatch(/Cline \(cline-pass\)/)
     expect(menu).toMatch(/Cline \(credits\)/)
     expect(menu).toMatch(/Muse Code \(muse\)/)
+    expect(menu).toMatch(/Claude Code \(claude\)/)
   })
 
   it('keeps both Cline families on secondary review and adds the rest of the judge list', () => {
@@ -106,6 +107,7 @@ describe('agent-loop-setup', () => {
       'pi',
       'codex',
       'muse',
+      'claude',
     ])
     expect(SECONDARY_REVIEW_RUNTIME_CHOICES.map((choice) => choice.title)).toEqual([
       'none',
@@ -117,11 +119,12 @@ describe('agent-loop-setup', () => {
       'Pi coding agent (pi)',
       'Codex (codex)',
       'Muse Code (muse)',
+      'Claude Code (claude)',
     ])
   })
 
   it('gives every catalog model a what/when description, not filler', () => {
-    const runtimes = ['cline-pass', 'opencode', 'dsh', 'codex', 'cursor', 'cline', 'pi', 'muse'] as const
+    const runtimes = ['cline-pass', 'opencode', 'dsh', 'codex', 'cursor', 'cline', 'pi', 'muse', 'claude'] as const
     for (const runtime of runtimes) {
       for (const choice of workerModelChoices(runtime)) {
         if (choice.value === '' || choice.value === '__custom__') continue
@@ -131,6 +134,15 @@ describe('agent-loop-setup', () => {
         expect(choice.description, choice.value).toMatch(/—/)
       }
     }
+  })
+
+  it('offers Claude Sonnet, Opus, Fable, and Haiku', () => {
+    const claude = workerModelChoices('claude').map((choice) => choice.value)
+    expect(claude).toContain('sonnet')
+    expect(claude).toContain('opus')
+    expect(claude).toContain('fable')
+    expect(claude).toContain('haiku')
+    expect(escalateModelChoices('claude').map((choice) => choice.value)).toContain('opus')
   })
 
   it('does not offer a Muse model escalate — PAYG Spark is a billing pick, not a stronger slug', () => {

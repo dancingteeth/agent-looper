@@ -2,7 +2,7 @@ export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
 export type LoopUsageRecord = {
   phase: AgentRunPhase
-  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse'
+  runtime: 'cline-pass' | 'cline' | 'cursor' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse' | 'claude'
   model: string
   inputTokens: number
   outputTokens: number
@@ -73,6 +73,11 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'muse-spark-1.1': { input: 1.25, output: 4.25 },
   'muse-spark-1.2': { input: 1.25, output: 4.25 },
   'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
+  // Claude Code aliases — list-price estimates; spawn prefers subscription quota (`total_cost_usd` when present)
+  sonnet: { input: 3.0, output: 15.0 },
+  opus: { input: 15.0, output: 75.0 },
+  haiku: { input: 1.0, output: 5.0 },
+  fable: { input: 15.0, output: 75.0 },
 }
 
 const TOKENS_PER_MILLION = 1_000_000

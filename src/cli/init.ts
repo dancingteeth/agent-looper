@@ -113,5 +113,7 @@ console.error(`  # DeepSeek Harness headless (dsh on PATH; Node ≥ 22.15)`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime dsh`)
 console.error(`  # Muse Code (muse on PATH + @muse-code/sdk; login or META_API_KEY)`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime muse`)
+console.error(`  # Claude Code (claude 2.1.169+ on PATH; claude login; no Agent SDK)`)
+console.error(`  agent-loop run .cursor/loops/example-fix --runtime claude`)
 
 trackLooperInit()

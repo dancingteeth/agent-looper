@@ -2,6 +2,7 @@ import type { RepoContext } from '../context/repoContext.js'
 import {
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
+  LOOP_RUNTIME_CLAUDE,
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
@@ -182,6 +183,19 @@ export async function runOneShotAgentPrompt(
           assistantOutput: runOptions.assistantOutput,
           phase: runOptions.phase,
           reasoningEffort: runOptions.reasoningEffort,
+          collector: runOptions.collector,
+          onAssistantText: runOptions.onAssistantText,
+        }),
+      )
+    }
+    case LOOP_RUNTIME_CLAUDE: {
+      const { createClaudeLoopSession } = await import('./claudeAgent.js')
+      return withDisposableSession(createClaudeLoopSession(ctx), (claude) =>
+        claude.runPrompt(prompt, {
+          verbose: runOptions.verbose,
+          modelId: runOptions.modelId,
+          assistantOutput: runOptions.assistantOutput,
+          phase: runOptions.phase,
           collector: runOptions.collector,
           onAssistantText: runOptions.onAssistantText,
         }),

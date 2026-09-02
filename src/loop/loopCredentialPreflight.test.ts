@@ -66,5 +66,6 @@ describe('loopCredentialPreflight', () => {
     expect(requiredCredentialNeed('dsh', {})).toBeUndefined()
     expect(requiredCredentialNeed('codex', {})).toBeUndefined()
     expect(requiredCredentialNeed('muse', {})).toBeUndefined()
+    expect(requiredCredentialNeed('claude', {})).toBeUndefined()
   })
 })

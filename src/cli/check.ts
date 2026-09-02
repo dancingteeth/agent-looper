@@ -3,13 +3,14 @@ import { OPENCODE_PROVIDER_API_KEY_ENV } from '../agents/opencodeAuth.js'
 import { assertOpencodeAgentSkillsReadable } from '../agents/opencodeSkillPreflight.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
-type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse'
+type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse' | 'claude'
 
 function usage(): string {
-  return `Usage: agent-check <cursor|cline|opencode|pi|codex|dsh|muse>
+  return `Usage: agent-check <cursor|cline|opencode|pi|codex|dsh|muse|claude>
 
 Verifies SDK install and API key env var. Does not call remote APIs.
-Muse also spawns local \`muse serve\` for the SDK handshake, then closes it.`
+Muse also spawns local \`muse serve\` for the SDK handshake, then closes it.
+Claude checks PATH \`claude\` version (≥ 2.1.169 for --safe-mode) and does not spend quota.`
 }
 
 const target = process.argv[2]?.trim()
@@ -26,7 +27,8 @@ if (
   target !== 'pi' &&
   target !== 'codex' &&
   target !== 'dsh' &&
-  target !== 'muse'
+  target !== 'muse' &&
+  target !== 'claude'
 ) {
   console.error(usage())
   process.exit(1)
@@ -275,6 +277,47 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     } else {
       console.log('[agent-check] muse serve handshake OK')
     }
+    console.log('[agent-check] shell preflight OK')
+    return
+  }
+
+  if (runtime === 'claude') {
+    await assertPosixShell()
+    const { spawnSync } = await import('node:child_process')
+    const {
+      probeClaudeCli,
+      claudeVersionMeetsMinimum,
+      claudeVersionFloorMessage,
+      CLAUDE_MISSING_CLI_MESSAGE,
+    } = await import('../agents/claudeAgent.js')
+    const { onPath, version: versionLine } = probeClaudeCli()
+    if (!onPath) {
+      console.error(`[agent-check] ${CLAUDE_MISSING_CLI_MESSAGE}`)
+      process.exit(1)
+    }
+    if (!claudeVersionMeetsMinimum(versionLine)) {
+      console.error(`[agent-check] ${claudeVersionFloorMessage(versionLine)}`)
+      process.exit(1)
+    }
+    const help = spawnSync('claude', ['--help'], { encoding: 'utf8' })
+    const helpText = `${help.stdout}\n${help.stderr}`
+    if (!helpText.includes('--safe-mode')) {
+      console.error(
+        '[agent-check] this `claude` binary has no --safe-mode. Run `claude update` (need 2.1.169+).',
+      )
+      process.exit(1)
+    }
+    if (process.env.ANTHROPIC_API_KEY?.trim()) {
+      console.log(
+        '[agent-check] ANTHROPIC_API_KEY is set in this shell — runtime: claude will ignore it so the loop uses Claude Code login, not Console tokens',
+      )
+    } else {
+      console.log(
+        '[agent-check] no ANTHROPIC_API_KEY — will rely on `claude login` (~/.claude / macOS Keychain)',
+      )
+    }
+    console.log('[agent-check] claude CLI:', versionLine)
+    console.log('[agent-check] --safe-mode OK')
     console.log('[agent-check] shell preflight OK')
     return
   }

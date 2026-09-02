@@ -8,7 +8,7 @@ npm: `@dancingteeth/agent-looper` · CLI: `agent-loop` · site: https://looper.d
 
 ## Which coding agents does Agent Looper work with?
 
-Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, DSH, and Muse. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router. How-to and default models: [Harnesses](https://looper.dancingteeth.net/harnesses/).
+Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, and Claude. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router. How-to and default models: [Harnesses](https://looper.dancingteeth.net/harnesses/).
 
 ## How do Agent Looper worker and judge presets work?
 
@@ -57,7 +57,7 @@ Set up Agent Looper in this repo for the feature I want. I don't want to babysit
 
 Requirements: Node 22+ and pnpm.
 
-1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse).
+1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, Claude).
 2. Keep @dancingteeth/agent-looper in package.json even if you gitignore `.cursor/loops`. Don't only npx it.
 3. Use an API key already on this machine, or run under Doppler. Don't invent keys.
 4. Run: pnpm exec agent-loop-init

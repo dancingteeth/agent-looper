@@ -110,12 +110,13 @@ They do not have to match. A non-Cursor worker can still use a Cursor judge — 
 | **`codex`** | `gpt-5.6-luna` → `gpt-5.6-terra` | ChatGPT / OpenAI — [`docs/codex-runtime.md`](./docs/codex-runtime.md) |
 | **`dsh`** | `deepseek-official/deepseek-v4-flash` (setup also lists `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Headless DSH CLI — [`docs/dsh-runtime.md`](./docs/dsh-runtime.md). `dsh web` companion: [`docs/dsh-plugin.md`](./docs/dsh-plugin.md) |
 | **`muse`** | `muse-spark-1.2-contributor` (effort only; PAYG `muse-spark-1.2` is the same weights) | Muse Code — [`docs/muse-runtime.md`](./docs/muse-runtime.md). Explicit only; not minmax. |
+| **`claude`** | `sonnet` → `opus` | Claude Code CLI — [`docs/claude-runtime.md`](./docs/claude-runtime.md). Subscription login; `--safe-mode`. Explicit only; not minmax. |
 
 ### Judge defaults
 
 Unset `reviewRuntime` → **`cursor`**. Unset `reviewModel` on that Cursor judge → **`grok-4.6`** when the worker is also `cursor`, else **`composer-2.5`**.
 
-To keep the judge off Cursor quota, set `reviewRuntime` to a peer you already pay for — e.g. `"reviewRuntime": "pi"`, `"opencode"` (defaults to **`opencode-go/deepseek-v4-pro`**), `"dsh"` (defaults to **`deepseek-official/deepseek-v4-pro`**), `"codex"` (defaults to **`gpt-5.6-sol`**), or `"muse"` (defaults to **`muse-spark-1.2`**). Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). Measure a pick on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md).
+To keep the judge off Cursor quota, set `reviewRuntime` to a peer you already pay for — e.g. `"reviewRuntime": "pi"`, `"opencode"` (defaults to **`opencode-go/deepseek-v4-pro`**), `"dsh"` (defaults to **`deepseek-official/deepseek-v4-pro`**), `"codex"` (defaults to **`gpt-5.6-sol`**), `"muse"` (defaults to **`muse-spark-1.2`**), or `"claude"` (defaults to **`opus`**). Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). Measure a pick on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md).
 
 ---
 
@@ -158,6 +159,7 @@ Need OpenCode Go? Add `@opencode-ai/sdk` + `opencode-ai`, set `OPENCODE_API_KEY`
 Need Pi BYOK? Add `@earendil-works/pi-coding-agent`, set provider keys (e.g. `OPENROUTER_API_KEY`), use `--runtime pi`.
 Need Codex? Add `@openai/codex-sdk`, set `CODEX_API_KEY` / `OPENAI_API_KEY` (or ChatGPT login), use `--runtime codex`.
 Need Muse Code? Add `@muse-code/sdk`, put `muse` on PATH, set `META_API_KEY` (or `muse` login), use `--runtime muse`.
+Need Claude Code? Put `claude` 2.1.169+ on PATH, run `claude login`, leave `ANTHROPIC_API_KEY` unset, use `--runtime claude` (or `reviewRuntime: claude` for an Opus judge).
 
 Cloud agents: same `pnpm add` — no local checkout of this repo required.
 

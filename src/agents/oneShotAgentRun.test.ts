@@ -10,6 +10,7 @@ const {
   createCodexLoopSession,
   createDshLoopSession,
   createMuseLoopSession,
+  createClaudeLoopSession,
 } = vi.hoisted(() => ({
   runCursorAgentPrompt: vi.fn(),
   createClineLoopSession: vi.fn(),
@@ -18,6 +19,7 @@ const {
   createCodexLoopSession: vi.fn(),
   createDshLoopSession: vi.fn(),
   createMuseLoopSession: vi.fn(),
+  createClaudeLoopSession: vi.fn(),
 }))
 
 vi.mock('./cursorAgent.js', () => ({
@@ -46,6 +48,10 @@ vi.mock('./dshAgent.js', () => ({
 
 vi.mock('./museAgent.js', () => ({
   createMuseLoopSession,
+}))
+
+vi.mock('./claudeAgent.js', () => ({
+  createClaudeLoopSession,
 }))
 
 const testCtx = {
@@ -223,6 +229,27 @@ describe('runOneShotAgentPrompt', () => {
       'go',
       expect.objectContaining({
         reasoningEffort: 'high',
+        phase: 'review',
+      }),
+    )
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches Claude one-shot review to a Claude session', async () => {
+    const dispose = vi.fn().mockResolvedValue(undefined)
+    const runPrompt = vi.fn().mockResolvedValue({ text: 'claude' })
+    createClaudeLoopSession.mockResolvedValue({ runPrompt, dispose })
+
+    await runOneShotAgentPrompt(
+      testCtx,
+      'go',
+      { runtime: 'claude', model: 'opus' },
+      { phase: 'review' },
+    )
+    expect(runPrompt).toHaveBeenCalledWith(
+      'go',
+      expect.objectContaining({
+        modelId: 'opus',
         phase: 'review',
       }),
     )

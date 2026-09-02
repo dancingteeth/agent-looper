@@ -6,6 +6,7 @@ import {
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_DSH,
   LOOP_RUNTIME_MUSE,
+  LOOP_RUNTIME_CLAUDE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   type LoopRuntime,
@@ -47,6 +48,7 @@ export function requiredCredentialNeed(
     case LOOP_RUNTIME_CODEX:
     case LOOP_RUNTIME_DSH:
     case LOOP_RUNTIME_MUSE:
+    case LOOP_RUNTIME_CLAUDE:
       return undefined
     default: {
       const _exhaustive: never = runtime

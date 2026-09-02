@@ -83,3 +83,11 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 - Worker: `muse-spark-1.2-contributor` (climb `reasoningEffort`; no stronger Spark slug)
 - Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate`
+
+### Claude (`--runtime claude`)
+
+PATH `claude` CLI — Claude Code subscription. Spawn uses `--safe-mode`. Not on `costPreset` minmax. See [docs/claude-runtime.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md).
+
+- Worker: `sonnet` → `opus`
+- Judge: any runtime, optional
+- Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime claude --review-gate`

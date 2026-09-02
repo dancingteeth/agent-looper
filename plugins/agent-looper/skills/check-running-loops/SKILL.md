@@ -2,7 +2,7 @@
 name: check-running-loops
 description: >-
   Checks whether agent-loop / agent-loop-batch jobs are actually alive, stale, hung, dead, or done,
-  for any worker/judge runtime (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse).
+  for any worker/judge runtime (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, Claude).
   Use when the user asks if loops are ok, stuck, running, healthy, or what the current batch status is;
   when they mention agent-loop, loop-batch, verify.sh harness, or AGENT_LOOP_DONE.
 tags:
@@ -14,7 +14,7 @@ tags:
 
 # Check running loops
 
-The harness (`agent-loop` / `agent-loop-batch`) is the process to check. Worker and judge may be Cursor, Cline, OpenCode, Pi, Codex, DSH, or Muse — that does not change the heartbeat.
+The harness (`agent-loop` / `agent-loop-batch`) is the process to check. Worker and judge may be Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, or Claude — that does not change the heartbeat.
 
 Do **not** answer loop health from memory, an IDE job list, Cursor terminal `status: running`, or `running_for_ms`. Those stay `running` after the process dies.
 

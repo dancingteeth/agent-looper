@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Harnesses — Agent Looper worker runtimes and Grok Bot</title>
-  <meta name="description" content="How to run Agent Looper with each worker harness: Cursor, Grok Bot, DSH, Cline, OpenCode, Pi, Codex, and Muse. Published models and how-to for each.">
+  <meta name="description" content="How to run Agent Looper with each worker harness: Cursor, Grok Bot, DSH, Cline, OpenCode, Pi, Codex, Muse, and Claude. Published models and how-to for each.">
   <link rel="canonical" href="https://looper.dancingteeth.net/harnesses/">
   <link rel="describedby" href="https://looper.dancingteeth.net/llms.txt">
   <link rel="alternate" type="text/markdown" href="https://looper.dancingteeth.net/harnesses/index.md">
@@ -67,6 +67,10 @@
         <a class="harness-logo" href="#muse">
           <span class="harness-logo__icon" style="--logo: url('../logos/meta.svg')" aria-hidden="true"></span>
           <span class="harness-logo__label">Muse</span>
+        </a>
+        <a class="harness-logo" href="#claude">
+          <span class="harness-logo__icon" style="--logo: url('../logos/claude.svg')" aria-hidden="true"></span>
+          <span class="harness-logo__label">Claude</span>
         </a>
       </nav>
 
@@ -216,6 +220,23 @@
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate</code></p>
             <p class="harness-card__note">Install <code>@muse-code/sdk</code>; ensure <code>muse</code> is on PATH. Climb <code>reasoningEffort</code> — there is no stronger Spark slug. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md">docs/muse-runtime.md</a>.</p>
+          </article>
+
+          <article class="harness-card" id="claude">
+            <header class="harness-card__head">
+              <span class="harness-card__logo" style="--logo: url('../logos/claude.svg')" aria-hidden="true"></span>
+              <div class="harness-card__titles">
+                <h3>Claude</h3>
+                <span class="harness-card__pill"><code>--runtime claude</code></span>
+              </div>
+            </header>
+            <p class="harness-card__job">PATH <code>claude</code> CLI — Claude Code subscription. Spawn uses <code>--safe-mode</code>. Not on <code>costPreset</code> minmax.</p>
+            <p class="harness-card__chips">
+              <span class="harness-chip">Worker <code>sonnet</code> → <code>opus</code></span>
+              <span class="harness-chip">Judge any runtime, optional</span>
+            </p>
+            <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime claude --review-gate</code></p>
+            <p class="harness-card__note">Ensure <code>claude</code> 2.1.169+ is on PATH and <code>claude login</code> has been run. Typical mix: cheap worker + Claude as judge (default <code>opus</code>). See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md">docs/claude-runtime.md</a>.</p>
           </article>
         </div>
       </section>

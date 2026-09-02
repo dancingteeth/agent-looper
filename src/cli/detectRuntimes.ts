@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process'
  * `src/cli/check.ts` runs, minus API-key gating.
  */
 
-export type DetectableRuntime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse'
+export type DetectableRuntime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse' | 'claude'
 
 export type DetectionStatus = 'detected' | 'missing'
 
@@ -23,6 +23,7 @@ const DETECTABLE_RUNTIMES = [
   'codex',
   'dsh',
   'muse',
+  'claude',
 ] as const satisfies readonly DetectableRuntime[]
 
 /** Every runtime `missing`. */
@@ -67,6 +68,7 @@ const RUNTIME_PROBES: Record<DetectableRuntime, RuntimeProbe> = {
   codex: { imports: ['@openai/codex-sdk'], bins: ['codex'] },
   dsh: { imports: [], bins: ['dsh'] },
   muse: { imports: ['@muse-code/sdk'], bins: ['muse'] },
+  claude: { imports: [], bins: ['claude'] },
 }
 
 function defaultImportModule(specifier: string): Promise<unknown> {

@@ -15,6 +15,8 @@ export const LOOP_RUNTIME_CODEX = 'codex' as const
 export const LOOP_RUNTIME_DSH = 'dsh' as const
 /** Muse Code (`@muse-code/sdk` + PATH `muse serve`) — Muse Spark slugs (e.g. muse-spark-1.2). */
 export const LOOP_RUNTIME_MUSE = 'muse' as const
+/** Claude Code — spawn PATH `claude -p` (subscription login; no Agent SDK). */
+export const LOOP_RUNTIME_CLAUDE = 'claude' as const
 
 /** Canonical runtime ids — CLI flags, loop.json, and `loopRuntimeSchema` share this list. */
 export const LOOP_RUNTIME_VALUES = [
@@ -26,6 +28,7 @@ export const LOOP_RUNTIME_VALUES = [
   LOOP_RUNTIME_CODEX,
   LOOP_RUNTIME_DSH,
   LOOP_RUNTIME_MUSE,
+  LOOP_RUNTIME_CLAUDE,
 ] as const
 
 export type LoopRuntime = (typeof LOOP_RUNTIME_VALUES)[number]
@@ -125,11 +128,23 @@ export const DEFAULT_MUSE_REVIEW_MODEL = 'muse-spark-1.2'
 /** Prior Spark slug the adapter still prices and accepts. */
 export const MUSE_SPARK_1_1_MODEL = 'muse-spark-1.1'
 
+/** Default Claude Code worker — latest Sonnet alias. */
+export const DEFAULT_CLAUDE_LOOP_MODEL = 'sonnet'
+export const DEFAULT_CLAUDE_ESCALATE_MODEL = 'opus'
+/** Default Claude judge — Opus (stronger than Sonnet worker). Menu also lists `fable`. */
+export const DEFAULT_CLAUDE_REVIEW_MODEL = 'opus'
+export const CLAUDE_HAIKU_MODEL = 'haiku'
+export const CLAUDE_FABLE_MODEL = 'fable'
+
 /** Codex CLI model slug (not provider/model). */
 const CODEX_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/
 
 /** Muse Spark model id (not provider/model). */
 const MUSE_MODEL_RE = /^muse-spark-[0-9]+(\.[0-9]+)?(-[a-z0-9]+)?$/
+
+/** Claude Code CLI alias or full `claude-…` id (not provider/model). */
+const CLAUDE_ALIAS_RE = /^(haiku|sonnet|opus|fable|best|default|opusplan)(\[1m\])?$/
+const CLAUDE_FULL_RE = /^claude-[a-zA-Z0-9][a-zA-Z0-9._-]*$/
 
 /** OpenRouter-style `provider/model` (Cline usage-billing / API). */
 const CLINE_CREDITS_MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._/-]*$/
@@ -200,6 +215,11 @@ export type ResolvedLoopAgent =
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
+  | {
+      runtime: typeof LOOP_RUNTIME_CLAUDE
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
 
 export function isClineSdkRuntime(
   runtime: LoopRuntime,
@@ -229,6 +249,10 @@ export function isMuseRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNT
   return runtime === LOOP_RUNTIME_MUSE
 }
 
+export function isClaudeRuntime(runtime: LoopRuntime): runtime is typeof LOOP_RUNTIME_CLAUDE {
+  return runtime === LOOP_RUNTIME_CLAUDE
+}
+
 /**
  * Whether the worker runner actually sends `reasoningEffort` to the provider.
  * Wizard, resolveLoopAgent, and the iteration ladder all use this — do not
@@ -245,6 +269,7 @@ export function runtimeHonorsReasoningEffort(runtime: LoopRuntime): boolean {
     case LOOP_RUNTIME_OPENCODE:
     case LOOP_RUNTIME_CODEX:
     case LOOP_RUNTIME_DSH:
+    case LOOP_RUNTIME_CLAUDE:
       return false
     default: {
       const _exhaustive: never = runtime
@@ -269,6 +294,8 @@ export function defaultModelForRuntime(runtime: LoopRuntime): string {
       return DEFAULT_DSH_LOOP_MODEL
     case LOOP_RUNTIME_MUSE:
       return DEFAULT_MUSE_LOOP_MODEL
+    case LOOP_RUNTIME_CLAUDE:
+      return DEFAULT_CLAUDE_LOOP_MODEL
     case LOOP_RUNTIME_CURSOR:
       return CURSOR_LOOP_MODEL
     default: {
@@ -324,6 +351,11 @@ export type ResolvedReviewAgent =
     }
   | {
       runtime: typeof LOOP_RUNTIME_MUSE
+      model: string
+      reasoningEffort?: LoopReasoningEffort
+    }
+  | {
+      runtime: typeof LOOP_RUNTIME_CLAUDE
       model: string
       reasoningEffort?: LoopReasoningEffort
     }
@@ -424,6 +456,15 @@ function assertReviewModelForRuntime(
     }
     return model
   }
+  if (runtime === LOOP_RUNTIME_CLAUDE) {
+    if (!isClaudeLoopModel(model)) {
+      throw new Error(
+        `Invalid ${modelField} "${model}" for ${runtimeField} "claude". Expected a Claude Code slug ` +
+          `(e.g. "${DEFAULT_CLAUDE_REVIEW_MODEL}") — https://code.claude.com/docs/en/model-config`,
+      )
+    }
+    return model
+  }
   const _exhaustive: never = runtime
   return _exhaustive
 }
@@ -443,6 +484,8 @@ function defaultReviewModel(
       return DEFAULT_DSH_REVIEW_MODEL
     case LOOP_RUNTIME_MUSE:
       return DEFAULT_MUSE_REVIEW_MODEL
+    case LOOP_RUNTIME_CLAUDE:
+      return DEFAULT_CLAUDE_REVIEW_MODEL
     case LOOP_RUNTIME_CLINE_PASS:
     case LOOP_RUNTIME_CLINE:
     case LOOP_RUNTIME_PI:
@@ -504,6 +547,9 @@ export function resolveReviewAgent(
   }
   if (reviewRuntime === LOOP_RUNTIME_MUSE) {
     return { runtime: reviewRuntime, model: assertMuseLoopModel(model, 'model') }
+  }
+  if (reviewRuntime === LOOP_RUNTIME_CLAUDE) {
+    return { runtime: reviewRuntime, model: assertClaudeLoopModel(model, 'model') }
   }
   return {
     runtime: LOOP_RUNTIME_CLINE_PASS,
@@ -604,6 +650,13 @@ export function isMuseLoopModel(model: string): boolean {
   return true
 }
 
+/** Valid `loop.json` model for runtime `claude` (Claude Code alias or `claude-…` id). */
+export function isClaudeLoopModel(model: string): boolean {
+  if (model.includes('/')) return false
+  if (model.toLowerCase().includes('fast')) return false
+  return CLAUDE_ALIAS_RE.test(model) || CLAUDE_FULL_RE.test(model)
+}
+
 /** Valid `loop.json` model for runtime `opencode`. */
 export function isOpencodeLoopModel(model: string): boolean {
   if (!isOpencodeLoopModelShape(model)) return false
@@ -634,6 +687,8 @@ export function modelCompatibleWithRuntime(
       return isDshLoopModel(model)
     case LOOP_RUNTIME_MUSE:
       return isMuseLoopModel(model)
+    case LOOP_RUNTIME_CLAUDE:
+      return isClaudeLoopModel(model)
     default: {
       const _exhaustive: never = runtime
       return _exhaustive
@@ -818,6 +873,16 @@ function assertMuseLoopModel(model: string, field: 'model' | 'escalateModel'): s
   return model
 }
 
+function assertClaudeLoopModel(model: string, field: 'model' | 'escalateModel'): string {
+  if (!isClaudeLoopModel(model)) {
+    throw new Error(
+      `Invalid Claude ${field} "${model}". Expected a Claude Code slug ` +
+        `(e.g. "${DEFAULT_CLAUDE_LOOP_MODEL}") — https://code.claude.com/docs/en/model-config`,
+    )
+  }
+  return model
+}
+
 function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'): string {
   if (!isOpencodeLoopModel(model)) {
     const { providerID } = (() => {
@@ -834,9 +899,9 @@ function assertOpencodeLoopModel(model: string, field: 'model' | 'escalateModel'
       )
     }
     throw new Error(
-      `Invalid OpenCode ${field} "${model}". Expected provider/model ` +
-        `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, openrouter/…:free, vercel/…, ollama/… — ` +
-        `https://opencode.ai/docs/providers/).`,
+        `Invalid OpenCode ${field} "${model}". Expected provider/model ` +
+          `(Go: opencode-go/… from OPENCODE_GO_LOOP_MODELS; BYOK: e.g. openrouter/…, openrouter/…:free, vercel/…, ollama/… — ` +
+          `https://opencode.ai/docs/providers/).`,
     )
   }
   return model
@@ -893,6 +958,13 @@ export function resolveLoopAgent(config: LoopConfig): ResolvedLoopAgent {
       runtime,
       model: assertMuseLoopModel(model, 'model'),
       reasoningEffort: config.reasoningEffort,
+    }
+  }
+
+  if (runtime === LOOP_RUNTIME_CLAUDE) {
+    return {
+      runtime,
+      model: assertClaudeLoopModel(model, 'model'),
     }
   }
 
@@ -968,9 +1040,14 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
     return
   }
 
+  if (runtime === LOOP_RUNTIME_CLAUDE) {
+    assertClaudeLoopModel(config.escalateModel, 'escalateModel')
+    return
+  }
+
   if (config.escalateModel !== CURSOR_LOOP_MODEL) {
     throw new Error(
-      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", "pi", "codex", "dsh", or "muse" ` +
+      `escalateModel is only used with runtime "cline-pass", "cline", "opencode", "pi", "codex", "dsh", "muse", or "claude" ` +
         `(got runtime "cursor" and escalateModel "${config.escalateModel}")`,
     )
   }
