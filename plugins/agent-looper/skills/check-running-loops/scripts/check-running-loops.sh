@@ -63,6 +63,8 @@ repo_slug() {
   printf '%s' "$REPO" | sed 's|^/||; s|/|-|g'
 }
 
+PROJECTS_DIR="${CURSOR_PROJECTS_DIR:-$HOME/.cursor/projects}"
+
 # Cursor sometimes hyphenates underscores in the project folder name.
 find_term_dir() {
   if [ -n "${CURSOR_TERMINALS_DIR:-}" ] && [ -d "$CURSOR_TERMINALS_DIR" ]; then
@@ -70,24 +72,102 @@ find_term_dir() {
     return
   fi
   slug=$(repo_slug)
-  cand="$HOME/.cursor/projects/$slug/terminals"
+  cand="$PROJECTS_DIR/$slug/terminals"
   if [ -d "$cand" ]; then
     printf '%s' "$cand"
     return
   fi
   alt=$(printf '%s' "$slug" | tr '_' '-')
-  cand="$HOME/.cursor/projects/$alt/terminals"
+  cand="$PROJECTS_DIR/$alt/terminals"
   if [ -d "$cand" ]; then
     printf '%s' "$cand"
     return
   fi
   base=$(basename "$REPO" | tr '_' '-')
-  set -- "$HOME/.cursor/projects/"*"$base"/terminals
+  set -- "$PROJECTS_DIR/"*"$base"/terminals
   if [ -d "$1" ] && [ "$#" -eq 1 ]; then
     printf '%s' "$1"
     return
   fi
-  printf '%s' "$HOME/.cursor/projects/$slug/terminals"
+  printf '%s' "$PROJECTS_DIR/$slug/terminals"
+}
+
+term_cwd() {
+  awk '
+    /^cwd:/ {
+      sub(/^cwd: */, "")
+      gsub(/^"/, "")
+      gsub(/"$/, "")
+      print
+      exit
+    }
+  ' "$1"
+}
+
+term_belongs_to_repo() {
+  f="$1"
+  cwd=$(term_cwd "$f")
+  [ "$cwd" = "$REPO" ] && return 0
+  grep -F "$REPO" "$f" >/dev/null 2>&1
+}
+
+emit_term_file() {
+  f="$1"
+  pid=$(awk '/^pid:/{print $2; exit}' "$f")
+  meta_status=$(awk '/^status:/{print $2; exit}' "$f")
+  cmd=$(awk '/^command:/{sub(/^command: /,""); print; exit}' "$f" | cut -c1-120)
+  mtime=$(file_mtime_epoch "$f")
+  age=$(age_secs "$mtime")
+  quiet=$(classify_quiet "$age")
+  if pid_alive "$pid"; then
+    live=ALIVE
+    et=$(pid_etime "$pid")
+  else
+    live=DEAD
+    et="-"
+  fi
+  done_line=$(grep 'AGENT_LOOP_DONE' "$f" 2>/dev/null | tail -1 || true)
+  last_loop=$(grep '\[agent-loop-batch\] loop ' "$f" 2>/dev/null | tail -1 || true)
+  last_iter=$(grep '\[agent-loop\] iteration ' "$f" 2>/dev/null | tail -1 || true)
+  last_gate=$(grep 'review gate:' "$f" 2>/dev/null | tail -1 || true)
+  last_verify=$(grep '\[agent-loop\] iteration .* verify:' "$f" 2>/dev/null | tail -1 || true)
+
+  verdict="$live"
+  if [ "$live" = ALIVE ] && [ "$quiet" = HUNG ]; then
+    verdict="ALIVE_BUT_HUNG"
+  elif [ "$live" = ALIVE ] && [ "$quiet" = STALE ]; then
+    verdict="ALIVE_BUT_STALE"
+  elif [ "$live" = DEAD ] && [ -n "$done_line" ]; then
+    verdict="DONE"
+  elif [ "$live" = DEAD ]; then
+    verdict="DEAD"
+  fi
+
+  echo "file=$(basename "$f") verdict=$verdict pid=$pid ps=$live etime=$et meta_status=$meta_status log_age_s=$age quiet=$quiet"
+  echo "  cmd=$cmd"
+  [ -n "$last_loop" ] && echo "  $last_loop"
+  [ -n "$last_iter" ] && echo "  $last_iter"
+  [ -n "$last_verify" ] && echo "  $last_verify"
+  [ -n "$last_gate" ] && echo "  $last_gate"
+  [ -n "$done_line" ] && echo "  $done_line"
+  echo "  (ignore meta_status=$meta_status unless ps=$live matches)"
+}
+
+scan_term_dir() {
+  dir="$1"
+  require_repo="$2"
+  [ -d "$dir" ] || return 0
+  for f in "$dir"/*.txt; do
+    [ -f "$f" ] || continue
+    if ! grep -q 'agent-loop-batch\|agent-loop run\|AGENT_LOOP_DONE' "$f" 2>/dev/null; then
+      continue
+    fi
+    if [ "$require_repo" = 1 ]; then
+      term_belongs_to_repo "$f" || continue
+    fi
+    term_hits=$((term_hits + 1))
+    emit_term_file "$f"
+  done
 }
 
 TERM_DIR=$(find_term_dir)
@@ -115,52 +195,22 @@ fi
 
 echo "--- terminal files ---"
 term_hits=0
-if [ -d "$TERM_DIR" ]; then
-  for f in "$TERM_DIR"/*.txt; do
-    [ -f "$f" ] || continue
-    if ! grep -q 'agent-loop-batch\|agent-loop run\|AGENT_LOOP_DONE' "$f" 2>/dev/null; then
-      continue
+scan_term_dir "$TERM_DIR" 0
+if [ -z "${CURSOR_TERMINALS_DIR:-}" ]; then
+  echo "--- sibling terminal files ---"
+  sib_hits=0
+  for d in "$PROJECTS_DIR"/*/terminals; do
+    [ -d "$d" ] || continue
+    [ "$d" = "$TERM_DIR" ] && continue
+    before=$term_hits
+    scan_term_dir "$d" 1
+    if [ "$term_hits" -gt "$before" ]; then
+      sib_hits=1
     fi
-    term_hits=1
-    pid=$(awk '/^pid:/{print $2; exit}' "$f")
-    meta_status=$(awk '/^status:/{print $2; exit}' "$f")
-    cmd=$(awk '/^command:/{sub(/^command: /,""); print; exit}' "$f" | cut -c1-120)
-    mtime=$(file_mtime_epoch "$f")
-    age=$(age_secs "$mtime")
-    quiet=$(classify_quiet "$age")
-    if pid_alive "$pid"; then
-      live=ALIVE
-      et=$(pid_etime "$pid")
-    else
-      live=DEAD
-      et="-"
-    fi
-    done_line=$(grep 'AGENT_LOOP_DONE' "$f" 2>/dev/null | tail -1 || true)
-    last_loop=$(grep '\[agent-loop-batch\] loop ' "$f" 2>/dev/null | tail -1 || true)
-    last_iter=$(grep '\[agent-loop\] iteration ' "$f" 2>/dev/null | tail -1 || true)
-    last_gate=$(grep 'review gate:' "$f" 2>/dev/null | tail -1 || true)
-    last_verify=$(grep '\[agent-loop\] iteration .* verify:' "$f" 2>/dev/null | tail -1 || true)
-
-    verdict="$live"
-    if [ "$live" = ALIVE ] && [ "$quiet" = HUNG ]; then
-      verdict="ALIVE_BUT_HUNG"
-    elif [ "$live" = ALIVE ] && [ "$quiet" = STALE ]; then
-      verdict="ALIVE_BUT_STALE"
-    elif [ "$live" = DEAD ] && [ -n "$done_line" ]; then
-      verdict="DONE"
-    elif [ "$live" = DEAD ]; then
-      verdict="DEAD"
-    fi
-
-    echo "file=$(basename "$f") verdict=$verdict pid=$pid ps=$live etime=$et meta_status=$meta_status log_age_s=$age quiet=$quiet"
-    echo "  cmd=$cmd"
-    [ -n "$last_loop" ] && echo "  $last_loop"
-    [ -n "$last_iter" ] && echo "  $last_iter"
-    [ -n "$last_verify" ] && echo "  $last_verify"
-    [ -n "$last_gate" ] && echo "  $last_gate"
-    [ -n "$done_line" ] && echo "  $done_line"
-    echo "  (ignore meta_status=$meta_status unless ps=$live matches)"
   done
+  if [ "$sib_hits" -eq 0 ]; then
+    echo "NONE matching this repo in $PROJECTS_DIR/*/terminals"
+  fi
 fi
 if [ "$term_hits" -eq 0 ]; then
   echo "NONE matching agent-loop in $TERM_DIR"

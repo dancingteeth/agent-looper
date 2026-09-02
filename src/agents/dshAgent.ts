@@ -14,6 +14,8 @@ import type { AgentRunResult } from './agentRunResult.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
+import type { StreamCollector } from '../stream/streamCollect.js'
+import { emitAssistantText } from '../stream/assistantStream.js'
 import {
   DEFAULT_DSH_ESCALATE_MODEL,
   DEFAULT_DSH_LOOP_MODEL,
@@ -30,6 +32,8 @@ export type DshAgentRunOptions = {
   modelId: string
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
+  onAssistantText?: (chunk: string) => void
+  collector?: StreamCollector
 }
 
 export type DshLoopSession = {
@@ -260,7 +264,6 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
   return {
     async runPrompt(prompt, options) {
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
-      const assistantOutput = options.assistantOutput ?? 'stdout'
       const task = `${systemPrompt}\n\n---\n\n${prompt}`
       const patchPath = path.join(os.tmpdir(), `agent-loop-dsh-${process.pid}-${randomUUID()}.yml`)
       fs.writeFileSync(patchPath, buildDshLoopPatchYaml(ctx.repoRoot, options.modelId), 'utf8')
@@ -288,9 +291,7 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
           throw new Error('DSH headless exited 0 without assistant text on stdout')
         }
 
-        if (assistantOutput === 'stdout' || verbose) {
-          process.stdout.write(`${text}\n`)
-        }
+        emitAssistantText(options, `${text}\n`)
 
         return {
           text,

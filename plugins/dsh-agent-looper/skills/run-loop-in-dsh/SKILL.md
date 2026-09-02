@@ -67,7 +67,7 @@ If the first attempt already failed with `EPERM` on `cordis.yml` or `[sandbox: f
 - Implement the product yourself
 - Dump Doppler YAML, `doppler secrets`, DSH `~/.dsh/.credentials.yaml`, or OpenCode `auth.json`
 - SSH-enumerate or rsync “so the worker has context” — put paths in GOAL.md
-- Repair dangling `~/.agents/skills/*/SKILL.md` from this chat — host `rm` / relink
+- Repair dangling `~/.agents/skills/*/SKILL.md` from this chat — OpenCode boot auto-heals Cursor plugin-cache hash rotations (relink or drop)
 
 ## Session caveat
 

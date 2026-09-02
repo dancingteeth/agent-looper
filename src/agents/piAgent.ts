@@ -10,6 +10,7 @@ import {
   type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
+import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 
 const SESSION_TIMEOUT_MS = 45 * 60 * 1000
@@ -21,6 +22,7 @@ export type PiAgentRunOptions = {
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
   reasoningEffort?: LoopReasoningEffort
+  onAssistantText?: (chunk: string) => void
 }
 
 export type PiLoopSession = {
@@ -93,8 +95,7 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
 
   return {
     async runPrompt(prompt, options) {
-      const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
-      const assistantOutput = options.assistantOutput ?? 'stdout'
+
       const phase = options.phase ?? 'implement'
       const { providerID, modelID } = parseProviderModel(options.modelId)
 
@@ -157,9 +158,7 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
         await Promise.race([runPromise, timeoutPromise])
 
         const text = extractPiAssistantText(session.state.messages)
-        if (assistantOutput === 'stdout' || verbose) {
-          process.stdout.write(`${text}\n`)
-        }
+        emitAssistantText(options, `${text}\n`)
 
         const usage = readPiUsage(session.state.messages, options.modelId, phase)
         if (usage) {

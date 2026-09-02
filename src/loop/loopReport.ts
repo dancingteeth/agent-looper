@@ -5,6 +5,7 @@ import type { LoopBatchResult } from './loopBatch.js'
 import { captureGitWorkspaceSnapshot } from './loopGit.js'
 import { parseReviewMarkdown, blockingBlockers } from '../review/reviewVerdict.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
+import { formatLoopResumeCommand } from './loopResumeCommand.js'
 import {
   formatFailureDomainLine,
   readFailureDomainEntries,
@@ -144,8 +145,10 @@ export function formatLoopCompletionReport(input: {
   bundleLabel: string
   result: AgentLoopResult
   loopDir: string
+  env?: NodeJS.ProcessEnv
 }): string {
   const { repoRoot, bundleLabel, result, loopDir } = input
+  const env = input.env ?? process.env
   const status = result.complete ? '✅ Loop complete' : '❌ Loop failed'
   const lines = [
     status,
@@ -188,7 +191,7 @@ export function formatLoopCompletionReport(input: {
     }
     lines.push(...formatSuccessNextSteps(repoRoot))
   } else {
-    lines.push(`→ resume: agent-loop run ${bundleLabel}`)
+    lines.push(`→ resume: ${formatLoopResumeCommand(bundleLabel, env)}`)
     if (result.hitlCheckTaskUuid) {
       lines.push(`HITL: uuid:${result.hitlCheckTaskUuid}`)
     }

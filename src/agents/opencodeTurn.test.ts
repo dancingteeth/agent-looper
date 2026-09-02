@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
+import { StreamCollector } from '../stream/streamCollect.js'
 import {
   isOpencodeToolProgressEvent,
+  opencodeToolRecordFromEvent,
   pickLatestAssistantMessage,
+  recordOpencodeEventOnCollector,
   resolveOpencodeEventSessionId,
   waitForOpencodeSessionTurn,
 } from './opencodeTurn.js'
@@ -264,5 +267,68 @@ describe('waitForOpencodeSessionTurn', () => {
       expect(result.message).not.toContain('[layer=transport]')
     }
     vi.useRealTimers()
+  })
+})
+
+describe('recordOpencodeEventOnCollector', () => {
+  it('counts bash start/end from part state', () => {
+    const collector = new StreamCollector()
+    const started = new Set<string>()
+    recordOpencodeEventOnCollector(
+      {
+        type: 'message.part.updated',
+        properties: {
+          part: { id: 'p1', type: 'tool', tool: 'bash', state: { status: 'running' } },
+        },
+      },
+      collector,
+      started,
+    )
+    recordOpencodeEventOnCollector(
+      {
+        type: 'message.part.updated',
+        properties: {
+          part: { id: 'p1', type: 'tool', tool: 'bash', state: { status: 'completed' } },
+        },
+      },
+      collector,
+      started,
+    )
+    expect(collector.toolSummary).toEqual({ bash: 1 })
+    expect(collector.events.map((row) => row.type)).toEqual(['tool_start', 'tool_end'])
+  })
+
+  it('ignores text parts', () => {
+    expect(
+      opencodeToolRecordFromEvent({
+        type: 'message.part.updated',
+        properties: { part: { type: 'text', text: 'hi' } },
+      }),
+    ).toBeUndefined()
+  })
+})
+
+describe('waitForOpencodeSessionTurn collector', () => {
+  it('records tools on the session stream', async () => {
+    const collector = new StreamCollector()
+    const result = await waitForOpencodeSessionTurn({
+      sessionId: 'ses_a',
+      collector,
+      events: eventsFrom([
+        {
+          type: 'message.part.updated',
+          properties: {
+            info: { sessionID: 'ses_a' },
+            part: { id: 't1', type: 'tool', tool: 'edit', state: { status: 'completed' } },
+          },
+        },
+        { type: 'session.idle', properties: { sessionID: 'ses_a' } },
+      ]),
+      heartbeatMs: 60_000,
+      stallMs: 60_000,
+      timeoutMs: 60_000,
+    })
+    expect(result).toEqual({ kind: 'idle' })
+    expect(collector.toolSummary).toEqual({ edit: 1 })
   })
 })

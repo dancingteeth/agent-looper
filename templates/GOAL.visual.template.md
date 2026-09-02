@@ -70,6 +70,12 @@ Do **not** copy `postQualityReview: false` or `reviewGate: false` from `*-smoke`
 
 The harness judge reads GOAL + diff text, not a screenshot. Freeze the golden mood in this file so a text judge can fail the wrong palette. DSH worker `deepseek-official/deepseek-v4-flash-vision-exp` can `read_image` once the catalog row sets `inputModalities: [text, image]` (see [`docs/dsh-runtime.md`](../docs/dsh-runtime.md)).
 
+## Acceptance criteria
+
+- Success is determined **only** by the verifier in `loop.json` (exit `0`), not by the agent's assessment.
+- List observable outcomes (page exists, hero referenced, no remote CSS/JS, named strings present).
+- Measurable steps live in `verify.sh` and `VERIFY.skill.md` beside this file. Leftover look is the judge after that floor.
+
 ## Constraints
 
 - Do **not** edit this `GOAL.md` mid-loop.

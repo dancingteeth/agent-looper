@@ -23,6 +23,7 @@ import {
 } from '../integrations/telegramNotify.js'
 import { formatBatchCompletionReport } from '../loop/loopReport.js'
 import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
+import { assertLoopCredentials } from '../loop/loopCredentialPreflight.js'
 import { parseRunBatchArgs, type RunBatchCliOptions } from './runBatchArgs.js'
 import { loadLoopBundle } from '../loop/loopConfig.js'
 import { detectLoopRuntimes } from './detectRuntimes.js'
@@ -59,6 +60,12 @@ const batchTrusted =
         return false
       }
     }))
+
+for (const loopEntry of loops) {
+  const { path: loopRel } = normalizeBatchLoopEntry(loopEntry)
+  const loopDir = resolveBatchLoopDir(loopRel, batchDir, ctx.repoRoot)
+  assertLoopCredentials(loadLoopBundle(loopDir, { detection }).config)
+}
 
 const notifyTelegram =
   cli.notifyTelegram === false ? false : batchConfig.notifyTelegram

@@ -36,6 +36,7 @@ export type ClineAgentRunOptions = {
   phase?: 'implement' | 'review' | 'verify'
   reasoningEffort?: LoopReasoningEffort
   collector?: StreamCollector
+  onAssistantText?: (chunk: string) => void
 }
 
 function requireClineApiKey(): string {
@@ -80,7 +81,12 @@ async function readSessionUsage(
 function waitForClineSession(
   cline: ClineCoreType,
   sessionId: string,
-  options: { verbose: boolean; assistantOutput: 'stdout' | 'none'; collector?: StreamCollector },
+  options: {
+    verbose: boolean
+    assistantOutput: 'stdout' | 'none'
+    collector?: StreamCollector
+    onAssistantText?: (chunk: string) => void
+  },
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     let settled = false
@@ -217,6 +223,7 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
               verbose,
               assistantOutput,
               collector: options.collector,
+              onAssistantText: options.onAssistantText,
             })
           }
 

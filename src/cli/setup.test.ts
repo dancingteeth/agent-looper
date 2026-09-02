@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isSetupCliEntry, parseArgs, pickLoopConfigFields, runWizard, usage } from './setup.js'
+import { isSetupCliEntry, parseArgs, pickLoopConfigFields, runWizard, usage, formatNextStepsLines } from './setup.js'
 import {
   formatMenu,
   judgeModelChoices,
@@ -44,6 +44,12 @@ describe('agent-loop-setup', () => {
   it('parses --plain without treating it as unknown', () => {
     expect(parseArgs(['--plain', '--out', '/tmp/loop']).plain).toBe(true)
     expect(parseArgs(['--out', '/tmp/loop']).plain).toBe(false)
+    expect(parseArgs(['--', '--out', '/tmp/loop']).outDir).toBe('/tmp/loop')
+  })
+
+  it('next steps mention agent-loop-prompt', () => {
+    const lines = formatNextStepsLines({ runtime: 'cursor' }, '.cursor/loops/foo', '/repo', false)
+    expect(lines.join('\n')).toMatch(/agent-loop-prompt --out/)
   })
 
   it('treats bin shims and node dist/cli/setup.js as CLI entry, not vitest imports', () => {

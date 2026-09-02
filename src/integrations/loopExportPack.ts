@@ -33,6 +33,16 @@ export type WriteLoopExportPackResult = {
   exportDir: string
   metaPath: string
   files: string[]
+  /** Set when the loop dir is outside `repoRoot` — nothing is written. */
+  skipped?: 'outside-repo'
+}
+
+/** False when `targetPath` is the repo root or walks out of it (`../tmp/...`). */
+export function isPathInsideRepo(repoRoot: string, targetPath: string): boolean {
+  const root = path.resolve(repoRoot)
+  const target = path.resolve(targetPath)
+  const rel = path.relative(root, target)
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)
 }
 
 export function loopExportSlug(loopRel: string): string {
@@ -40,8 +50,13 @@ export function loopExportSlug(loopRel: string): string {
     .replace(/^\.cursor\/loops\//, '')
     .replace(/\\/g, '/')
     .replace(/^\/+|\/+$/g, '')
-  const slug = cleaned.replace(/[^a-zA-Z0-9._/-]+/g, '-').replace(/\/+/g, '__')
-  return slug || 'loop'
+  const parts = cleaned.split('/').filter((part) => part.length > 0 && part !== '.')
+  const escaped = parts.some((part) => part === '..')
+  const safeParts = parts.filter((part) => part !== '..')
+  const joined = (safeParts.length > 0 ? safeParts : ['loop']).join('/')
+  const slug = joined.replace(/[^a-zA-Z0-9._/-]+/g, '-').replace(/\/+/g, '__')
+  const body = slug || 'loop'
+  return escaped ? `outside-${body}` : body
 }
 
 export function resolveLoopExportDir(repoRoot: string, loopRel: string): string {
@@ -98,6 +113,13 @@ export function writeLoopExportPack(input: {
 }): WriteLoopExportPackResult {
   const loopRel = path.relative(input.repoRoot, input.loopDir) || '.'
   const exportDir = resolveLoopExportDir(input.repoRoot, loopRel)
+  const metaPath = path.join(exportDir, EXPORT_META_FILENAME)
+  if (!isPathInsideRepo(input.repoRoot, input.loopDir)) {
+    console.error(
+      `[agent-loop] export pack skipped: loop dir is outside the repo (${loopRel})`,
+    )
+    return { exportDir, metaPath, files: [], skipped: 'outside-repo' }
+  }
   fs.mkdirSync(exportDir, { recursive: true })
 
   const files: string[] = []
@@ -111,7 +133,6 @@ export function writeLoopExportPack(input: {
     exportedAt: new Date().toISOString(),
     hitlCheckTaskUuid: input.result.hitlCheckTaskUuid,
   }
-  const metaPath = path.join(exportDir, EXPORT_META_FILENAME)
   fs.writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8')
   files.push(EXPORT_META_FILENAME)
 

@@ -4,6 +4,7 @@ export type WatchCliOptions = {
   loopDir?: string
   repoRoot?: string
   snapshot: boolean
+  pulse: boolean
   plain: boolean
 }
 
@@ -19,6 +20,7 @@ export function watchUsage(): string {
 
 Options:
   --snapshot             Print one frame from on-disk artifacts and exit (no PTY)
+  --pulse                Print pid / log / stream health and exit (same as Ink s)
   --plain                Plain phase lines instead of the Ink watch view
 ${printRepoRootHelp()}
   --help, -h             Show this help
@@ -30,6 +32,7 @@ export function parseWatchArgs(argv: string[]): ParseWatchArgsResult {
   const positional: string[] = []
   let repoRoot: string | undefined
   let snapshot = false
+  let pulse = false
   let plain = false
 
   for (let i = 0; i < argv.length; i++) {
@@ -44,6 +47,10 @@ export function parseWatchArgs(argv: string[]): ParseWatchArgsResult {
     }
     if (arg === '--snapshot') {
       snapshot = true
+      continue
+    }
+    if (arg === '--pulse') {
+      pulse = true
       continue
     }
     if (arg === '--plain') {
@@ -63,6 +70,6 @@ export function parseWatchArgs(argv: string[]): ParseWatchArgsResult {
 
   return {
     kind: 'watch',
-    options: { loopDir, repoRoot, snapshot, plain },
+    options: { loopDir, repoRoot, snapshot, pulse, plain },
   }
 }

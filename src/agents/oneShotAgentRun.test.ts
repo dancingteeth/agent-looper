@@ -97,6 +97,27 @@ describe('runOneShotAgentPrompt', () => {
     )
   })
 
+  it('maps scaffold phase to Cursor review role so the judge (Grok) can write the spec', async () => {
+    const onAssistantText = vi.fn()
+    await runOneShotAgentPrompt(
+      testCtx,
+      'scaffold me',
+      { runtime: 'cursor', model: 'grok-4.6' },
+      { phase: 'scaffold', onAssistantText },
+    )
+    expect(runCursorAgentPrompt).toHaveBeenCalledWith(
+      testCtx,
+      'scaffold me',
+      expect.objectContaining({
+        role: 'review',
+        phase: 'review',
+        assistantOutput: 'none',
+        modelId: 'grok-4.6',
+        onAssistantText,
+      }),
+    )
+  })
+
   it('disposes optional-runtime sessions after a successful prompt', async () => {
     const dispose = vi.fn().mockResolvedValue(undefined)
     const runPrompt = vi.fn().mockResolvedValue({ text: 'ok' })

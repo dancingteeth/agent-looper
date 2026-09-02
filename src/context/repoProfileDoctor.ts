@@ -5,6 +5,7 @@ import { defaultBranchRefExists } from './defaultBranch.js'
 import { resolveTelegramCredentials } from '../integrations/telegramNotify.js'
 import { parseLoopConfig } from '../loop/loopConfig.js'
 import { isTrivialVerifyCommand, trivialVerifyWarning } from '../loop/trivialVerify.js'
+import { lintVerifyScript, verifyScriptLintWarning } from '../loop/verifyScriptLint.js'
 import { applyLoopDefaults } from '../loop/loopDefaults.js'
 import type { DetectionResult } from '../cli/detectRuntimes.js'
 import type { UserCostPresetMap } from '../loop/costPreset.js'
@@ -49,6 +50,13 @@ function scanLoopConfigWarnings(
         warnings.push(
           trivialVerifyWarning(path.relative(repoRoot, loopJsonPath), config.verify),
         )
+      }
+      const verifyShPath = path.join(loopsDir, name, 'verify.sh')
+      if (fs.existsSync(verifyShPath)) {
+        const lint = lintVerifyScript(fs.readFileSync(verifyShPath, 'utf8'))
+        if (!lint.ok || lint.warnings.length > 0) {
+          warnings.push(verifyScriptLintWarning(path.relative(repoRoot, verifyShPath), lint))
+        }
       }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err)

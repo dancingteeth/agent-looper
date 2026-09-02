@@ -64,7 +64,8 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
    Research→Plan→Implement graph; the Ralph node still implements until verify
    is green.
 8. **Freeze** — Commit `GOAL.md` + `verify.sh` (+ `VERIFY.skill.md`, optional
-   `RESEARCH.md`). Then run.
+   `RESEARCH.md`). `agent-loop-prompt` freeze lint rejects gameable greps in
+   `verify.sh`. Then run.
 
 ## After a run: steer the harness
 

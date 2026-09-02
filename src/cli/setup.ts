@@ -121,6 +121,8 @@ export function parseArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     switch (arg) {
+      case '--':
+        break
       case '--answers':
         options.answersPath = argv[++i]
         if (!options.answersPath) throw new Error('--answers requires a JSON file path')
@@ -161,24 +163,39 @@ export function pickLoopConfigFields(answers: Record<string, unknown>): Record<s
 }
 
 /** Print the agent-check / agent-loop run commands after a successful write. */
+export function formatNextStepsLines(
+  config: Record<string, unknown>,
+  outDir: string,
+  repoRoot: string,
+  wroteProfile: boolean,
+): string[] {
+  const runtime = typeof config.runtime === 'string' ? config.runtime : LOOP_RUNTIME_CURSOR
+  const checkRuntime = runtime === LOOP_RUNTIME_CLINE_PASS ? 'cline' : runtime
+  const lines = [
+    '',
+    'Next steps:',
+    `  agent-check ${checkRuntime}`,
+    `  agent-loop-prompt --out ${outDir}`,
+  ]
+  const runCmd = [`agent-loop run ${outDir}`]
+  if (typeof config.reviewRuntime === 'string' && config.reviewRuntime !== '') {
+    runCmd.push(`--review-runtime ${config.reviewRuntime}`)
+  }
+  lines.push(`  ${runCmd.join(' ')}`)
+  if (wroteProfile) {
+    lines.push(`  Repo defaults: ${repoProfilePath(repoRoot)}`)
+  }
+  return lines
+}
+
 function printNextSteps(
   config: Record<string, unknown>,
   outDir: string,
   repoRoot: string,
   wroteProfile: boolean,
 ): void {
-  const runtime = typeof config.runtime === 'string' ? config.runtime : LOOP_RUNTIME_CURSOR
-  const checkRuntime = runtime === LOOP_RUNTIME_CLINE_PASS ? 'cline' : runtime
-  console.log('')
-  console.log('Next steps:')
-  console.log(`  agent-check ${checkRuntime}`)
-  const runCmd = [`agent-loop run ${outDir}`]
-  if (typeof config.reviewRuntime === 'string' && config.reviewRuntime !== '') {
-    runCmd.push(`--review-runtime ${config.reviewRuntime}`)
-  }
-  console.log(`  ${runCmd.join(' ')}`)
-  if (wroteProfile) {
-    console.log(`  Repo defaults: ${repoProfilePath(repoRoot)}`)
+  for (const line of formatNextStepsLines(config, outDir, repoRoot, wroteProfile)) {
+    console.log(line)
   }
 }
 

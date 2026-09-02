@@ -16,6 +16,29 @@ describe('loopExportPack', () => {
   it('slugs loop relative paths', () => {
     expect(loopExportSlug('.cursor/loops/mcp-server')).toBe('mcp-server')
     expect(loopExportSlug('.cursor/loops/batch/item-a')).toBe('batch__item-a')
+    expect(loopExportSlug('../../../../var/folders/dd/x/T/agent-loop-run-02kDx0')).toBe(
+      'outside-var__folders__dd__x__T__agent-loop-run-02kDx0',
+    )
+  })
+
+  it('does not write an export pack when the loop dir is outside the repo', () => {
+    const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-export-repo-'))
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-run-'))
+    const result = writeLoopExportPack({
+      repoRoot: repo,
+      loopDir,
+      result: {
+        complete: true,
+        status: 'done',
+        completionReason: 'Verifier passed',
+        iterations: 1,
+      },
+    })
+    expect(result.skipped).toBe('outside-repo')
+    expect(result.files).toEqual([])
+    expect(fs.existsSync(path.join(repo, LOOP_EXPORTS_DIRNAME))).toBe(false)
+    fs.rmSync(repo, { recursive: true, force: true })
+    fs.rmSync(loopDir, { recursive: true, force: true })
   })
 
   it('writes curated pack and reads it back when in-loop files are gone', () => {

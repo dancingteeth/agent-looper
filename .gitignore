@@ -18,6 +18,8 @@ coverage/
 .cursor/sdk-runs/
 .cursor/loops/**/run-report.md
 .cursor/loops/**/transcript.ndjson
+.cursor/loops/**/assistant.stream
+.cursor/loops/**/prompt-run.log
 .cursor/loops/opencode-smoke/probe.txt
 .cursor/loops/pi-smoke/probe.txt
 .cursor/loops/dsh-smoke/probe.txt

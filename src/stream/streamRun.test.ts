@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, afterEach } from 'vitest'
 import type { SDKMessage } from '@cursor/sdk'
 import { StreamCollector } from './streamCollect.js'
 import { printRunStream } from './streamRun.js'
+import { clearAssistantStreamSink, setAssistantStreamSink } from './assistantStream.js'
 
 async function* events(...items: SDKMessage[]): AsyncGenerator<SDKMessage, void> {
   for (const item of items) yield item
@@ -12,6 +13,9 @@ function msg(partial: Record<string, unknown>): SDKMessage {
 }
 
 describe('printRunStream', () => {
+  afterEach(() => {
+    clearAssistantStreamSink()
+  })
   it('records system/status/thinking/tool_call into the collector', async () => {
     const collector = new StreamCollector({ includeThinking: true })
     const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -77,6 +81,25 @@ describe('printRunStream', () => {
     stdout.mockRestore()
   })
 
+  it('dumps assistant text when verbose even if assistantOutput is none', async () => {
+    const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await printRunStream(
+      events(
+        msg({
+          type: 'assistant',
+          message: { content: [{ type: 'text', text: 'verbose-hi' }] },
+        }),
+      ),
+      { verbose: true, assistantOutput: 'none' },
+    )
+
+    expect(stdout).toHaveBeenCalledWith('verbose-hi')
+    stderr.mockRestore()
+    stdout.mockRestore()
+  })
+
   it('suppresses assistant stdout when assistantOutput is none', async () => {
     const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -118,6 +141,24 @@ describe('printRunStream', () => {
     expect(collector.events.find((e) => e.type === 'tool_start')?.detail).toBeUndefined()
     expect(stderr.mock.calls.some((c) => String(c[0]).includes('thinking'))).toBe(false)
 
+    stderr.mockRestore()
+  })
+
+  it('mirrors thinking and tool starts to the grind sink', async () => {
+    const sink = vi.fn()
+    setAssistantStreamSink(sink)
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await printRunStream(
+      events(
+        msg({ type: 'thinking', text: 'hmm about the bot' }),
+        msg({ type: 'tool_call', name: 'Read', status: 'running', args: {} }),
+      ),
+      { verbose: false, assistantOutput: 'none' },
+    )
+
+    expect(sink.mock.calls.map((call) => String(call[0])).join('')).toMatch(/thinking hmm/)
+    expect(sink.mock.calls.map((call) => String(call[0])).join('')).toMatch(/▶ Read/)
     stderr.mockRestore()
   })
 })

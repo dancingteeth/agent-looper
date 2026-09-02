@@ -29,6 +29,7 @@ import {
 import { emptyDetection, type DetectionResult } from '../cli/detectRuntimes.js'
 import { loopModeSchema } from './loopMode.js'
 import { isTrivialVerifyCommand, trivialVerifyWarning } from './trivialVerify.js'
+import { lintVerifyScript, verifyScriptLintWarning } from './verifyScriptLint.js'
 import { loadLoopDefaultsForDir, loadLoopCostPresetsForDir } from '../context/repoProfile.js'
 
 export const loopRuntimeSchema = z.enum(LOOP_RUNTIME_VALUES)
@@ -187,6 +188,12 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     exportTranscript: z.boolean().default(true),
     /** Comment on the open PR after CLI exit (overrides profile notifyPrComment when set). */
     notifyPrComment: z.boolean().optional(),
+    /**
+     * Optional localhost preview shell. `agent-loop-prompt` runs this after a
+     * successful grind (trust-gated at that execute site). `agent-loop run`
+     * does not execute it.
+     */
+    preview: z.string().trim().min(1).optional(),
   })
   .superRefine((config, ctx) => {
     if (config.verifyMode === 'skill' && !config.verifySkill) {
@@ -308,6 +315,14 @@ export function loadLoopBundle(
     console.error(
       `[agent-loop] warn: ${trivialVerifyWarning(path.basename(loopDir), config.verify)}`,
     )
+  }
+
+  const verifyShPath = path.join(loopDir, 'verify.sh')
+  if (fs.existsSync(verifyShPath)) {
+    const lint = lintVerifyScript(fs.readFileSync(verifyShPath, 'utf8'))
+    if (!lint.ok || lint.warnings.length > 0) {
+      console.error(`[agent-loop] warn: ${verifyScriptLintWarning(path.basename(loopDir), lint)}`)
+    }
   }
 
   return {

@@ -1,0 +1,52 @@
+/** Bundle files the scaffold agent may write or update. */
+export const SCAFFOLD_BUNDLE_FILES = [
+  'GOAL.md',
+  'verify.sh',
+  'RESEARCH.md',
+  'VERIFY.skill.md',
+  'PERMISSIONS.md',
+] as const
+
+export function buildScaffoldPrompt(loopDir: string, idea: string): string {
+  const rel = loopDir.replace(/\\/g, '/')
+  return [
+    '# Agent Looper — freeze a loop bundle (scaffold only)',
+    '',
+    'You are the loop **judge** writing the spec a cheaper worker will implement.',
+    '**Do not implement the product.** Write spec files only under the loop directory.',
+    'The human idea is the outcome. Templates are structure — do not shrink the idea',
+    'into a toy subset to make verify easy (fewer objects, weaker checks than they asked for).',
+    '',
+    `Loop directory: \`${rel}\``,
+    '',
+    '## Human idea',
+    '',
+    idea.trim(),
+    '',
+    '## Write (under the loop dir only)',
+    '',
+    '1. **GOAL.md** — use repo `templates/GOAL.template.md` (or `GOAL.visual.template.md` for UI/mockup loops).',
+    '   Four-part finish line: outcome, scoreboard (`verify.sh` exit `0`), permission, budget.',
+    '   Must include `## Acceptance criteria` (harness preflight refuses to start without that heading',
+    '   or the phrase "Success is determined only by the verifier in loop.json"). Copy the section from the template.',
+    '   Freeze-ready spec — not a chatty plan.',
+    '2. **verify.sh** — executable; exits `0` only on real success. Start from `templates/verify.example.sh`.',
+    '   Freeze lint refuses gameable greps: no `grep -qE \'Title A|Title B\'` (one match passes);',
+    '   no `"[^"]+"` caption/string extractors on TS (wrapped lines match nothing and still print OK);',
+    '   loop over required titles/ids; assert rituals (mesh `visible` / position), not `grep -c \'it(\'`.',
+    '3. Optional: **RESEARCH.md**, **VERIFY.skill.md**, **PERMISSIONS.md** when useful.',
+    '4. **loop.json** — you may update only:',
+    '   - `verify` → path to your verify.sh (e.g. `bash .cursor/loops/<name>/verify.sh`)',
+    '   - optional `preview` → shell to open localhost after success (e.g. `pnpm exec vite --host 127.0.0.1`)',
+    '   Do **not** change runtime, models, review, or other loop.json keys.',
+    '',
+    '## Rules',
+    '',
+    '- Do not edit files outside the loop directory.',
+    '- Do not run the implementation or start long-running servers.',
+    '- `verify.sh` is the finish line — make it honest and determined.',
+    '- See `docs/unknowns-preflight.md` for finish-line discipline.',
+    '',
+    'When done, reply briefly listing files written.',
+  ].join('\n')
+}

@@ -87,6 +87,7 @@ Keep `inline` when `verify.sh` prints a few lines — then the extra file hop is
 - Prefer **narrow** commands (one test file, one script) over whole-suite runs when
   iterating — keep `finalVerify` for the heavy path.
 - Exit non-zero on any failed assertion; the loop will not complete.
+- Freeze lint (`lintVerifyScript`, run at `agent-loop-prompt` freeze and as a load warning): do **not** `grep -qE 'Title A|Title B'` (one match passes) or harvest `"[^"]+"` strings from TS (wrapped lines match zero times and still print OK). Loop over required titles/ids; assert rituals in tests, not `grep -c 'it('`.
 - Metric loops (lower-is-better): pair with [`templates/verify.metric.example.sh`](../templates/verify.metric.example.sh).
   Set `BASELINE_MS` so a result **worse than baseline** fails (revert signal) even if
   you have not hit the threshold yet. See [`templates/GOAL.metric.template.md`](../templates/GOAL.metric.template.md).

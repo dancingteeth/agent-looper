@@ -56,6 +56,12 @@ export {
 export type { FailureDomainEntry, FailureDomainReason, FailureDomainStatus } from './loop/loopFailureDomain.js'
 
 export { isTrivialVerifyCommand, trivialVerifyWarning } from './loop/trivialVerify.js'
+export {
+  lintVerifyScript,
+  formatVerifyScriptLintMessage,
+  verifyScriptLintWarning,
+} from './loop/verifyScriptLint.js'
+export { formatLoopResumeCommand } from './loop/loopResumeCommand.js'
 
 export {
   guidePacketsFromReview,

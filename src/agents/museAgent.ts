@@ -8,6 +8,7 @@ import {
   type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
+import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 import { readPackageVersion } from '../telemetry/looperTelemetry.js'
 import {
@@ -26,6 +27,7 @@ export type MuseAgentRunOptions = {
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
   reasoningEffort?: LoopReasoningEffort
+  onAssistantText?: (chunk: string) => void
 }
 
 export type MuseLoopSession = {
@@ -284,8 +286,6 @@ export async function createMuseLoopSession(ctx: RepoContext): Promise<MuseLoopS
 
   return {
     async runPrompt(prompt, options) {
-      const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
-      const assistantOutput = options.assistantOutput ?? 'stdout'
       const phase = options.phase ?? 'implement'
       const timeoutMs = resolveMuseSessionTimeoutMs()
 
@@ -341,9 +341,7 @@ export async function createMuseLoopSession(ctx: RepoContext): Promise<MuseLoopS
 
         const items = await collectTurnItems(turn)
         const text = extractMuseText(items)
-        if (assistantOutput === 'stdout' || verbose) {
-          process.stdout.write(`${text}\n`)
-        }
+        emitAssistantText(options, `${text}\n`)
 
         const usage = readMuseUsage(outcome.params.usage, options.modelId, phase)
         if (usage) {

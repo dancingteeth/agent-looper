@@ -32,16 +32,27 @@ describe('formatWatchStatusLine', () => {
     }
   })
 
-  it('rounds sub-second elapsed down and formats cost to two decimals', () => {
+  it('rounds sub-second elapsed down and keeps millicent costs', () => {
     const line = formatWatchStatusLine({
       phase: 'WORKER',
       iteration: 1,
       maxIterations: 8,
       elapsedMs: 12_499,
-      costUsd: 0.008,
+      costUsd: 0.0019,
     })
     expect(line).toContain('elapsed=12s')
-    expect(line).toContain('cost~$0.01')
+    expect(line).toContain('cost~$0.0019')
+  })
+
+  it('formats costs of a cent and above to two decimals', () => {
+    const line = formatWatchStatusLine({
+      phase: 'WORKER',
+      iteration: 1,
+      maxIterations: 8,
+      elapsedMs: 1000,
+      costUsd: 0.04,
+    })
+    expect(line).toContain('cost~$0.04')
   })
 })
 

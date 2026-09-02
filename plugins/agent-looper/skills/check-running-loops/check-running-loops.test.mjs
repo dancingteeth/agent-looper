@@ -10,9 +10,13 @@ const skillDir = dirname(fileURLToPath(import.meta.url))
 const script = join(skillDir, 'scripts/check-running-loops.sh')
 
 function run(repo, env = {}) {
+  const merged = { ...process.env, ...env }
+  if (Object.prototype.hasOwnProperty.call(env, 'CURSOR_TERMINALS_DIR') && !env.CURSOR_TERMINALS_DIR) {
+    delete merged.CURSOR_TERMINALS_DIR
+  }
   const result = spawnSync('sh', [script, repo], {
     encoding: 'utf8',
-    env: { ...process.env, ...env },
+    env: merged,
   })
   const detail = `status=${result.status}\n${result.stderr}\n${result.stdout}`
   assert.equal(result.status, 0, detail)
@@ -139,6 +143,37 @@ describe('check-running-loops.sh', () => {
     try {
       const out = run(root, { CURSOR_TERMINALS_DIR: terms })
       assert.match(out, /loop=solo source=log\.ndjson .*runtime=defaults/)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('finds a grind whose TTY lives under a sibling Cursor project', () => {
+    const root = mkdtempSync(join(tmpdir(), 'check-loops-sib-'))
+    const projects = join(root, 'cursor-projects')
+    const harnessTerms = join(projects, 'Users-me-Projects-agent-loop', 'terminals')
+    writeTerminal(
+      harnessTerms,
+      '7.txt',
+      [
+        '---',
+        'pid: 999999998',
+        `cwd: ${root}`,
+        'status: succeeded',
+        'command: doppler run --project agent-looper --config dev -- pnpm loop:run .cursor/loops/museum2',
+        '---',
+        'AGENT_LOOP_DONE {"v":1,"complete":true}',
+        '',
+      ].join('\n'),
+    )
+    try {
+      const out = run(root, {
+        CURSOR_PROJECTS_DIR: projects,
+        CURSOR_TERMINALS_DIR: '',
+        HOME: join(root, 'empty-home'),
+      })
+      assert.match(out, /sibling terminal files/)
+      assert.match(out, /file=7\.txt verdict=DONE pid=999999998 ps=DEAD/)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

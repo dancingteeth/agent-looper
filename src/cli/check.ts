@@ -101,7 +101,7 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       console.log(`[agent-check] ${envName} present (prefix):`, `${key.slice(0, 4)}…`)
     }
     console.log('[agent-check] shell preflight OK')
-    console.log('[agent-check] ~/.agents/skills SKILL.md links OK')
+    console.log('[agent-check] ~/.agents/skills SKILL.md links OK (auto-healed cache-hash rotations)')
     return
   }
 

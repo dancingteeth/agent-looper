@@ -73,6 +73,7 @@ Use CLIs via `pnpm exec` (or `npx`) so you do not need a global install:
 ```bash
 pnpm exec agent-loop-init
 pnpm exec agent-loop-setup --out .cursor/loops/my-task   # Ink TUI; --plain / --answers for agents
+pnpm exec agent-loop-prompt --out .cursor/loops/my-task  # idea → GOAL/verify draft → freeze → watch
 pnpm exec agent-check cursor
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
@@ -187,6 +188,7 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
   verify.sh                # measurable shell checks (exit 0 = pass)
   VERIFY.skill.md          # agent-readable verify procedure (optional; required for verifyMode: skill)
   log.ndjson               # append-only iteration log (runtime)
+  assistant.stream         # live token/thinking tail for watch (runtime)
   run-report.md            # report card + iteration timeline (when exportRunReport)
   transcript.ndjson        # tool timeline (when exportTranscript)
   verify-logs/             # optional — sidecar verify stdout/stderr (`verifyLogMode`)
@@ -230,6 +232,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `notifyCommand` | — | Override repo profile `notifyCommand` for this loop |
 | `exportPack` | `true` | Copy curated artifacts to `.cursor/loop-exports/<slug>/` (commit-friendly) |
 | `notifyPrComment` | — | Override profile `notifyPrComment` for this loop |
+| `preview` | — | Optional shell for localhost preview; `agent-loop-prompt` trust-gates and runs it after a successful grind (`agent-loop run` does not execute it) |
 | `reasoningEffort` | — | `low` \| `medium` \| `high` \| `xhigh` \| `none` when the runtime honors it (Cline, Pi, Muse). Omit or `none` = no extra thinking. Cursor / OpenCode / Codex / DSH ignore it. |
 | `escalateReasoningEffort` | — | Reasoning ladder ceiling (same runtimes as `reasoningEffort`). Applies to the worker **and** skill-verify. |
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
@@ -390,11 +393,12 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | Command | Description |
 | --- | --- |
 | `agent-loop run <dir>` | Single loop |
-| `agent-loop watch <dir>` | Live progress: Ink watch view (TTY) or structured phase lines; `--snapshot` prints one frame and exits |
+| `agent-loop watch <dir>` | Live progress: Ink watch view (TTY) or structured phase lines; `--snapshot` / `--pulse` print one frame and exit. Ink `s` refreshes pid/log/stream health; assistant tokens and Cursor thinking/tools tail in the pane. |
 | `agent-loop-batch <dir>` | `loop-batch.json` sequential or meta-loop |
 | `agent-check cursor\|cline\|opencode\|pi\|codex\|dsh\|muse` | SDK + API key smoke (`dsh`: PATH CLI + Node ≥ 22.15; `muse`: PATH `muse` + `@muse-code/sdk`) |
 | `agent-loop-init` | Scaffold templates + `check-running-loops` skill (`.cursor/skills` and `.agents/skills`) |
 | `agent-loop-setup` | Ink TUI / `--plain` / `--answers` wizard: repo `defaults` in `.cursor/agent-loop.repo.json` plus `loop.json` for `--out` |
+| `agent-loop-prompt` | Ink TUI: type an idea → **judge** scaffolds GOAL/verify → freeze lint + confirm → `agent-loop run` watch; optional `preview` after success. Failed runs print a Doppler-wrapped resume when `DOPPLER_PROJECT` / `DOPPLER_CONFIG` are set. |
 | `agent-loop-doctor` | Validate install / `dist/` integrity; model pricing drift vs `CLINE_PASS_LOOP_MODELS` |
 | `agent-loop-meta-review` | Cross-loop meta-review (read-only) |
 | `agent-loop-review-run` | Post-loop quality review for one bundle |
@@ -530,7 +534,7 @@ In-loop `review.md` / `log.ndjson` / `run-report.md` stay **gitignored** (noisy 
   failure-domains.ndjson
 ```
 
-**Commit that directory** (or attach it on the PR) so cloud clones and meta-review are not a black box. Cloud agent tip: after the loop, `git add .cursor/loop-exports && git commit && git push` on the loop branch. Batch completion webhooks/PR comments list every existing child export pack (comma-separated / bullet list).
+**Commit that directory** (or attach it on the PR) so cloud clones and meta-review are not a black box. Cloud agent tip: after the loop, `git add .cursor/loop-exports && git commit && git push` on the loop branch. Batch completion webhooks/PR comments list every existing child export pack (comma-separated / bullet list). Packs are skipped when the loop dir is outside the repo (vitest tmpdirs) so `.cursor/loop-exports` does not fill with `..__var__folders__…` slugs.
 
 ## `notifyWebhook` + PR comments
 

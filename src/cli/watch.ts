@@ -4,6 +4,11 @@ import { createElement } from 'react'
 import { render } from 'ink'
 import { resolveLoopDir } from '../loop/loopConfig.js'
 import { formatWatchStatusLine, readWatchView, type WatchPhase } from '../loop/loopWatch.js'
+import {
+  formatGrindPulseLines,
+  readAssistantStreamTail,
+  readGrindPulse,
+} from '../loop/grindStream.js'
 import { clearInkPerformanceBuffer } from './inkProductionEnv.js'
 import { parseWatchArgs } from './watchArgs.js'
 import { WatchApp } from './watchTui.js'
@@ -77,7 +82,7 @@ export async function runWatchCommand(argv: string[]): Promise<number> {
   const repoRoot = options.repoRoot ?? process.cwd()
   const loopDir = resolveLoopDir(options.loopDir ?? '.', repoRoot)
 
-  if (options.snapshot) {
+  if (options.snapshot || options.pulse) {
     const status = readWatchView(loopDir, {
       maxIterations: readMaxIterations(loopDir),
     })
@@ -85,9 +90,27 @@ export async function runWatchCommand(argv: string[]): Promise<number> {
       console.error(`[agent-loop] watch: no watch-status.json or log.ndjson in ${loopDir}`)
       return 1
     }
-    console.log('Agent Looper — watch (snapshot)')
-    console.log('[GOAL] → [WORKER] → [VERIFY] → [JUDGE]')
-    console.log(formatWatchStatusLine(status))
+    if (options.snapshot) {
+      console.log('Agent Looper — watch (snapshot)')
+      console.log('[GOAL] → [WORKER] → [VERIFY] → [JUDGE]')
+      console.log(formatWatchStatusLine(status))
+    }
+    const grindPulse = readGrindPulse(loopDir, {
+      maxIterations: readMaxIterations(loopDir),
+    })
+    if (grindPulse) {
+      if (options.snapshot) {
+        console.log('--- pulse ---')
+      }
+      for (const line of formatGrindPulseLines(grindPulse)) {
+        console.log(line)
+      }
+    }
+    const tail = readAssistantStreamTail(loopDir)
+    if (tail) {
+      if (options.snapshot) console.log('--- stream ---')
+      console.log(tail)
+    }
     return 0
   }
 

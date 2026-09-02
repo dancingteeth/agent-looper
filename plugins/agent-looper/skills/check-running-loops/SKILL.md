@@ -35,7 +35,7 @@ Heartbeat, in order:
 
 1. `ps` — `agent-loop run` / `agent-loop-batch` PIDs (runtime-agnostic)
 2. `.cursor/loops/*/watch-status.json` — `pid` + file mtime (written by `run`, any runtime)
-3. Cursor Agent Shell terminal files — extra probe **only if** the grind was started from that chat (`CURSOR_TERMINALS_DIR` or `~/.cursor/projects/<slug>/terminals`)
+3. Cursor Agent Shell terminal files — extra probe **only if** the grind was started from that chat (`CURSOR_TERMINALS_DIR` or `~/.cursor/projects/<slug>/terminals`). When the grind was started from a **sibling** Cursor window (harness vs consumer repo), the script also scans `$CURSOR_PROJECTS_DIR/*/terminals` (default `~/.cursor/projects`) for files whose `cwd:` matches this repo. Set `CURSOR_TERMINALS_DIR` to pin a single folder (tests / explicit).
 
 Optional corroboration for a known loop dir (`watch --snapshot` is not the heartbeat — `log.ndjson` often does not grow during a worker/judge think stretch):
 

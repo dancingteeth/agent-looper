@@ -79,6 +79,7 @@ export type CursorAgentRunOptions = {
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
+  onAssistantText?: (chunk: string) => void
 }
 
 function requireApiKey(): string {
@@ -127,6 +128,7 @@ export async function runCursorAgentPrompt(
       verbose,
       assistantOutput: options.assistantOutput ?? 'stdout',
       collector: options.collector,
+      onAssistantText: options.onAssistantText,
     })
     const result = await waitForCursorRun(run.wait(), timeoutMs, async () => {
       console.error(`[agent-loop:cursor] timeout — cancelling remote run run_id=${run.id}`)

@@ -183,16 +183,19 @@ export function LooperMark({
   progress,
   activeStage,
   idlePipeline = false,
+  compact = false,
 }: {
   isActive?: boolean
   progress?: number
   activeStage?: string
   idlePipeline?: boolean
+  /** Drop tagline (and typically progress) so the idea editor can use the rows. */
+  compact?: boolean
 }) {
   const { frame } = useAnimation({ interval: 140, isActive })
   return (
-    <Box flexDirection="column" overflow="hidden">
-      <Box flexDirection="row" alignItems="center" flexWrap="nowrap" overflow="hidden">
+    <Box flexDirection="column" overflow="hidden" flexShrink={0}>
+      <Box flexDirection="row" alignItems="center" flexWrap="nowrap" overflow="hidden" flexShrink={0}>
         <Box flexShrink={0}>
           <Text color={C.white} bold>
             Agent L
@@ -206,26 +209,35 @@ export function LooperMark({
         </Box>
         <CoverStages active={activeStage} idle={idlePipeline} />
       </Box>
-      <Text color={C.muted} wrap="truncate">
-        the harness that owns the grind.
-      </Text>
+      {compact ? null : (
+        <Text color={C.muted} wrap="truncate">
+          the harness that owns the grind.
+        </Text>
+      )}
       {progress !== undefined ? <ProgressRail ratio={progress} /> : null}
     </Box>
   )
 }
 
 /** Pinned-width bordered card so list/description wrap cannot shrink the logo row. */
-export function CoverFrame({ children }: { children: ReactNode }) {
+export function CoverFrame({
+  children,
+  overflow = 'hidden',
+}: {
+  children: ReactNode
+  overflow?: 'hidden' | 'visible'
+}) {
   const { stdout } = useStdout()
   return (
-    <Box flexDirection="column" width={stdout.columns ?? 80} paddingX={1} paddingY={0}>
+    <Box flexDirection="column" width={stdout.columns ?? 80} paddingX={1} paddingY={0} flexShrink={0}>
       <Box
         flexDirection="column"
         borderStyle="round"
         borderColor={C.terracotta}
         paddingX={1}
         paddingY={0}
-        overflow="hidden"
+        overflow={overflow}
+        flexShrink={0}
       >
         {children}
       </Box>

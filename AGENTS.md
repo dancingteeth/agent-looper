@@ -13,6 +13,7 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 
 - Prefer small, test-backed changes. Run focused vitest paths before broadening.
 - Do not edit `GOAL.md` mid-loop.
+- `agent-loop-prompt` scaffold uses the **judge** (`reviewRuntime` / `reviewModel`), not the worker, to write `GOAL.md` + `verify.sh`. Freeze lint rejects gameable `verify.sh` greps (title `A|B|C` ORs, single-line `"[^"]+"` extractors).
 - Taskwarrior: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`) when linking a TW goal task — never numeric ID alone.
 - Dogfood: `costPreset` **minmax** (Hy3 worker + Grok judge when OpenCode Go and Cursor are both installed; Composer + Grok on Cursor-only). Not Cursor Auto / build.
 - Optional peers: `@cursor/sdk` required for cursor runtime; `@cline/sdk` only for Cline paths; `@opencode-ai/sdk` + `opencode-ai` CLI for OpenCode; `@earendil-works/pi-coding-agent` for `runtime: pi`; `@openai/codex-sdk` for `runtime: codex`; PATH `dsh` for `runtime: dsh` (no `@deepseek-ai/dsh` on the CLI package); `@muse-code/sdk` + PATH `muse` for `runtime: muse`. Primary judge can use any of those via `reviewRuntime`.

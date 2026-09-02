@@ -30,6 +30,14 @@ describe('collectShellCommandWarnings', () => {
     expect(warnings[0]?.suspicious).toEqual(expect.arrayContaining(['curl', 'pipe-to-sh']))
   })
 
+  it('includes preview when set', () => {
+    const warnings = collectShellCommandWarnings({
+      preview: 'pnpm dev',
+    })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]?.label).toBe('preview')
+  })
+
   it('includes notifyCommand when set', () => {
     const warnings = collectShellCommandWarnings({
       notifyCommand: 'curl -sS "$SLACK_WEBHOOK"',

@@ -14,6 +14,7 @@ describe('parseWatchArgs', () => {
     const options = expectWatch(['.cursor/loops/fix'])
     expect(options.loopDir).toBe('.cursor/loops/fix')
     expect(options.snapshot).toBe(false)
+    expect(options.pulse).toBe(false)
     expect(options.plain).toBe(false)
     expect(options.repoRoot).toBeUndefined()
   })
@@ -27,8 +28,15 @@ describe('parseWatchArgs', () => {
       '/tmp/repo',
     ])
     expect(options.snapshot).toBe(true)
+    expect(options.pulse).toBe(false)
     expect(options.plain).toBe(true)
     expect(options.repoRoot).toBe('/tmp/repo')
+  })
+
+  it('parses --pulse', () => {
+    const options = expectWatch(['.cursor/loops/fix', '--pulse'])
+    expect(options.pulse).toBe(true)
+    expect(options.snapshot).toBe(false)
   })
 
   it('returns help for --help and -h', () => {
@@ -45,6 +53,7 @@ describe('parseWatchArgs', () => {
     const text = watchUsage()
     expect(text).toMatch(/watch/)
     expect(text).toMatch(/--snapshot/)
+    expect(text).toMatch(/--pulse/)
     expect(text).toMatch(/--plain/)
   })
 })

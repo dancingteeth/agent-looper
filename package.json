@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "description": "Agent Looper — repo-agnostic fix-until-green harness (Cursor / Cline / OpenCode / Pi / Codex / DSH / Muse; configurable reviewRuntime judge)",
   "license": "MIT",
   "type": "module",
@@ -16,6 +16,7 @@
     "agent-check": "./dist/cli/check.js",
     "agent-loop-init": "./dist/cli/init.js",
     "agent-loop-setup": "./dist/cli/setup.js",
+    "agent-loop-prompt": "./dist/cli/prompt.js",
     "agent-loop-review-run": "./dist/cli/review-run.js",
     "agent-loop-review-preview": "./dist/cli/review-preview.js",
     "agent-loop-meta-review": "./dist/cli/meta-review.js",

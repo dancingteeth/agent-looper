@@ -178,10 +178,29 @@ describe('formatLoopCompletionReport', () => {
           reason: 'Verifier failed (exit 1).',
         },
       }),
+      env: {},
     })
 
     expect(report).toContain('→ resume: agent-loop run .cursor/loops/example-fix')
+    expect(report).not.toContain('doppler run')
     expect(report).toContain('HITL: uuid:a74a94d1-2069-4e05-861e-de80143b0526')
+  })
+
+  it('wraps resume with doppler when DOPPLER_PROJECT and DOPPLER_CONFIG are set', () => {
+    const report = formatLoopCompletionReport({
+      repoRoot: '/repo',
+      bundleLabel: '.cursor/loops/museum2',
+      loopDir: '/repo/.cursor/loops/museum2',
+      result: loopResult({
+        complete: false,
+        completionReason: 'Missing credentials — aborting before WORKER.',
+      }),
+      env: { DOPPLER_PROJECT: 'agent-looper', DOPPLER_CONFIG: 'dev' },
+    })
+
+    expect(report).toContain(
+      '→ resume: doppler run --project agent-looper --config dev -- agent-loop run .cursor/loops/museum2',
+    )
   })
 
   it('does not print a resume line on complete reports', () => {

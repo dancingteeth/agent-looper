@@ -14,12 +14,18 @@ export type WatchStatus = {
   ended?: boolean
 }
 
+/** Hy3-scale spend is millicents; two decimals would print `$0.00`. */
+export function formatWatchCostUsd(costUsd: number): string {
+  if (costUsd > 0 && costUsd < 0.01) return `$${costUsd.toFixed(4)}`
+  return `$${costUsd.toFixed(2)}`
+}
+
 /** Structured, always-on progress line (`[agent-loop] phase=WORKER iteration=1/8 elapsed=12s cost~$0.04`). */
 export function formatWatchStatusLine(status: WatchStatus): string {
   const elapsedSeconds = Math.round(status.elapsedMs / 1000)
   return (
     `[agent-loop] phase=${status.phase} iteration=${status.iteration}/${status.maxIterations} ` +
-    `elapsed=${elapsedSeconds}s cost~$${status.costUsd.toFixed(2)}`
+    `elapsed=${elapsedSeconds}s cost~${formatWatchCostUsd(status.costUsd)}`
   )
 }
 
@@ -180,6 +186,14 @@ export function watchStatusPath(loopDir: string): string {
 
 function isWatchPhase(value: unknown): value is WatchPhase {
   return typeof value === 'string' && (WATCH_PHASES as readonly string[]).includes(value)
+}
+
+export function readWatchLiveFile(filePath: string): WatchLiveFile | undefined {
+  try {
+    return parseWatchLiveFile(JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown)
+  } catch {
+    return undefined
+  }
 }
 
 function parseWatchLiveFile(raw: unknown): WatchLiveFile | undefined {

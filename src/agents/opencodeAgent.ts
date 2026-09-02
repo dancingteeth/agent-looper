@@ -19,6 +19,7 @@ import {
   type OpencodeAgentRunOptions,
 } from './opencodeTurn.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
+import { emitAssistantText } from '../stream/assistantStream.js'
 import {
   pathWithLocalOpencodeBins,
   startOpencodeServe,
@@ -223,8 +224,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
 
     return {
       async runPrompt(prompt, options) {
-      const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
-      const assistantOutput = options.assistantOutput ?? 'stdout'
+
       const phase = options.phase ?? 'implement'
       const { providerID, modelID } = parseProviderModel(options.modelId)
       assertOpencodeProviderAuthReady({ providerID, wiredProviders })
@@ -252,6 +252,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           sessionId,
           events: events.stream,
           timeoutMs: OPENCODE_SESSION_TIMEOUT_MS,
+          collector: options.collector,
           signal: turnAbort.signal,
           onHeartbeat: ({ elapsedMs, lastEventType, phase, busy }) => {
             console.error(
@@ -328,9 +329,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           throw new Error('OpenCode session ended without assistant text')
         }
 
-        if (assistantOutput === 'stdout' || verbose) {
-          process.stdout.write(`${text}\n`)
-        }
+        emitAssistantText(options, `${text}\n`)
 
         const tokens = assistantInfo.tokens
         const usage = createUsageRecord({

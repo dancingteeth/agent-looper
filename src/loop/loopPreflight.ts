@@ -5,7 +5,7 @@ export type GoalPreflightResult = {
 }
 
 const ACCEPTANCE_PATTERN =
-  /acceptance criteria|success is determined|verifier in `loop\.json`|verifier in loop\.json|exit 0|verify command/i
+  /acceptance criteria|success is determined|verifier in `loop\.json`|verifier in loop\.json|exit\s*`?0`?|verify command/i
 
 const CONSTRAINT_PATTERN = /## constraints|## patterns|^constraints:|must not|do not /im
 

@@ -1,16 +1,49 @@
 {
   "taskwarriorProject": "agent-loop",
   "syncCommand": null,
+  "notifyPrComment": false,
   "defaultBranch": "main",
   "agentsFile": "AGENTS.md",
   "reviewsFile": "REVIEWS.md",
   "skillsGlob": ".cursor/loops/*/VERIFY.skill.md",
   "clientName": "@dancingteeth/agent-looper",
-  "defaults": {
-    "costPreset": "minmax"
-  },
   "telegramNotify": {
     "onSuccess": true,
-    "onFailure": true
-  }
+    "onFailure": true,
+    "attachReview": true
+  },
+  "defaults": {
+    "costPreset": "minmax",
+    "runtime": "opencode",
+    "reviewRuntime": "cursor",
+    "model": "opencode-go/hy3",
+    "escalateModel": "opencode-go/qwen3.7-plus",
+    "reviewModel": "grok-4.6",
+    "escalateAfterStagnation": 2,
+    "reviewGate": true,
+    "maxReviewCycles": 2,
+    "postQualityReview": "auto",
+    "reviewRisk": "auto",
+    "reviewSecondaryRuntime": "cursor",
+    "reviewSecondaryModel": "grok-4.6",
+    "maxIterations": 8,
+    "stagnationThreshold": 3,
+    "mode": "forward",
+    "pauseAfterIteration": false,
+    "trustConfig": false,
+    "notifyTelegram": true,
+    "telegramAttachReview": true,
+    "requireNotify": false,
+    "notifyPrComment": false,
+    "completionSignal": true,
+    "exportPack": true,
+    "exportRunReport": true,
+    "exportTranscript": true,
+    "syncOnSuccess": true,
+    "hitlProvider": "file",
+    "hitlOnFailure": false,
+    "reviewGateHitl": false
+  },
+  "hitlProvider": "taskwarrior",
+  "hitlFileDir": ".cursor/hitl"
 }

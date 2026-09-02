@@ -5,6 +5,7 @@ import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import { LOOP_RUNTIME_CODEX } from '../loop/loopAgentConfig.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
+import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 import {
   listChildPids,
@@ -20,6 +21,7 @@ export type CodexAgentRunOptions = {
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
+  onAssistantText?: (chunk: string) => void
 }
 
 export type CodexLoopSession = {
@@ -96,8 +98,6 @@ export async function createCodexLoopSession(ctx: RepoContext): Promise<CodexLoo
 
   return {
     async runPrompt(prompt, options) {
-      const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
-      const assistantOutput = options.assistantOutput ?? 'stdout'
       const phase = options.phase ?? 'implement'
 
       let CodexCtor: typeof import('@openai/codex-sdk').Codex
@@ -140,9 +140,7 @@ export async function createCodexLoopSession(ctx: RepoContext): Promise<CodexLoo
         )) as CodexTurn
 
         const text = extractCodexText(turn)
-        if (assistantOutput === 'stdout' || verbose) {
-          process.stdout.write(`${text}\n`)
-        }
+        emitAssistantText(options, `${text}\n`)
 
         const usage = readCodexUsage(turn.usage, options.modelId, phase)
         if (usage) {

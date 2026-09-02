@@ -136,7 +136,7 @@ If all retries still stall at TTFB: check Go gateway / network, try `escalateMod
 
 ## Dangling `~/.agents/skills`
 
-OpenCode loads global skills at session create. A `SKILL.md` symlink whose Cursor plugin-cache target was purged fails with `ENOENT` and shows up as `UnknownError`. `agent-check opencode` and `runtime: opencode` now fail fast and name the link. Relink to the current cache `SKILL.md`, or `rm` the dangling link.
+OpenCode loads global skills at session create. A `SKILL.md` symlink whose Cursor plugin-cache target was purged used to fail with `ENOENT` (`UnknownError`). `runtime: opencode` and `agent-check opencode` now **relink** that path to the current cache hash when a sibling folder still has the skill, or **drop** the dangling link so the session can boot. Leftovers that cannot be unlinked still fail fast.
 
 ## See also
 

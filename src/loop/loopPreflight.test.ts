@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { validateGoalPreflight } from './loopPreflight.js'
 
@@ -27,6 +28,23 @@ describe('validateGoalPreflight', () => {
     const result = validateGoalPreflight('# Goal\nFix things.\n\n## Constraints\nDo not cheat.')
     expect(result.ok).toBe(false)
     expect(result.errors[0]).toMatch(/acceptance criteria/i)
+  })
+
+  it('accepts markdown-backtick scoreboard exit `0` without an Acceptance heading', () => {
+    const result = validateGoalPreflight(
+      '## Goal\nShip the page.\n\n## Finish line\n| **Scoreboard** | `verify.sh` exit `0` |\n\n## Constraints\nStay in src.\n\n## Out of scope\nDeploy.\n',
+    )
+    expect(result.ok).toBe(true)
+  })
+
+  it('passes the visual GOAL template the scaffold agent is told to copy', () => {
+    const visual = fs.readFileSync(
+      new URL('../../templates/GOAL.visual.template.md', import.meta.url),
+      'utf8',
+    )
+    const result = validateGoalPreflight(visual)
+    expect(result.ok).toBe(true)
+    expect(result.errors).toHaveLength(0)
   })
 
   it('warns on missing optional sections', () => {

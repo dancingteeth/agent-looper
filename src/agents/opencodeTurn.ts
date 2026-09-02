@@ -1,4 +1,5 @@
 import type { StreamCollector } from '../stream/streamCollect.js'
+import { truncateStreamValue as truncate } from '../stream/streamFormat.js'
 
 /** Overall implement/review turn cap (tools + model). */
 export const OPENCODE_SESSION_TIMEOUT_MS = 45 * 60 * 1000
@@ -27,6 +28,7 @@ export type OpencodeAgentRunOptions = {
   assistantOutput?: 'stdout' | 'none'
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
+  onAssistantText?: (chunk: string) => void
 }
 
 type OpencodeEvent = {
@@ -57,6 +59,117 @@ export function isOpencodeToolProgressEvent(event: OpencodeEvent): boolean {
   if (!part || typeof part !== 'object') return false
   const type = (part as { type?: unknown }).type
   return typeof type === 'string' && !NON_TOOL_PROGRESS_PART_TYPES.has(type)
+}
+
+type OpencodeToolPhase = 'start' | 'end-ok' | 'end-err'
+
+export type OpencodeToolRecord = {
+  id: string
+  name: string
+  phase: OpencodeToolPhase
+  detail?: string
+}
+
+function toolStatusPhase(status: unknown): OpencodeToolPhase | undefined {
+  if (typeof status !== 'string') return undefined
+  const normalized = status.toLowerCase()
+  if (normalized === 'completed' || normalized === 'success' || normalized === 'done') {
+    return 'end-ok'
+  }
+  if (normalized === 'error' || normalized === 'failed' || normalized === 'failure') {
+    return 'end-err'
+  }
+  if (
+    normalized === 'pending' ||
+    normalized === 'running' ||
+    normalized === 'in_progress' ||
+    normalized === 'start'
+  ) {
+    return 'start'
+  }
+  return undefined
+}
+
+function opencodePartToolName(part: Record<string, unknown>): string {
+  if (typeof part.tool === 'string' && part.tool.trim()) return part.tool
+  if (typeof part.name === 'string' && part.name.trim()) return part.name
+  const state = part.state
+  if (state && typeof state === 'object') {
+    const named = (state as { name?: unknown; tool?: unknown })
+    if (typeof named.tool === 'string' && named.tool.trim()) return named.tool
+    if (typeof named.name === 'string' && named.name.trim()) return named.name
+  }
+  if (typeof part.type === 'string' && part.type.trim()) return part.type
+  return 'tool'
+}
+
+function opencodePartId(part: Record<string, unknown>, name: string): string {
+  if (typeof part.id === 'string' && part.id) return part.id
+  if (typeof part.callID === 'string' && part.callID) return part.callID
+  if (typeof part.callId === 'string' && part.callId) return part.callId
+  return name
+}
+
+function opencodePartDetail(part: Record<string, unknown>): string | undefined {
+  const state = part.state
+  if (state && typeof state === 'object') {
+    const input = (state as { input?: unknown }).input
+    if (typeof input === 'string' && input.trim()) return truncate(input, 200)
+    if (input && typeof input === 'object') {
+      try {
+        return truncate(JSON.stringify(input), 200)
+      } catch {
+        return undefined
+      }
+    }
+  }
+  return undefined
+}
+
+/** Map a live OpenCode event to a collector tool row when it is a real tool/file action. */
+export function opencodeToolRecordFromEvent(event: OpencodeEvent): OpencodeToolRecord | undefined {
+  if (event.type === 'file.edited') {
+    const file =
+      typeof event.properties?.file === 'string'
+        ? event.properties.file
+        : typeof event.properties?.path === 'string'
+          ? event.properties.path
+          : 'file'
+    return { id: `edit:${file}`, name: 'edit', phase: 'start', detail: file }
+  }
+  if (event.type !== 'message.part.updated') return undefined
+  const partRaw = event.properties?.part
+  if (!partRaw || typeof partRaw !== 'object') return undefined
+  const part = partRaw as Record<string, unknown>
+  const type = part.type
+  if (typeof type !== 'string' || NON_TOOL_PROGRESS_PART_TYPES.has(type)) return undefined
+  const name = type === 'tool' ? opencodePartToolName(part) : type
+  const id = opencodePartId(part, name)
+  const state = part.state
+  const status =
+    state && typeof state === 'object' ? (state as { status?: unknown }).status : undefined
+  const phase = toolStatusPhase(status) ?? 'start'
+  return { id, name, phase, detail: opencodePartDetail(part) }
+}
+
+export function recordOpencodeEventOnCollector(
+  event: OpencodeEvent,
+  collector: StreamCollector,
+  started: Set<string>,
+): void {
+  const rec = opencodeToolRecordFromEvent(event)
+  if (!rec) return
+  if (rec.phase === 'start') {
+    if (started.has(rec.id)) return
+    started.add(rec.id)
+    collector.recordToolStart(rec.name, rec.detail)
+    return
+  }
+  if (!started.has(rec.id)) {
+    started.add(rec.id)
+    collector.recordToolStart(rec.name, rec.detail)
+  }
+  collector.recordToolEnd(rec.name, rec.phase === 'end-ok', rec.detail)
 }
 
 export type WaitOpencodeTurnResult =
@@ -97,6 +210,7 @@ export async function waitForOpencodeSessionTurn(input: {
   noToolStallMs?: number
   heartbeatMs?: number
   now?: () => number
+  collector?: StreamCollector
   onHeartbeat?: (info: {
     elapsedMs: number
     lastEventType: string | undefined
@@ -110,6 +224,7 @@ export async function waitForOpencodeSessionTurn(input: {
   const noToolStallMs = input.noToolStallMs ?? OPENCODE_NO_TOOL_STALL_MS
   const heartbeatMs = input.heartbeatMs ?? OPENCODE_HEARTBEAT_MS
   const now = input.now ?? Date.now
+  const toolStarts = new Set<string>()
 
   const startedAt = now()
   let lastEventAt = startedAt
@@ -220,7 +335,12 @@ export async function waitForOpencodeSessionTurn(input: {
           // Sid-less noise must not count as activity (except terminal idle/error below).
           const isTerminal =
             event.type === 'session.idle' || event.type === 'session.error'
-          if (!sid && !isTerminal) continue
+          if (!sid && !isTerminal) {
+            if (input.collector && seenSessionActivity) {
+              recordOpencodeEventOnCollector(event, input.collector, toolStarts)
+            }
+            continue
+          }
           if (sid && sid !== input.sessionId) continue
 
           const props = event.properties ?? {}
@@ -236,6 +356,9 @@ export async function waitForOpencodeSessionTurn(input: {
           if (isOpencodeToolProgressEvent(event)) {
             seenToolActivity = true
             clearNoToolStall()
+          }
+          if (input.collector) {
+            recordOpencodeEventOnCollector(event, input.collector, toolStarts)
           }
 
           if (event.type === 'session.status') {

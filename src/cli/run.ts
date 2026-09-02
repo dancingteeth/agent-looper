@@ -24,7 +24,9 @@ import {
   shouldPreflightTelegram,
 } from '../integrations/telegramNotify.js'
 import { formatLoopCompletionReport } from '../loop/loopReport.js'
+import { formatLoopResumeCommand } from '../loop/loopResumeCommand.js'
 import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
+import { assertLoopCredentials } from '../loop/loopCredentialPreflight.js'
 import { WatchHeartbeat, clearWatchStatus, watchStatusPath, writeWatchStatus } from '../loop/loopWatch.js'
 import { trackLooperRunFinished, trackLooperRunStarted } from '../telemetry/looperTelemetry.js'
 import { parseRunArgs, type RunCliOptions } from './runArgs.js'
@@ -219,6 +221,11 @@ try {
   }
   console.error(`[agent-loop] log=${path.relative(ctx.repoRoot, bundle.logPath)}`)
 
+  assertLoopCredentials(bundle.config)
+  console.error(
+    `[agent-loop] credentials ok worker=${bundle.config.runtime} judge=${bundle.config.reviewRuntime ?? 'cursor'}`,
+  )
+
   const profileCheck = validateRepoProfile(ctx, { detection })
   if (!profileCheck.ok) {
     console.error('[agent-loop] repo profile errors:')
@@ -317,7 +324,7 @@ try {
       console.error('[agent-loop] inner agent did not complete cleanly (see log innerAgent)')
     }
     if (!result.complete) {
-      console.error(`[agent-loop] → resume: agent-loop run ${bundleLabel}`)
+      console.error(`[agent-loop] → resume: ${formatLoopResumeCommand(bundleLabel)}`)
     }
     if (result.hitlCheckTaskUuid) {
       console.error(`[agent-loop] HITL: uuid:${result.hitlCheckTaskUuid}`)

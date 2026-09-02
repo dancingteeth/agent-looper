@@ -44,6 +44,7 @@ import {
   type VerifyLogRefs,
 } from './loopExtensions.js'
 import { loadConfiguredAgentPlugins } from '../plugins/agentPluginsLoad.js'
+import { installLoopAssistantStream, resetAssistantStream } from './grindStream.js'
 import { loadLoopSkillSection, resolveLoopSkillPaths } from './loopSkills.js'
 import {
   addUsageRecord,
@@ -435,6 +436,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const transcriptEvents: TranscriptEvent[] = []
   const stagnationThreshold = config.stagnationThreshold
 
+  const emitPhase = (event: AgentLoopPhaseEvent): void => {
+    if (event.phase === 'WORKER' || event.phase === 'JUDGE') {
+      resetAssistantStream(bundle.loopDir)
+    }
+    options.onPhase?.(event)
+  }
+
   const finish = (
     result: Omit<AgentLoopResult, 'usage' | 'status'> & {
       usage?: LoopUsageSummary
@@ -543,8 +551,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     return parkOnBudget(Math.max(0, startedIteration - 1), reason)
   }
 
+  const uninstallAssistantStream = installLoopAssistantStream(bundle.loopDir)
   try {
-    options.onPhase?.({
+    emitPhase({
       phase: 'GOAL',
       iteration: 1,
       maxIterations: config.maxIterations,
@@ -597,7 +606,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         i,
       )
       if (budgetRefuse) return budgetRefuse
-      options.onPhase?.({
+      emitPhase({
         phase: 'WORKER',
         iteration: i,
         maxIterations: config.maxIterations,
@@ -675,7 +684,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       console.error(`[agent-loop] iteration ${i} — verify: ${config.verify}`)
-      options.onPhase?.({
+      emitPhase({
         phase: 'VERIFY',
         iteration: i,
         maxIterations: config.maxIterations,
@@ -752,7 +761,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       if (passed) {
-        options.onPhase?.({
+        emitPhase({
           phase: 'JUDGE',
           iteration: i,
           maxIterations: config.maxIterations,
@@ -907,6 +916,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       logPath,
     })
   } finally {
+    uninstallAssistantStream()
     await agentSession.dispose()
   }
 }

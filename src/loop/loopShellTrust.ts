@@ -19,6 +19,7 @@ export type ShellTrustInput = {
   cwd: string
   verify?: string
   finalVerify?: string
+  preview?: string
   syncCommand?: string | null
   /** Shell for hitlProvider=command (repo profile / loop.json). */
   hitlCommand?: string | null
@@ -35,6 +36,7 @@ export type ShellTrustInput = {
 export function collectShellCommandWarnings(input: {
   verify?: string
   finalVerify?: string
+  preview?: string
   syncCommand?: string | null
   hitlCommand?: string | null
   notifyCommand?: string | null
@@ -42,6 +44,7 @@ export function collectShellCommandWarnings(input: {
   const entries: Array<{ label: string; command: string }> = []
   if (input.verify) entries.push({ label: 'verify', command: input.verify })
   if (input.finalVerify) entries.push({ label: 'finalVerify', command: input.finalVerify })
+  if (input.preview) entries.push({ label: 'preview', command: input.preview })
   if (input.syncCommand) entries.push({ label: 'syncCommand', command: input.syncCommand })
   if (input.hitlCommand) entries.push({ label: 'hitlCommand', command: input.hitlCommand })
   if (input.notifyCommand) entries.push({ label: 'notifyCommand', command: input.notifyCommand })
@@ -77,6 +80,7 @@ export function formatTrustConfigRequiredError(input: ShellTrustInput): string {
   const warnings = collectShellCommandWarnings({
     verify: input.verify,
     finalVerify: input.finalVerify,
+    preview: input.preview,
     syncCommand: input.skipSync ? null : input.syncCommand,
     hitlCommand: input.hitlCommand,
     notifyCommand: input.notifyCommand,
@@ -113,6 +117,7 @@ export function warnShellCommandsFromConfig(input: ShellTrustInput): void {
   const warnings = collectShellCommandWarnings({
     verify: input.verify,
     finalVerify: input.finalVerify,
+    preview: input.preview,
     syncCommand: input.skipSync ? null : input.syncCommand,
     hitlCommand: input.hitlCommand,
     notifyCommand: input.notifyCommand,

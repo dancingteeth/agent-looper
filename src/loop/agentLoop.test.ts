@@ -103,6 +103,7 @@ function makeBundle(overrides: Record<string, unknown> = {}) {
     postQualityReview: false,
     syncOnSuccess: false,
     stagnationThreshold: 3,
+    exportPack: false,
     ...overrides,
   })
   return {

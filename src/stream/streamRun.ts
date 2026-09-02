@@ -1,12 +1,11 @@
 import type { SDKMessage } from '@cursor/sdk'
-import type { StreamCollector } from './streamCollect.js'
+import { emitAssistantText, notifyAssistantStreamSink, type AssistantStreamOptions } from './assistantStream.js'
 import { truncateStreamValue as truncate } from './streamFormat.js'
 
 export async function printRunStream(
   stream: AsyncGenerator<SDKMessage, void>,
-  options: { verbose: boolean; assistantOutput?: 'stdout' | 'none'; collector?: StreamCollector },
+  options: AssistantStreamOptions,
 ): Promise<void> {
-  const assistantOutput = options.assistantOutput ?? 'stdout'
   for await (const event of stream) {
     switch (event.type) {
       case 'system':
@@ -29,6 +28,9 @@ export async function printRunStream(
         }
         break
       case 'thinking':
+        if (event.text) {
+          notifyAssistantStreamSink(`thinking ${truncate(event.text, 240)}\n`)
+        }
         if (options.verbose) {
           console.error(
             `[agent-loop:cursor] thinking (${event.thinking_duration_ms ?? '?'}ms): ${truncate(event.text, 120)}`,
@@ -43,6 +45,7 @@ export async function printRunStream(
         break
       case 'tool_call':
         if (event.status === 'running') {
+          notifyAssistantStreamSink(`▶ ${event.name}\n`)
           console.error(
             `[agent-loop:cursor] tool ▶ ${event.name}${options.verbose ? ` ${truncate(event.args)}` : ''}`,
           )
@@ -73,9 +76,7 @@ export async function printRunStream(
       case 'assistant':
         for (const block of event.message.content) {
           if (block.type === 'text') {
-            if (assistantOutput === 'stdout') {
-              process.stdout.write(block.text)
-            }
+            emitAssistantText(options, block.text)
           } else if (options.verbose) {
             console.error(`[agent-loop:cursor] tool plan: ${block.name} ${truncate(block.input)}`)
           }

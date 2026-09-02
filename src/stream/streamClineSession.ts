@@ -1,4 +1,5 @@
 import type { AgentEvent, CoreSessionEvent } from '@cline/sdk'
+import { emitAssistantText, type AssistantStreamOptions } from './assistantStream.js'
 import type { StreamCollector } from './streamCollect.js'
 import { truncateStreamValue as truncate } from './streamFormat.js'
 
@@ -71,7 +72,7 @@ export function printClineAgentEvent(
 export function handleClineSessionEvent(
   event: CoreSessionEvent,
   sessionId: string,
-  options: { verbose: boolean; assistantOutput: 'stdout' | 'none'; collector?: StreamCollector },
+  options: AssistantStreamOptions & { assistantOutput: 'stdout' | 'none' },
   onDone: (text: string) => void,
   onError: (error: Error) => void,
 ): void {
@@ -80,14 +81,12 @@ export function handleClineSessionEvent(
     printClineAgentEvent(agentEvent, options)
 
     if (agentEvent.type === 'content_start' && agentEvent.contentType === 'text' && agentEvent.text) {
-      if (options.assistantOutput === 'stdout') {
-        process.stdout.write(agentEvent.text)
-      }
+      emitAssistantText(options, agentEvent.text)
     }
 
     if (agentEvent.type === 'done') {
-      if (options.assistantOutput === 'stdout' && agentEvent.text) {
-        process.stdout.write(agentEvent.text)
+      if (agentEvent.text) {
+        emitAssistantText(options, agentEvent.text)
       }
       onDone(agentEvent.text)
     }
