@@ -98,6 +98,8 @@ export {
   applyCostPreset,
   resolveCostPreset,
   describeCostPreset,
+  describeUserCostPresetRaw,
+  userCostPresetMenuTitle,
   isCostPreset,
   COST_PRESET_VALUES,
   COST_PRESET_CUSTOM,
@@ -150,6 +152,9 @@ export {
   isOpencodeGoModel,
   CLINE_PASS_LOOP_MODELS,
   OPENCODE_GO_LOOP_MODELS,
+  OPENROUTER_FREE_LOOP_MODELS,
+  OPENROUTER_FREE_WORKER_MODEL,
+  OPENROUTER_FREE_REVIEW_MODEL,
   CURSOR_WORKER_MODEL,
   CURSOR_REVIEW_MODEL,
   CURSOR_LOOP_MODEL,
@@ -176,6 +181,7 @@ export type { ResolvedLoopAgent, ResolvedReviewAgent, LoopRuntime } from './loop
 
 export { runVerifyCommand } from './loop/loopVerify.js'
 export type { VerifyResult } from './loop/loopVerify.js'
+export type { LoopAgentSession } from './agents/agentRunner.js'
 
 export { buildAgentLoopPrompt } from './loop/loopPrompt.js'
 export {
@@ -251,6 +257,7 @@ export {
   reviewGateBlocksCompletion,
   BLOCKER_IMPACT_TAGS,
   UNPARSEABLE_VERDICT_BLOCKER,
+  UNPARSEABLE_BLOCKERS_BLOCKER,
 } from './review/reviewVerdict.js'
 export type {
   ParsedReview,

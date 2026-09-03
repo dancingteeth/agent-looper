@@ -10,6 +10,8 @@ export type VerifyResult = {
 }
 
 const MAX_CAPTURE = 64 * 1024
+/** spawnSync kills the child on overflow; keep this well above typical test logs. */
+const MAX_SPAWN_BUFFER = 1024 * 1024
 
 function truncate(text: string, max = MAX_CAPTURE): string {
   if (text.length <= max) return text
@@ -21,7 +23,7 @@ export function runVerifyCommand(command: string, cwd: string): VerifyResult {
     cwd,
     shell: true,
     encoding: 'utf8',
-    maxBuffer: MAX_CAPTURE,
+    maxBuffer: MAX_SPAWN_BUFFER,
     env: process.env,
   })
 

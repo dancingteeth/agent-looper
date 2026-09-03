@@ -299,6 +299,29 @@ export function resolveUserCostPreset(
   return parsed.data
 }
 
+function isOpenRouterFreeSlug(slug: string): boolean {
+  return slug.startsWith('openrouter/') && slug.endsWith(':free')
+}
+
+function isOpenRouterHostedFreeStack(stack: CostPresetStack): boolean {
+  if (!isOpenRouterFreeSlug(stack.model) || !isOpenRouterFreeSlug(stack.reviewModel)) {
+    return false
+  }
+  if (stack.escalateModel !== undefined && !isOpenRouterFreeSlug(stack.escalateModel)) {
+    return false
+  }
+  return true
+}
+
+/** Setup menu title for a user-authored preset (intent, not just the kebab name). */
+export function userCostPresetMenuTitle(name: string, raw: unknown): string {
+  const parsed = costPresetStackSchema.safeParse(raw)
+  if (parsed.success && isOpenRouterHostedFreeStack(parsed.data)) {
+    return `${name} — OpenRouter $0`
+  }
+  return `${name} — saved preset`
+}
+
 /** Human-readable summary for a user-authored preset entry in the setup menu. */
 export function describeUserCostPresetRaw(raw: unknown): string {
   const parsed = costPresetStackSchema.safeParse(raw)
@@ -308,7 +331,15 @@ export function describeUserCostPresetRaw(raw: unknown): string {
   const { runtime, model, reviewRuntime, reviewModel } = parsed.data
   const mix =
     runtime === reviewRuntime ? 'same runtime' : `${runtime} worker + ${reviewRuntime} judge`
-  return `saved preset — ${shortModelName(model)} / ${shortModelName(reviewModel)} (${mix}).`
+  const worker = shortModelName(model)
+  const judge = shortModelName(reviewModel)
+  if (isOpenRouterHostedFreeStack(parsed.data)) {
+    return (
+      `OpenRouter hosted $0 — not minmax. ${worker} worker / ${judge} judge (${mix}). ` +
+      `Needs OPENROUTER_API_KEY. Skip NVIDIA :free (prompt logging). Residual is weaker than Grok.`
+    )
+  }
+  return `saved preset — ${worker} / ${judge} (${mix}).`
 }
 
 function isUnset(value: unknown): boolean {

@@ -214,6 +214,49 @@ describe('resolvePostSuccessReviewOutcome', () => {
     }
   })
 
+  it('continues when gating blockers use asterisk bullets', async () => {
+    const parsed = parseReviewMarkdown(`### Verdict
+**BLOCKERS**
+
+### Blockers
+* severity: error impact: false-closure [must-fix] **Docs** — README missing
+`)
+    const outcome = await resolvePostSuccessReviewOutcome({
+      config: baseConfig({ maxReviewCycles: 2 }),
+      ctx,
+      parsedReview: parsed,
+      reviewCycle: 1,
+      reviewCyclesUsed: 0,
+      reasoningEffort: 'low',
+    })
+    expect(outcome.action).toBe('continue')
+    if (outcome.action === 'continue') {
+      expect(outcome.gateBlockerCount).toBe(1)
+      expect(outcome.reviewBlockers[0]).toContain('Docs')
+    }
+  })
+
+  it('stops when BLOCKERS has no parsed list items', async () => {
+    const parsed = parseReviewMarkdown(`### Verdict
+**BLOCKERS**
+
+### Blockers
+none listed, but the heading says blockers
+`)
+    const outcome = await resolvePostSuccessReviewOutcome({
+      config: baseConfig({ reviewGateHitl: false }),
+      ctx,
+      parsedReview: parsed,
+      reviewCycle: 1,
+      reviewCyclesUsed: 0,
+      reasoningEffort: 'default',
+    })
+    expect(outcome.action).toBe('stop')
+    if (outcome.action === 'stop') {
+      expect(outcome.completionReason).toMatch(/unparseable verdict/)
+    }
+  })
+
   it('completes with advisory blockers when only warning/none-impact items gate', async () => {
     const outcome = await resolvePostSuccessReviewOutcome({
       config: baseConfig({ reviewGate: true }),

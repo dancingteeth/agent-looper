@@ -23,6 +23,7 @@ import {
   resolveCostPreset,
   parseCostPresetsCatalog,
   resolveUserCostPreset,
+  userCostPresetMenuTitle,
 } from './costPreset.js'
 import { parseLoopConfig } from './loopConfig.js'
 
@@ -312,8 +313,18 @@ describe('user costPresets', () => {
   })
 
   it('describeUserCostPresetRaw summarizes the stack', () => {
-    expect(describeUserCostPresetRaw(cheapPi)).toMatch(/cheap-pi|saved preset/)
+    expect(describeUserCostPresetRaw(cheapPi)).toMatch(/saved preset/)
     expect(describeUserCostPresetRaw(cheapPi)).toMatch(/deepseek-chat/)
+  })
+
+  it('describeUserCostPresetRaw explains OpenRouter :free as hosted $0, not minmax', () => {
+    expect(describeUserCostPresetRaw(orFree)).toMatch(/OpenRouter hosted \$0/)
+    expect(describeUserCostPresetRaw(orFree)).toMatch(/not minmax/)
+    expect(describeUserCostPresetRaw(orFree)).toMatch(/OPENROUTER_API_KEY/)
+    expect(describeUserCostPresetRaw(orFree)).toMatch(/weaker than Grok/i)
+    expect(describeUserCostPresetRaw(orFree)).not.toMatch(/^saved preset/)
+    expect(userCostPresetMenuTitle('or-free', orFree)).toBe('or-free — OpenRouter $0')
+    expect(userCostPresetMenuTitle('cheap-pi', cheapPi)).toBe('cheap-pi — saved preset')
   })
 
   it('applyCostPreset fills a user stack without detection', () => {

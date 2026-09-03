@@ -10,9 +10,15 @@ import {
   workerModelChoices,
   escalateModelChoices,
   modelChoiceDescription,
+  costPresetChoices,
   WORKER_RUNTIME_CHOICES,
   SECONDARY_REVIEW_RUNTIME_CHOICES,
 } from './setupMenus.js'
+import { emptyDetection } from './detectRuntimes.js'
+import {
+  OPENROUTER_FREE_REVIEW_MODEL,
+  OPENROUTER_FREE_WORKER_MODEL,
+} from '../loop/loopAgentConfig.js'
 
 const dirs: string[] = []
 
@@ -167,6 +173,33 @@ describe('agent-loop-setup', () => {
     expect(pass).toContain('cline-pass/kimi-k3')
     expect(go).toContain('opencode-go/kimi-k3')
     expect(go).toContain('opencode-go/hy3')
+  })
+
+  it('offers OpenRouter :free models on the OpenCode menu', () => {
+    const go = workerModelChoices('opencode').map((choice) => choice.value)
+    expect(go).toContain(OPENROUTER_FREE_WORKER_MODEL)
+    expect(go).toContain(OPENROUTER_FREE_REVIEW_MODEL)
+    expect(modelChoiceDescription(OPENROUTER_FREE_WORKER_MODEL)).toMatch(/hosted \$0/)
+    expect(modelChoiceDescription(OPENROUTER_FREE_REVIEW_MODEL)).toMatch(/hosted \$0/)
+    expect(judgeModelChoices('opencode', 'opencode').map((choice) => choice.value)).toContain(
+      OPENROUTER_FREE_REVIEW_MODEL,
+    )
+  })
+
+  it('describes or-free as OpenRouter hosted $0, not a generic saved preset', () => {
+    const choices = costPresetChoices(emptyDetection(), {
+      'or-free': {
+        runtime: 'opencode',
+        model: OPENROUTER_FREE_WORKER_MODEL,
+        escalateModel: OPENROUTER_FREE_REVIEW_MODEL,
+        reviewRuntime: 'opencode',
+        reviewModel: OPENROUTER_FREE_REVIEW_MODEL,
+      },
+    })
+    const row = choices.find((choice) => choice.value === 'or-free')
+    expect(row?.title).toBe('or-free — OpenRouter $0')
+    expect(row?.description).toMatch(/not minmax/)
+    expect(row?.description).toMatch(/OPENROUTER_API_KEY/)
   })
 
   it('writes a dsh worker+judge loop.json without a reviewModel key', () => {

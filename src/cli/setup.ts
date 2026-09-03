@@ -50,8 +50,9 @@ runtime choices detected / missing. Missing runtimes stay selectable.
 
 Cost preset: minmax (efficiency — cheap capable worker + strongest included
   judge; Grok whenever Cursor is installed) | balanced | cursor (Composer + Grok)
-  | saved names from profile.costPresets | custom (pick worker and judge;
-  optionally save as a named preset). Default is minmax.
+  | saved names from profile.costPresets (OpenRouter :free stacks show as hosted
+  $0, not minmax) | custom (pick worker and judge; optionally save as a named preset).
+  Default is minmax.
 Worker runtimes: cursor | cline-pass | cline | opencode | pi | codex | dsh | muse | claude
 Judge (review): reviewRuntime (cursor | cline-pass | cline | opencode | pi | codex | dsh | muse | claude),
   reviewModel (omit for runtime defaults: cursor grok-4.6 / composer-2.5, opencode

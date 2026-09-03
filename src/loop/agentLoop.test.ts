@@ -1011,6 +1011,23 @@ describe('runAgentLoop', () => {
       }),
     )
   })
+  it('uses an injected workerSession and skips createLoopAgentSession', async () => {
+    const runIterationPrompt = vi.fn().mockResolvedValue({ text: 'ok' })
+    const dispose = vi.fn().mockResolvedValue(undefined)
+    mockedRunVerify.mockReturnValue(passVerify())
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ postQualityReview: false, reviewGate: false }),
+      workerSession: { runIterationPrompt, dispose },
+    })
+
+    expect(result.complete).toBe(true)
+    expect(result.iterations).toBe(1)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+    expect(dispose).toHaveBeenCalledOnce()
+    expect(mockedCreateSession).not.toHaveBeenCalled()
+  })
 })
 
 describe('isTransientAgentError', () => {

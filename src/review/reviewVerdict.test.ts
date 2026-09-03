@@ -8,6 +8,7 @@ import {
   reviewGateBlockers,
   reviewGateBlocksCompletion,
   reviewVerdictAllowsCompletion,
+  UNPARSEABLE_BLOCKERS_BLOCKER,
   UNPARSEABLE_VERDICT_BLOCKER,
   warningBlockers,
 } from './reviewVerdict.js'
@@ -94,6 +95,55 @@ None.
     expect(reviewGateBlocksCompletion(parsed)).toBe(true)
     expect(reviewGateBlockers(parsed)).toHaveLength(1)
     expect(reviewGateBlockers(parsed)[0]).toContain('severity: error')
+  })
+
+  it.each(['*', '+', '1.', '2)'] as const)(
+    'parses gating blockers from %s list markers',
+    (marker) => {
+      const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+**BLOCKERS**
+
+### Blockers
+${marker} severity: error impact: data-loss [must-fix] **Wipe** — dropping table
+`)
+      expect(parsed.verdict).toBe('BLOCKERS')
+      expect(parsed.blockers).toHaveLength(1)
+      expect(parsed.blockers[0]!.impact).toBe('data-loss')
+      expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+      expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(false)
+    },
+  )
+
+  it('fails closed when BLOCKERS has no parsed list items', () => {
+    const parsed = parseReviewMarkdown(`### Risk
+**HIGH**
+
+### Verdict
+**BLOCKERS**
+
+### Blockers
+*severity: error impact: data-loss **Wipe** — missing space after star
+`)
+    expect(parsed.verdict).toBe('UNKNOWN')
+    expect(parsed.blockers).toEqual([])
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(false)
+    expect(reviewGateBlockers(parsed)).toEqual([UNPARSEABLE_VERDICT_BLOCKER])
+  })
+
+  it('fails closed when BLOCKERS lists only none', () => {
+    const parsed = parseReviewMarkdown(`### Verdict
+**BLOCKERS**
+
+### Blockers
+- none
+`)
+    expect(parsed.verdict).toBe('UNKNOWN')
+    expect(parsed.blockers).toEqual([])
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
   })
 
   it('allows completion when BLOCKERS verdict has only legacy/warning items', () => {
@@ -341,5 +391,16 @@ describe('reviewGateBlocksCompletion', () => {
         blockers: [blocker],
       }),
     ).toBe(true)
+  })
+
+  it('blocks a BLOCKERS verdict object with zero parsed items', () => {
+    const parsed = {
+      verdict: 'BLOCKERS' as const,
+      risk: 'high' as const,
+      blockers: [],
+    }
+    expect(reviewGateBlocksCompletion(parsed)).toBe(true)
+    expect(reviewVerdictAllowsCompletion(parsed, { reviewGate: true })).toBe(false)
+    expect(reviewGateBlockers(parsed)).toEqual([UNPARSEABLE_BLOCKERS_BLOCKER])
   })
 })

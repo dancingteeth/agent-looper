@@ -92,7 +92,7 @@ Vercel AI Gateway (list price, no markup) — OpenCode’s native `vercel` provi
 
 ## OpenRouter `:free`
 
-Hosted $0 OpenRouter rows use the `:free` suffix (OpenRouter’s own tag, not a Kilo runtime). The harness already wires `OPENROUTER_API_KEY`; `loop.json` accepts those slugs on `runtime: opencode` and `runtime: pi`.
+Hosted $0 OpenRouter rows use the `:free` suffix (OpenRouter’s own tag, not a Kilo runtime). The harness already wires `OPENROUTER_API_KEY`; `loop.json` accepts those slugs on `runtime: opencode` and `runtime: pi`. Setup’s OpenCode worker / escalate / judge menus list MiniMax M3 `:free` and Laguna S 2.1 `:free` after the Go catalog.
 
 Pin a pair. Do **not** use a rotating “auto free” router — the catalog shifts, some upstreams log prompts (`mayTrainOnYourPrompts`), and a grind loop needs a stable worker. Unset `reviewRuntime` still defaults to Cursor — this stack must set it to `opencode` with an explicit `:free` `reviewModel`, or OpenCode’s judge default is Go V4 Pro (paid). Residual review is weaker than Grok; that is the $0 deal. This is **not** `costPreset: minmax` (that stays Go Hy3 + Grok when those runtimes are installed).
 
@@ -133,7 +133,7 @@ Optional named stack in the repo profile (`costPresets.or-free`) so setup can pi
 }
 ```
 
-Then `"costPreset": "or-free"` in `loop.json`. 429s already retry. Skip NVIDIA `:free` rows (prompt logging). Skip Hy3 on Kilo Gateway — it is paid; Go Hy3 is the minmax worker.
+Then `"costPreset": "or-free"` in `loop.json`. Setup lists that name as **OpenRouter $0** (not a generic “saved preset”) and offers both slugs on the OpenCode model menu. 429s already retry. Skip NVIDIA `:free` rows (prompt logging). Skip Hy3 on Kilo Gateway — it is paid; Go Hy3 is the minmax worker.
 
 ## Check
 

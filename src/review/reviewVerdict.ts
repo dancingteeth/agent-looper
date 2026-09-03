@@ -35,6 +35,9 @@ export type ParsedReview = {
 export const UNPARSEABLE_VERDICT_BLOCKER =
   'Could not parse review verdict — review.md must include `### Verdict` with PASS, ADVISORY, or BLOCKERS'
 
+export const UNPARSEABLE_BLOCKERS_BLOCKER =
+  'Could not parse review blockers — verdict is BLOCKERS but ### Blockers has no list items (`-`, `*`, `+`, or `1.`)'
+
 const SECTION_HEADING = /^###\s+(.+)\s*$/
 
 const STRUCTURED_BLOCKER_PREFIX =
@@ -255,14 +258,17 @@ export function warningBlockers(parsed: ParsedReview): ParsedBlocker[] {
   return parsed.blockers.filter((b) => !isBlockingBlocker(b))
 }
 
+/** CommonMark unordered (`-`/`*`/`+`) or ordered (`1.` / `1)`) list markers. */
+const BLOCKER_BULLET_PREFIX = /^(?:[-*+]|\d+[.)])\s+/
+
 function parseBlockers(section: string | null): ParsedBlocker[] {
   if (!section) return []
 
   const blockers: ParsedBlocker[] = []
   for (const line of section.split('\n')) {
     const trimmed = line.trim()
-    if (!trimmed.startsWith('-')) continue
-    const item = trimmed.replace(/^-\s*/, '').trim()
+    if (!BLOCKER_BULLET_PREFIX.test(trimmed)) continue
+    const item = trimmed.replace(BLOCKER_BULLET_PREFIX, '').trim()
     if (!item || isEmptyBlockersDeclaration(item)) continue
     blockers.push(parseBlockerItem(item))
   }
@@ -271,14 +277,17 @@ function parseBlockers(section: string | null): ParsedBlocker[] {
 
 /**
  * Overlay lock: gating ### Blockers ⇒ BLOCKERS. Heading vs body disagreement
- * with no gating bullets ⇒ UNKNOWN (fail closed). Else one known token, heading
- * first so `### Verdict — ADVISORY` with a prose body still parses.
+ * with no gating bullets ⇒ UNKNOWN (fail closed). BLOCKERS with zero parsed
+ * list items is also UNKNOWN — a hyphen-only parser used to complete green.
+ * Else one known token, heading first so `### Verdict — ADVISORY` with a prose
+ * body still parses.
  */
 function reconcileReviewVerdict(input: {
   fromHeading: ReviewVerdict
   fromBody: ReviewVerdict
   fromTable: ReviewVerdict
   blockers: ParsedBlocker[]
+  blockersSection: string | null
 }): ReviewVerdict {
   if (input.blockers.some(isBlockingBlocker)) return 'BLOCKERS'
 
@@ -287,9 +296,21 @@ function reconcileReviewVerdict(input: {
   if (headingKnown && bodyKnown && input.fromHeading !== input.fromBody) {
     return 'UNKNOWN'
   }
-  if (headingKnown) return input.fromHeading
-  if (bodyKnown) return input.fromBody
-  return input.fromTable
+  const resolved = headingKnown
+    ? input.fromHeading
+    : bodyKnown
+      ? input.fromBody
+      : input.fromTable
+  // Compact-table BLOCKERS with no ### Blockers section still parses; an
+  // empty/unparsed ### Blockers list under a BLOCKERS token fails closed.
+  if (
+    resolved === 'BLOCKERS' &&
+    input.blockers.length === 0 &&
+    input.blockersSection !== null
+  ) {
+    return 'UNKNOWN'
+  }
+  return resolved
 }
 
 export function parseReviewMarkdown(text: string): ParsedReview {
@@ -304,7 +325,13 @@ export function parseReviewMarkdown(text: string): ParsedReview {
   const blockers = parseBlockers(blockersSection)
 
   return {
-    verdict: reconcileReviewVerdict({ fromHeading, fromBody, fromTable, blockers }),
+    verdict: reconcileReviewVerdict({
+      fromHeading,
+      fromBody,
+      fromTable,
+      blockers,
+      blockersSection,
+    }),
     risk: fromRiskHeading !== 'unknown' ? fromRiskHeading : fromRiskBody,
     blockers,
   }
@@ -317,7 +344,8 @@ export type ReviewVerdictCompletionOptions = {
 
 export function reviewGateBlocksCompletion(parsed: ParsedReview): boolean {
   if (blockingBlockers(parsed).length > 0) return true
-  return parsed.verdict === 'UNKNOWN'
+  if (parsed.verdict === 'UNKNOWN') return true
+  return parsed.verdict === 'BLOCKERS' && parsed.blockers.length === 0
 }
 
 export function reviewVerdictAllowsCompletion(
@@ -332,5 +360,8 @@ export function reviewVerdictAllowsCompletion(
 
 export function reviewGateBlockers(parsed: ParsedReview): string[] {
   if (parsed.verdict === 'UNKNOWN') return [UNPARSEABLE_VERDICT_BLOCKER]
+  if (parsed.verdict === 'BLOCKERS' && parsed.blockers.length === 0) {
+    return [UNPARSEABLE_BLOCKERS_BLOCKER]
+  }
   return blockingBlockers(parsed).map(formatBlockerLine)
 }

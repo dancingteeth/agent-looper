@@ -22,6 +22,7 @@ import {
   DEFAULT_OPENCODE_GO_REVIEW_MODEL,
   DEFAULT_PI_ESCALATE_MODEL,
   DEFAULT_PI_LOOP_MODEL,
+  OPENROUTER_FREE_LOOP_MODELS,
   LOOP_REASONING_EFFORTS,
   LOOP_RUNTIME_CLINE,
   LOOP_RUNTIME_CLINE_PASS,
@@ -40,6 +41,7 @@ import {
   COST_PRESET_CUSTOM,
   describeCostPreset,
   describeUserCostPresetRaw,
+  userCostPresetMenuTitle,
   isReservedCostPresetName,
   shortModelName,
   type UserCostPresetMap,
@@ -88,7 +90,7 @@ export function costPresetChoices(
         .filter(([name]) => !isReservedCostPresetName(name))
         .map(([name, raw]) => ({
           value: name,
-          title: `${name} — saved preset`,
+          title: userCostPresetMenuTitle(name, raw),
           description: describeUserCostPresetRaw(raw),
         }))
     : []
@@ -335,6 +337,10 @@ const MODEL_BLURBS: Record<string, string> = {
     'DeepSeek Chat — cheap OpenRouter-style worker. Not a Cline Pass slug.',
   'qwen3-coder-plus':
     'Qwen3 Coder Plus — usual escalate when Chat stalls.',
+  'minimax-m3:free':
+    'MiniMax M3 on OpenRouter :free — hosted $0 OpenCode worker. Needs OPENROUTER_API_KEY. Not minmax; may train on prompts.',
+  'laguna-s-2.1:free':
+    'Poolside Laguna S 2.1 on OpenRouter :free — hosted $0 OpenCode judge and escalate. Weaker residual than Grok. Skip NVIDIA :free.',
 }
 
 export function modelChoiceDescription(slug: string): string {
@@ -390,6 +396,11 @@ export function workerModelChoices(runtime: LoopRuntime): MenuChoice[] {
       return [
         omit,
         ...OPENCODE_GO_LOOP_MODELS.map((slug) => ({
+          value: slug,
+          title: slug,
+          description: modelChoiceDescription(slug),
+        })),
+        ...OPENROUTER_FREE_LOOP_MODELS.map((slug) => ({
           value: slug,
           title: slug,
           description: modelChoiceDescription(slug),

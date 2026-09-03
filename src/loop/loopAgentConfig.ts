@@ -103,6 +103,17 @@ export const DEFAULT_OPENCODE_GO_ESCALATE_MODEL: OpencodeGoLoopModel = 'opencode
 /** Default OpenCode judge — DeepSeek V4 Pro (Go has Grok 4.5 only; not Flash). */
 export const DEFAULT_OPENCODE_GO_REVIEW_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-pro'
 
+/**
+ * OpenRouter hosted $0 BYOK slugs (`OPENROUTER_API_KEY`). Valid on OpenCode and Pi.
+ * Not minmax. Skip NVIDIA `:free` (prompt logging). Usual named stack: `or-free`.
+ */
+export const OPENROUTER_FREE_WORKER_MODEL = 'openrouter/minimax/minimax-m3:free'
+export const OPENROUTER_FREE_REVIEW_MODEL = 'openrouter/poolside/laguna-s-2.1:free'
+export const OPENROUTER_FREE_LOOP_MODELS = [
+  OPENROUTER_FREE_WORKER_MODEL,
+  OPENROUTER_FREE_REVIEW_MODEL,
+] as const
+
 /** Default Pi worker — OpenRouter DeepSeek (same shape as Cline credits). */
 export const DEFAULT_PI_LOOP_MODEL = 'openrouter/deepseek/deepseek-chat'
 export const DEFAULT_PI_ESCALATE_MODEL = 'openrouter/qwen/qwen3-coder-plus'
