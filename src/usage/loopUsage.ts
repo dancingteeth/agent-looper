@@ -8,9 +8,16 @@ export type LoopUsageRecord = {
   outputTokens: number
   cacheReadTokens: number
   cacheWriteTokens: number
-  /** USD; from provider when available, else estimated from token pricing. */
+  /**
+   * USD used for `maxCostUsd`: provider invoice when it is > $0 (PAYG),
+   * otherwise API list estimate so subscription quota $0 still has a cap.
+   */
   costUsd: number
   costSource: 'provider' | 'estimated'
+  /** Public API list price from `MODEL_PRICING_PER_MILLION` (`:free` → 0). */
+  listCostUsd?: number
+  /** Runtime-reported invoice; `$0` on included quota. Absent = unknown. */
+  billedCostUsd?: number
 }
 
 export type LoopUsageSummary = {
@@ -19,7 +26,31 @@ export type LoopUsageSummary = {
   totalOutputTokens: number
   totalCacheReadTokens: number
   totalCacheWriteTokens: number
+  /** Budget figure (see `LoopUsageRecord.costUsd`). */
   totalCostUsd: number
+  /** Sum of list prices when at least one record has a list figure. */
+  totalListCostUsd?: number
+  /** True when some records have no list figure (unpriced model). */
+  listCostPartial?: boolean
+  /** Sum of invoices when at least one record reported billed. */
+  totalBilledCostUsd?: number
+  /** True when some records have no billed figure. */
+  billedCostPartial?: boolean
+}
+
+/** Shown under run-report usage: two numbers, one cap. */
+export const USAGE_LIST_PRICE_NOTE =
+  'List $ is public API list price (token intensity). Billed is the runtime invoice — $0 on included subscription quota, PAYG otherwise. maxCostUsd uses billed when it is > $0, otherwise list so a quota run can still stop.'
+
+export function isHostedFreeModel(model: string): boolean {
+  if (model.endsWith(':free')) return true
+  const rates = MODEL_PRICING_PER_MILLION[model]
+  return rates !== undefined && rates.input === 0 && rates.output === 0
+}
+
+export function usageCostsDifferForDisplay(listUsd: number, billedUsd: number): boolean {
+  if (listUsd === 0 && billedUsd === 0) return false
+  return Math.abs(listUsd - billedUsd) >= 0.00005
 }
 
 /** Official API rates (USD per 1M tokens). Kept in sync with CLINE_PASS_LOOP_MODELS / OPENCODE_GO_LOOP_MODELS via modelPricingDrift.test.ts */
@@ -95,20 +126,68 @@ export function estimateCostUsd(
   )
 }
 
+export function resolveUsageCosts(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  providerCostUsd?: number,
+): {
+  costUsd: number
+  costSource: LoopUsageRecord['costSource']
+  listCostUsd?: number
+  billedCostUsd?: number
+} {
+  const hostedFree = isHostedFreeModel(model)
+  const estimated = estimateCostUsd(model, inputTokens, outputTokens)
+  const listCostUsd = hostedFree ? 0 : (estimated ?? undefined)
+  const billedCostUsd =
+    providerCostUsd !== undefined && Number.isFinite(providerCostUsd) && providerCostUsd >= 0
+      ? providerCostUsd
+      : undefined
+
+  if (hostedFree) {
+    return {
+      costUsd: billedCostUsd ?? 0,
+      costSource: billedCostUsd !== undefined ? 'provider' : 'estimated',
+      listCostUsd: 0,
+      billedCostUsd,
+    }
+  }
+  if (billedCostUsd !== undefined && billedCostUsd > 0) {
+    return {
+      costUsd: billedCostUsd,
+      costSource: 'provider',
+      listCostUsd,
+      billedCostUsd,
+    }
+  }
+  if (listCostUsd !== undefined) {
+    return {
+      costUsd: listCostUsd,
+      costSource: 'estimated',
+      listCostUsd,
+      billedCostUsd,
+    }
+  }
+  if (billedCostUsd !== undefined) {
+    return {
+      costUsd: billedCostUsd,
+      costSource: 'provider',
+      listCostUsd,
+      billedCostUsd,
+    }
+  }
+  return { costUsd: 0, costSource: 'estimated', listCostUsd, billedCostUsd }
+}
+
 export function resolveCostUsd(
   model: string,
   inputTokens: number,
   outputTokens: number,
   providerCostUsd?: number,
 ): { costUsd: number; costSource: LoopUsageRecord['costSource'] } {
-  if (providerCostUsd !== undefined && Number.isFinite(providerCostUsd) && providerCostUsd >= 0) {
-    return { costUsd: providerCostUsd, costSource: 'provider' }
-  }
-  const estimated = estimateCostUsd(model, inputTokens, outputTokens)
-  if (estimated !== null) {
-    return { costUsd: estimated, costSource: 'estimated' }
-  }
-  return { costUsd: 0, costSource: 'estimated' }
+  const resolved = resolveUsageCosts(model, inputTokens, outputTokens, providerCostUsd)
+  return { costUsd: resolved.costUsd, costSource: resolved.costSource }
 }
 
 export function createUsageRecord(input: {
@@ -121,7 +200,7 @@ export function createUsageRecord(input: {
   cacheWriteTokens?: number
   providerCostUsd?: number
 }): LoopUsageRecord {
-  const { costUsd, costSource } = resolveCostUsd(
+  const resolved = resolveUsageCosts(
     input.model,
     input.inputTokens,
     input.outputTokens,
@@ -135,9 +214,27 @@ export function createUsageRecord(input: {
     outputTokens: input.outputTokens,
     cacheReadTokens: input.cacheReadTokens ?? 0,
     cacheWriteTokens: input.cacheWriteTokens ?? 0,
-    costUsd,
-    costSource,
+    costUsd: resolved.costUsd,
+    costSource: resolved.costSource,
+    listCostUsd: resolved.listCostUsd,
+    billedCostUsd: resolved.billedCostUsd,
   }
+}
+
+export function recordListCostUsd(record: LoopUsageRecord): number | undefined {
+  if (typeof record.listCostUsd === 'number' && Number.isFinite(record.listCostUsd)) {
+    return record.listCostUsd
+  }
+  if (record.costSource === 'estimated') return record.costUsd
+  return estimateCostUsd(record.model, record.inputTokens, record.outputTokens) ?? undefined
+}
+
+export function recordBilledCostUsd(record: LoopUsageRecord): number | undefined {
+  if (typeof record.billedCostUsd === 'number' && Number.isFinite(record.billedCostUsd)) {
+    return record.billedCostUsd
+  }
+  if (record.costSource === 'provider') return record.costUsd
+  return undefined
 }
 
 export function emptyUsageSummary(): LoopUsageSummary {
@@ -166,12 +263,26 @@ export function summarizeUsageRecords(records: LoopUsageRecord[]): LoopUsageSumm
   let totalCacheReadTokens = 0
   let totalCacheWriteTokens = 0
   let totalCostUsd = 0
+  let listSum = 0
+  let listCount = 0
+  let billedSum = 0
+  let billedCount = 0
   for (const record of records) {
     totalInputTokens += record.inputTokens
     totalOutputTokens += record.outputTokens
     totalCacheReadTokens += record.cacheReadTokens
     totalCacheWriteTokens += record.cacheWriteTokens
     totalCostUsd += record.costUsd
+    const list = recordListCostUsd(record)
+    if (list !== undefined) {
+      listCount += 1
+      listSum += list
+    }
+    const billed = recordBilledCostUsd(record)
+    if (billed !== undefined) {
+      billedCount += 1
+      billedSum += billed
+    }
   }
 
   return {
@@ -181,6 +292,18 @@ export function summarizeUsageRecords(records: LoopUsageRecord[]): LoopUsageSumm
     totalCacheReadTokens,
     totalCacheWriteTokens,
     totalCostUsd: roundUsd(totalCostUsd),
+    ...(listCount > 0
+      ? {
+          totalListCostUsd: roundUsd(listSum),
+          ...(listCount < records.length ? { listCostPartial: true } : {}),
+        }
+      : {}),
+    ...(billedCount > 0
+      ? {
+          totalBilledCostUsd: roundUsd(billedSum),
+          ...(billedCount < records.length ? { billedCostPartial: true } : {}),
+        }
+      : {}),
   }
 }
 
@@ -275,14 +398,28 @@ export function formatUsageSummaryLine(summary: LoopUsageSummary): string {
 
   const parts: string[] = [
     `${formatTokenCount(summary.totalInputTokens)} in / ${formatTokenCount(summary.totalOutputTokens)} out`,
-    `~$${summary.totalCostUsd.toFixed(4)} total`,
   ]
 
+  const listUsd = summary.totalListCostUsd
+  const billedUsd = summary.totalBilledCostUsd
+  const listLabel = summary.listCostPartial ? ' (partial)' : ''
+  const billedLabel = summary.billedCostPartial ? ' (partial)' : ''
+  if (listUsd !== undefined && billedUsd !== undefined && usageCostsDifferForDisplay(listUsd, billedUsd)) {
+    parts.push(`list ~$${listUsd.toFixed(4)}${listLabel}`)
+    parts.push(`billed $${billedUsd.toFixed(4)}${billedLabel}`)
+  } else if (listUsd !== undefined) {
+    parts.push(`list ~$${listUsd.toFixed(4)} total${listLabel}`)
+  } else if (billedUsd !== undefined) {
+    parts.push(`billed $${billedUsd.toFixed(4)} total${billedLabel}`)
+  } else {
+    parts.push(`~$${summary.totalCostUsd.toFixed(4)} total`)
+  }
+
   if (implement.records.length > 0) {
-    parts.push(`~$${implement.totalCostUsd.toFixed(4)} implement`)
+    parts.push(`~$${(implement.totalListCostUsd ?? implement.totalCostUsd).toFixed(4)} implement`)
   }
   if (review.records.length > 0) {
-    parts.push(`~$${review.totalCostUsd.toFixed(4)} review`)
+    parts.push(`~$${(review.totalListCostUsd ?? review.totalCostUsd).toFixed(4)} review`)
   }
 
   const hasCache = summary.records.some((r) => r.cacheReadTokens > 0 || r.cacheWriteTokens > 0)
@@ -294,10 +431,20 @@ export function formatUsageSummaryLine(summary: LoopUsageSummary): string {
 
   const hasEstimate = summary.records.some((r) => r.costSource === 'estimated')
   if (hasEstimate) {
-    parts.push('(estimate)')
+    parts.push('(list price)')
   }
 
   return `usage: ${parts.join(' | ')}`
+}
+
+export function formatUsageRecordLog(record: LoopUsageRecord): string {
+  const list =
+    record.listCostUsd !== undefined ? `list~$${record.listCostUsd.toFixed(4)}` : undefined
+  const billed =
+    record.billedCostUsd !== undefined ? `billed $${record.billedCostUsd.toFixed(4)}` : undefined
+  const money = [list, billed].filter(Boolean).join(' / ')
+  const moneyBit = money || `~$${record.costUsd.toFixed(4)}`
+  return `in=${record.inputTokens} out=${record.outputTokens} ${moneyBit} (${record.costSource})`
 }
 
 export function logUsageSummary(prefix: string, summary: LoopUsageSummary): void {

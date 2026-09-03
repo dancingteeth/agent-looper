@@ -4,6 +4,7 @@ import {
   createUsageRecord,
   estimateCostUsd,
   formatUsageSummaryLine,
+  isHostedFreeModel,
   lastPhaseCostUsd,
   mergeUsageSummaries,
   nextCallFitsBudget,
@@ -26,7 +27,7 @@ describe('loopUsage', () => {
     expect(cost).toBeCloseTo(0.1 + 0.125, 5)
   })
 
-  it('prefers provider cost when present', () => {
+  it('uses a positive provider invoice as the budget figure and keeps list', () => {
     const record = createUsageRecord({
       phase: 'implement',
       runtime: 'cline-pass',
@@ -37,6 +38,38 @@ describe('loopUsage', () => {
     })
     expect(record.costUsd).toBe(0.0099)
     expect(record.costSource).toBe('provider')
+    expect(record.billedCostUsd).toBe(0.0099)
+    expect(record.listCostUsd).toBeCloseTo(estimateCostUsd('cline-pass/deepseek-v4-flash', 1000, 500)!, 8)
+  })
+
+  it('treats subscription $0 as billed, not free, and budgets on list', () => {
+    const record = createUsageRecord({
+      phase: 'implement',
+      runtime: 'opencode',
+      model: 'opencode-go/hy3',
+      inputTokens: 1_000_000,
+      outputTokens: 1_000_000,
+      providerCostUsd: 0,
+    })
+    expect(record.billedCostUsd).toBe(0)
+    expect(record.listCostUsd).toBeCloseTo(0.72, 5)
+    expect(record.costUsd).toBeCloseTo(0.72, 5)
+    expect(record.costSource).toBe('estimated')
+  })
+
+  it('keeps hosted-free models at $0 list and billed', () => {
+    expect(isHostedFreeModel('openrouter/minimax/minimax-m3:free')).toBe(true)
+    const record = createUsageRecord({
+      phase: 'implement',
+      runtime: 'opencode',
+      model: 'openrouter/minimax/minimax-m3:free',
+      inputTokens: 50_000,
+      outputTokens: 200,
+      providerCostUsd: 0,
+    })
+    expect(record.listCostUsd).toBe(0)
+    expect(record.billedCostUsd).toBe(0)
+    expect(record.costUsd).toBe(0)
   })
 
   it('formats summary line with implement/review split', () => {
@@ -60,6 +93,48 @@ describe('loopUsage', () => {
     expect(line).toContain('160.0k in')
     expect(line).toContain('implement')
     expect(line).toContain('review')
+    expect(line).toContain('list ~$')
+  })
+
+  it('shows list and billed when a quota invoice is $0', () => {
+    const summary = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'opencode',
+        model: 'opencode-go/hy3',
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+        providerCostUsd: 0,
+      }),
+    ])
+    const line = formatUsageSummaryLine(summary)
+    expect(line).toContain('list ~$0.7200')
+    expect(line).toContain('billed $0.0000')
+    expect(summary.totalCostUsd).toBeCloseTo(0.72, 4)
+  })
+
+  it('marks list totals partial when an unpriced model is mixed in', () => {
+    const summary = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'opencode',
+        model: 'opencode-go/hy3',
+        inputTokens: 1_000_000,
+        outputTokens: 0,
+      }),
+      createUsageRecord({
+        phase: 'review',
+        runtime: 'opencode',
+        model: 'mystery/unpriced',
+        inputTokens: 10_000,
+        outputTokens: 500,
+        providerCostUsd: 0.05,
+      }),
+    ])
+    expect(summary.listCostPartial).toBe(true)
+    expect(summary.billedCostPartial).toBe(true)
+    expect(formatUsageSummaryLine(summary)).toContain('(partial)')
+    expect(summary.totalCostUsd).toBeCloseTo(0.14 + 0.05, 4)
   })
 
   it('surfaces cache read/write tokens only when present', () => {

@@ -4,7 +4,7 @@ import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import { LOOP_RUNTIME_CODEX } from '../loop/loopAgentConfig.js'
-import { createUsageRecord } from '../usage/loopUsage.js'
+import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 import {
@@ -145,7 +145,7 @@ export async function createCodexLoopSession(ctx: RepoContext): Promise<CodexLoo
         const usage = readCodexUsage(turn.usage, options.modelId, phase)
         if (usage) {
           console.error(
-            `[agent-loop:codex] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
+            `[agent-loop:codex] usage ${formatUsageRecordLog(usage)}`,
           )
         }
 

@@ -53,6 +53,7 @@ import {
   lastPhaseCostUsd,
   logUsageSummary,
   nextCallFitsBudget,
+  usageCostsDifferForDisplay,
   type LoopUsageRecord,
   type LoopUsageSummary,
 } from '../usage/loopUsage.js'
@@ -135,8 +136,10 @@ export type AgentLoopPhaseEvent = {
   phase: AgentLoopPhase
   iteration: number
   maxIterations: number
-  /** Cumulative estimated cost so far (USD). */
+  /** Cumulative budget cost so far (USD). */
   costUsd: number
+  listCostUsd?: number
+  billedCostUsd?: number
 }
 
 export type AgentLoopOptions = {
@@ -148,6 +151,8 @@ export type AgentLoopOptions = {
   onIterationStart?: (iteration: number) => void
   /** Phase-transition hook for live progress (CLI watch / structured phase lines). */
   onPhase?: (event: AgentLoopPhaseEvent) => void
+  /** Injected worker session from the host (WorkerPort). When set, bypasses createLoopAgentSession. */
+  workerSession?: LoopAgentSession
 }
 
 const SDK_RETRY_DELAYS_MS = [5000, 15_000] as const
@@ -415,7 +420,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   if (researchRelative) {
     console.error(`[agent-loop] indexed research map ${researchRelative}`)
   }
-  const agentSession = await createLoopAgentSession(config, ctx)
+  const agentSession = options.workerSession ?? (await createLoopAgentSession(config, ctx))
   const baseAgent = resolveLoopAgent(config)
   const reviewAgent = resolveReviewAgent(config)
 
@@ -442,6 +447,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     }
     options.onPhase?.(event)
   }
+
+  const phaseCosts = (): Pick<AgentLoopPhaseEvent, 'costUsd' | 'listCostUsd' | 'billedCostUsd'> => ({
+    costUsd: usageSummary.totalCostUsd,
+    listCostUsd: usageSummary.totalListCostUsd,
+    billedCostUsd: usageSummary.totalBilledCostUsd,
+  })
 
   const finish = (
     result: Omit<AgentLoopResult, 'usage' | 'status'> & {
@@ -490,9 +501,16 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
   const budgetCompletionReason = (): string => {
     const source = costSourceMix(usageSummary)
+    const list = usageSummary.totalListCostUsd
+    const billed = usageSummary.totalBilledCostUsd
+    const split =
+      list !== undefined && billed !== undefined && usageCostsDifferForDisplay(list, billed)
+        ? ` list ~$${list.toFixed(4)} billed $${billed.toFixed(4)}.`
+        : ''
     return (
       `Budget cap reached: totalCostUsd $${usageSummary.totalCostUsd.toFixed(4)} ` +
-      `>= maxCostUsd $${config.maxCostUsd!.toFixed(4)} (costSource ${source}).`
+      `>= maxCostUsd $${config.maxCostUsd!.toFixed(4)} (costSource ${source}).` +
+      split
     )
   }
 
@@ -557,7 +575,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       phase: 'GOAL',
       iteration: 1,
       maxIterations: config.maxIterations,
-      costUsd: 0,
+      ...phaseCosts(),
     })
 
     for (let i = 1; i <= config.maxIterations; i++) {
@@ -610,7 +628,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         phase: 'WORKER',
         iteration: i,
         maxIterations: config.maxIterations,
-        costUsd: usageSummary.totalCostUsd,
+        ...phaseCosts(),
       })
       const collector = config.exportTranscript
         ? new StreamCollector({ phase: 'implement', iteration: i })
@@ -688,7 +706,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         phase: 'VERIFY',
         iteration: i,
         maxIterations: config.maxIterations,
-        costUsd: usageSummary.totalCostUsd,
+        ...phaseCosts(),
       })
       const verifyStartedAt = Date.now()
       const verify =
@@ -765,7 +783,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           phase: 'JUDGE',
           iteration: i,
           maxIterations: config.maxIterations,
-          costUsd: usageSummary.totalCostUsd,
+          ...phaseCosts(),
         })
         const judgeStartedAt = Date.now()
         const reviewPhase = await runPostSuccessReviewPhase({

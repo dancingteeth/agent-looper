@@ -290,9 +290,12 @@ export {
   lastPhaseCostUsd,
   nextCallFitsBudget,
   formatUsageSummaryLine,
+  formatUsageRecordLog,
   logUsageSummary,
   mergeUsageSummaries,
   MODEL_PRICING_PER_MILLION,
+  isHostedFreeModel,
+  USAGE_LIST_PRICE_NOTE,
   summarizeUsageRecords,
 } from './usage/loopUsage.js'
 export type { AgentRunPhase, LoopUsageRecord, LoopUsageSummary } from './usage/loopUsage.js'

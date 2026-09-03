@@ -11,10 +11,28 @@ import {
 } from './loopFailureDomain.js'
 import { gitDiffStatSinceBranchBase } from '../review/loopPostReview.js'
 import { readLatestLoopReview, resolveLatestReviewPath } from './loopReport.js'
-import { addUsageRecord, emptyUsageSummary, formatUsageSummaryLine } from '../usage/loopUsage.js'
+import {
+  addUsageRecord,
+  emptyUsageSummary,
+  formatUsageSummaryLine,
+  usageCostsDifferForDisplay,
+  USAGE_LIST_PRICE_NOTE,
+  type LoopUsageRecord,
+} from '../usage/loopUsage.js'
 import { formatToolSummary, type TranscriptEvent } from '../stream/streamCollect.js'
 import { loopRuntimeLabel } from '../agents/agentRunner.js'
 import { buildLoopRunScoreboard, formatScoreboardMarkdown, readLoopLogEntries } from './loopRunScoreboard.js'
+
+function formatRunReportUsageMoney(usage: LoopUsageRecord): string {
+  if (
+    usage.listCostUsd !== undefined &&
+    usage.billedCostUsd !== undefined &&
+    usageCostsDifferForDisplay(usage.listCostUsd, usage.billedCostUsd)
+  ) {
+    return `list ~$${usage.listCostUsd.toFixed(4)} billed $${usage.billedCostUsd.toFixed(4)}`
+  }
+  return `~$${usage.costUsd.toFixed(4)}`
+}
 
 export const RUN_REPORT_FILENAME = 'run-report.md'
 export const TRANSCRIPT_FILENAME = 'transcript.ndjson'
@@ -156,7 +174,7 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     `**Outcome:** ${input.result.complete ? 'complete' : 'incomplete'} in ${input.result.iterations} iteration(s)`,
     `**Reason:** ${input.result.completionReason}`,
     `**Usage:** ${usageLine}`,
-    '',
+    ...(input.result.usage.records.length > 0 ? [`**Cost note:** ${USAGE_LIST_PRICE_NOTE}`, ''] : ['']),
     ...formatScoreboardMarkdown(
       buildLoopRunScoreboard({
         entries,
@@ -241,7 +259,7 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     }
     if (entry.usage) {
       lines.push(
-        `- **Worker usage:** ${entry.usage.inputTokens} in / ${entry.usage.outputTokens} out (~$${entry.usage.costUsd.toFixed(4)})`,
+        `- **Worker usage:** ${entry.usage.inputTokens} in / ${entry.usage.outputTokens} out (${formatRunReportUsageMoney(entry.usage)})`,
       )
     }
     if (entry.assistantPreview) {

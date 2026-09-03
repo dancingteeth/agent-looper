@@ -46,7 +46,7 @@ Options:
   --verbose, -v                   Tool args/results on stderr
 ${printRepoRootHelp()}
   --max-iterations <n>            Override loop.json maxIterations
-  --max-cost <n>                  Dollar cap: stop (waiting) when cost crosses $n
+  --max-cost <n>                  Dollar cap (billed if >$0, else API list); stop waiting when crossed
   --verify <shell-cmd>            Override loop.json verify command
   --final-verify <cmd>            Override loop.json finalVerify
   --quality-review                Force advisory post-success review

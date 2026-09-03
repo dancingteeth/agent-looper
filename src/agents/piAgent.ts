@@ -9,7 +9,7 @@ import {
   toPiThinkingLevel,
   type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
-import { createUsageRecord } from '../usage/loopUsage.js'
+import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 
@@ -163,7 +163,7 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
         const usage = readPiUsage(session.state.messages, options.modelId, phase)
         if (usage) {
           console.error(
-            `[agent-loop:pi] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
+            `[agent-loop:pi] usage ${formatUsageRecordLog(usage)}`,
           )
         }
 

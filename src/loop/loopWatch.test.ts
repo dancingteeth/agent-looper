@@ -54,6 +54,21 @@ describe('formatWatchStatusLine', () => {
     })
     expect(line).toContain('cost~$0.04')
   })
+
+  it('shows list and billed when a subscription invoice is $0', () => {
+    const line = formatWatchStatusLine({
+      phase: 'JUDGE',
+      iteration: 1,
+      maxIterations: 8,
+      elapsedMs: 12_000,
+      costUsd: 0.24,
+      listCostUsd: 0.24,
+      billedCostUsd: 0,
+    })
+    expect(line).toContain('list~$0.24')
+    expect(line).toContain('billed $0.00')
+    expect(line).not.toContain('cost~$0.00')
+  })
 })
 
 describe('WatchHeartbeat', () => {

@@ -7,7 +7,7 @@ import {
   LOOP_RUNTIME_MUSE,
   type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
-import { createUsageRecord } from '../usage/loopUsage.js'
+import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
 import { readPackageVersion } from '../telemetry/looperTelemetry.js'
@@ -346,7 +346,7 @@ export async function createMuseLoopSession(ctx: RepoContext): Promise<MuseLoopS
         const usage = readMuseUsage(outcome.params.usage, options.modelId, phase)
         if (usage) {
           console.error(
-            `[agent-loop:muse] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
+            `[agent-loop:muse] usage ${formatUsageRecordLog(usage)}`,
           )
         }
 

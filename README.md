@@ -224,7 +224,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `costPreset` | — | Named worker+judge stack: `minmax` (efficiency — cheapest *capable* worker + strongest included judge; Grok whenever Cursor is installed), `balanced` (escalate-tier worker, same judge), `cursor` (Composer + Grok). Detect-bound at parse when `runtime`/`model` are unset; explicit keys win. Not Auto. |
 | `model` / `escalateModel` | (defaults) | Worker model; escalate on identical verifier stagnation **or** immediately after a hung/timed-out worker (OpenCode/Pi/Codex/DSH/Muse/Claude: after threshold; Cline: after reasoning ceiling — worker fault skips the ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
-| `maxCostUsd` | — | Dollar cap: refuse to start a billed **worker** call whose predicted cost exceeds remaining budget; after a finished worker (or billed review) that still crosses it, stop `waiting` + HITL `budget` (`--max-cost`). Omit = no cap. |
+| `maxCostUsd` | — | Dollar cap on the **budget** figure: billed invoice when the runtime reports more than $0 (PAYG), otherwise API **list** price so a $0 subscription quota still stops. Watch/report show list and billed when they differ (`--max-cost`). Omit = no cap. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
 | `pauseAfterIteration` | `false` | Wait for Enter after each iteration (TTY only) |

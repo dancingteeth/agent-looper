@@ -18,7 +18,7 @@ import {
   waitForOpencodeSessionTurn,
   type OpencodeAgentRunOptions,
 } from './opencodeTurn.js'
-import { createUsageRecord } from '../usage/loopUsage.js'
+import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import { emitAssistantText } from '../stream/assistantStream.js'
 import {
   pathWithLocalOpencodeBins,
@@ -342,9 +342,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           cacheWriteTokens: tokens?.cache?.write ?? 0,
           providerCostUsd: assistantInfo.cost,
         })
-        console.error(
-          `[agent-loop:opencode] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
-        )
+        console.error(`[agent-loop:opencode] usage ${formatUsageRecordLog(usage)}`)
 
         return {
           text,

@@ -21,6 +21,12 @@ import {
   DEFAULT_DSH_LOOP_MODEL,
   parseProviderModel,
 } from '../loop/loopAgentConfig.js'
+import {
+  dshSessionsRoot,
+  snapshotDshSessionLogs,
+  readDshSessionUsage,
+} from './dshSessionUsage.js'
+import { formatUsageRecordLog } from '../usage/loopUsage.js'
 
 export const DSH_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 export const DSH_KILL_GRACE_MS = 3000
@@ -269,6 +275,9 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
       fs.writeFileSync(patchPath, buildDshLoopPatchYaml(ctx.repoRoot, options.modelId), 'utf8')
 
       console.error(`[agent-loop:dsh] profile=headless model=${options.modelId}`)
+      const sessionsRoot = dshSessionsRoot()
+      const before = snapshotDshSessionLogs(sessionsRoot, ctx.repoRoot)
+      const phase = options.phase ?? 'implement'
 
       try {
         const result = await spawnDshHeadless({
@@ -293,10 +302,31 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
 
         emitAssistantText(options, `${text}\n`)
 
+        let usage: AgentRunResult['usage']
+        let sessionId: string | undefined
+        try {
+          const captured = readDshSessionUsage({
+            sessionsRoot,
+            cwd: ctx.repoRoot,
+            before,
+            model: options.modelId,
+            phase,
+          })
+          usage = captured?.usage
+          sessionId = captured?.sessionId
+          if (usage) {
+            console.error(`[agent-loop:dsh] usage ${formatUsageRecordLog(usage)}`)
+          }
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err)
+          console.error(`[agent-loop:dsh] usage: could not read session log (${detail})`)
+        }
+
         return {
           text,
+          usage,
           innerAgent: resolveInnerAgentStatus(text, 'dsh'),
-          sessionRef: { provider: 'dsh' },
+          sessionRef: { provider: 'dsh', ...(sessionId ? { sessionId } : {}) },
         }
       } finally {
         try {

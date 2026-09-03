@@ -5,7 +5,7 @@ import {
   setAssistantStreamSink,
 } from '../stream/assistantStream.js'
 import {
-  formatWatchCostUsd,
+  formatWatchCostPhrase,
   parseWatchLogLine,
   processIsAlive,
   readWatchLiveFile,
@@ -37,6 +37,8 @@ export type GrindPulse = {
   maxIterations: number
   elapsedMs: number
   costUsd: number
+  listCostUsd?: number
+  billedCostUsd?: number
   logAgeMs: number | null
   streamAgeMs: number | null
   streamChars: number
@@ -187,6 +189,8 @@ export function readGrindPulse(
     maxIterations: status.maxIterations,
     elapsedMs: status.elapsedMs,
     costUsd: status.costUsd,
+    listCostUsd: status.listCostUsd,
+    billedCostUsd: status.billedCostUsd,
     logAgeMs,
     streamAgeMs,
     streamChars,
@@ -215,7 +219,7 @@ export function formatGrindPulseLines(pulse: GrindPulse): string[] {
   return [
     `${pidBit}${pulse.verdict}`,
     `phase=${pulse.phase} ${pulse.iteration}/${pulse.maxIterations} ` +
-      `elapsed=${Math.round(pulse.elapsedMs / 1000)}s cost~${formatWatchCostUsd(pulse.costUsd)}`,
+      `elapsed=${Math.round(pulse.elapsedMs / 1000)}s ${formatWatchCostPhrase(pulse)}`,
     `log quiet ${formatAge(pulse.logAgeMs)} · ${streamBit}`,
     `last: ${pulse.lastLogHint}`,
     'SDK can stay silent until wait() — live pid is the heartbeat',

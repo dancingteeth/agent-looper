@@ -298,6 +298,8 @@ try {
           iteration: event.iteration,
           maxIterations: event.maxIterations,
           costUsd: event.costUsd,
+          listCostUsd: event.listCostUsd,
+          billedCostUsd: event.billedCostUsd,
         })
         try {
           writeWatchStatus(watchStatusPath(loopDir), {
@@ -305,6 +307,8 @@ try {
             iteration: event.iteration,
             maxIterations: event.maxIterations,
             costUsd: event.costUsd,
+            listCostUsd: event.listCostUsd,
+            billedCostUsd: event.billedCostUsd,
             phaseStartedAt: new Date().toISOString(),
             pid: process.pid,
           })

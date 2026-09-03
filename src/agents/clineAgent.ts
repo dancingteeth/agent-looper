@@ -15,7 +15,7 @@ import {
   LOOP_RUNTIME_CLINE_PASS,
   type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
-import { createUsageRecord } from '../usage/loopUsage.js'
+import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import {
   listChildPids,
   watchSpawnedChildren,
@@ -236,7 +236,7 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
           )
           if (usage) {
             console.error(
-              `[agent-loop:cline] usage in=${usage.inputTokens} out=${usage.outputTokens} ~$${usage.costUsd.toFixed(4)} (${usage.costSource})`,
+              `[agent-loop:cline] usage ${formatUsageRecordLog(usage)}`,
             )
           }
 

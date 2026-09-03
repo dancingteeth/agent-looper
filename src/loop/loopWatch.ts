@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { usageCostsDifferForDisplay } from '../usage/loopUsage.js'
 
 export type WatchPhase = 'GOAL' | 'WORKER' | 'VERIFY' | 'JUDGE'
 
@@ -8,7 +9,10 @@ export type WatchStatus = {
   iteration: number
   maxIterations: number
   elapsedMs: number
+  /** Budget figure (list when billed is $0/unknown). */
   costUsd: number
+  listCostUsd?: number
+  billedCostUsd?: number
   costSource?: 'provider' | 'estimated'
   /** Live file is present but the `run` pid is gone (crash / kill). */
   ended?: boolean
@@ -20,12 +24,25 @@ export function formatWatchCostUsd(costUsd: number): string {
   return `$${costUsd.toFixed(2)}`
 }
 
+export function formatWatchCostPhrase(input: {
+  costUsd: number
+  listCostUsd?: number
+  billedCostUsd?: number
+}): string {
+  const list = input.listCostUsd
+  const billed = input.billedCostUsd
+  if (list !== undefined && billed !== undefined && usageCostsDifferForDisplay(list, billed)) {
+    return `list~${formatWatchCostUsd(list)} billed ${formatWatchCostUsd(billed)}`
+  }
+  return `cost~${formatWatchCostUsd(input.costUsd)}`
+}
+
 /** Structured, always-on progress line (`[agent-loop] phase=WORKER iteration=1/8 elapsed=12s cost~$0.04`). */
 export function formatWatchStatusLine(status: WatchStatus): string {
   const elapsedSeconds = Math.round(status.elapsedMs / 1000)
   return (
     `[agent-loop] phase=${status.phase} iteration=${status.iteration}/${status.maxIterations} ` +
-    `elapsed=${elapsedSeconds}s cost~${formatWatchCostUsd(status.costUsd)}`
+    `elapsed=${elapsedSeconds}s ${formatWatchCostPhrase(status)}`
   )
 }
 
@@ -51,7 +68,15 @@ export class WatchHeartbeat {
   private readonly emit: (line: string) => void
   private timer: ReturnType<typeof setInterval> | undefined
   private current:
-    | { phase: WatchPhase; iteration: number; maxIterations: number; costUsd: number; startedAtMs: number }
+    | {
+        phase: WatchPhase
+        iteration: number
+        maxIterations: number
+        costUsd: number
+        listCostUsd?: number
+        billedCostUsd?: number
+        startedAtMs: number
+      }
     | undefined
 
   constructor(options: WatchHeartbeatOptions = {}) {
@@ -65,6 +90,8 @@ export class WatchHeartbeat {
     iteration: number
     maxIterations: number
     costUsd: number
+    listCostUsd?: number
+    billedCostUsd?: number
     atMs?: number
   }): void {
     this.stop()
@@ -73,6 +100,8 @@ export class WatchHeartbeat {
       iteration: input.iteration,
       maxIterations: input.maxIterations,
       costUsd: input.costUsd,
+      listCostUsd: input.listCostUsd,
+      billedCostUsd: input.billedCostUsd,
       startedAtMs: input.atMs ?? this.now(),
     }
     this.emitLine(0)
@@ -102,6 +131,8 @@ export class WatchHeartbeat {
         maxIterations: this.current.maxIterations,
         elapsedMs,
         costUsd: this.current.costUsd,
+        listCostUsd: this.current.listCostUsd,
+        billedCostUsd: this.current.billedCostUsd,
       }),
     )
   }
@@ -112,7 +143,7 @@ export type WatchLogEntry = {
   iteration?: number
   verify?: { complete?: boolean }
   review?: { verdict?: string }
-  usage?: { costUsd?: number; phase?: string }
+  usage?: { costUsd?: number; listCostUsd?: number; billedCostUsd?: number; phase?: string }
 }
 
 export function parseWatchLogLine(line: string): WatchLogEntry | undefined {
@@ -154,6 +185,20 @@ export function readWatchSnapshot(
   const iteration = last.iteration ?? lines.length
   const maxIterations = options?.maxIterations ?? iteration
   const costUsd = lines.reduce((sum, entry) => sum + (entry.usage?.costUsd ?? 0), 0)
+  let listAny = false
+  let billedAny = false
+  let listCostUsd = 0
+  let billedCostUsd = 0
+  for (const entry of lines) {
+    if (typeof entry.usage?.listCostUsd === 'number') {
+      listAny = true
+      listCostUsd += entry.usage.listCostUsd
+    }
+    if (typeof entry.usage?.billedCostUsd === 'number') {
+      billedAny = true
+      billedCostUsd += entry.usage.billedCostUsd
+    }
+  }
   const spanMs = first.at && last.at ? Date.parse(last.at) - Date.parse(first.at) : 0
   const elapsedMs = Number.isFinite(spanMs) && spanMs >= 0 ? spanMs : 0
 
@@ -163,6 +208,8 @@ export function readWatchSnapshot(
     maxIterations,
     elapsedMs,
     costUsd,
+    ...(listAny ? { listCostUsd } : {}),
+    ...(billedAny ? { billedCostUsd } : {}),
   }
 }
 
@@ -175,6 +222,8 @@ export type WatchLiveFile = {
   iteration: number
   maxIterations: number
   costUsd: number
+  listCostUsd?: number
+  billedCostUsd?: number
   phaseStartedAt: string
   /** `run` process id; Watch treats a dead pid as ended, not still-working. */
   pid?: number
@@ -215,11 +264,21 @@ function parseWatchLiveFile(raw: unknown): WatchLiveFile | undefined {
     }
     pid = record.pid
   }
+  const listCostUsd =
+    typeof record.listCostUsd === 'number' && Number.isFinite(record.listCostUsd)
+      ? record.listCostUsd
+      : undefined
+  const billedCostUsd =
+    typeof record.billedCostUsd === 'number' && Number.isFinite(record.billedCostUsd)
+      ? record.billedCostUsd
+      : undefined
   return {
     phase: record.phase,
     iteration: record.iteration,
     maxIterations: record.maxIterations,
     costUsd: record.costUsd,
+    ...(listCostUsd !== undefined ? { listCostUsd } : {}),
+    ...(billedCostUsd !== undefined ? { billedCostUsd } : {}),
     phaseStartedAt: record.phaseStartedAt,
     pid,
   }
@@ -260,6 +319,8 @@ export function liveFileToStatus(live: WatchLiveFile, nowMs: number = Date.now()
     maxIterations: live.maxIterations,
     elapsedMs,
     costUsd: live.costUsd,
+    ...(live.listCostUsd !== undefined ? { listCostUsd: live.listCostUsd } : {}),
+    ...(live.billedCostUsd !== undefined ? { billedCostUsd: live.billedCostUsd } : {}),
   }
 }
 

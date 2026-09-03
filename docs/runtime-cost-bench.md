@@ -62,10 +62,9 @@ Keep `postQualityReview` / `reviewGate` **off** for this slice so review-gate
 unparseable verdicts do not mask implement cost. Record iterations-to-green and
 the `Usage:` line from `run-report.md`.
 
-Do **not** include `runtime: dsh` in the first token/$ slice. Headless DSH does
-not yet return usage into `loopUsage` (`usage: (no token data captured)` on
-`cli-setup-wizard`). Iterations-to-green for DSH can wait until usage is wired,
-or be logged as complete/iterations only.
+Do **not** include `runtime: dsh` in the first token/$ slice until a trial
+actually records the `Usage:` line (session-log parse). Older exports show
+`usage: (no token data captured)` — that is missing telemetry, not $0 Pro.
 
 ## Results
 
@@ -78,6 +77,6 @@ or be logged as complete/iterations only.
 - LLM-as-exit or “which answer looks better”
 - Nesting another harness as `runtime`
 - Publishing numbers until n≥3 actually ran
-- Faking usage for DSH / missing provider telemetry
+- Inventing token counts when a runtime leaves no session log or SDK usage
 
-Related: [`runtime-map.md`](./runtime-map.md), [`competitive-steal-backlog.md`](./competitive-steal-backlog.md) P6.
+Related: [`runtime-map.md`](./runtime-map.md).

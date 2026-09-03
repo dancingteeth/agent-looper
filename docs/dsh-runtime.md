@@ -56,7 +56,7 @@ Full Access on the **web** session does not change the headless worker patch: th
 
 **CI / no live DeepSeek spend**
 
-- `pnpm exec vitest run src/agents/dshAgent.test.ts` — patch YAML (including `workspace-write-never`), spawn timeout, Node floor
+- `pnpm exec vitest run src/agents/dshAgent.test.ts src/agents/dshSessionUsage.test.ts` — patch YAML (including `workspace-write-never`), spawn timeout, Node floor, session-log usage parse
 - `pnpm exec vitest run src/agents/agentRunner.test.ts src/loop/loopAgentConfig.test.ts` — `runtime: dsh` wiring
 - In **this checkout** (package bins are not on `pnpm exec` until the package is a dependency): `node dist/cli/check.js dsh` or `pnpm agent:check:dsh`. Consumers: `pnpm exec agent-check dsh`.
 
@@ -64,7 +64,7 @@ Full Access on the **web** session does not change the headless worker patch: th
 
 - One-iteration smoke: freeze a tiny loop in the same git checkout the worker must edit (`runtime: dsh`, `reviewGate: false`), then `agent-loop run` from a host shell on Node 22.15+
 - Headless `workspace-write` is rooted at that session cwd — pasting another repo path does not retarget writes
-- Cost-bench token/$ for DSH waits until headless returns usage into `loopUsage`. Iteration completion (stdout + exit via `close`) has been exercised against a real `dsh` binary; CI still mocks spawn.
+- After each headless turn the harness reads `~/.dsh/sessions/<project>/session-*/session.jsonl.zstd` (or `.jsonl`) and sums `assistant/message` `usage` into `loopUsage` at **API list** rates. DSH does not return an invoice on stdout; billed stays unknown. Watch `$0.00` for DSH meant “no usage wired”, not a free Pro model.
 
 ## Install
 
