@@ -104,6 +104,8 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'muse-spark-1.1': { input: 1.25, output: 4.25 },
   'muse-spark-1.2': { input: 1.25, output: 4.25 },
   'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
+  'muse-spark-1.3': { input: 1.25, output: 4.25 },
+  'muse-spark-1.3-contributor': { input: 1.25, output: 4.25 },
   // Claude Code aliases — list-price estimates; spawn prefers subscription quota (`total_cost_usd` when present)
   sonnet: { input: 3.0, output: 15.0 },
   opus: { input: 15.0, output: 75.0 },

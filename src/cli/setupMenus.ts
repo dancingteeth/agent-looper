@@ -13,6 +13,8 @@ import {
   DSH_VISION_LOOP_MODEL,
   DEFAULT_MUSE_LOOP_MODEL,
   DEFAULT_MUSE_REVIEW_MODEL,
+  MUSE_SPARK_1_2_LOOP_MODEL,
+  MUSE_SPARK_1_2_REVIEW_MODEL,
   MUSE_SPARK_1_1_MODEL,
   DEFAULT_CLAUDE_LOOP_MODEL,
   DEFAULT_CLAUDE_ESCALATE_MODEL,
@@ -183,7 +185,7 @@ export const JUDGE_RUNTIME_CHOICES: readonly MenuChoice[] = [
   {
     value: LOOP_RUNTIME_MUSE,
     title: 'Muse Code (muse)',
-    description: 'Muse Code judge. Default muse-spark-1.2.',
+    description: 'Muse Code judge. Default muse-spark-1.3.',
   },
   {
     value: LOOP_RUNTIME_CLAUDE,
@@ -319,12 +321,16 @@ const MODEL_BLURBS: Record<string, string> = {
     'GPT 5.6 Terra — balanced escalate when Luna stalls.',
   'gpt-5.6-sol':
     'GPT 5.6 Sol — frontier judge. Do not use as a cheap worker.',
+  'muse-spark-1.3-contributor':
+    'Muse Spark 1.3 contributor — same model as PAYG. Discounted CLI login; content may train. Default Muse worker.',
+  'muse-spark-1.3':
+    'Muse Spark 1.3 PAYG — same weights as contributor, billed list price, no contributor training share. Not a stronger model.',
   'muse-spark-1.2-contributor':
-    'Muse Spark 1.2 contributor — same model as PAYG. Discounted CLI login; content may train. Default Muse worker.',
+    'Muse Spark 1.2 contributor — previous Spark. Prefer 1.3 unless you still have quota here.',
   'muse-spark-1.2':
-    'Muse Spark 1.2 PAYG — same weights as contributor, billed list price, no contributor training share. Not a stronger model.',
+    'Muse Spark 1.2 PAYG — previous Spark, list price. Same weights as 1.2 contributor; not a stronger model.',
   'muse-spark-1.1':
-    'Muse Spark 1.1 — previous Spark slug. Same adapter; prefer 1.2 unless you still have quota here.',
+    'Muse Spark 1.1 — earlier Spark slug. Same adapter; prefer 1.3 unless you still have quota here.',
   sonnet:
     'Claude Sonnet — daily coding. Default Claude worker; burns Max/Pro quota, not Console tokens.',
   opus:
@@ -468,6 +474,16 @@ export function workerModelChoices(runtime: LoopRuntime): MenuChoice[] {
           value: DEFAULT_MUSE_REVIEW_MODEL,
           title: DEFAULT_MUSE_REVIEW_MODEL,
           description: modelChoiceDescription(DEFAULT_MUSE_REVIEW_MODEL),
+        },
+        {
+          value: MUSE_SPARK_1_2_LOOP_MODEL,
+          title: MUSE_SPARK_1_2_LOOP_MODEL,
+          description: modelChoiceDescription(MUSE_SPARK_1_2_LOOP_MODEL),
+        },
+        {
+          value: MUSE_SPARK_1_2_REVIEW_MODEL,
+          title: MUSE_SPARK_1_2_REVIEW_MODEL,
+          description: modelChoiceDescription(MUSE_SPARK_1_2_REVIEW_MODEL),
         },
         {
           value: MUSE_SPARK_1_1_MODEL,

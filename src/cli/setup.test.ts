@@ -154,10 +154,12 @@ describe('agent-loop-setup', () => {
   it('does not offer a Muse model escalate — PAYG Spark is a billing pick, not a stronger slug', () => {
     expect(escalateModelChoices('muse').map((choice) => choice.value)).toEqual([''])
     const muse = workerModelChoices('muse').map((choice) => choice.value)
+    expect(muse).toContain('muse-spark-1.3-contributor')
+    expect(muse).toContain('muse-spark-1.3')
     expect(muse).toContain('muse-spark-1.2-contributor')
     expect(muse).toContain('muse-spark-1.2')
-    expect(modelChoiceDescription('muse-spark-1.2')).toMatch(/same weights/i)
-    expect(modelChoiceDescription('muse-spark-1.2')).not.toMatch(/escalate/i)
+    expect(modelChoiceDescription('muse-spark-1.3')).toMatch(/same weights/i)
+    expect(modelChoiceDescription('muse-spark-1.3')).not.toMatch(/escalate/i)
   })
 
   it('offers DSH vision-exp alongside Flash and Pro', () => {

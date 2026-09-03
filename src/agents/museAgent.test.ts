@@ -152,7 +152,7 @@ describe('createMuseLoopSession', () => {
   it('spawns muse serve, auto-approves, and runs a fresh session per turn', async () => {
     const session = await createMuseLoopSession(testCtx)
     const result = await session.runPrompt('do the thing', {
-      modelId: 'muse-spark-1.2-contributor',
+      modelId: 'muse-spark-1.3-contributor',
       assistantOutput: 'none',
       phase: 'implement',
       reasoningEffort: 'high',
@@ -176,7 +176,7 @@ describe('createMuseLoopSession', () => {
     expect(spawn.mock.calls[0][0].clientInfo.name).toMatch(/^[a-z0-9_]+$/)
     expect(startSession).toHaveBeenCalledWith({
       workspaceRoot: '/repo',
-      modelId: 'muse-spark-1.2-contributor',
+      modelId: 'muse-spark-1.3-contributor',
       approvalMode: 'allowAll',
     })
     expect(onApproval).toHaveBeenCalledOnce()
@@ -188,7 +188,7 @@ describe('createMuseLoopSession', () => {
     )
 
     await session.runPrompt('second turn', {
-      modelId: 'muse-spark-1.2-contributor',
+      modelId: 'muse-spark-1.3-contributor',
       assistantOutput: 'none',
     })
     expect(startSession).toHaveBeenCalledTimes(2)
@@ -212,7 +212,7 @@ describe('createMuseLoopSession', () => {
     const session = await createMuseLoopSession(testCtx)
     await expect(
       session.runPrompt('do the thing', {
-        modelId: 'muse-spark-1.2-contributor',
+        modelId: 'muse-spark-1.3-contributor',
         assistantOutput: 'none',
       }),
     ).rejects.toThrow('Muse turn failed: boom')
@@ -231,7 +231,7 @@ describe('createMuseLoopSession', () => {
     const session = await createMuseLoopSession(testCtx)
     await expect(
       session.runPrompt('do the thing', {
-        modelId: 'muse-spark-1.2-contributor',
+        modelId: 'muse-spark-1.3-contributor',
         assistantOutput: 'none',
       }),
     ).rejects.toThrow(/timed out after 20ms/)
@@ -250,7 +250,7 @@ describe('createMuseLoopSession', () => {
     const session = await createMuseLoopSession(testCtx)
     await expect(
       session.runPrompt('do the thing', {
-        modelId: 'muse-spark-1.2-contributor',
+        modelId: 'muse-spark-1.3-contributor',
         assistantOutput: 'none',
       }),
     ).rejects.toThrow(/Muse approval submitFailed approvalId=ap-1/)

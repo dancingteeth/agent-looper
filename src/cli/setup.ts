@@ -57,7 +57,7 @@ Worker runtimes: cursor | cline-pass | cline | opencode | pi | codex | dsh | mus
 Judge (review): reviewRuntime (cursor | cline-pass | cline | opencode | pi | codex | dsh | muse | claude),
   reviewModel (omit for runtime defaults: cursor grok-4.6 / composer-2.5, opencode
   opencode-go/deepseek-v4-pro, dsh deepseek-official/deepseek-v4-pro, codex gpt-5.6-sol,
-  muse muse-spark-1.2, claude opus),
+  muse muse-spark-1.3, claude opus),
   reviewGate, maxReviewCycles, postQualityReview, reviewRisk,
   reviewSecondaryRuntime (any review runtime; unset = off),
   reviewSecondaryModel (omit for that runtime’s judge default),

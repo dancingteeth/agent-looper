@@ -13,7 +13,7 @@ export const LOOP_RUNTIME_PI = 'pi' as const
 export const LOOP_RUNTIME_CODEX = 'codex' as const
 /** DeepSeek Harness worker — spawn `dsh --profile headless` (PATH CLI, no npm dep). */
 export const LOOP_RUNTIME_DSH = 'dsh' as const
-/** Muse Code (`@muse-code/sdk` + PATH `muse serve`) — Muse Spark slugs (e.g. muse-spark-1.2). */
+/** Muse Code (`@muse-code/sdk` + PATH `muse serve`) — Muse Spark slugs (e.g. muse-spark-1.3). */
 export const LOOP_RUNTIME_MUSE = 'muse' as const
 /** Claude Code — spawn PATH `claude -p` (subscription login; no Agent SDK). */
 export const LOOP_RUNTIME_CLAUDE = 'claude' as const
@@ -132,10 +132,13 @@ export const DEFAULT_DSH_ESCALATE_MODEL = 'deepseek-official/deepseek-v4-pro'
 /** Default DSH judge — V4 Pro (same split as Flash worker / Pro judge). */
 export const DEFAULT_DSH_REVIEW_MODEL = 'deepseek-official/deepseek-v4-pro'
 
-/** Default Muse worker — Spark 1.2 contributor (CLI login / discounted tokens). */
-export const DEFAULT_MUSE_LOOP_MODEL = 'muse-spark-1.2-contributor'
-/** Default Muse judge — PAYG Spark 1.2 (same weights as contributor; billing/privacy, not a stronger model). */
-export const DEFAULT_MUSE_REVIEW_MODEL = 'muse-spark-1.2'
+/** Default Muse worker — Spark 1.3 contributor (CLI login / discounted tokens). */
+export const DEFAULT_MUSE_LOOP_MODEL = 'muse-spark-1.3-contributor'
+/** Default Muse judge — PAYG Spark 1.3 (same weights as contributor; billing/privacy, not a stronger model). */
+export const DEFAULT_MUSE_REVIEW_MODEL = 'muse-spark-1.3'
+/** Prior Spark 1.2 slugs the adapter still prices and accepts. */
+export const MUSE_SPARK_1_2_LOOP_MODEL = 'muse-spark-1.2-contributor'
+export const MUSE_SPARK_1_2_REVIEW_MODEL = 'muse-spark-1.2'
 /** Prior Spark slug the adapter still prices and accepts. */
 export const MUSE_SPARK_1_1_MODEL = 'muse-spark-1.1'
 

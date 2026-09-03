@@ -80,7 +80,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 `@muse-code/sdk` and `muse` CLI — Meta Muse Code. Not on `costPreset` minmax. See [docs/muse-runtime.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md).
 
-- Worker: `muse-spark-1.2-contributor` (climb `reasoningEffort`; no stronger Spark slug)
+- Worker: `muse-spark-1.3-contributor` (climb `reasoningEffort`; no stronger Spark slug)
 - Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate`
 

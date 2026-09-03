@@ -220,7 +220,7 @@ describe('runOneShotAgentPrompt', () => {
       'go',
       {
         runtime: 'muse',
-        model: 'muse-spark-1.2',
+        model: 'muse-spark-1.3',
         reasoningEffort: 'high',
       },
       { phase: 'review' },

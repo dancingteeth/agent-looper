@@ -301,7 +301,7 @@ describe('createLoopAgentSession', () => {
     const session = await createLoopAgentSession(config, testCtx)
     const result = await session.runIterationPrompt(
       'prompt',
-      { runtime: 'muse', model: 'muse-spark-1.2-contributor', reasoningEffort: 'medium' },
+      { runtime: 'muse', model: 'muse-spark-1.3-contributor', reasoningEffort: 'medium' },
       { assistantOutput: 'none' },
     )
 
@@ -311,7 +311,7 @@ describe('createLoopAgentSession', () => {
     expect(museSession.runPrompt).toHaveBeenCalledWith(
       'prompt',
       expect.objectContaining({
-        modelId: 'muse-spark-1.2-contributor',
+        modelId: 'muse-spark-1.3-contributor',
         reasoningEffort: 'medium',
       }),
     )

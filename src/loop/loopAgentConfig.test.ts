@@ -271,7 +271,7 @@ describe('resolveIterationAgent reasoning effort', () => {
     })
   })
 
-  it('resolveReviewAgent defaults Muse judge to Spark 1.2 when reviewRuntime is muse', () => {
+  it('resolveReviewAgent defaults Muse judge to Spark 1.3 when reviewRuntime is muse', () => {
     const config = loopConfigSchema.parse({
       verify: 'true',
       runtime: 'muse',
@@ -279,11 +279,11 @@ describe('resolveIterationAgent reasoning effort', () => {
     })
     expect(resolveLoopAgent(config)).toEqual({
       runtime: 'muse',
-      model: 'muse-spark-1.2-contributor',
+      model: 'muse-spark-1.3-contributor',
     })
     expect(resolveReviewAgent(config)).toEqual({
       runtime: 'muse',
-      model: 'muse-spark-1.2',
+      model: 'muse-spark-1.3',
     })
     expect(config.escalateModel).toBeUndefined()
   })
@@ -313,12 +313,12 @@ describe('resolveIterationAgent reasoning effort', () => {
     })
     expect(resolveIterationAgent(config, 1, undefined)).toMatchObject({
       runtime: 'muse',
-      model: 'muse-spark-1.2-contributor',
+      model: 'muse-spark-1.3-contributor',
       reasoningEffort: 'low',
     })
     expect(resolveIterationAgent(config, 3, 2)).toMatchObject({
       runtime: 'muse',
-      model: 'muse-spark-1.2-contributor',
+      model: 'muse-spark-1.3-contributor',
       reasoningEffort: 'high',
     })
   })

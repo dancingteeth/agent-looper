@@ -35,7 +35,7 @@ const client = await MuseClient.spawn({
 })
 const session = await client.startSession({
   workspaceRoot: repoRoot,
-  modelId: 'muse-spark-1.2-contributor',
+  modelId: 'muse-spark-1.3-contributor',
   approvalMode: 'allowAll',
 })
 session.onApproval((request) => ({ choiceId: /* approved* decision */ }))
@@ -68,12 +68,12 @@ agent-check muse
 
 | Field | Default |
 | --- | --- |
-| `model` | `muse-spark-1.2-contributor` |
-| `escalateModel` | unset — PAYG `muse-spark-1.2` is the same weights (billing / whether Meta trains), not a stronger model |
-| `reviewModel` (when `reviewRuntime: "muse"`) | `muse-spark-1.2` (PAYG slug; not a stronger judge) |
+| `model` | `muse-spark-1.3-contributor` |
+| `escalateModel` | unset — PAYG `muse-spark-1.3` is the same weights (billing / whether Meta trains), not a stronger model |
+| `reviewModel` (when `reviewRuntime: "muse"`) | `muse-spark-1.3` (PAYG slug; not a stronger judge) |
 | `reasoningEffort` / `escalateReasoningEffort` | the only escalate lever |
 
-Model ids are Muse Spark slugs (`muse-spark-1.2`, `muse-spark-1.2-contributor`, …), not `provider/model`.
+Model ids are Muse Spark slugs (`muse-spark-1.3`, `muse-spark-1.3-contributor`, …), not `provider/model`.
 `reasoningEffort` (`low`…`xhigh` \| `none`) is sent on the MSP turn when set. Climb `escalateReasoningEffort` across iterations. There is no stronger Spark model to swap in.
 
 ## Auth
@@ -88,7 +88,7 @@ Subscriptions apply to Muse Code CLI login keys. Extra Model API keys are PAYG.
 ```json
 {
   "runtime": "muse",
-  "model": "muse-spark-1.2-contributor",
+  "model": "muse-spark-1.3-contributor",
   "reasoningEffort": "low",
   "escalateReasoningEffort": "high",
   "verify": "bash .cursor/loops/my-task/verify.sh"
@@ -107,7 +107,7 @@ Muse worker + Muse judge (PAYG Spark):
 }
 ```
 
-(`reviewModel` defaults to `muse-spark-1.2`; set it explicitly to override.)
+(`reviewModel` defaults to `muse-spark-1.3`; set it explicitly to override.)
 
 ## Constraints
 
@@ -115,7 +115,7 @@ Muse worker + Muse judge (PAYG Spark):
 - Do not rely on Muse auto-commit; harness owns git.
 - `onApproval` must pick a server-minted `choiceId` whose `decision` starts with `approved`. No match → fail closed (do not send deny or the first listed choice).
 - Wall-clock timeout (`AGENT_LOOP_MUSE_TIMEOUT_MS`, default 45m) and approval-decide failures call `client.close()` immediately so `muse serve` does not keep running until loop unwind.
-- When `reviewRuntime: "muse"`, judge defaults to PAYG **`muse-spark-1.2`** (same Spark as the contributor worker; omit `escalateModel`).
+- When `reviewRuntime: "muse"`, judge defaults to PAYG **`muse-spark-1.3`** (same Spark as the contributor worker; omit `escalateModel`).
 - Manual smoke: `pnpm agent:check:muse` (SDK + PATH `muse` + local `muse serve` handshake). Then a frozen loop with `--runtime muse` when you want a paid turn.
 
 See [`docs/runtime-map.md`](./runtime-map.md).
