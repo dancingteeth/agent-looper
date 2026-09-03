@@ -25,5 +25,6 @@ coverage/
 .cursor/loops/dsh-smoke/probe.txt
 .cursor/loops/**/verify-logs/
 
-# Local-only smoke (not shipped)
+# Local-only smoke / planning (not shipped)
 scripts/check-steal-backlog.sh
+docs/competitive-steal-backlog.md

@@ -112,7 +112,7 @@ Keep this file and `README.intro.md` / `README.md` worker–judge tables in sync
 | **Frontier Opus / GPT-class as default worker** | Wrong economics for grind loops; judge-only if ever |
 | **Gemini (Flash / Pro) as worker or judge** | Weak relative to DeepSeek / Qwen / Composer / Grok on fix-until-green; keep out of defaults — opt in only if you insist |
 | **Kilo Gateway / `runtime: kilo`** | Same OpenRouter `:free` pool. Use `openrouter/…:free` + `OPENROUTER_API_KEY` — [`opencode-providers.md`](./opencode-providers.md). No second runtime. |
-| **TrueForge (`@truefoundry/trueforge-sdk`)** | Competing agent *platform* (sessions, MCP, Daytona, chat UI), not a repo-editing worker. Steal lean-context bits in [`competitive-steal-backlog.md`](./competitive-steal-backlog.md) P6 — do not nest as `runtime: trueforge` |
+| **TrueForge (`@truefoundry/trueforge-sdk`)** | Competing agent *platform* (sessions, MCP, Daytona, chat UI), not a repo-editing worker. Lean-context steals (sidecar verify logs, progressive skills, cost bench) are already in-tree — do not nest as `runtime: trueforge` |
 
 ## Open-source positioning (share / fork)
 

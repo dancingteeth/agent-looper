@@ -21,7 +21,7 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 - `AGENTS.md` = worker runtime; `REVIEWS.md` = judge standard — do not conflate (see `templates/REVIEWS.md`).
 - Before freezing a new loop, prefer an [unknowns preflight](./docs/unknowns-preflight.md) when verify/deps are unfamiliar. Design in chat → freeze; do not edit `GOAL.md` mid-run. Optional [permissions matrix](./templates/LOOP.permissions.example.md) (tools/MCP default-deny).
 - **Cursor Agent Shell:** you start `agent-loop` / `agent-loop-batch` in this chat. Attach ≥45m (`2700000`) with `notify_on_output` on `^AGENT_LOOP_DONE `. Never `block_until_ms: 0` (reaped ~5 min, `aborted` / pnpm 255 — harness 45m timeouts did not fire). Never tell the human to run it in their terminal — that is not an alternative you get to pick. Human terminal is only when **they** already asked to walk away (Telegram/HITL wake them). `AGENT_LOOP_DONE` is a sentinel, not a license to background.
-- Competitive steals / skips: `docs/competitive-steal-backlog.md`.
+- Competitive steals / skips: local-only `docs/competitive-steal-backlog.md` (gitignored; not shipped).
 
 ## Layout
 

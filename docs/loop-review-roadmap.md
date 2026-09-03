@@ -361,8 +361,8 @@ PR that lands #1.
 | **M6** | Competitive P0 (docs/templates) | Positioning, prompt-diet, unknowns preflight, metric-grind template, `llms.txt` |
 | **M7** | Intervention + Guide packets | **Shipped** — Proceed/Guide/Deny/Confirm; Guide packets; `status` done\|continue\|waiting; trivial-verify warn |
 | **M8** | Batch rubrics / Auto model (optional) | **Shipped** — batch `{path,rubric}`; computer-use templates; Auto **blocked** pending SDK (`docs/cursor-auto-router.md`) |
-| **M9** | Linear Loops governance steals | **Shipped (docs/templates)** — prove→freeze, draft discipline, run-report as audit surface, `LOOP.permissions.example.md`, tool default-deny. No harness publish-snapshot yet — see [`competitive-steal-backlog.md`](./competitive-steal-backlog.md) P3 |
-| **M10** | Lunar graph scoreboard | **0.4.5** — docs (edge sentences + GOAL/preflight spec fields) + `run-report.md` report card (phase time, kill rate, retries, HITL, writer vs referee $). Hung-worker escalate + `check-running-loops` skill ship in the same patch. See backlog **P9** |
+| **M9** | Linear Loops governance steals | **Shipped (docs/templates)** — prove→freeze, draft discipline, run-report as audit surface, `LOOP.permissions.example.md`, tool default-deny. No harness publish-snapshot yet |
+| **M10** | Lunar graph scoreboard | **0.4.5** — docs (edge sentences + GOAL/preflight spec fields) + `run-report.md` report card (phase time, kill rate, retries, HITL, writer vs referee $). Hung-worker escalate + `check-running-loops` skill ship in the same patch |
 
 ### M6–M8 context (2026-07 competitive session)
 
@@ -371,8 +371,7 @@ Kilo self-test, Strands steering, Cursor Router). Agent Looper’s **non-negotia
 shell exit `0` + fresh context per iteration — not LLM-as-sole-exit, not thread memory,
 not issue→prod factory UI.
 
-Steal map and priorities: session canvas `session-steal-decisions` +
-[`competitive-steal-backlog.md`](./competitive-steal-backlog.md).
+Steal map and priorities: session canvas `session-steal-decisions` (local planning notes stay gitignored).
 
 ### M9 context (2026-08 Linear Loops)
 

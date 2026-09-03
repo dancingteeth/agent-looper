@@ -11,7 +11,6 @@ Start here:
 - AGENTS.md — working agreements for this repo
 - docs/verification-as-skill.md — measurable verify.sh + VERIFY.skill.md
 - docs/unknowns-preflight.md — remove unknowns before freezing GOAL
-- docs/competitive-steal-backlog.md — what we steal vs skip from the ecosystem
 - docs/runtime-map.md — worker/judge cost presets
 - docs/runtime-cost-bench.md — same-task runtime cost method (n≥3, change one variable)
 - docs/cursor-auto-router.md — Auto/Router opt-in blocked until SDK logs routed model id

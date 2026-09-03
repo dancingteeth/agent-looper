@@ -49,5 +49,4 @@ When `@cursor/sdk` can satisfy all of:
 ## References
 
 - https://cursor.com/blog/router
-- `docs/competitive-steal-backlog.md` P2
 - `src/loop/loopAgentConfig.ts`
