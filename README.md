@@ -24,7 +24,7 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor
 
 Other workers, judges, and flags are below. You do not need them for a first green run.
 
-How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md).
+How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md). Embedding this package as a library dependency in another ADE: [`docs/embed-api.md`](./docs/embed-api.md). Reporting a vulnerability: [`SECURITY.md`](./SECURITY.md).
 
 Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`), **Muse** (PATH `muse`), **Claude** (PATH `claude`, `--safe-mode`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). DSH companion for `dsh web` (skills + scaffold, not a second harness): [`docs/dsh-plugin.md`](./docs/dsh-plugin.md). Muse Code: [`docs/muse-runtime.md`](./docs/muse-runtime.md). Claude Code: [`docs/claude-runtime.md`](./docs/claude-runtime.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The primary judge defaults to Cursor (`reviewRuntime` unset) but can use any worker runtime via `reviewRuntime` + `reviewModel`.
 

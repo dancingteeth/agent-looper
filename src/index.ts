@@ -19,6 +19,8 @@ export { runAgentLoop, deriveLoopRunStatus } from './loop/agentLoop.js'
 export type {
   AgentLoopResult,
   AgentLoopOptions,
+  AgentLoopPhase,
+  AgentLoopPhaseEvent,
   LoopIterationLog,
   LoopRunStatus,
 } from './loop/agentLoop.js'
