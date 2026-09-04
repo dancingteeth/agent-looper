@@ -18,7 +18,7 @@ CLI bins stay `agent-loop` / `agent-check` / …
 No long-lived publish token. Workflow: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
 (on `main`, triggers on `v*` tags and `workflow_dispatch`).
 
-Requires **npm CLI ≥ 11.5.1** and **Node ≥ 22.14** on the runner (we use Node 22).
+Requires **npm CLI ≥ 11.5.1** and **Node ≥ 22.14** on the runner (we pin **22.15** so DSH `zlib.zstd*` tests run).
 
 **Status check:** `npm view @dancingteeth/agent-looper version` must succeed before trusted
 publishing can complete a release. If that 404s, do the bootstrap publish below first —

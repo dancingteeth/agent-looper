@@ -50,18 +50,21 @@ describe('dsh session log files', () => {
     }
   })
 
-  it('decompresses concatenated zstd frames', () => {
-    const a = zlib.zstdCompressSync(Buffer.from('{"type":"session"}\n'))
-    const b = zlib.zstdCompressSync(
-      Buffer.from(
-        '{"type":"assistant/message","data":{"usage":{"inputTokens":100,"outputTokens":20,"cacheReadTokens":0,"reasoningTokens":5}}}\n',
-      ),
-    )
-    const decoded = decompressConcatenatedZstd(Buffer.concat([a, b])).toString('utf8')
-    expect(decoded).toContain('"type":"session"')
-    expect(decoded).toContain('"inputTokens":100')
-    expect(sumDshAssistantMessageUsage(decoded).outputTokens).toBe(20)
-  })
+  it.skipIf(typeof zlib.zstdCompressSync !== 'function')(
+    'decompresses concatenated zstd frames',
+    () => {
+      const a = zlib.zstdCompressSync(Buffer.from('{"type":"session"}\n'))
+      const b = zlib.zstdCompressSync(
+        Buffer.from(
+          '{"type":"assistant/message","data":{"usage":{"inputTokens":100,"outputTokens":20,"cacheReadTokens":0,"reasoningTokens":5}}}\n',
+        ),
+      )
+      const decoded = decompressConcatenatedZstd(Buffer.concat([a, b])).toString('utf8')
+      expect(decoded).toContain('"type":"session"')
+      expect(decoded).toContain('"inputTokens":100')
+      expect(sumDshAssistantMessageUsage(decoded).outputTokens).toBe(20)
+    },
+  )
 
   it('picks the session log created after a spawn snapshot', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-usage-'))
