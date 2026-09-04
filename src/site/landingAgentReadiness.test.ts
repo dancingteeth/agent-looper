@@ -175,8 +175,10 @@ describe('landing agent readiness', () => {
       '# keep @dancingteeth/agent-looper in package.json even if .cursor/loops is gitignored',
     )
     expect(humanSnippet).toContain("don't only npx it")
-    expect(humanSnippet).toContain('export CURSOR_API_KEY=…   # or: doppler run -- …')
+    expect(humanSnippet).toContain('export CURSOR_API_KEY=…')
+    expect(humanSnippet).toContain('pnpm exec agent-loop-setup')
     expect(humanSnippet).toContain('pnpm exec agent-loop-prompt --out .cursor/loops/my-task')
+    expect(humanSnippet).not.toContain('doppler')
     expect(humanSnippet).toContain(
       'pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate',
     )
@@ -198,6 +200,7 @@ describe('landing agent readiness', () => {
     expect(md).toContain(
       '# keep @dancingteeth/agent-looper in package.json even if .cursor/loops is gitignored',
     )
+    expect(md).toContain('pnpm exec agent-loop-setup')
     expect(md).toContain('pnpm exec agent-loop-prompt --out .cursor/loops/my-task')
     expect(md).toContain('<cursor|cline|opencode|pi|codex|dsh|muse|claude>')
     expect(md).not.toContain('@0.5.0')
@@ -314,7 +317,7 @@ describe('landing agent readiness', () => {
     expect(html).toContain('tui-answer--spend')
   })
 
-  it('ships 0.5.0 story: prompt TUI, Claude, Muse 1.3, list/billed spend, no version pins', () => {
+  it('ships prompt FAQ with agent + terminal paths, Claude, Muse 1.3, list/billed spend, no version pins', () => {
     const html = readSite('index.html')
     const md = readSite('index.md')
     const harnessHtml = readSite('harnesses/index.html')
@@ -340,11 +343,15 @@ describe('landing agent readiness', () => {
       (q) => q.name === 'What do the spend numbers mean?',
     )
 
+    const agentPathBeat = 'with Agent Looper'
+    const setupBeat = 'agent-loop-setup'
     const promptBeat = 'agent-loop-prompt'
     const spendBeat = 'public API rates, including prompt-cache'
     const runtimeUnion = 'cursor|cline|opencode|pi|codex|dsh|muse|claude'
 
     for (const surface of [html, md] as const) {
+      expect(surface).toContain(agentPathBeat)
+      expect(surface).toContain(setupBeat)
       expect(surface).toContain(promptBeat)
       expect(surface).toContain(spendBeat)
       expect(surface).toContain(runtimeUnion)
@@ -352,8 +359,23 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/@dancingteeth\/agent-looper@/)
     }
 
-    expect(promptQuestion?.acceptedAnswer?.text).toContain('judge (not the worker)')
-    expect(promptQuestion?.acceptedAnswer?.text).toContain('agent-loop run')
+    const promptFaqSurfaces = [
+      html.slice(
+        html.indexOf('tui-answer--prompt'),
+        html.indexOf('tui-answer--spend'),
+      ),
+      md.slice(md.indexOf('## How do I start a loop from an idea?'), md.indexOf('## What do the spend numbers mean?')),
+      promptQuestion?.acceptedAnswer?.text ?? '',
+    ]
+    for (const surface of promptFaqSurfaces) {
+      expect(surface).toMatch(/coding agent.*logo/i)
+      expect(surface).toContain(agentPathBeat)
+      expect(surface).toContain(setupBeat)
+      expect(surface).toContain(promptBeat)
+      expect(surface).not.toMatch(/\bInk\b/i)
+      expect(surface).not.toMatch(/\bDoppler\b/i)
+    }
+
     expect(spendQuestion?.acceptedAnswer?.text).toContain('billed')
     expect(spendQuestion?.acceptedAnswer?.text).toContain('not free')
 
@@ -379,8 +401,11 @@ describe('landing agent readiness', () => {
       html.indexOf('id="install-panel-agent"'),
       html.indexOf('id="install-panel-human"'),
     )
+    expect(agentPanel).toContain('implement it with Agent Looper')
+    expect(agentPanel).toContain('pnpm exec agent-loop-setup')
     expect(agentPanel).toContain('pnpm exec agent-loop-prompt --out .cursor/loops/')
     expect(agentPanel).toContain(runtimeUnion)
+    expect(agentPanel).not.toMatch(/\bDoppler\b/i)
   })
 
   it('Claude runtime card describes judge as optional without MCP on the site', () => {
