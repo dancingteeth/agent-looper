@@ -166,6 +166,27 @@ describe('loopUsage', () => {
     expect(cachedLine).toContain('W 30.0k')
   })
 
+  it('includes Anthropic cache in list so billed is not inverted above list', () => {
+    const uncachedList = estimateCostUsd('sonnet', 30, 14_978)
+    const withCache = estimateCostUsd('sonnet', 30, 14_978, 794_133, 50_504)
+    expect(uncachedList).toBeCloseTo(0.22476, 5)
+    expect(withCache).toBeCloseTo(0.65239, 4)
+
+    const record = createUsageRecord({
+      phase: 'implement',
+      runtime: 'claude',
+      model: 'sonnet',
+      inputTokens: 30,
+      outputTokens: 14_978,
+      cacheReadTokens: 794_133,
+      cacheWriteTokens: 50_504,
+      providerCostUsd: 0.5149696,
+    })
+    expect(record.listCostUsd).toBeCloseTo(0.65239, 4)
+    expect(record.billedCostUsd).toBe(0.5149696)
+    expect(record.listCostUsd!).toBeGreaterThan(record.billedCostUsd!)
+  })
+
   it('merges batch summaries', () => {
     const a = summarizeUsageRecords([
       createUsageRecord({

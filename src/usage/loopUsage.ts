@@ -14,7 +14,7 @@ export type LoopUsageRecord = {
    */
   costUsd: number
   costSource: 'provider' | 'estimated'
-  /** Public API list price from `MODEL_PRICING_PER_MILLION` (`:free` → 0). */
+  /** Public API list price from `MODEL_PRICING_PER_MILLION`, including cache (`:free` → 0). */
   listCostUsd?: number
   /** Runtime-reported invoice; `$0` on included quota. Absent = unknown. */
   billedCostUsd?: number
@@ -40,7 +40,7 @@ export type LoopUsageSummary = {
 
 /** Shown under run-report usage: two numbers, one cap. */
 export const USAGE_LIST_PRICE_NOTE =
-  'List $ is public API list price (token intensity). Billed is the runtime invoice — $0 on included subscription quota, PAYG otherwise. maxCostUsd uses billed when it is > $0, otherwise list so a quota run can still stop.'
+  'List $ is public API list price (uncached input + output + cache read/write). Billed is the runtime invoice — $0 on included subscription quota, PAYG otherwise. maxCostUsd uses billed when it is > $0, otherwise list so a quota run can still stop.'
 
 export function isHostedFreeModel(model: string): boolean {
   if (model.endsWith(':free')) return true
@@ -53,8 +53,21 @@ export function usageCostsDifferForDisplay(listUsd: number, billedUsd: number): 
   return Math.abs(listUsd - billedUsd) >= 0.00005
 }
 
+export type ModelTokenRates = {
+  input: number
+  output: number
+  /** USD per 1M cache-read tokens. Default: 0.1 × input (Anthropic / DeepSeek). */
+  cacheRead?: number
+  /** USD per 1M cache-write tokens. Default: 1.25 × input (Anthropic 5-minute cache). */
+  cacheWrite?: number
+}
+
+/** Anthropic prompt-cache multipliers when a model omits explicit cache rates. */
+const DEFAULT_CACHE_READ_MULT = 0.1
+const DEFAULT_CACHE_WRITE_MULT = 1.25
+
 /** Official API rates (USD per 1M tokens). Kept in sync with CLINE_PASS_LOOP_MODELS / OPENCODE_GO_LOOP_MODELS via modelPricingDrift.test.ts */
-export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: number }> = {
+export const MODEL_PRICING_PER_MILLION: Record<string, ModelTokenRates> = {
   'composer-2.5': { input: 0.5, output: 2.5 },
   'grok-4.6': { input: 2.0, output: 6.0 },
   'grok-4.5': { input: 2.0, output: 6.0 },
@@ -106,11 +119,12 @@ export const MODEL_PRICING_PER_MILLION: Record<string, { input: number; output: 
   'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
   'muse-spark-1.3': { input: 1.25, output: 4.25 },
   'muse-spark-1.3-contributor': { input: 1.25, output: 4.25 },
-  // Claude Code aliases — list-price estimates; spawn prefers subscription quota (`total_cost_usd` when present)
-  sonnet: { input: 3.0, output: 15.0 },
-  opus: { input: 15.0, output: 75.0 },
-  haiku: { input: 1.0, output: 5.0 },
-  fable: { input: 15.0, output: 75.0 },
+  // Claude Code aliases — list-price estimates; spawn prefers subscription quota (`total_cost_usd` when present).
+  // Cache rates are Anthropic's published 5-minute prompt-cache multipliers (read 0.1× / write 1.25×).
+  sonnet: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 3.75 },
+  opus: { input: 15.0, output: 75.0, cacheRead: 1.5, cacheWrite: 18.75 },
+  haiku: { input: 1.0, output: 5.0, cacheRead: 0.1, cacheWrite: 1.25 },
+  fable: { input: 15.0, output: 75.0, cacheRead: 1.5, cacheWrite: 18.75 },
 }
 
 const TOKENS_PER_MILLION = 1_000_000
@@ -119,12 +133,18 @@ export function estimateCostUsd(
   model: string,
   inputTokens: number,
   outputTokens: number,
+  cacheReadTokens = 0,
+  cacheWriteTokens = 0,
 ): number | null {
   const rates = MODEL_PRICING_PER_MILLION[model]
   if (!rates) return null
+  const cacheReadRate = rates.cacheRead ?? rates.input * DEFAULT_CACHE_READ_MULT
+  const cacheWriteRate = rates.cacheWrite ?? rates.input * DEFAULT_CACHE_WRITE_MULT
   return (
     (inputTokens / TOKENS_PER_MILLION) * rates.input +
-    (outputTokens / TOKENS_PER_MILLION) * rates.output
+    (outputTokens / TOKENS_PER_MILLION) * rates.output +
+    (cacheReadTokens / TOKENS_PER_MILLION) * cacheReadRate +
+    (cacheWriteTokens / TOKENS_PER_MILLION) * cacheWriteRate
   )
 }
 
@@ -133,6 +153,8 @@ export function resolveUsageCosts(
   inputTokens: number,
   outputTokens: number,
   providerCostUsd?: number,
+  cacheReadTokens = 0,
+  cacheWriteTokens = 0,
 ): {
   costUsd: number
   costSource: LoopUsageRecord['costSource']
@@ -140,7 +162,13 @@ export function resolveUsageCosts(
   billedCostUsd?: number
 } {
   const hostedFree = isHostedFreeModel(model)
-  const estimated = estimateCostUsd(model, inputTokens, outputTokens)
+  const estimated = estimateCostUsd(
+    model,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+  )
   const listCostUsd = hostedFree ? 0 : (estimated ?? undefined)
   const billedCostUsd =
     providerCostUsd !== undefined && Number.isFinite(providerCostUsd) && providerCostUsd >= 0
@@ -207,6 +235,8 @@ export function createUsageRecord(input: {
     input.inputTokens,
     input.outputTokens,
     input.providerCostUsd,
+    input.cacheReadTokens ?? 0,
+    input.cacheWriteTokens ?? 0,
   )
   return {
     phase: input.phase,
@@ -228,7 +258,15 @@ export function recordListCostUsd(record: LoopUsageRecord): number | undefined {
     return record.listCostUsd
   }
   if (record.costSource === 'estimated') return record.costUsd
-  return estimateCostUsd(record.model, record.inputTokens, record.outputTokens) ?? undefined
+  return (
+    estimateCostUsd(
+      record.model,
+      record.inputTokens,
+      record.outputTokens,
+      record.cacheReadTokens,
+      record.cacheWriteTokens,
+    ) ?? undefined
+  )
 }
 
 export function recordBilledCostUsd(record: LoopUsageRecord): number | undefined {
