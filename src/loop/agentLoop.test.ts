@@ -1008,6 +1008,7 @@ describe('runAgentLoop', () => {
         reviewSecondaryRuntime: 'cline-pass',
         reviewSecondaryModel: 'cline-pass/deepseek-v4-flash',
         workerRuntime: 'cursor',
+        reviewGate: true,
       }),
     )
   })

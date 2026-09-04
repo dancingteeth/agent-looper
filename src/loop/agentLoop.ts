@@ -1,8 +1,8 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import { type RepoContext } from '../context/repoContext.js'
 import { createLoopAgentSession, loopRuntimeLabel, type LoopAgentSession } from '../agents/agentRunner.js'
 import { formatErrorChain, isTransportAgentError } from '../agents/errorFormat.js'
+import { appendJsonlLine } from './appendJsonl.js'
 import { resolveIterationAgent, resolveLoopAgent, resolveReviewAgent, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
 import type { LoadedLoopBundle } from '../loop/loopConfig.js'
 import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
@@ -273,7 +273,7 @@ function elapsedMs(startedAt: number): number {
 }
 
 function appendLog(logPath: string, entry: LoopIterationLog): void {
-  fs.appendFileSync(logPath, `${JSON.stringify(entry)}\n`, 'utf8')
+  appendJsonlLine(logPath, entry)
 }
 
 function buildIterationLog(input: {

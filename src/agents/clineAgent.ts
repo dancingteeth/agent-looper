@@ -16,6 +16,7 @@ import {
   type LoopReasoningEffort,
 } from '../loop/loopAgentConfig.js'
 import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
+import { formatErrorChain } from './errorFormat.js'
 import {
   listChildPids,
   watchSpawnedChildren,
@@ -73,7 +74,10 @@ async function readSessionUsage(
       cacheWriteTokens: usage.cacheWriteTokens,
       providerCostUsd: usage.totalCost,
     })
-  } catch {
+  } catch (err) {
+    console.error(
+      `[agent-loop:cline] usage unavailable (session=${sessionId}): ${formatErrorChain(err)}`,
+    )
     return undefined
   }
 }
@@ -138,6 +142,7 @@ function waitForClineSession(
     const timer = setTimeout(() => {
       finish(() => reject(new Error(`Cline session timed out after ${SESSION_TIMEOUT_MS}ms`)))
     }, SESSION_TIMEOUT_MS)
+    timer.unref?.()
   })
 }
 

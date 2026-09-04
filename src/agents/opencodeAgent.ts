@@ -92,6 +92,32 @@ function unwrapData<T>(result: { data?: T; error?: unknown }, label: string): T 
   return result.data
 }
 
+type OpencodePermissionClient = {
+  postSessionIdPermissionsPermissionId: (input: {
+    path: { id: string; permissionID: string }
+    body: { response: 'once' | 'always' | 'reject' }
+    query?: { directory?: string }
+  }) => Promise<unknown>
+}
+
+/** Auto-approve one OpenCode permission. Reply failures are logged, not swallowed silently. */
+export async function replyOpencodePermissionAlways(
+  client: OpencodePermissionClient,
+  input: { sessionID: string; permissionID: string; directory: string },
+): Promise<void> {
+  try {
+    await client.postSessionIdPermissionsPermissionId({
+      path: { id: input.sessionID, permissionID: input.permissionID },
+      body: { response: 'always' },
+      query: { directory: input.directory },
+    })
+  } catch (err) {
+    console.error(
+      `[agent-loop:opencode] permission reply failed (session=${input.sessionID} permission=${input.permissionID}): ${formatErrorChain(err)}`,
+    )
+  }
+}
+
 async function autoApprovePermissions(
   client: {
     event: {
@@ -99,11 +125,7 @@ async function autoApprovePermissions(
         stream: AsyncIterable<{ type: string; properties?: Record<string, unknown> }>
       }>
     }
-    postSessionIdPermissionsPermissionId: (input: {
-      path: { id: string; permissionID: string }
-      body: { response: 'once' | 'always' | 'reject' }
-      query?: { directory?: string }
-    }) => Promise<unknown>
+    postSessionIdPermissionsPermissionId: OpencodePermissionClient['postSessionIdPermissionsPermissionId']
   },
   directory: string,
   signal: AbortSignal,
@@ -118,13 +140,7 @@ async function autoApprovePermissions(
         const sessionID = typeof props.sessionID === 'string' ? props.sessionID : undefined
         const permissionID = typeof props.id === 'string' ? props.id : undefined
         if (!sessionID || !permissionID) continue
-        await client
-          .postSessionIdPermissionsPermissionId({
-            path: { id: sessionID, permissionID },
-            body: { response: 'always' },
-            query: { directory },
-          })
-          .catch(() => undefined)
+        await replyOpencodePermissionAlways(client, { sessionID, permissionID, directory })
       }
     } catch {
       // Stream ends when server closes — expected on dispose.

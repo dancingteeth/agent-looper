@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoProfileSchema } from '../context/repoProfile.js'
-import { createOpencodeLoopSession, releaseOpencodeServe } from './opencodeAgent.js'
+import { createOpencodeLoopSession, releaseOpencodeServe, replyOpencodePermissionAlways } from './opencodeAgent.js'
 
 const closeServe = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const untrack = vi.hoisted(() => vi.fn())
@@ -98,5 +98,37 @@ describe('createOpencodeLoopSession', () => {
     expect(reaperClose).toHaveBeenCalledOnce()
     expect(untrack).toHaveBeenCalledOnce()
     expect(closeServe).toHaveBeenCalledOnce()
+  })
+})
+
+describe('replyOpencodePermissionAlways', () => {
+  it('posts response always', async () => {
+    const post = vi.fn().mockResolvedValue(undefined)
+    await replyOpencodePermissionAlways(
+      { postSessionIdPermissionsPermissionId: post },
+      { sessionID: 'sess-1', permissionID: 'perm-1', directory: '/repo' },
+    )
+    expect(post).toHaveBeenCalledWith({
+      path: { id: 'sess-1', permissionID: 'perm-1' },
+      body: { response: 'always' },
+      query: { directory: '/repo' },
+    })
+  })
+
+  it('logs and does not throw when the permission reply fails', async () => {
+    const post = vi.fn().mockRejectedValue(new Error('permission API 500'))
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(
+      replyOpencodePermissionAlways(
+        { postSessionIdPermissionsPermissionId: post },
+        { sessionID: 'sess-1', permissionID: 'perm-1', directory: '/repo' },
+      ),
+    ).resolves.toBeUndefined()
+    expect(
+      stderr.mock.calls.some((c) =>
+        String(c[0]).includes('permission reply failed (session=sess-1 permission=perm-1)'),
+      ),
+    ).toBe(true)
+    stderr.mockRestore()
   })
 })

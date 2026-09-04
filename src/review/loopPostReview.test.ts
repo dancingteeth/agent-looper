@@ -72,6 +72,8 @@ describe('loopPostReview', () => {
     expect(prompt).toContain('blast radius')
     expect(prompt).toContain('Add Etsy PEC opener')
     expect(prompt).toContain('post-loop quality review')
+    expect(prompt).toContain('<untrusted-input kind="review-context">')
+    expect(prompt).toContain('UNTRUSTED INPUT')
   })
 
   it('defaults review judge to grok-4.6 when reviewModel omitted (cursor worker default)', async () => {
@@ -138,6 +140,8 @@ describe('loopPostReview', () => {
     expect(prompt).toContain('[must-fix] **Docs missing** — README')
     expect(prompt).toContain('[must-fix] **Unit guard** — verify doc.unit')
     expect(prompt).toContain('Fix harness')
+    expect(prompt).toContain('<untrusted-input kind="loop-goal">')
+    expect(prompt).toContain('<untrusted-input kind="reviews-md">')
   })
 
   it('asks the reproduce agent to KEEP or DROP each candidate in a fresh context', () => {
@@ -150,6 +154,7 @@ describe('loopPostReview', () => {
     expect(prompt).toContain('KEEP')
     expect(prompt).toContain('DROP')
     expect(prompt).toContain('src/cli/init.ts:10')
+    expect(prompt).toContain('<untrusted-input kind="loop-goal">')
   })
 
   it('skips reproduce agent when reviewReproduce is off', async () => {
@@ -252,7 +257,7 @@ describe('loopPostReview', () => {
     stderrSpy.mockRestore()
   })
 
-  it('skips secondary review on primary PASS with no gating blockers', async () => {
+  it('skips secondary review on primary PASS with no gating blockers when reviewGate is off', async () => {
     const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
     const ctx = {
       repoRoot: process.cwd(),
@@ -266,9 +271,41 @@ describe('loopPostReview', () => {
     })
 
     expect(createClineLoopSession).not.toHaveBeenCalled()
+    expect(runReviewAgentPrompt).toHaveBeenCalledTimes(1)
     expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('secondary review: skipped (primary PASS with no gating blockers)'))).toBe(
       true,
     )
+
+    stderrSpy.mockRestore()
+  })
+
+  it('runs secondary review on primary PASS when reviewGate is on', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    runReviewAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**PASS**', '', '### Blockers', '- none'].join('\n'),
+    })
+    runReviewAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**PASS**', '', '### Blockers', '- none'].join('\n'),
+    })
+
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      reviewSecondaryRuntime: 'dsh',
+      reviewGate: true,
+    })
+
+    expect(runReviewAgentPrompt).toHaveBeenCalledTimes(2)
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('secondary review: running'))).toBe(true)
+    expect(
+      stderrSpy.mock.calls.some((c) =>
+        String(c[0]).includes('secondary review: skipped (primary PASS with no gating blockers)'),
+      ),
+    ).toBe(false)
 
     stderrSpy.mockRestore()
   })

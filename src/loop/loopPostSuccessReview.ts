@@ -274,6 +274,7 @@ export async function runPostSuccessReviewPhase(
             reviewReproduceAgent: config.reviewReproduceAgent,
             reviewSecondaryRuntime: config.reviewSecondaryRuntime,
             reviewSecondaryModel: config.reviewSecondaryModel,
+            reviewGate: config.reviewGate,
           })
         : await runPostLoopQualityReview(loopDir, goal, ctx, {
             verbose,
@@ -284,6 +285,7 @@ export async function runPostSuccessReviewPhase(
             reviewReproduceAgent: config.reviewReproduceAgent,
             reviewSecondaryRuntime: config.reviewSecondaryRuntime,
             reviewSecondaryModel: config.reviewSecondaryModel,
+            reviewGate: config.reviewGate,
           })
       usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
       parsedReview = reviewResult.parsed

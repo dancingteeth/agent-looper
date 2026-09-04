@@ -160,6 +160,31 @@ describe('clineAgent', () => {
     expect(config.thinking).toBeUndefined()
   })
 
+  it('logs and omits usage when getAccumulatedUsage throws', async () => {
+    mockClineCreate.mockResolvedValueOnce({
+      start: mockStart,
+      stop: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+      dispose: mockDispose,
+      subscribe: vi.fn(),
+      getAccumulatedUsage: vi.fn().mockRejectedValue(new Error('usage endpoint down')),
+    })
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { createClineLoopSession } = await import('./clineAgent.js')
+    const session = await createClineLoopSession(ctx)
+
+    const result = await session.runPrompt('do work', {
+      modelId: 'cline-pass/deepseek-v4-flash',
+      assistantOutput: 'none',
+    })
+
+    expect(result.usage).toBeUndefined()
+    expect(
+      stderr.mock.calls.some((c) => String(c[0]).includes('usage unavailable')),
+    ).toBe(true)
+    stderr.mockRestore()
+  })
+
   it('reaps children spawned after ClineCore.create on dispose', async () => {
     const { createClineLoopSession } = await import('./clineAgent.js')
     const session = await createClineLoopSession(ctx)

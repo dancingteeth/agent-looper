@@ -117,6 +117,11 @@ export type PostLoopReviewOptions = {
   reviewSecondaryRuntime?: LoopRuntime
   /** Judge model for secondary review. Defaults per reviewSecondaryRuntime. */
   reviewSecondaryModel?: string
+  /**
+   * When true, residual reviewGate is on — do not skip secondary on primary PASS/ADVISORY.
+   * Advisory (ungated) review still skips secondary when the primary has no gating blockers.
+   */
+  reviewGate?: boolean
 }
 
 export function resolvePostLoopReviewAgent(options: PostLoopReviewOptions): ResolvedReviewAgent {
@@ -239,6 +244,9 @@ function shouldSkipSecondaryReview(
 ): { skip: true; reason: string } | { skip: false } {
   if (!options.reviewSecondaryRuntime) {
     return { skip: true, reason: 'disabled' }
+  }
+  if (options.reviewGate) {
+    return { skip: false }
   }
   const gating = blockingBlockers(parsed)
   if ((parsed.verdict === 'PASS' || parsed.verdict === 'ADVISORY') && gating.length === 0) {

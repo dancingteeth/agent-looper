@@ -308,7 +308,7 @@ describe('runPostSuccessReviewPhase', () => {
       '/tmp/loop',
       'Goal text',
       expect.anything(),
-      expect.objectContaining({ workerRuntime: 'cursor' }),
+      expect.objectContaining({ workerRuntime: 'cursor', reviewGate: true }),
     )
     expect(runPostLoopBlockerRecheck).not.toHaveBeenCalled()
   })
@@ -334,7 +334,7 @@ describe('runPostSuccessReviewPhase', () => {
       'Goal text',
       expect.anything(),
       expect.anything(),
-      expect.objectContaining({ workerRuntime: 'cursor' }),
+      expect.objectContaining({ workerRuntime: 'cursor', reviewGate: true }),
     )
     expect(runPostLoopQualityReview).not.toHaveBeenCalled()
   })
@@ -358,7 +358,7 @@ describe('runPostSuccessReviewPhase', () => {
       '/tmp/loop',
       'Goal text',
       expect.anything(),
-      expect.objectContaining({ workerRuntime: 'dsh' }),
+      expect.objectContaining({ workerRuntime: 'dsh', reviewGate: true }),
     )
   })
 
