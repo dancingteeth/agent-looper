@@ -32,7 +32,15 @@ The IDE job list will lie. Ask your agent to use the check-running-loops skill. 
 
 ## What do I get when a loop finishes?
 
-A report card, not a chat dump. How often the check sent work back, whether the worker hung, whether the judge bounced it, what it cost, and whether it needed you.
+A report card, not a chat dump. How often the check sent work back, whether the worker hung, whether the judge bounced it, **list** and **billed** spend when they differ, and whether it needed you.
+
+## How do I start a loop from an idea?
+
+Type an idea, freeze a loop. `agent-loop-prompt` is an Ink TUI: you describe the goal; the **judge** (not the worker) drafts `GOAL.md` and `verify.sh`; freeze lint rejects gameable greps; you confirm; then the watch TUI grinds. Resume lines keep Doppler when the shell was started that way. Optional `preview` after green is trust-gated and is **not** executed by `agent-loop run`.
+
+## What do the spend numbers mean?
+
+Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`.
 
 ## How is Agent Looper different from looping in chat?
 
@@ -46,9 +54,8 @@ Node 22+, pnpm.
 
 1. Add `@dancingteeth/agent-looper` and the SDK for your coding agent (Cursor: `@cursor/sdk`).
 2. Export an API key, or run under Doppler.
-3. Run `pnpm exec agent-loop-init`.
-4. Edit `GOAL.md` and `verify.sh` until `bash verify.sh` is an honest determined check.
-5. Run `pnpm exec agent-loop run` until that check is green.
+3. Prefer `pnpm exec agent-loop-prompt --out .cursor/loops/my-task` — describe your idea; the judge drafts `GOAL.md` and `verify.sh`; confirm freeze. Or `pnpm exec agent-loop-init` and edit the goal and check yourself.
+4. Run `pnpm exec agent-loop run` until that check is green.
 
 ### For agent
 
@@ -60,12 +67,12 @@ Requirements: Node 22+ and pnpm.
 1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, Claude).
 2. Keep @dancingteeth/agent-looper in package.json even if you gitignore `.cursor/loops`. Don't only npx it.
 3. Use an API key already on this machine, or run under Doppler. Don't invent keys.
-4. Run: pnpm exec agent-loop-init
-5. Write GOAL.md for the feature and freeze it. Don't rewrite the goal mid-loop.
-6. Write a determined check until `bash verify.sh` is an honest pass/fail that the feature actually works. The model does not get to say done.
-7. Start the loop:
-   pnpm exec agent-loop run .cursor/loops/<task> --runtime <cursor|cline|opencode|pi|codex|dsh|muse> --review-gate
-8. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
+4. Prefer: pnpm exec agent-loop-prompt --out .cursor/loops/<task>
+   — describe the idea; the judge (not the worker) drafts GOAL.md and verify.sh; freeze lint rejects gameable greps; confirm; then the watch TUI grinds.
+   Or manually: pnpm exec agent-loop-init, write GOAL.md, and a determined check until `bash verify.sh` is an honest pass/fail. Don't rewrite the goal mid-loop.
+5. Start the loop:
+   pnpm exec agent-loop run .cursor/loops/<task> --runtime <cursor|cline|opencode|pi|codex|dsh|muse|claude> --review-gate
+6. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
 
 Cursor example (swap the SDK, key, and --runtime if this machine isn't Cursor):
 
@@ -73,9 +80,8 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 
 export CURSOR_API_KEY=…   # or: doppler run -- …
 
-pnpm exec agent-loop-init
-# edit .cursor/loops/my-task/GOAL.md
-# edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest
+pnpm exec agent-loop-prompt --out .cursor/loops/my-task
+# or: pnpm exec agent-loop-init and edit GOAL.md + verify.sh yourself
 
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
@@ -88,9 +94,9 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 
 export CURSOR_API_KEY=…   # or: doppler run -- …
 
-pnpm exec agent-loop-init
-# edit .cursor/loops/my-task/GOAL.md
-# edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest
+pnpm exec agent-loop-prompt --out .cursor/loops/my-task
+# describe your idea; the judge drafts GOAL.md + verify.sh — confirm freeze, then watch
+# or: pnpm exec agent-loop-init and edit GOAL.md + verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest
 
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```

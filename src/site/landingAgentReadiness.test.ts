@@ -176,13 +176,12 @@ describe('landing agent readiness', () => {
     )
     expect(humanSnippet).toContain("don't only npx it")
     expect(humanSnippet).toContain('export CURSOR_API_KEY=…   # or: doppler run -- …')
-    expect(humanSnippet).toContain('pnpm exec agent-loop-init')
-    expect(humanSnippet).toContain(
-      '# edit verify.sh until `bash .cursor/loops/my-task/verify.sh` is honest',
-    )
+    expect(humanSnippet).toContain('pnpm exec agent-loop-prompt --out .cursor/loops/my-task')
     expect(humanSnippet).toContain(
       'pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate',
     )
+    expect(humanSnippet).not.toContain('@0.5.0')
+    expect(humanSnippet).not.toContain('@dancingteeth/agent-looper@')
   })
 
   it('index.md includes agent install prompt before human terminal commands', () => {
@@ -199,6 +198,9 @@ describe('landing agent readiness', () => {
     expect(md).toContain(
       '# keep @dancingteeth/agent-looper in package.json even if .cursor/loops is gitignored',
     )
+    expect(md).toContain('pnpm exec agent-loop-prompt --out .cursor/loops/my-task')
+    expect(md).toContain('<cursor|cline|opencode|pi|codex|dsh|muse|claude>')
+    expect(md).not.toContain('@0.5.0')
   })
 
   it('every HTML page cache-busts styles.css when linked', () => {
@@ -308,6 +310,106 @@ describe('landing agent readiness', () => {
 
     expect(html).toContain('tui-answer--alive')
     expect(html).toContain('tui-answer--report')
+    expect(html).toContain('tui-answer--prompt')
+    expect(html).toContain('tui-answer--spend')
+  })
+
+  it('ships 0.5.0 story: prompt TUI, Claude, Muse 1.3, list/billed spend, no version pins', () => {
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    const harnessHtml = readSite('harnesses/index.html')
+    const harnessMd = readSite('harnesses/index.md')
+    const graph = jsonLdGraph(html)
+
+    const faq = graph.find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as {
+      mainEntity?: Array<{
+        name?: string
+        acceptedAnswer?: { text?: string }
+      }>
+    }
+
+    const promptQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'How do I start a loop from an idea?',
+    )
+    const spendQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'What do the spend numbers mean?',
+    )
+
+    const promptBeat = 'agent-loop-prompt'
+    const spendBeat = 'public API rates, including prompt-cache'
+    const runtimeUnion = 'cursor|cline|opencode|pi|codex|dsh|muse|claude'
+
+    for (const surface of [html, md] as const) {
+      expect(surface).toContain(promptBeat)
+      expect(surface).toContain(spendBeat)
+      expect(surface).toContain(runtimeUnion)
+      expect(surface).not.toContain('@0.5.0')
+      expect(surface).not.toMatch(/@dancingteeth\/agent-looper@/)
+    }
+
+    expect(promptQuestion?.acceptedAnswer?.text).toContain('judge (not the worker)')
+    expect(promptQuestion?.acceptedAnswer?.text).toContain('agent-loop run')
+    expect(spendQuestion?.acceptedAnswer?.text).toContain('billed')
+    expect(spendQuestion?.acceptedAnswer?.text).toContain('not free')
+
+    const claudeCard =
+      harnessHtml.match(
+        /<article class="harness-card" id="claude">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(claudeCard).toContain('--runtime claude')
+    expect(claudeCard).toContain('sonnet')
+    expect(claudeCard).toContain('opus')
+    expect(claudeCard).toContain('2.1.169+')
+    expect(claudeCard).toContain('claude login')
+    expect(claudeCard).toContain('--safe-mode')
+    expect(claudeCard).toContain('docs/claude-runtime.md')
+    expect(claudeCard).not.toMatch(/\bMCP\b/i)
+
+    expect(harnessHtml).toContain('muse-spark-1.3-contributor')
+    expect(harnessMd).toContain('muse-spark-1.3-contributor')
+    expect(harnessHtml).not.toContain('muse-spark-1.2-contributor')
+    expect(harnessMd).not.toContain('muse-spark-1.2-contributor')
+
+    const agentPanel = html.slice(
+      html.indexOf('id="install-panel-agent"'),
+      html.indexOf('id="install-panel-human"'),
+    )
+    expect(agentPanel).toContain('pnpm exec agent-loop-prompt --out .cursor/loops/')
+    expect(agentPanel).toContain(runtimeUnion)
+  })
+
+  it('Claude runtime card describes judge as optional without MCP on the site', () => {
+    const html = readSite('harnesses/index.html')
+    const clineCard =
+      html.match(/<article class="harness-card" id="claude">[\s\S]*?<\/article>/)?.[0] ?? ''
+    expect(clineCard).toMatch(/any runtime/i)
+    expect(clineCard).toMatch(/optional/i)
+    expect(clineCard).not.toMatch(/\bMCP\b/i)
+
+    const md = readSite('harnesses/index.md')
+    const claudeSection = md.slice(md.indexOf('### Claude'))
+    expect(claudeSection).toMatch(/any runtime/i)
+    expect(claudeSection).toMatch(/optional/i)
+    expect(claudeSection).not.toMatch(/\bMCP\b/i)
+  })
+
+  it('docs and llms.txt link embed API and SECURITY without hosted API negation', () => {
+    const docsHtml = readSite('docs/index.html')
+    const docsMd = readSite('docs/index.md')
+    const llms = readSite('llms.txt')
+
+    for (const body of [docsHtml, docsMd, llms]) {
+      expect(body).toContain('docs/embed-api.md')
+      expect(body).toContain('SECURITY.md')
+    }
+
+    expect(docsHtml).toContain('no separate hosted OpenAPI')
+    expect(docsMd).toMatch(/no separate hosted OpenAPI/i)
   })
 
   it('privacy pages describe cookieless PostHog EU analytics', () => {
