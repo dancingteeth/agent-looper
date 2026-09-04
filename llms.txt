@@ -9,12 +9,16 @@ Start here:
 - README.intro.md — product spine (worker / verify / judge / human)
 - ARCHITECTURE.md — loop engine, escalation, cache-friendly prompts
 - AGENTS.md — working agreements for this repo
+- CHANGELOG.md — shipped versions (current: 0.5.0)
+- SECURITY.md — vulnerability reporting
+- docs/embed-api.md — library embed contract (stable vs experimental, frozen shapes)
+- docs/claude-runtime.md — PATH `claude -p --safe-mode` worker/judge
 - docs/verification-as-skill.md — measurable verify.sh + VERIFY.skill.md
 - docs/unknowns-preflight.md — remove unknowns before freezing GOAL
 - docs/runtime-map.md — worker/judge cost presets
 - docs/runtime-cost-bench.md — same-task runtime cost method (n≥3, change one variable)
 - docs/cursor-auto-router.md — Auto/Router opt-in blocked until SDK logs routed model id
-- docs/loop-review-roadmap.md — M1–M8 milestones
+- docs/loop-review-roadmap.md — M1–M10 + 0.5.0 prompt/Claude/embed
 
 ## Non-negotiables
 
@@ -29,12 +33,13 @@ Start here:
 
 ```bash
 agent-loop-init
+# or: agent-loop-prompt --out .cursor/loops/my-task
 # edit .cursor/agent-loop.repo.json, GOAL.md, loop.json, verify.sh
 export CURSOR_API_KEY=…
 agent-loop run .cursor/loops/my-task --runtime cursor --review-gate
 ```
 
-Worker default: composer-2.5. Judge default: grok-4.5 (`reviewModel`).
+Worker default: composer-2.5. Judge default: grok-4.6 (`reviewModel`). `runtime: claude` needs Claude Code 2.1.169+ (`claude login`).
 
 ## Templates
 
@@ -49,4 +54,4 @@ Worker default: composer-2.5. Judge default: grok-4.5 (`reviewModel`).
 
 ## Package
 
-npm: `@dancingteeth/agent-looper`. Layout: src/loop, src/review, src/agents, templates, .cursor/loops.
+npm: `@dancingteeth/agent-looper` **0.5.0**. Layout: src/loop, src/review, src/agents, templates, .cursor/loops. Embed: docs/embed-api.md. Security: SECURITY.md.

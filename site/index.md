@@ -123,5 +123,8 @@ This tool is free. We keep building it when the community actually uses it and t
 - [llms.txt](https://looper.dancingteeth.net/llms.txt)
 - [Harnesses](https://looper.dancingteeth.net/harnesses/)
 - [Developer resources](https://looper.dancingteeth.net/docs/)
+- [Changelog (0.5.0)](https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md)
+- [Embed API](https://github.com/dancingteeth/agent-looper/blob/main/docs/embed-api.md)
+- [Security](https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md)
 - [GitHub](https://github.com/dancingteeth/agent-looper)
 - [npm](https://www.npmjs.com/package/@dancingteeth/agent-looper)

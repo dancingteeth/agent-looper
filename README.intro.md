@@ -20,6 +20,10 @@ If you’ve heard “stop prompting, start looping” and you’re hunting GitHu
 
 > Full reference (every flag, threat model, consumer wiring): [`README.md`](./README.md)  
 > Deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md)  
+> Type an idea → freeze a loop: `agent-loop-prompt`  
+> Embed as a library: [`docs/embed-api.md`](./docs/embed-api.md)  
+> Vulnerabilities: [`SECURITY.md`](./SECURITY.md)  
+> What shipped: [`CHANGELOG.md`](./CHANGELOG.md)  
 > Before a tricky loop: [`docs/unknowns-preflight.md`](./docs/unknowns-preflight.md)
 
 ---

@@ -14,6 +14,7 @@ Agent Looper is the npm package `@dancingteeth/agent-looper` and the CLI `agent-
 - Claude runtime (Claude Code CLI): https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md
 - Embed API (contract for embedding Agent Looper): https://github.com/dancingteeth/agent-looper/blob/main/docs/embed-api.md
 - Security (reporting vulnerabilities): https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md
+- Changelog (0.5.0): https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md
 - Agent Looper llms.txt: https://looper.dancingteeth.net/llms.txt
 - Agent Looper homepage (markdown): https://looper.dancingteeth.net/index.md
 

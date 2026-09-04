@@ -29,7 +29,7 @@ Or in `package.json`:
 ```json
 {
   "devDependencies": {
-    "@dancingteeth/agent-looper": "^0.1.0",
+    "@dancingteeth/agent-looper": "^0.5.0",
     "@cursor/sdk": "^1.0.18"
   }
 }
@@ -41,6 +41,7 @@ From the consumer root:
 
 ```bash
 pnpm exec agent-loop-init
+# or, from an idea: pnpm exec agent-loop-prompt --out .cursor/loops/<task>
 # edit .cursor/agent-loop.repo.json (hitlProvider, syncCommand, notify hooks, …)
 # edit .cursor/loops/example-fix/ — GOAL.md, verify.sh, VERIFY.skill.md
 # check-running-loops lands in .cursor/skills/ and .agents/skills/

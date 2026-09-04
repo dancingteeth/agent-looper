@@ -56,4 +56,5 @@ The worker prompt indexes name + description by default (`skillDisclosure: "inde
 ```bash
 pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 pnpm exec agent-loop-init
+# or: pnpm exec agent-loop-prompt --out .cursor/loops/<task>
 ```

@@ -14,7 +14,7 @@ Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It 
 
 ### How to use
 
-1. Freeze `GOAL.md` and `verify.sh`.
+1. Freeze `GOAL.md` and `verify.sh` (or `pnpm exec agent-loop-prompt --out .cursor/loops/my-task`).
 2. From the Grok Bot session, start the harness: `pnpm exec agent-loop run .cursor/loops/my-task --review-gate`
 3. Worker and judge come from `loop.json` and what's installed. There is no `--runtime grok`.
 

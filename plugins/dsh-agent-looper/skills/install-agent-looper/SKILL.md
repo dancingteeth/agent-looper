@@ -30,6 +30,7 @@ Node **22+**. Package: `@dancingteeth/agent-looper`. Confirm with `pnpm exec age
 
 ```bash
 pnpm exec agent-loop-init
+# or, from an idea: pnpm exec agent-loop-prompt --out .cursor/loops/<task>
 ```
 
 Then edit `.cursor/agent-loop.repo.json` (HITL, notify, **`defaults`** for runtime/models) and replace `.cursor/loops/example-fix/`. Humans run `pnpm exec agent-loop-setup` once; agents skip the TUI and use `--answers` or a sparse `loop.json` (`verify` + overrides). Init also copies **check-running-loops** to `.cursor/skills/` and `.agents/skills/`.

@@ -13,6 +13,8 @@ Publish **`@dancingteeth/agent-looper`** from GitHub repo **`dancingteeth/agent-
 
 CLI bins stay `agent-loop` / `agent-check` / …
 
+Shipped versions: [`CHANGELOG.md`](../CHANGELOG.md). After trusted publish, create or update the GitHub Release with that version’s section (do not bump `package.json` just to add docs).
+
 ## Preferred: trusted publishing (GitHub Actions OIDC)
 
 No long-lived publish token. Workflow: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)

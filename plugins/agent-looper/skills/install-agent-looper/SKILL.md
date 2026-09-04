@@ -30,6 +30,7 @@ Node **22+**. Package: `@dancingteeth/agent-looper` (GitHub: `dancingteeth/agent
 
 ```bash
 pnpm exec agent-loop-init
+# or, from an idea: pnpm exec agent-loop-prompt --out .cursor/loops/<task>
 ```
 
 Then edit:

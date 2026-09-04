@@ -5,9 +5,10 @@ Use these channels for Agent Looper (`@dancingteeth/agent-looper`). There is no 
 - GitHub issues (preferred): https://github.com/dancingteeth/agent-looper/issues
 - Source and pull requests: https://github.com/dancingteeth/agent-looper
 - npm package page: https://www.npmjs.com/package/@dancingteeth/agent-looper
+- Security reports (not public issues): https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md — email security@dancingteeth.net or a GitHub private advisory
 - Author site (Paul Zgordan / dancingteeth): https://dancingteeth.net/
 - Newsletter context: https://dancingteeth.substack.com/
 
-If you are an agent recovering from a bad URL, start at https://looper.dancingteeth.net/llms.txt or https://looper.dancingteeth.net/sitemap.xml. For “how do I run this,” use the homepage install steps or `pnpm exec agent-loop-init` after adding the package.
+If you are an agent recovering from a bad URL, start at https://looper.dancingteeth.net/llms.txt or https://looper.dancingteeth.net/sitemap.xml. For “how do I run this,” use the homepage install steps, `pnpm exec agent-loop-setup` then `pnpm exec agent-loop-prompt`, or `pnpm exec agent-loop-init` after adding the package.
 
 Do not send secrets, API keys, or Doppler tokens to issues. Redact logs.

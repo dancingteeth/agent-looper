@@ -28,6 +28,10 @@ Research context and citations live in the patterns doc. This file is the
 | Scoped blocker re-check (same family) | `reviewBlockerRecheck` |
 | HITL on gate exhaust | `reviewGateHitl` |
 | Worker / judge model split | `runtime` + `model` (worker); `reviewRuntime` + `reviewModel` (judge, default cursor) |
+| Claude Code PATH spawn | `runtime: claude` / `reviewRuntime: claude`, `--safe-mode` (`docs/claude-runtime.md`) — **0.5.0** |
+| Prompt TUI | `agent-loop-prompt` (judge scaffolds GOAL/verify) — **0.5.0** |
+| List vs billed spend | `listCostUsd` / `billedCostUsd`; cache in list price — **0.5.0** |
+| Embed contract + SECURITY.md | `docs/embed-api.md`, `SECURITY.md` — **0.5.0** |
 | Reasoning / model escalation | `reasoningEffort`, `escalateModel` |
 | Failure domain logging | `failure-domains.ndjson` |
 | Meta-loop inject hook | `injectFailureContext` |
@@ -363,6 +367,7 @@ PR that lands #1.
 | **M8** | Batch rubrics / Auto model (optional) | **Shipped** — batch `{path,rubric}`; computer-use templates; Auto **blocked** pending SDK (`docs/cursor-auto-router.md`) |
 | **M9** | Linear Loops governance steals | **Shipped (docs/templates)** — prove→freeze, draft discipline, run-report as audit surface, `LOOP.permissions.example.md`, tool default-deny. No harness publish-snapshot yet |
 | **M10** | Lunar graph scoreboard | **0.4.5** — docs (edge sentences + GOAL/preflight spec fields) + `run-report.md` report card (phase time, kill rate, retries, HITL, writer vs referee $). Hung-worker escalate + `check-running-loops` skill ship in the same patch |
+| **0.5.0** | Prompt TUI, Claude runtime, spend honesty, embed | **Shipped** — `agent-loop-prompt`; `runtime: claude`; list vs billed (+ cache); `docs/embed-api.md` + `SECURITY.md`; OpenRouter `:free`; Muse Spark 1.3 default |
 
 ### M6–M8 context (2026-07 competitive session)
 

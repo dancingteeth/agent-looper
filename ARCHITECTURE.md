@@ -9,7 +9,8 @@ tags:
 
 > **Audience:** technical reviewers, integrators, and anyone who needs to understand how
 > the loop harness works under the hood. This document complements the README;
-> it assumes you've read that first.
+> it assumes you've read that first. ADE hosts embedding the package should start at
+> [`docs/embed-api.md`](./docs/embed-api.md).
 
 ---
 
