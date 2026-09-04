@@ -372,9 +372,21 @@ describe('landing agent readiness', () => {
       expect(surface).toContain(agentPathBeat)
       expect(surface).toContain(setupBeat)
       expect(surface).toContain(promptBeat)
+      expect(surface).toContain('The check stays the finish line')
       expect(surface).not.toMatch(/\bInk\b/i)
       expect(surface).not.toMatch(/\bDoppler\b/i)
+      expect(surface).not.toMatch(/freeze lint/i)
+      expect(surface).not.toMatch(/gameable greps/i)
+      expect(surface).not.toMatch(/judge \(not the worker\)/i)
     }
+
+    const promptCard =
+      html.match(
+        /<article class="tui-answer tui-answer--prompt">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(promptCard).not.toContain('<ol>')
+    expect(promptCard).not.toContain('<ul>')
+    expect(promptCard).toMatch(/<p>[\s\S]*<\/p>\s*<p>/)
 
     expect(spendQuestion?.acceptedAnswer?.text).toContain('billed')
     expect(spendQuestion?.acceptedAnswer?.text).toContain('not free')

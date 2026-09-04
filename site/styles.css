@@ -638,6 +638,7 @@ a.harness-logo:hover {
   border-left: 2px solid var(--terracotta);
   padding-left: 1.25rem;
   max-width: 42rem;
+  font-family: var(--font-sans);
 }
 
 .tui-answer--presets { border-left-color: var(--tan); }
@@ -646,6 +647,8 @@ a.harness-logo:hover {
 .tui-answer--reverse { border-left-color: var(--terracotta); }
 .tui-answer--alive { border-left-color: var(--verify); }
 .tui-answer--report { border-left-color: var(--tan); }
+.tui-answer--prompt { border-left-color: var(--terracotta); }
+.tui-answer--spend { border-left-color: var(--ghost); }
 
 .tui-answer h2 {
   font-size: 1.05rem;
@@ -661,6 +664,33 @@ a.harness-logo:hover {
   color: var(--muted);
   font-size: 0.95rem;
   line-height: 1.65;
+  font-family: inherit;
+}
+
+.tui-answer p + p {
+  margin-top: 0.75rem;
+}
+
+.tui-answer ol,
+.tui-answer ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  font-family: inherit;
+}
+
+.tui-answer li {
+  margin: 0.35rem 0 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-family: inherit;
+}
+
+.tui-answer li:first-child {
+  margin-top: 0;
 }
 
 @media (min-width: 960px) {
