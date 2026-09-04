@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agent Looper — a fix-until-green harness for coding agents</title>
-  <meta name="description" content="Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.">
+  <meta name="description" content="Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a deterministic check, then a fresh worker loops until that check passes — with a budget that actually stops.">
   <link rel="canonical" href="https://looper.dancingteeth.net/">
   <link rel="describedby" href="https://looper.dancingteeth.net/llms.txt">
   <link rel="alternate" type="text/markdown" title="Markdown" href="https://looper.dancingteeth.net/index.md">
@@ -13,12 +13,12 @@
   <meta property="og:site_name" content="Agent Looper">
   <meta property="og:url" content="https://looper.dancingteeth.net/">
   <meta property="og:title" content="Agent Looper — a fix-until-green harness for coding agents">
-  <meta property="og:description" content="Your coding agent writes a frozen goal and a determined check. A fresh worker loops until that check passes. You are not the verify step.">
+  <meta property="og:description" content="Your coding agent writes a frozen goal and a deterministic check. A fresh worker loops until that check passes. You are not the verify step.">
   <meta property="og:image" content="https://looper.dancingteeth.net/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@dancingteeth">
   <meta name="twitter:title" content="Agent Looper — a fix-until-green harness for coding agents">
-  <meta name="twitter:description" content="Open-source fix-until-green harness. Frozen goal, determined check, fresh worker each round, budget that stops.">
+  <meta name="twitter:description" content="Open-source fix-until-green harness. Frozen goal, deterministic check, fresh worker each round, budget that stops.">
   <meta name="twitter:image" content="https://looper.dancingteeth.net/og.png">
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -41,7 +41,7 @@
         "@id": "https://looper.dancingteeth.net/#app",
         "name": "Agent Looper",
         "alternateName": ["agent-looper", "agent-loop", "@dancingteeth/agent-looper"],
-        "description": "Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.",
+        "description": "Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a deterministic check, then a fresh worker loops until that check passes — with a budget that actually stops.",
         "url": "https://looper.dancingteeth.net/",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
@@ -115,7 +115,7 @@
             "name": "How does Agent Looper keep cost down for indie builders?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop. Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops."
+              "text": "Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop. Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops. The check is the finish line — keep it honest. The judge is residual, not a production gate."
             }
           },
           {
@@ -172,7 +172,7 @@
         "@type": "HowTo",
         "@id": "https://looper.dancingteeth.net/#install",
         "name": "Install Agent Looper",
-        "description": "Add Agent Looper to a repo, freeze a goal and a determined check, then run the loop.",
+        "description": "Add Agent Looper to a repo, freeze a goal and a deterministic check, then run the loop.",
         "url": "https://looper.dancingteeth.net/#install",
         "totalTime": "PT5M",
         "tool": {
@@ -242,15 +242,15 @@
         <p class="eyebrow">@dancingteeth/agent-looper · <code>agent-loop</code></p>
         <h1>Finally, you're not the verify step.</h1>
         <p class="definition">
-          Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.
+          Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a deterministic check, then a fresh worker loops until that check passes — with a budget that actually stops.
         </p>
         <p class="lead">
           You heard looping beats prompting. You install Agent Looper. You tell your agent you just want the feature.
-          It writes the goal, writes a determined check, and runs until that check passes. No hallucinated “done.”
+          It writes the goal, writes a deterministic check, and runs until that check passes. No hallucinated “done.”
         </p>
         <ul class="promise">
           <li>It actually works</li>
-          <li>Determined check</li>
+          <li>Deterministic check</li>
           <li>You don't babysit</li>
         </ul>
         <div class="hero-cta">
@@ -342,6 +342,7 @@
             <p>
               Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop.
               Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops.
+              The check is the finish line — keep it honest. The judge is residual, not a production gate.
             </p>
           </article>
           <article class="tui-answer tui-answer--escalation">
@@ -391,7 +392,7 @@
       <div class="wrap">
         <h2>How it works</h2>
         <p class="section-intro">
-          Your agent writes <code>GOAL.md</code> and a determined check that the feature really works.
+          Your agent writes <code>GOAL.md</code> and a deterministic check that the feature really works.
           A fresh worker loops until that check passes — optional judge / <code>reviewGate</code> only on serious findings.
           Progress lives in git and files, not chat memory.
         </p>
@@ -402,7 +403,7 @@
           </div>
           <div class="card card--verify">
             <h3>Verifier</h3>
-            <p>A determined check. Green means it really works. The model doesn't get to hallucinate done. If something's wrong, the mistake is in the goal or the script.</p>
+            <p>A deterministic check. Green is only as good as the check you froze. The model doesn't get to hallucinate done. If something's wrong, the mistake is in the goal or the script.</p>
           </div>
           <div class="card card--judge">
             <h3>Judge <span class="optional">optional</span></h3>
