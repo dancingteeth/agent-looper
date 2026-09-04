@@ -86,7 +86,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 ### Claude (`--runtime claude`)
 
-PATH `claude` CLI — Claude Code subscription. Spawn uses `--safe-mode`. Not on `costPreset` minmax. See [docs/claude-runtime.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md).
+PATH `claude` CLI — Claude Code subscription. `--safe-mode` so the harness prompt is the only instruction source (strips project hooks and auto-memory). Not on `costPreset` minmax. See [docs/claude-runtime.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md).
 
 - Worker: `sonnet` → `opus`
 - Judge: any runtime, optional

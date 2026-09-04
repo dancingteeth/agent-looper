@@ -12,6 +12,8 @@ Agent Looper is the npm package `@dancingteeth/agent-looper` and the CLI `agent-
 - DSH plugin (DeepSeek Harness): https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md
 - Muse runtime (Muse Code): https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md
 - Claude runtime (Claude Code CLI): https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md
+- Embed API (contract for embedding Agent Looper): https://github.com/dancingteeth/agent-looper/blob/main/docs/embed-api.md
+- Security (reporting vulnerabilities): https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md
 - Agent Looper llms.txt: https://looper.dancingteeth.net/llms.txt
 - Agent Looper homepage (markdown): https://looper.dancingteeth.net/index.md
 
