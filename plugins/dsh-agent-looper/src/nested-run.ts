@@ -43,12 +43,39 @@ const EXECUTED_HEREDOC_CONSUMERS = new Set([
 /** Commands whose heredoc body is written to a file/stdout and must not be treated as code. */
 const DATA_HEREDOC_CONSUMERS = new Set(['cat', 'tee', 'dd', 'cp', 'mv', 'sed', 'awk'])
 
+/** Shell keywords/wrappers that can sit in front of the real command position. */
+const LEADING_WRAPPER_WORDS = new Set(['command', 'exec', 'builtin', 'sudo', 'nohup', 'time', 'env'])
+
+/** Drop leading assignments / builtins / `doppler run … --` so `words[0]` is the real command. */
+function skipLeadingPrefixWords(words: string[]): string[] {
+  let index = 0
+  while (index < words.length) {
+    const word = words[index]
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(word)) {
+      index += 1
+      continue
+    }
+    if (LEADING_WRAPPER_WORDS.has(word)) {
+      index += 1
+      continue
+    }
+    if (word === 'doppler' && words[index + 1] === 'run') {
+      let cursor = index + 2
+      while (cursor < words.length && words[cursor] !== '--') cursor += 1
+      if (cursor < words.length) {
+        index = cursor + 1
+        continue
+      }
+    }
+    break
+  }
+  return words.slice(index)
+}
+
 function heredocBodyIsCode(operatorLine: string): boolean {
   const before = operatorLine.split('<<')[0] ?? ''
-  const words = before.trim().split(/\s+/).filter(Boolean)
-  let index = 0
-  while (index < words.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[index])) index += 1
-  const head = (words[index] ?? '').replace(/^.*\//, '')
+  const words = skipLeadingPrefixWords(before.trim().split(/\s+/).filter(Boolean))
+  const head = (words[0] ?? '').replace(/^.*\//, '')
   if (EXECUTED_HEREDOC_CONSUMERS.has(head)) return true
   if (DATA_HEREDOC_CONSUMERS.has(head)) return false
   return false
@@ -78,14 +105,71 @@ function withoutDataHeredoc(command: string): string {
 }
 
 const SHELL_WRAPPER_RE =
-  /\b(?:bash|sh|zsh|dash|ksh)\s+(?:-[A-Za-z]+\s+)*-c\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|([^\s;|&]+))/g
+  /\b(?:bash|sh|zsh|dash|ksh)\b(?:\s+-{1,2}[A-Za-z][A-Za-z-]*)*\s+-{1,2}[A-Za-z]*c\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|([^\s;|&]+))/g
 const EVAL_RE = /\beval\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|([^\s;|&]+))/g
 
-/** Rewrite `bash -c "…"` / `eval "…"` wrappers into their payload so the inner command is scanned. */
-function unwrapEvaluated(command: string): string {
+/** Read a balanced `open…close` group starting just after `open`; `undefined` when unbalanced. */
+function readBalanced(
+  text: string,
+  start: number,
+  open: string,
+  close: string,
+): { body: string; end: number } | undefined {
+  let depth = 0
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index]
+    if (char === '\\') {
+      index += 1
+      continue
+    }
+    if (char === open) depth += 1
+    else if (char === close) {
+      if (depth === 0) return { body: text.slice(start, index), end: index }
+      depth -= 1
+    }
+  }
+  return undefined
+}
+
+/**
+ * Rewrite `bash -c "…"` / `eval "…"` wrappers into their payload and hoist command substitutions
+ * (`$(…)`, `` `…` ``) onto fresh lines so the inner command is classified even when it sits inside
+ * quotes or an assignment. A substitution site is blanked; its body is appended for a later pass.
+ */
+function unwrapShell(command: string): string {
   let text = command
   for (let pass = 0; pass < 8; pass += 1) {
-    const next = text.replace(SHELL_WRAPPER_RE, '$1$2$3').replace(EVAL_RE, '$1$2$3')
+    let blanked = ''
+    const bodies: string[] = []
+    for (let index = 0; index < text.length; index += 1) {
+      const char = text[index]
+      if (char === '\\' && index + 1 < text.length) {
+        blanked += char + text[index + 1]
+        index += 1
+        continue
+      }
+      if (char === '$' && text[index + 1] === '(') {
+        const group = readBalanced(text, index + 2, '(', ')')
+        if (group) {
+          bodies.push(group.body)
+          blanked += ' '
+          index = group.end
+          continue
+        }
+      }
+      if (char === '`') {
+        const close = text.indexOf('`', index + 1)
+        if (close >= 0) {
+          bodies.push(text.slice(index + 1, close))
+          blanked += ' '
+          index = close
+          continue
+        }
+      }
+      blanked += char
+    }
+    const combined = bodies.length > 0 ? `${blanked}\n${bodies.join('\n')}` : blanked
+    const next = combined.replace(SHELL_WRAPPER_RE, '$1$2$3').replace(EVAL_RE, '$1$2$3')
     if (next === text) break
     text = next
   }
@@ -176,13 +260,23 @@ function shellWords(segment: string): string[] {
 }
 
 const PACKAGE_SCRIPT_GRIND_RE = /^(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?agent:loop\b/
+const LEADING_ASSIGNMENT_RE = /^(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\s]+)\s+)+/
+const LEADING_WRAPPER_RE =
+  /^(?:command|exec|builtin|sudo|nohup|time|env)\b(?:\s+-{1,2}[A-Za-z][A-Za-z-]*)*\s+/
+const DOPPLER_RUN_PREFIX_RE = /^doppler\s+run\b[\s\S]*?\s--\s+/
 
-function stripLeadingEnvironment(text: string): string {
-  return text.replace(/^(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\s]+)\s+)+/, '')
-}
-
-function stripLeadingBuiltins(text: string): string {
-  return text.replace(/^(?:command|exec|builtin|sudo|nohup|time)\s+/, '')
+/** Skip assignments / builtins / `doppler run … --` so the head is the real command position. */
+function stripLeadingPrefixes(text: string): string {
+  let result = text
+  for (let pass = 0; pass < 8; pass += 1) {
+    const before = result
+    result = result
+      .replace(LEADING_ASSIGNMENT_RE, '')
+      .replace(LEADING_WRAPPER_RE, '')
+      .replace(DOPPLER_RUN_PREFIX_RE, '')
+    if (result === before) return result
+  }
+  return result
 }
 
 function stripRunnerPrefixes(text: string): string {
@@ -210,7 +304,9 @@ function isGrindTokens(words: string[]): boolean {
   const head = words[0]
   if (head === undefined) return false
   if (/^agent-loop(?:\.js)?$/.test(head)) return words[1] === 'run'
-  if (/^agent-loop-batch(?:\.js)?$/.test(head)) return true
+  if (/^agent-loop-batch(?:\.js)?$/.test(head)) {
+    return hasInvokedScript(words, /^agent-loop-batch(?:\.js)?$/)
+  }
   if (head === 'node' || head === 'nodejs') {
     return (
       hasInvokedScript(words, /dist\/cli\/run(?:-batch)?\.js$/) ||
@@ -227,8 +323,7 @@ function isGrindTokens(words: string[]): boolean {
 function isGrindInvocation(segment: string): boolean {
   let text = segment.trim()
   if (text === '') return false
-  text = stripLeadingEnvironment(text)
-  text = stripLeadingBuiltins(text)
+  text = stripLeadingPrefixes(text)
   if (PACKAGE_SCRIPT_GRIND_RE.test(text)) return true
   return isGrindTokens(shellWords(stripRunnerPrefixes(text)))
 }
@@ -238,7 +333,7 @@ function isGrindInvocation(segment: string): boolean {
  * Mentions inside quotes (`rg`, `git log --grep`, `sed`, doc-writing heredocs) are allowed.
  */
 export function isAgentLoopRunCommand(command: string): boolean {
-  const code = unwrapEvaluated(withoutDataHeredoc(command))
+  const code = unwrapShell(withoutDataHeredoc(command))
   for (const segment of splitShellSegments(code)) {
     if (isGrindInvocation(segment)) return true
   }
@@ -248,7 +343,7 @@ export function isAgentLoopRunCommand(command: string): boolean {
 const SECRET_FILE_RE = /(?:\.doppler\.yaml|\.credentials\.ya?ml)\b/
 const OPENCODE_AUTH_RE = /opencode[/\\]auth\.json/
 const READER_TOOL_RE =
-  /\b(?:cat|bat|tac|less|more|head|tail|grep|rg|awk|sed|cut|sort|uniq|strings|xxd|od|base64|python3?|perl|ruby|node|jq|yq|read|type|open|source)\b/i
+  /\b(?:cat|bat|tac|less|more|head|tail|grep|rg|awk|sed|cut|sort|uniq|strings|xxd|od|base64|python3?|perl|ruby|node|jq|yq|read|type|open|source|cp|mv|rsync|install)\b/i
 
 export function isSecretDumpCommand(command: string): boolean {
   const visible = withoutDataHeredoc(command)

@@ -103,22 +103,24 @@ export function apply(ctx: AgentLooperContext, config: Config) {
       )
     }
 
+    disposers.push(
+      asDisposer(
+        ctx.commands.register({
+          name: 'loop-scaffold',
+          description:
+            'Scaffold a new Agent Looper bundle (GOAL.md, verify.sh, loop.json) — GOAL + shell verify finish line.',
+          handler(invocation: { rawInput: string }) {
+            return {
+              kind: 'success',
+              text: loopScaffoldGuidance(config.agentLoopBinary, invocation.rawInput),
+            }
+          },
+        }),
+      ),
+    )
+
     return () => {
       for (const dispose of disposers) dispose()
     }
-  })
-
-  // `loop-scaffold` is a name-keyed UI command: DSH replaces it on reload, so unlike the
-  // prompt section / guard / skills it needs no explicit disposer to avoid duplicate registrations.
-  ctx.commands.register({
-    name: 'loop-scaffold',
-    description:
-      'Scaffold a new Agent Looper bundle (GOAL.md, verify.sh, loop.json) — GOAL + shell verify finish line.',
-    handler(invocation: { rawInput: string }) {
-      return {
-        kind: 'success',
-        text: loopScaffoldGuidance(config.agentLoopBinary, invocation.rawInput),
-      }
-    },
   })
 }

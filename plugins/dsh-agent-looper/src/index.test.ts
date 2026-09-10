@@ -12,30 +12,37 @@ function mockCtx() {
   const guards: Array<(execution: { name: string; arguments: unknown }) => string | undefined> = []
   const warnings: string[] = []
   const disposers: Array<() => void> = []
+  const released: string[] = []
+  let seq = 0
+
+  const track = (kind: string) => {
+    const tag = `${kind}#${++seq}`
+    return () => released.push(tag)
+  }
 
   const ctx = {
     skills: {
       register: vi.fn((skill) => {
         registeredSkills.push(skill)
-        return () => {}
+        return track('skill')
       }),
     },
     commands: {
       register: vi.fn((command) => {
         registeredCommands.push(command)
-        return () => {}
+        return track('command')
       }),
     },
     systemPrompt: {
       section: vi.fn((section) => {
         sections.push(section)
-        return () => {}
+        return track('section')
       }),
     },
     tools: {
       guard: vi.fn((guard) => {
         guards.push(guard)
-        return () => {}
+        return track('guard')
       }),
     },
     logger: {
@@ -51,7 +58,7 @@ function mockCtx() {
     }),
   }
 
-  return { ctx, registeredSkills, registeredCommands, sections, guards, warnings, disposers }
+  return { ctx, registeredSkills, registeredCommands, sections, guards, warnings, disposers, released }
 }
 
 describe('dsh-agent-looper plugin', () => {
@@ -133,7 +140,7 @@ describe('dsh-agent-looper plugin', () => {
   })
 
   it('hangs registrations off ctx.effect so a reload releases them', () => {
-    const { ctx, disposers } = mockCtx()
+    const { ctx, disposers, released } = mockCtx()
     apply(ctx, {
       skillsDir: './skills',
       agentLoopBinary: 'agent-loop',
@@ -142,6 +149,11 @@ describe('dsh-agent-looper plugin', () => {
     expect(ctx.effect).toHaveBeenCalledTimes(1)
     expect(disposers).toHaveLength(1)
     expect(() => disposers[0]?.()).not.toThrow()
+    expect(released).toHaveLength(7)
+    expect(released.filter((tag) => tag.startsWith('section#'))).toHaveLength(1)
+    expect(released.filter((tag) => tag.startsWith('guard#'))).toHaveLength(1)
+    expect(released.filter((tag) => tag.startsWith('skill#'))).toHaveLength(4)
+    expect(released.filter((tag) => tag.startsWith('command#'))).toHaveLength(1)
   })
 
   it('warns through ctx.logger when skillsDir is missing', () => {
@@ -206,13 +218,35 @@ describe('nested agent-loop run detection', () => {
     expect(isAgentLoopRunCommand('eval "agent-loop run .cursor/loops/x"')).toBe(true)
   })
 
+  it('unwraps shells, substitutions, and prefixes before classifying the head', () => {
+    expect(isAgentLoopRunCommand('bash -lc "agent-loop run .cursor/loops/x"')).toBe(true)
+    expect(isAgentLoopRunCommand('bash --login -c "agent-loop run .cursor/loops/x"')).toBe(true)
+    expect(isAgentLoopRunCommand('env agent-loop run .cursor/loops/x')).toBe(true)
+    expect(
+      isAgentLoopRunCommand(
+        'doppler run --project agent-looper --config dev -- agent-loop run .cursor/loops/x',
+      ),
+    ).toBe(true)
+    expect(isAgentLoopRunCommand('OUT=$(agent-loop run .cursor/loops/x)')).toBe(true)
+    expect(isAgentLoopRunCommand('OUT=`agent-loop run .cursor/loops/x`')).toBe(true)
+    expect(isAgentLoopRunCommand(`sudo bash <<'EOF'\nagent-loop run .cursor/loops/x\nEOF`)).toBe(true)
+    expect(isAgentLoopRunCommand(`env bash <<'EOF'\nagent-loop run .cursor/loops/x\nEOF`)).toBe(true)
+  })
+
   it('allows mentions, help, and data heredocs', () => {
+    expect(isAgentLoopRunCommand('agent-loop --help')).toBe(false)
+    expect(isAgentLoopRunCommand('pnpm exec agent-loop --help')).toBe(false)
+    expect(isAgentLoopRunCommand('agent-loop-batch --help')).toBe(false)
+    expect(isAgentLoopRunCommand('agent-loop-init')).toBe(false)
     expect(isAgentLoopRunCommand('rg "agent-loop run" docs/')).toBe(false)
     expect(isAgentLoopRunCommand('git log --grep="agent-loop run"')).toBe(false)
     expect(isAgentLoopRunCommand('git commit -m "docs: explain why agent-loop run must be backgrounded"')).toBe(
       false,
     )
     expect(isAgentLoopRunCommand('sed -i "s|agent-loop run|x|" README.md')).toBe(false)
+    expect(isAgentLoopRunCommand('sudo ls /tmp')).toBe(false)
+    expect(isAgentLoopRunCommand('echo "$(date)"')).toBe(false)
+    expect(isAgentLoopRunCommand('STAMP=$(date -u +%FT%TZ) && echo "$STAMP"')).toBe(false)
     expect(
       isAgentLoopRunCommand("cat > package.json <<'EOF'\n  \"agent:loop\": \"agent-loop run .cursor/loops/x\"\nEOF"),
     ).toBe(false)
@@ -252,6 +286,10 @@ describe('nested agent-loop run detection', () => {
     expect(isSecretDumpCommand('grep TOKEN ~/.doppler.yaml')).toBe(true)
     expect(isSecretDumpCommand('grep -r token ~/.doppler/.doppler.yaml')).toBe(true)
     expect(isSecretDumpCommand(`bash <<'EOF'\ncat ~/.dsh/.credentials.yaml\nEOF`)).toBe(true)
+    expect(isSecretDumpCommand('cp ~/.doppler.yaml /tmp/leak')).toBe(true)
+    expect(isSecretDumpCommand('mv ~/.dsh/.credentials.yaml /tmp/leak')).toBe(true)
+    expect(isSecretDumpCommand('rsync ~/.doppler.yaml /tmp/leak')).toBe(true)
+    expect(isSecretDumpCommand('install -m 600 ~/.dsh/.credentials.yaml /tmp/leak')).toBe(true)
     expect(isSecretDumpCommand('cat ~/.dsh/settings.yaml')).toBe(false)
     expect(isSecretDumpCommand('python3 -c "open(\'$HOME/.local/share/opencode/auth.json\')"')).toBe(true)
     expect(isSecretDumpCommand('DOPPLER_TOKEN=x doppler run -- true')).toBe(true)

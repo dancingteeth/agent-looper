@@ -196,7 +196,8 @@ expect('apply registers 4 bundled skills', live.counts.skill, 4)
 expect('apply registers the loop-scaffold command', live.counts.command, 1)
 if (typeof returned === 'function') returned()
 live.cleanup()
-expect('releasing the context disposes all 6 registrations', live.released.size, 6)
+// Superseded by loop dsh-plugin-guard-hardening: `loop-scaffold` now also hangs off ctx.effect (7 registrations).
+expect('releasing the context disposes all 7 registrations', live.released.size, 7)
 
 console.log('--- lifecycle: a missing skillsDir is loud ---')
 const missing = mockCtx()
