@@ -110,6 +110,8 @@ export const MODEL_PRICING_PER_MILLION: Record<string, ModelTokenRates> = {
   'gpt-5.6-terra': { input: 1.25, output: 10.0 },
   'gpt-5.6-sol': { input: 2.5, output: 15.0 },
   // DSH official DeepSeek (headless agent-default-model)
+  // `deepseek-flash` is the 4.1 row (`DeepSeek-V41-Flash`); DeepSeek lists it at V4 Flash rates.
+  'deepseek-official/deepseek-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash-vision-exp': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-pro': { input: 0.435, output: 0.87 },

@@ -17,6 +17,11 @@ describe('loopUsage', () => {
     expect(cost).toBeCloseTo(0.14 + 0.14, 5)
   })
 
+  it('estimates DSH 4.1 Flash cost from official rates', () => {
+    const cost = estimateCostUsd('deepseek-official/deepseek-flash', 1_000_000, 500_000)
+    expect(cost).toBeCloseTo(0.14 + 0.14, 5)
+  })
+
   it('estimates OpenCode Go Hy3 cost from Go list rates', () => {
     const cost = estimateCostUsd('opencode-go/hy3', 1_000_000, 1_000_000)
     expect(cost).toBeCloseTo(0.14 + 0.58, 5)

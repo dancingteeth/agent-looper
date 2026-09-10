@@ -10,6 +10,7 @@ import {
   DEFAULT_DSH_ESCALATE_MODEL,
   DEFAULT_DSH_LOOP_MODEL,
   DEFAULT_DSH_REVIEW_MODEL,
+  DSH_41_FLASH_LOOP_MODEL,
   DSH_VISION_LOOP_MODEL,
   DEFAULT_MUSE_LOOP_MODEL,
   DEFAULT_MUSE_REVIEW_MODEL,
@@ -286,6 +287,8 @@ const MODEL_BLURBS: Record<string, string> = {
     'xAI Grok 4.6 — usual Cursor judge when the worker is Cursor.',
   'grok-4.5':
     'xAI Grok 4.5 — allowed Cursor judge. Weaker than Grok 4.6 on Cursor.',
+  'deepseek-flash':
+    'DeepSeek 4.1 Flash — current Flash row; image-capable by default, V4 Flash list price.',
   'deepseek-v4-flash':
     'DeepSeek V4 Flash — cheap, fast implement iterations. Common worker default.',
   hy3: 'Tencent Hy3 — slower than Flash, often stronger coding. Large Go monthly quota.',
@@ -377,6 +380,11 @@ export function workerModelChoices(runtime: LoopRuntime): MenuChoice[] {
           value: DEFAULT_DSH_LOOP_MODEL,
           title: DEFAULT_DSH_LOOP_MODEL,
           description: modelChoiceDescription(DEFAULT_DSH_LOOP_MODEL),
+        },
+        {
+          value: DSH_41_FLASH_LOOP_MODEL,
+          title: DSH_41_FLASH_LOOP_MODEL,
+          description: modelChoiceDescription(DSH_41_FLASH_LOOP_MODEL),
         },
         {
           value: DSH_VISION_LOOP_MODEL,

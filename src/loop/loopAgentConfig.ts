@@ -126,6 +126,11 @@ export const DEFAULT_CODEX_REVIEW_MODEL = 'gpt-5.6-sol'
 
 /** Default DSH worker — official DeepSeek Flash (headless `agent-default-model`). */
 export const DEFAULT_DSH_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash'
+/**
+ * Current DeepSeek Flash — the DSH `deepseek-flash` row (`DeepSeek-V41-Flash`, image-capable by
+ * default). Opt in per loop; the pinned `deepseek-v4-flash` stays the DSH worker default.
+ */
+export const DSH_41_FLASH_LOOP_MODEL = 'deepseek-official/deepseek-flash'
 /** Experimental vision Flash. DSH `read_image` works once the catalog row sets `inputModalities: [text, image]`. */
 export const DSH_VISION_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash-vision-exp'
 export const DEFAULT_DSH_ESCALATE_MODEL = 'deepseek-official/deepseek-v4-pro'

@@ -162,11 +162,13 @@ describe('agent-loop-setup', () => {
     expect(modelChoiceDescription('muse-spark-1.3')).not.toMatch(/escalate/i)
   })
 
-  it('offers DSH vision-exp alongside Flash and Pro', () => {
+  it('offers DSH 4.1 Flash alongside Flash, vision-exp, and Pro', () => {
     const dsh = workerModelChoices('dsh').map((choice) => choice.value)
     expect(dsh).toContain('deepseek-official/deepseek-v4-flash')
+    expect(dsh).toContain('deepseek-official/deepseek-flash')
     expect(dsh).toContain('deepseek-official/deepseek-v4-flash-vision-exp')
     expect(dsh).toContain('deepseek-official/deepseek-v4-pro')
+    expect(modelChoiceDescription('deepseek-official/deepseek-flash')).toMatch(/4\.1 Flash/)
   })
 
   it('offers Kimi K3 on Cline Pass and OpenCode Go menus', () => {
