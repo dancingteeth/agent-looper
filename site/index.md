@@ -1,8 +1,8 @@
 # Agent Looper
 
-> Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a determined check, then a fresh worker loops until that check passes — with a budget that actually stops.
+> Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a deterministic check, then a fresh worker loops until that check passes — with a budget that actually stops.
 
-You heard looping beats prompting. You install Agent Looper. You tell your agent you just want the feature. It writes the goal, writes a determined check, and runs until that check passes. No hallucinated “done.”
+You heard looping beats prompting. You install Agent Looper. You tell your agent you just want the feature. It writes the goal, writes a deterministic check, and runs until that check passes. No hallucinated “done.”
 
 npm: `@dancingteeth/agent-looper` · CLI: `agent-loop` · site: https://looper.dancingteeth.net/
 
@@ -16,7 +16,7 @@ Named presets: minmax (efficiency — cheap capable worker, strongest included j
 
 ## How does Agent Looper keep cost down for indie builders?
 
-Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop. Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops.
+Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop. Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops. The check is the finish line — keep it honest. The judge is residual, not a production gate.
 
 ## What happens if Agent Looper's worker is stuck?
 

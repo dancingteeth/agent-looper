@@ -18,7 +18,7 @@ Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It 
 2. From the Grok Bot session, start the harness: `pnpm exec agent-loop run .cursor/loops/my-task --review-gate`
 3. Worker and judge come from `loop.json` and what's installed. There is no `--runtime grok`.
 
-The harness still owns the determined check and a fresh worker each iteration. Grok Bot starts that loop; it does not implement the goal itself.
+The harness still owns the deterministic check and a fresh worker each iteration. Grok Bot starts that loop; it does not implement the goal itself.
 
 ## Runtimes
 
