@@ -29,7 +29,7 @@ Or in `package.json`:
 ```json
 {
   "devDependencies": {
-    "@dancingteeth/agent-looper": "^0.5.0",
+    "@dancingteeth/agent-looper": "^0.6.0",
     "@cursor/sdk": "^1.0.18"
   }
 }

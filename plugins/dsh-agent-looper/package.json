@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/dsh-agent-looper",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness companion — teaches and scaffolds Agent Looper (GOAL.md + verify.sh + agent-loop CLI)",
   "license": "MIT",
   "type": "module",

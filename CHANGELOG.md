@@ -7,6 +7,23 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
+## 0.6.0 — 2026-09-10
+
+Single-screen setup wizard, DeepSeek 4.1 Flash on the DSH runtime, and a hardened DSH companion guard.
+
+### Headline
+
+- **Single-screen setup wizard** — one persistent Ink render shows the recap plus the current question instead of appending a block per prompt. Back re-asks one step; the review screen re-asks one row and keeps the rest, dropping disabled-branch answers (Telegram, Taskwarrior UUID). `--plain` / `--answers` unchanged.
+- **DeepSeek 4.1 Flash on the DSH runtime** — `deepseek-official/deepseek-flash` (the DSH `DeepSeek-V41-Flash` catalog row, image-capable by default) joins the setup menu, usage pricing, and [`docs/dsh-runtime.md`](./docs/dsh-runtime.md). The pinned `deepseek-v4-flash` stays the DSH worker default; opt in per loop.
+- **DSH companion guard hardening** (`@dancingteeth/dsh-plugin-looper`) — the bash guard now denies every *foreground* grind form this repo ships (`doppler run … -- agent-loop run`, `agent-loop-batch`, `node dist/cli/run-batch.js`, `tsx src/cli/run.ts`, `$()` / backtick substitution, `bash -c` / `-lc` / `--login -c`, and executed heredocs even behind `sudo` / `env`) plus secret copy-outs (`cp` / `mv` / `rsync` / `install`), while allowing commands that merely *mention* the CLI (`rg`, `git log --grep`, `sed`, doc-writing heredocs). Registrations are released through `ctx.effect`, and CI now compiles the plugin.
+
+### Also
+
+- Guard false positives fixed: reading or editing text that contains `agent-loop run` no longer gets denied.
+- A missing `skillsDir` warns through `ctx.logger` instead of silently registering zero skills.
+- Both frozen guard probes (44 + 66 cases) run in the DSH plugin loop's `verify.sh`; the plugin's unit tests run in `pnpm test`.
+- Supported line: **0.6.x**.
+
 ## 0.5.0 — 2026-09-04
 
 Fix-until-green with a prompt TUI, Claude Code as a first-class runtime, list-vs-billed spend, and a documented embed contract.
