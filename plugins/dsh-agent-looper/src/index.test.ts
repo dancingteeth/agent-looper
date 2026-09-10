@@ -10,6 +10,8 @@ function mockCtx() {
   const registeredCommands: Array<{ name: string; description: string; handler: Function }> = []
   const sections: Array<{ name: string; order: number; text: string }> = []
   const guards: Array<(execution: { name: string; arguments: unknown }) => string | undefined> = []
+  const warnings: string[] = []
+  const disposers: Array<() => void> = []
 
   const ctx = {
     skills: {
@@ -36,9 +38,20 @@ function mockCtx() {
         return () => {}
       }),
     },
+    logger: {
+      warn: vi.fn((message: string) => {
+        warnings.push(message)
+        return undefined
+      }),
+    },
+    effect: vi.fn((callback: () => void | (() => void)) => {
+      const disposer = callback()
+      if (typeof disposer === 'function') disposers.push(disposer)
+      return () => {}
+    }),
   }
 
-  return { ctx, registeredSkills, registeredCommands, sections, guards }
+  return { ctx, registeredSkills, registeredCommands, sections, guards, warnings, disposers }
 }
 
 describe('dsh-agent-looper plugin', () => {
@@ -119,6 +132,29 @@ describe('dsh-agent-looper plugin', () => {
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'doppler secrets' } })).toMatch(/Blocked/)
   })
 
+  it('hangs registrations off ctx.effect so a reload releases them', () => {
+    const { ctx, disposers } = mockCtx()
+    apply(ctx, {
+      skillsDir: './skills',
+      agentLoopBinary: 'agent-loop',
+      blockNestedRun: true,
+    })
+    expect(ctx.effect).toHaveBeenCalledTimes(1)
+    expect(disposers).toHaveLength(1)
+    expect(() => disposers[0]?.()).not.toThrow()
+  })
+
+  it('warns through ctx.logger when skillsDir is missing', () => {
+    const { ctx, warnings } = mockCtx()
+    apply(ctx, {
+      skillsDir: './definitely-missing-skills-dir',
+      agentLoopBinary: 'agent-loop',
+      blockNestedRun: true,
+    })
+    expect(warnings.length).toBeGreaterThan(0)
+    expect(warnings.join('\n')).toMatch(/skillsDir/)
+  })
+
   it('parses bundled SKILL.md frontmatter', () => {
     const sample = `---
 name: design-loop
@@ -160,6 +196,28 @@ describe('nested agent-loop run detection', () => {
     )
   })
 
+  it('matches every shipped grind entrypoint', () => {
+    expect(isAgentLoopRunCommand('agent-loop-batch .cursor/loops')).toBe(true)
+    expect(isAgentLoopRunCommand('node dist/cli/run-batch.js .cursor/loops')).toBe(true)
+    expect(isAgentLoopRunCommand('pnpm exec tsx src/cli/run.ts .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand(`bash <<'EOF'\nagent-loop run .cursor/loops/x\nEOF`)).toBe(true)
+    expect(isAgentLoopRunCommand(`sh -s <<'EOF'\nagent-loop run .cursor/loops/x\nEOF`)).toBe(true)
+    expect(isAgentLoopRunCommand('bash -c "agent-loop run .cursor/loops/x"')).toBe(true)
+    expect(isAgentLoopRunCommand('eval "agent-loop run .cursor/loops/x"')).toBe(true)
+  })
+
+  it('allows mentions, help, and data heredocs', () => {
+    expect(isAgentLoopRunCommand('rg "agent-loop run" docs/')).toBe(false)
+    expect(isAgentLoopRunCommand('git log --grep="agent-loop run"')).toBe(false)
+    expect(isAgentLoopRunCommand('git commit -m "docs: explain why agent-loop run must be backgrounded"')).toBe(
+      false,
+    )
+    expect(isAgentLoopRunCommand('sed -i "s|agent-loop run|x|" README.md')).toBe(false)
+    expect(
+      isAgentLoopRunCommand("cat > package.json <<'EOF'\n  \"agent:loop\": \"agent-loop run .cursor/loops/x\"\nEOF"),
+    ).toBe(false)
+  })
+
   it('only guards bash grind commands', () => {
     expect(nestedAgentLoopRunReason('read', { path: '/tmp' })).toBeUndefined()
     expect(nestedAgentLoopRunReason('bash', { command: 'ls' })).toBeUndefined()
@@ -180,9 +238,21 @@ describe('nested agent-loop run detection', () => {
     expect(isBashRunInBackground({ command: 'agent-loop run x' })).toBe(false)
   })
 
+  it('denies the pwsh tool for foreground grinds', () => {
+    expect(nestedAgentLoopRunReason('pwsh', { command: 'agent-loop run x' })).toMatch(/foreground/)
+    expect(
+      nestedAgentLoopRunReason('pwsh', { command: 'agent-loop run x', run_in_background: true }),
+    ).toBeUndefined()
+  })
+
   it('blocks secret dumps without treating heredoc docs as dumps', () => {
     expect(isSecretDumpCommand('doppler secrets')).toBe(true)
     expect(isSecretDumpCommand('cat ~/.doppler/.doppler.yaml')).toBe(true)
+    expect(isSecretDumpCommand('cat ~/.doppler.yaml')).toBe(true)
+    expect(isSecretDumpCommand('grep TOKEN ~/.doppler.yaml')).toBe(true)
+    expect(isSecretDumpCommand('grep -r token ~/.doppler/.doppler.yaml')).toBe(true)
+    expect(isSecretDumpCommand(`bash <<'EOF'\ncat ~/.dsh/.credentials.yaml\nEOF`)).toBe(true)
+    expect(isSecretDumpCommand('cat ~/.dsh/settings.yaml')).toBe(false)
     expect(isSecretDumpCommand('python3 -c "open(\'$HOME/.local/share/opencode/auth.json\')"')).toBe(true)
     expect(isSecretDumpCommand('DOPPLER_TOKEN=x doppler run -- true')).toBe(true)
     expect(

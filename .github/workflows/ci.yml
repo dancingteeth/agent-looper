@@ -28,3 +28,5 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm build
+      - name: Compile DSH companion plugin
+        run: pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json
