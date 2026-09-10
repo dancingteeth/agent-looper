@@ -1,0 +1,13 @@
+{
+  "runtime": "dsh",
+  "model": "deepseek-official/deepseek-flash",
+  "escalateModel": "deepseek-official/deepseek-flash",
+  "reviewRuntime": "opencode",
+  "reviewModel": "opencode-go/glm-5.3",
+  "reviewGate": true,
+  "maxReviewCycles": 2,
+  "verify": "bash .cursor/loops/dsh-plugin-guard-hardening/verify.sh",
+  "maxIterations": 6,
+  "stagnationThreshold": 3,
+  "mode": "forward"
+}
