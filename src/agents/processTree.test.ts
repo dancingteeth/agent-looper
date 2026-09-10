@@ -1,8 +1,11 @@
+import type { ChildProcess } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   collectDescendantPids,
+  defaultProcessTreeIo,
   killProcessGroup,
   killProcessTree,
+  listChildPids,
   newlySpawnedPids,
   PARENT_DEATH_REAPER_SCRIPT,
   shouldInstallProcessSignalHandlers,
@@ -183,5 +186,100 @@ describe('withSpawnedChildrenPoll', () => {
     )
     expect(result).toBe('ok')
     expect(adopt.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('polls adopt while work is in flight', async () => {
+    vi.useFakeTimers()
+    const adopt = vi.fn()
+    let finish!: () => void
+    const work = new Promise<string>((resolve) => {
+      finish = () => resolve('ok')
+    })
+    const pending = withSpawnedChildrenPoll(
+      { pids: [], adopt, release: async () => undefined },
+      () => work,
+      10,
+    )
+    await vi.advanceTimersByTimeAsync(25)
+    expect(adopt.mock.calls.length).toBeGreaterThanOrEqual(3)
+    finish()
+    await expect(pending).resolves.toBe('ok')
+    vi.useRealTimers()
+  })
+})
+
+describe('defaultProcessTreeIo', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('kills and probes liveness through process.kill', () => {
+    const io = defaultProcessTreeIo()
+    const kill = vi.spyOn(process, 'kill').mockImplementation((() => true) as typeof process.kill)
+    io.kill(42, 'SIGTERM')
+    expect(kill).toHaveBeenCalledWith(42, 'SIGTERM')
+    expect(io.alive(42)).toBe(true)
+    kill.mockImplementation(() => {
+      throw new Error('ESRCH')
+    })
+    expect(io.alive(99)).toBe(false)
+  })
+})
+
+describe('listChildPids', () => {
+  it('returns nothing for non-positive pids', () => {
+    expect(listChildPids(0)).toEqual([])
+    expect(listChildPids(-3)).toEqual([])
+  })
+})
+
+describe('killProcessTree default delay', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('sleeps on the default delay when leftovers stay alive', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(process, 'kill').mockImplementation((() => true) as typeof process.kill)
+    const io: ProcessTreeIo = {
+      listChildren: () => [],
+      kill: () => undefined,
+      alive: () => true,
+    }
+    const pending = killProcessTree(8, { graceMs: 20, io })
+    await vi.advanceTimersByTimeAsync(50)
+    await pending
+  })
+})
+
+describe('trackSpawnedRoot invalid pid', () => {
+  it('returns a no-op untrack', () => {
+    const before = trackedSpawnedRoots()
+    const untrack = trackSpawnedRoot(0)
+    untrack()
+    expect(trackedSpawnedRoots()).toEqual(before)
+  })
+})
+
+describe('spawnParentDeathReaper close', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('SIGKILLs the reaper process group', () => {
+    const kill = vi.spyOn(process, 'kill').mockImplementation((() => true) as typeof process.kill)
+    const reaper = spawnParentDeathReaper({
+      parentPid: 1,
+      rootPid: 2,
+      spawnImpl: () =>
+        ({
+          pid: 4242,
+          unref: () => undefined,
+        }) as ChildProcess,
+    })
+    expect(reaper.pid).toBe(4242)
+    reaper.close()
+    expect(kill).toHaveBeenCalledWith(-4242, 'SIGKILL')
   })
 })

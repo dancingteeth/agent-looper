@@ -22,6 +22,7 @@ export default defineConfig({
         'src/cli/review-run.ts',
         'src/cli/review-preview.ts',
         'src/cli/meta-review.ts',
+        'src/cli/watch.ts',
         // Optional peer runtimes — exercised via mocks in agentRunner / reviewAgentRun;
         // body needs live OpenCode / Pi SDKs and would otherwise sit at 0% and sink globals.
         'src/agents/opencodeAgent.ts',

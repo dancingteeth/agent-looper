@@ -1,7 +1,16 @@
 import { createElement } from 'react'
 import { describe, expect, it } from 'vitest'
 import { render } from 'ink-testing-library'
-import { applyPromptInput, FreezeConfirm, MultilinePrompt, visualPromptRows, windowPromptRows } from './promptTui.js'
+import {
+  applyPromptInput,
+  DraftView,
+  DoneView,
+  FreezeConfirm,
+  MultilinePrompt,
+  visualPromptRows,
+  windowPromptRows,
+  wrapPromptSegment,
+} from './promptTui.js'
 import type { FreezeChoice } from './promptFlow.js'
 
 const snapshot = {
@@ -40,6 +49,13 @@ describe('visualPromptRows', () => {
   })
 })
 
+describe('wrapPromptSegment', () => {
+  it('returns a blank row for empty text and wraps on spaces', () => {
+    expect(wrapPromptSegment('', 10)).toEqual([''])
+    expect(wrapPromptSegment('one two three four', 8)[0]).toBe('one two')
+  })
+})
+
 describe('windowPromptRows', () => {
   it('pins the opening lines when the idea is taller than the card', () => {
     const rows = Array.from({ length: 20 }, (_, i) => `line ${i}`)
@@ -47,6 +63,39 @@ describe('windowPromptRows', () => {
     expect(visible[0]).toBe('line 0')
     expect(visible).toContain('  …')
     expect(visible.at(-1)).toBe('line 19')
+  })
+
+  it('keeps the last row when only one line fits', () => {
+    const rows = ['a', 'b', 'c']
+    expect(windowPromptRows(rows, 1)).toEqual(['c'])
+    expect(windowPromptRows(rows, 2)).toEqual(['a', 'c'])
+  })
+})
+
+describe('DraftView', () => {
+  it('shows waiting, then files, tools, and assistant tail', () => {
+    const empty = render(createElement(DraftView, { state: { files: [], assistantTail: '' } }))
+    expect(empty.lastFrame()).toMatch(/waiting for files/)
+
+    const busy = render(
+      createElement(DraftView, {
+        state: { files: ['GOAL.md'], toolLine: 'Write', assistantTail: 'drafting\nverify' },
+      }),
+    )
+    expect(busy.lastFrame()).toMatch(/GOAL\.md/)
+    expect(busy.lastFrame()).toMatch(/Write/)
+    expect(busy.lastFrame()).toMatch(/drafting/)
+  })
+})
+
+describe('DoneView', () => {
+  it('shows preview on success and the exit code on failure', () => {
+    const ok = render(createElement(DoneView, { exitCode: 0, preview: 'pnpm preview' }))
+    expect(ok.lastFrame()).toMatch(/run complete/)
+    expect(ok.lastFrame()).toMatch(/preview: pnpm preview/)
+
+    const fail = render(createElement(DoneView, { exitCode: 2 }))
+    expect(fail.lastFrame()).toMatch(/run exited 2/)
   })
 })
 
