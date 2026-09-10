@@ -22,7 +22,7 @@ import {
 import { detectLoopRuntimes, type DetectionResult } from './detectRuntimes.js'
 import { defaultIndexForValue, formatMenu, parseMenuSelection, type MenuChoice } from './setupMenus.js'
 import { collectSetupAnswers, SetupDeclinedError, type SetupPrompts } from './setupFlow.js'
-import { createInkPrompts } from './setupTui.js'
+import { runSetupWizard } from './setupWizardTui.js'
 
 const LOOP_CONFIG_KEYS = new Set(Object.keys(loopConfigSchema.shape))
 
@@ -41,8 +41,9 @@ Interactive walkthrough that writes repo loop defaults into
 .cursor/agent-loop.repo.json (runtime, models, review, notify, …) and a
 loop.json for --out (verify + this bundle’s snapshot). Later sparse
 loop.json files inherit those defaults; explicit loop.json keys win.
-Then prints agent-check and agent-loop run. Interactive mode is an Ink TUI
-(arrow keys + enter) on a TTY. Model lists match the runtime you just picked.
+Then prints agent-check and agent-loop run. Interactive mode is a single-screen
+Ink TUI on a TTY (arrows + enter, ←/esc goes back, review + save at the end).
+Model lists match the runtime you just picked.
 Pass --plain for numbered menus (CI / no TTY / screen readers).
 Before the cost-preset menu, the wizard detects which runtimes are actually
 installed (SDK import + CLI on PATH, same checks as agent-check) and annotates
@@ -519,7 +520,7 @@ async function runInteractive(
   const detection = await detectLoopRuntimes()
   const costPresets = loadRepoProfile(repoRoot).costPresets
   if (shouldUseTui(plain)) {
-    const answers = await collectSetupAnswers(createInkPrompts(), outDir, detection, costPresets)
+    const answers = await runSetupWizard(outDir, detection, costPresets)
     return runWizard(answers, outDir, repoRoot, { dryRun, detection, costPresets })
   }
 
