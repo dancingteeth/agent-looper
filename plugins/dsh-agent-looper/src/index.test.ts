@@ -252,6 +252,56 @@ describe('nested agent-loop run detection', () => {
     ).toBe(false)
   })
 
+  it('matches bare, path-prefixed, and package-manager launches of the CLI', () => {
+    expect(isAgentLoopRunCommand('agent-loop .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand('agent-loop --verbose .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand('pnpm agent-loop run .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand('yarn run agent-loop run .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand('npx -y agent-loop run .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand('./node_modules/.bin/agent-loop run .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand('node_modules/.bin/agent-loop-batch .cursor/loops')).toBe(true)
+    expect(isAgentLoopRunCommand('./dist/cli/run.js .cursor/loops/x')).toBe(true)
+    expect(isAgentLoopRunCommand('/usr/local/bin/node dist/cli/run.js .cursor/loops/x')).toBe(true)
+  })
+
+  it('sees through wrapper flags, subshells, and shell keywords', () => {
+    expect(isAgentLoopRunCommand('timeout 3600 agent-loop run x')).toBe(true)
+    expect(isAgentLoopRunCommand('timeout -s KILL 1h agent-loop run x')).toBe(true)
+    expect(isAgentLoopRunCommand('sudo -u me agent-loop run x')).toBe(true)
+    expect(isAgentLoopRunCommand('nice -n 10 agent-loop run x')).toBe(true)
+    expect(isAgentLoopRunCommand('env -i PATH=/usr/bin agent-loop run x')).toBe(true)
+    expect(isAgentLoopRunCommand('(agent-loop run x)')).toBe(true)
+    expect(isAgentLoopRunCommand('{ agent-loop run x; }')).toBe(true)
+    expect(isAgentLoopRunCommand('if true; then agent-loop run x; fi')).toBe(true)
+    expect(isAgentLoopRunCommand('! agent-loop run x')).toBe(true)
+    expect(isAgentLoopRunCommand('echo "$(agent-loop run x)"')).toBe(true)
+    expect(isAgentLoopRunCommand(`sudo -n bash <<'EOF'\nagent-loop run .cursor/loops/x\nEOF`)).toBe(true)
+    expect(isAgentLoopRunCommand(`env -i bash <<'EOF'\nagent-loop run .cursor/loops/x\nEOF`)).toBe(true)
+  })
+
+  it('allows watch, lookups, bare help, and single-quoted substitutions', () => {
+    expect(isAgentLoopRunCommand('agent-loop')).toBe(false)
+    expect(isAgentLoopRunCommand('agent-loop run --help')).toBe(false)
+    expect(isAgentLoopRunCommand('agent-loop watch .cursor/loops/x --snapshot')).toBe(false)
+    expect(isAgentLoopRunCommand('command -v agent-loop')).toBe(false)
+    expect(isAgentLoopRunCommand("echo 'tip: $(agent-loop run x)'")).toBe(false)
+    expect(isAgentLoopRunCommand("OUT='`agent-loop run x`'")).toBe(false)
+  })
+
+  it('blocks doppler env dumps, config reads, and redirect reads of secret files', () => {
+    expect(isSecretDumpCommand('doppler run --project p --config dev -- printenv')).toBe(true)
+    expect(isSecretDumpCommand('doppler run --project p --config dev -- printenv OPENCODE_API_KEY')).toBe(true)
+    expect(isSecretDumpCommand('doppler run --project p --config dev -- env')).toBe(true)
+    expect(isSecretDumpCommand('doppler run --project p --config dev -- env | grep KEY')).toBe(true)
+    expect(isSecretDumpCommand('doppler run --project p --config dev -- export -p')).toBe(true)
+    expect(isSecretDumpCommand('doppler configure')).toBe(true)
+    expect(isSecretDumpCommand('doppler configure get token --plain')).toBe(true)
+    expect(isSecretDumpCommand('echo "$(< ~/.doppler/.doppler.yaml)"')).toBe(true)
+    expect(isSecretDumpCommand('diff ~/.doppler/.doppler.yaml /dev/null')).toBe(true)
+    expect(isSecretDumpCommand('doppler run --project p --config dev -- env FOO=1 pnpm test')).toBe(false)
+    expect(isSecretDumpCommand('doppler configure set enable-timing false')).toBe(false)
+  })
+
   it('only guards bash grind commands', () => {
     expect(nestedAgentLoopRunReason('read', { path: '/tmp' })).toBeUndefined()
     expect(nestedAgentLoopRunReason('bash', { command: 'ls' })).toBeUndefined()

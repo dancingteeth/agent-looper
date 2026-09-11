@@ -111,6 +111,8 @@ describe('wizard key actions', () => {
       value: 'x',
     })
     expect(textKeyAction('', undefined, '', blankSimpleKey({ leftArrow: true }))).toEqual({ type: 'back' })
+    expect(textKeyAction('ab', undefined, '', blankSimpleKey({ leftArrow: true }))).toEqual({ type: 'noop' })
+    expect(textKeyAction('ab', undefined, '', blankSimpleKey({ escape: true }))).toEqual({ type: 'back' })
   })
 
   it('review: moves, saves, quits, and backs', () => {

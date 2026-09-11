@@ -207,6 +207,56 @@ describe('runSetupWithReview', () => {
   })
 })
 
+describe('re-asked rows default to the previous answer', () => {
+  it('preselects the previous choice when a select row is edited', async () => {
+    let reviews = 0
+    const defaultsOnEdit: string[] = []
+    const api = stubApi({
+      select: (req) => {
+        if (req.heading === 'Max iterations') {
+          if (reviews === 0) return { status: 'value', value: '12' }
+          defaultsOnEdit.push(req.defaultValue)
+        }
+        return { status: 'value', value: req.defaultValue }
+      },
+      review: (trail) => {
+        reviews += 1
+        if (reviews === 1) return { type: 'edit', index: trail.findIndex((entry) => entry.heading === 'Max iterations') }
+        return { type: 'save' }
+      },
+    })
+    const answers = await runSetupWithReview(api, ctx)
+    expect(defaultsOnEdit).toEqual(['12'])
+    expect(answers.maxIterations).toBe(12)
+  })
+
+  it('keeps a typed value when an edited text row is confirmed with Enter', async () => {
+    const uuid = '12345678-1234-1234-1234-123456789012'
+    let reviews = 0
+    const api = stubApi({
+      select: (req) =>
+        req.heading === 'Taskwarrior UUID'
+          ? { status: 'value', value: MENU_CUSTOM }
+          : { status: 'value', value: req.defaultValue },
+      text: (req) => {
+        if (req.prompt === 'Taskwarrior UUID' && reviews === 0) return { status: 'value', value: uuid }
+        return { status: 'value', value: req.defaultValue ?? '' }
+      },
+      review: (trail) => {
+        reviews += 1
+        if (reviews === 1) {
+          const index = trail.findIndex((entry) => entry.kind === 'text' && entry.heading === 'Taskwarrior UUID')
+          expect(index).toBeGreaterThan(0)
+          return { type: 'edit', index }
+        }
+        return { type: 'save' }
+      },
+    })
+    const answers = await runSetupWithReview(api, ctx)
+    expect(answers.taskwarriorUuid).toBe(uuid)
+  })
+})
+
 describe('runOnePass replay', () => {
   it('replays a matching base without asking', async () => {
     const api = stubApi()

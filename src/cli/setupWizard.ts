@@ -166,8 +166,11 @@ export async function runOnePass(
     }
     if (trail.length === editAt && !forcedAsked) {
       forcedAsked = true
-      scan = Math.max(scan, editAt)
-      return await askSelect(heading, blurb, choices, defaultValue)
+      // Back / review edit re-asks an answered row: start on the previous answer, not the flow default.
+      const prev = base[editAt]
+      const hasPrev = selectRecordMatches(prev, heading, choices)
+      scan = Math.max(scan, hasPrev ? editAt + 1 : editAt)
+      return await askSelect(heading, blurb, choices, hasPrev ? prev.value : defaultValue)
     }
     const found = scanSelect(heading, choices)
     if (found !== -1) {
@@ -193,8 +196,11 @@ export async function runOnePass(
     }
     if (trail.length === editAt && !forcedAsked) {
       forcedAsked = true
-      scan = Math.max(scan, editAt)
-      return await askText(prompt, dflt)
+      // Enter on an empty field keeps the previous answer instead of silently reverting to the default.
+      const prev = base[editAt]
+      const hasPrev = textRecordMatches(prev, prompt)
+      scan = Math.max(scan, hasPrev ? editAt + 1 : editAt)
+      return await askText(prompt, hasPrev ? prev.value : dflt)
     }
     const found = scanText(prompt)
     if (found !== -1) {

@@ -22,6 +22,8 @@ export default defineConfig({
         'src/cli/review-run.ts',
         'src/cli/review-preview.ts',
         'src/cli/meta-review.ts',
+        // `agent-loop watch` handler (imported by run.ts, not a bin): Ink / poll loops that run
+        // until SIGINT. Its arg parsing (watchArgs) and rendering (watchTui, loopWatch) are tested.
         'src/cli/watch.ts',
         // Optional peer runtimes — exercised via mocks in agentRunner / reviewAgentRun;
         // body needs live OpenCode / Pi SDKs and would otherwise sit at 0% and sink globals.

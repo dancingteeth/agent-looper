@@ -95,7 +95,7 @@ export function WizardTextView({ req, value }: { req: TextRequest; value: string
       </Text>
       {req.defaultValue !== undefined ? (
         <Text color="#8A8580" wrap="truncate">
-          Enter keeps [{req.defaultValue}]
+          Enter keeps [{req.defaultValue === '' ? 'empty' : req.defaultValue}]
         </Text>
       ) : (
         <Text color="#8A8580" wrap="truncate">
@@ -257,7 +257,8 @@ export function textKeyAction(
   key: SimpleKey,
 ): TextKeyAction {
   if (key.ctrl && input === 'c') return { type: 'abort' }
-  if (key.escape || key.leftArrow) return { type: 'back' }
+  // ← only leaves an empty field, so reaching for the arrow keys never discards typed text.
+  if (key.escape || (key.leftArrow && value === '')) return { type: 'back' }
   if (key.returnKey) {
     const trimmed = value.trim()
     return { type: 'answer', value: trimmed === '' && defaultValue !== undefined ? defaultValue : trimmed }
@@ -442,7 +443,7 @@ export function WizardRoot({
           <Text color={C.muted} wrap="truncate">
             {screen.type === 'select'
               ? '↑↓/jk move · enter select · 1–9 jump · ←/esc back · ctrl+c quit'
-              : 'type + enter · ←/esc back · ctrl+c quit'}
+              : 'type + enter · esc back (← when empty) · ctrl+c quit'}
           </Text>
         </Box>
       )}

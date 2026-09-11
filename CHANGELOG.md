@@ -7,21 +7,28 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
-## 0.6.0 — 2026-09-10
+## 0.6.0 — 2026-09-11
 
-Single-screen setup wizard, DeepSeek 4.1 Flash on the DSH runtime, and a hardened DSH companion guard.
+Single-screen setup wizard, DeepSeek 4.1 Flash on the DSH runtime, a hardened DSH companion guard, and harness control-plane gates.
 
 ### Headline
 
-- **Single-screen setup wizard** — one persistent Ink render shows the recap plus the current question instead of appending a block per prompt. Back re-asks one step; the review screen re-asks one row and keeps the rest, dropping disabled-branch answers (Telegram, Taskwarrior UUID). `--plain` / `--answers` unchanged.
+- **Single-screen setup wizard** — one persistent Ink render shows the recap plus the current question instead of appending a block per prompt. Back re-asks one step; the review screen re-asks one row and keeps the rest, dropping disabled-branch answers (Telegram, Taskwarrior UUID). A re-asked row starts on your previous answer, so Enter keeps it. `--plain` / `--answers` unchanged.
 - **DeepSeek 4.1 Flash on the DSH runtime** — `deepseek-official/deepseek-flash` (the DSH `DeepSeek-V41-Flash` catalog row, image-capable by default) joins the setup menu, usage pricing, and [`docs/dsh-runtime.md`](./docs/dsh-runtime.md). The pinned `deepseek-v4-flash` stays the DSH worker default; opt in per loop.
-- **DSH companion guard hardening** (`@dancingteeth/dsh-agent-looper`) — the bash guard now denies every *foreground* grind form this repo ships (`doppler run … -- agent-loop run`, `agent-loop-batch`, `node dist/cli/run-batch.js`, `tsx src/cli/run.ts`, `$()` / backtick substitution, `bash -c` / `-lc` / `--login -c`, and executed heredocs even behind `sudo` / `env`) plus secret copy-outs (`cp` / `mv` / `rsync` / `install`), while allowing commands that merely *mention* the CLI (`rg`, `git log --grep`, `sed`, doc-writing heredocs). Registrations are released through `ctx.effect`, and CI now compiles the plugin.
+- **DSH companion guard hardening** (`@dancingteeth/dsh-agent-looper`) — the bash guard denies *foreground* grind launches: `agent-loop run` and bare `agent-loop <loop-dir>`, `agent-loop-batch`, `node dist/cli/run.js` / `./dist/cli/run.js`, and `tsx src/cli/run.ts`, whether started via `npx` / `pnpm exec` / `pnpm agent-loop` / `node_modules/.bin`, behind `doppler run … --`, `sudo -u`, `env -i`, `timeout`, or `nice`, inside subshells or `if` / `then` bodies, through `$()` / backtick substitution or `bash -c` / `-lc` / `--login -c`, or in executed heredocs. It also blocks secret copy-outs (`cp` / `mv` / `rsync` / `install`, `< file` redirects) and env dumps (`doppler run … -- env` / `printenv`, `doppler configure`), while allowing commands that merely *mention* the CLI (`rg`, `git log --grep`, `sed`, single-quoted text, doc-writing heredocs). Registrations are released through `ctx.effect`, and CI now compiles the plugin.
+- **Env vs product verify** — `verify.sh` exit `75` (`EX_TEMPFAIL`), exit `127` (command not found), or a `VERIFY_CLASS=env` line parks the loop (`status: waiting`, HITL) instead of sending another worker. Other non-zero exits stay product failures and keep iterating. `VerifyResult.verifyClass` is `ok` \| `product` \| `env`. `deriveLoopRunStatus` maps env-class `lastVerify` / failed `setup` to `waiting`.
+- **Harness setup** — optional `loop.json` `setup`, or `setup.sh` beside `GOAL.md`. Runs once, awaited, before the first worker. Evidence in `setup.log` / `run-report.md`. Failure does not spawn a worker and restores frozen spec files if setup mutated them.
+- **Frozen files** — after each visit the harness restores `GOAL.md`, `loop.json`, `verify.sh`, `VERIFY.skill.md`, `RESEARCH.md`, `PERMISSIONS.md`, and `setup.sh` if a worker edited them, and fails that visit.
 
 ### Also
 
-- Guard false positives fixed: reading or editing text that contains `agent-loop run` no longer gets denied.
+- Guard false positives fixed: reading or editing text that contains `agent-loop run` no longer gets denied, `$()` / backticks inside single quotes are treated as text, and `agent-loop watch` / `command -v agent-loop` stay allowed.
 - A missing `skillsDir` warns through `ctx.logger` instead of silently registering zero skills.
 - Both frozen guard probes (44 + 66 cases) run in the DSH plugin loop's `verify.sh`; the plugin's unit tests run in `pnpm test`.
+- `agent-loop-batch` lists each loop's `verify` / `finalVerify` / `setup` in the shell-trust warning (same gate as a single `agent-loop run`).
+- Judge prompts fence the goal, diff stat, and `REVIEWS.md` as data, so instructions injected into them cannot steer the verdict.
+- With `reviewGate` on, the configured secondary judge always runs instead of being skipped on a primary PASS.
+- Log-append, Cline usage, and OpenCode permission-reply failures are logged instead of thrown or swallowed.
 - Supported line: **0.6.x**.
 
 ## 0.5.0 — 2026-09-04

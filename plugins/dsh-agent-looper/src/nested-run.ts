@@ -6,7 +6,7 @@ export const NESTED_RUN_DENIAL = [
 ].join(' ')
 
 export const SECRET_DUMP_DENIAL = [
-  'Blocked: do not dump Doppler tokens, DSH credentials-local, OpenCode auth.json, or `doppler secrets` from DSH.',
+  'Blocked: do not dump Doppler tokens or config, secrets injected by `doppler run` (env / printenv), DSH credentials-local, OpenCode auth.json, or `doppler secrets` from DSH.',
   'Those files land in the session log. Tell the user to set keys in a host terminal:',
   '`doppler run --project <name> --config <config> -- agent-loop run …` or `export OPENCODE_API_KEY=…`.',
   'Bare `doppler run --` fails with "You must specify a project" unless this directory is Doppler-scoped.',
@@ -43,20 +43,65 @@ const EXECUTED_HEREDOC_CONSUMERS = new Set([
 /** Commands whose heredoc body is written to a file/stdout and must not be treated as code. */
 const DATA_HEREDOC_CONSUMERS = new Set(['cat', 'tee', 'dd', 'cp', 'mv', 'sed', 'awk'])
 
-/** Shell keywords/wrappers that can sit in front of the real command position. */
-const LEADING_WRAPPER_WORDS = new Set(['command', 'exec', 'builtin', 'sudo', 'nohup', 'time', 'env'])
+/**
+ * Wrappers that run the rest of the line as a command, mapped to the flags that consume the next
+ * word (`sudo -u me cmd`, `nice -n 10 cmd`, `timeout -s KILL 60 cmd`).
+ */
+const LEADING_WRAPPERS: ReadonlyMap<string, ReadonlySet<string>> = new Map<string, ReadonlySet<string>>([
+  ['command', new Set()],
+  ['builtin', new Set()],
+  ['exec', new Set(['-a'])],
+  ['nohup', new Set()],
+  ['setsid', new Set()],
+  ['time', new Set(['-f', '-o'])],
+  ['env', new Set(['-u', '-C', '--unset', '--chdir'])],
+  [
+    'sudo',
+    new Set(['-u', '-g', '-h', '-p', '-C', '-D', '-r', '-t', '-U', '--user', '--group', '--host', '--prompt', '--chdir']),
+  ],
+  ['doas', new Set(['-u', '-C'])],
+  ['nice', new Set(['-n', '--adjustment'])],
+  ['ionice', new Set(['-c', '-n', '-p'])],
+  ['timeout', new Set(['-s', '-k', '--signal', '--kill-after'])],
+  ['gtimeout', new Set(['-s', '-k', '--signal', '--kill-after'])],
+  ['stdbuf', new Set(['-i', '-o', '-e'])],
+  ['caffeinate', new Set(['-t', '-w'])],
+  ['xargs', new Set(['-I', '-L', '-n', '-P', '-d', '-E', '-s', '-a'])],
+])
 
-/** Drop leading assignments / builtins / `doppler run … --` so `words[0]` is the real command. */
+/** Wrappers whose first positional is their own argument, not the command (`timeout 60 cmd`). */
+const WRAPPER_POSITIONAL_ARGS: ReadonlyMap<string, number> = new Map([
+  ['timeout', 1],
+  ['gtimeout', 1],
+])
+
+/** Shell keywords / grouping that can sit in front of the command position (`if cmd`, `! cmd`). */
+const SHELL_KEYWORD_WORDS = new Set(['if', 'then', 'elif', 'else', 'while', 'until', 'do', '!', '{', '(', '(('])
+
+function commandBasename(word: string): string {
+  return word.replace(/^.*\//, '')
+}
+
+/** Drop assignments, keywords, wrappers (and their flags), and `doppler run … --` so `words[0]` is the real command. */
 function skipLeadingPrefixWords(words: string[]): string[] {
   let index = 0
   while (index < words.length) {
     const word = words[index]
-    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(word)) {
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(word) || SHELL_KEYWORD_WORDS.has(word)) {
       index += 1
       continue
     }
-    if (LEADING_WRAPPER_WORDS.has(word)) {
+    const wrapper = commandBasename(word)
+    const valueFlags = LEADING_WRAPPERS.get(wrapper)
+    if (valueFlags) {
       index += 1
+      while (index < words.length && words[index].startsWith('-')) {
+        const flag = words[index]
+        index += 1
+        if (flag === '--') break
+        if (valueFlags.has(flag)) index += 1
+      }
+      index += WRAPPER_POSITIONAL_ARGS.get(wrapper) ?? 0
       continue
     }
     if (word === 'doppler' && words[index + 1] === 'run') {
@@ -75,7 +120,7 @@ function skipLeadingPrefixWords(words: string[]): string[] {
 function heredocBodyIsCode(operatorLine: string): boolean {
   const before = operatorLine.split('<<')[0] ?? ''
   const words = skipLeadingPrefixWords(before.trim().split(/\s+/).filter(Boolean))
-  const head = (words[0] ?? '').replace(/^.*\//, '')
+  const head = commandBasename(words[0] ?? '')
   if (EXECUTED_HEREDOC_CONSUMERS.has(head)) return true
   if (DATA_HEREDOC_CONSUMERS.has(head)) return false
   return false
@@ -134,18 +179,35 @@ function readBalanced(
 /**
  * Rewrite `bash -c "…"` / `eval "…"` wrappers into their payload and hoist command substitutions
  * (`$(…)`, `` `…` ``) onto fresh lines so the inner command is classified even when it sits inside
- * quotes or an assignment. A substitution site is blanked; its body is appended for a later pass.
+ * double quotes or an assignment. A substitution site is blanked; its body is appended for a later
+ * pass. Single quotes suppress substitution, so `echo '$(agent-loop run x)'` stays text.
  */
 function unwrapShell(command: string): string {
   let text = command
   for (let pass = 0; pass < 8; pass += 1) {
     let blanked = ''
     const bodies: string[] = []
+    let quote: '"' | "'" | undefined
     for (let index = 0; index < text.length; index += 1) {
       const char = text[index]
+      if (quote === "'") {
+        blanked += char
+        if (char === "'") quote = undefined
+        continue
+      }
       if (char === '\\' && index + 1 < text.length) {
         blanked += char + text[index + 1]
         index += 1
+        continue
+      }
+      if (char === "'" && quote === undefined) {
+        quote = "'"
+        blanked += char
+        continue
+      }
+      if (char === '"') {
+        quote = quote === '"' ? undefined : '"'
+        blanked += char
         continue
       }
       if (char === '$' && text[index + 1] === '(') {
@@ -259,34 +321,46 @@ function shellWords(segment: string): string[] {
   return words
 }
 
-const PACKAGE_SCRIPT_GRIND_RE = /^(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?agent:loop\b/
-const LEADING_ASSIGNMENT_RE = /^(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\s]+)\s+)+/
-const LEADING_WRAPPER_RE =
-  /^(?:command|exec|builtin|sudo|nohup|time|env)\b(?:\s+-{1,2}[A-Za-z][A-Za-z-]*)*\s+/
-const DOPPLER_RUN_PREFIX_RE = /^doppler\s+run\b[\s\S]*?\s--\s+/
+const HELP_ARG_RE = /^(?:--help|-h)$/
+const PACKAGE_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun'])
+const PACKAGE_RUNNERS = new Set(['npx', 'pnpx', 'bunx'])
+const LOOPER_BIN_RE = /^(?:.*\/)?agent-loop(?:-batch)?(?:\.js)?$/
+const BUILT_RUN_ENTRY_RE = /(?:^|\/)dist\/cli\/run(?:-batch)?\.js$/
 
-/** Skip assignments / builtins / `doppler run … --` so the head is the real command position. */
-function stripLeadingPrefixes(text: string): string {
-  let result = text
-  for (let pass = 0; pass < 8; pass += 1) {
-    const before = result
-    result = result
-      .replace(LEADING_ASSIGNMENT_RE, '')
-      .replace(LEADING_WRAPPER_RE, '')
-      .replace(DOPPLER_RUN_PREFIX_RE, '')
-    if (result === before) return result
-  }
-  return result
+/** `pnpm agent:loop` / `npm run agent:loop` — the conventional package script. */
+function isPackageScriptGrind(words: string[]): boolean {
+  if (!PACKAGE_MANAGERS.has(words[0] ?? '')) return false
+  const script = words[1] === 'run' || words[1] === 'run-script' ? words[2] : words[1]
+  return script !== undefined && /^agent:loop\b/.test(script)
 }
 
-function stripRunnerPrefixes(text: string): string {
-  let result = text
+/** Drop `npx -y` / `pnpm exec` / `pnpm agent-loop` runners so `words[0]` is the invoked binary. */
+function stripRunnerWords(words: string[]): string[] {
+  let result = words
   for (let pass = 0; pass < 4; pass += 1) {
-    const next = result
-      .replace(/^(?:npx|pnpx|bunx)\s+/, '')
-      .replace(/^(?:npm|pnpm|yarn|bun)\s+(?:exec|dlx|x)\s+/, '')
-    if (next === result) return result
-    result = next
+    const [head, next] = result
+    if (head === undefined) return result
+    if (PACKAGE_RUNNERS.has(head)) {
+      let index = 1
+      while (index < result.length && result[index].startsWith('-')) {
+        index += result[index] === '-p' || result[index] === '--package' ? 2 : 1
+      }
+      result = result.slice(index)
+      continue
+    }
+    if (PACKAGE_MANAGERS.has(head) && (next === 'exec' || next === 'dlx' || next === 'x')) {
+      result = result.slice(2)
+      continue
+    }
+    // `pnpm agent-loop …` / `yarn run agent-loop …` execute the package bin directly.
+    if (PACKAGE_MANAGERS.has(head)) {
+      const binIndex = next === 'run' ? 2 : 1
+      if (LOOPER_BIN_RE.test(result[binIndex] ?? '')) {
+        result = result.slice(binIndex)
+        continue
+      }
+    }
+    return result
   }
   return result
 }
@@ -297,19 +371,32 @@ function hasInvokedScript(words: string[], scriptPattern: RegExp): boolean {
   if (index < 0) return false
   const args = words.slice(index + 1)
   if (args.length === 0) return false
-  return !args.every((arg) => /^(?:--help|-h)$/.test(arg))
+  return !args.every((arg) => HELP_ARG_RE.test(arg))
+}
+
+/**
+ * `agent-loop` argv that starts the grind. run.ts routes `watch` to the watcher and hands every
+ * other argv to parseRunArgs, where `run` is optional — so `agent-loop <loop-dir>` grinds too.
+ */
+function isLooperRunArgs(args: string[]): boolean {
+  if (args.length === 0 || args[0] === 'watch') return false
+  const rest = args[0] === 'run' ? args.slice(1) : args
+  return rest.length === 0 || !rest.every((arg) => HELP_ARG_RE.test(arg))
 }
 
 function isGrindTokens(words: string[]): boolean {
-  const head = words[0]
-  if (head === undefined) return false
-  if (/^agent-loop(?:\.js)?$/.test(head)) return words[1] === 'run'
+  const first = words[0]
+  if (first === undefined) return false
+  const head = commandBasename(first)
+  if (/^agent-loop(?:\.js)?$/.test(head)) return isLooperRunArgs(words.slice(1))
   if (/^agent-loop-batch(?:\.js)?$/.test(head)) {
-    return hasInvokedScript(words, /^agent-loop-batch(?:\.js)?$/)
+    return hasInvokedScript(words, /^(?:.*\/)?agent-loop-batch(?:\.js)?$/)
   }
+  // The built entry carries a node shebang, so `./dist/cli/run.js <dir>` runs without `node`.
+  if (BUILT_RUN_ENTRY_RE.test(first)) return hasInvokedScript(words, BUILT_RUN_ENTRY_RE)
   if (head === 'node' || head === 'nodejs') {
     return (
-      hasInvokedScript(words, /dist\/cli\/run(?:-batch)?\.js$/) ||
+      hasInvokedScript(words, BUILT_RUN_ENTRY_RE) ||
       hasInvokedScript(words, /src\/cli\/run(?:-batch)?\.ts$/)
     )
   }
@@ -321,11 +408,15 @@ function isGrindTokens(words: string[]): boolean {
 
 /** True when a shell segment starts the Agent Looper grind (not --help / init / a mere mention). */
 function isGrindInvocation(segment: string): boolean {
-  let text = segment.trim()
+  // `(agent-loop run x)` / `{ agent-loop run x; }` — peel subshell and group punctuation.
+  const text = segment
+    .trim()
+    .replace(/^[({]+\s*/, '')
+    .replace(/\s*\)+$/, '')
   if (text === '') return false
-  text = stripLeadingPrefixes(text)
-  if (PACKAGE_SCRIPT_GRIND_RE.test(text)) return true
-  return isGrindTokens(shellWords(stripRunnerPrefixes(text)))
+  const words = skipLeadingPrefixWords(shellWords(text))
+  if (isPackageScriptGrind(words)) return true
+  return isGrindTokens(skipLeadingPrefixWords(stripRunnerWords(words)))
 }
 
 /**
@@ -343,14 +434,25 @@ export function isAgentLoopRunCommand(command: string): boolean {
 const SECRET_FILE_RE = /(?:\.doppler\.yaml|\.credentials\.ya?ml)\b/
 const OPENCODE_AUTH_RE = /opencode[/\\]auth\.json/
 const READER_TOOL_RE =
-  /\b(?:cat|bat|tac|less|more|head|tail|grep|rg|awk|sed|cut|sort|uniq|strings|xxd|od|base64|python3?|perl|ruby|node|jq|yq|read|type|open|source|cp|mv|rsync|install)\b/i
+  /\b(?:cat|bat|tac|less|more|head|tail|grep|rg|awk|sed|cut|sort|uniq|strings|xxd|od|hexdump|base64|diff|cmp|nl|paste|rev|fold|python3?|perl|ruby|node|jq|yq|read|type|open|source|cp|mv|rsync|install|scp|curl|tar|zip|vi|vim|nvim|nano|emacs)\b/i
+/** `< file` / `$(< file)` read the file without naming a reader tool. */
+const SECRET_REDIRECT_RE = /<\s*["']?[^\s"'<>|;&]*(?:\.doppler\.yaml|\.credentials\.ya?ml)\b/
+/** Bare `doppler configure`, `configure get token`, and `configure debug` print the stored token. */
+const DOPPLER_CONFIGURE_READ_RE = /\bdoppler\s+configure\b(?!\s+(?:set|unset|reset|flags|options|--help|-h)\b)/
+/** `doppler run … -- env|printenv|set|export -p|declare -p|compgen -v` prints every injected secret. */
+const DOPPLER_ENV_DUMP_RE =
+  /\bdoppler\s+run\b[^\n;|&]*?\s--\s+(?:\S*\/)?(?:printenv\b|(?:env|set)(?=\s*(?:$|[\n;|&>]))|export\s+-p\b|declare\s+-[A-Za-z]*[px]\b|compgen\s+-[ev]\b)/
 
 export function isSecretDumpCommand(command: string): boolean {
   const visible = withoutDataHeredoc(command)
   if (/\bdoppler\s+secrets\b/.test(visible)) return true
   if (/\bDOPPLER_TOKEN\s*=/.test(visible)) return true
+  if (DOPPLER_CONFIGURE_READ_RE.test(visible)) return true
+  if (DOPPLER_ENV_DUMP_RE.test(visible)) return true
   if (OPENCODE_AUTH_RE.test(visible)) return true
-  if (SECRET_FILE_RE.test(visible) && READER_TOOL_RE.test(visible)) return true
+  if (SECRET_FILE_RE.test(visible) && (READER_TOOL_RE.test(visible) || SECRET_REDIRECT_RE.test(visible))) {
+    return true
+  }
   return false
 }
 
