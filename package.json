@@ -11,17 +11,17 @@
   },
   "homepage": "https://looper.dancingteeth.net/",
   "bin": {
-    "agent-loop": "./dist/cli/run.js",
-    "agent-loop-batch": "./dist/cli/run-batch.js",
-    "agent-check": "./dist/cli/check.js",
-    "agent-loop-init": "./dist/cli/init.js",
-    "agent-loop-setup": "./dist/cli/setup.js",
-    "agent-loop-prompt": "./dist/cli/prompt.js",
-    "agent-loop-review-run": "./dist/cli/review-run.js",
-    "agent-loop-review-preview": "./dist/cli/review-preview.js",
-    "agent-loop-meta-review": "./dist/cli/meta-review.js",
-    "agent-loop-doctor": "./dist/cli/doctor.js",
-    "agent-loop-export-run": "./dist/cli/export-run.js"
+    "agent-loop": "dist/cli/run.js",
+    "agent-loop-batch": "dist/cli/run-batch.js",
+    "agent-check": "dist/cli/check.js",
+    "agent-loop-init": "dist/cli/init.js",
+    "agent-loop-setup": "dist/cli/setup.js",
+    "agent-loop-prompt": "dist/cli/prompt.js",
+    "agent-loop-review-run": "dist/cli/review-run.js",
+    "agent-loop-review-preview": "dist/cli/review-preview.js",
+    "agent-loop-meta-review": "dist/cli/meta-review.js",
+    "agent-loop-doctor": "dist/cli/doctor.js",
+    "agent-loop-export-run": "dist/cli/export-run.js"
   },
   "exports": {
     ".": {
