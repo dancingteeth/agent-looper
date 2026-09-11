@@ -16,7 +16,7 @@ repeatable, no partial handoff.
 
 ## Rules
 
-1. **Verifier wins** — success is exit `0` from `verify` / `finalVerify`, not your assessment.
+1. **Verifier wins** — success is exit `0` from `verify` / `finalVerify`, not your assessment. Exit `75`, exit `127`, or `VERIFY_CLASS=env` is an environment limitation (do not treat it as a product fail to patch around).
 2. **Fail → fix → rerun** — if any step fails, fix the code and rerun from step 1.
 3. **No partial handoff** — do not stop after "mostly works" or "tests should pass".
 4. **Stay in scope** — only run checks listed here and in `GOAL.md` acceptance criteria.

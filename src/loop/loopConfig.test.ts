@@ -25,6 +25,14 @@ describe('loopConfigSchema', () => {
     expect(parsed.research).toBeUndefined()
   })
 
+  it('accepts an optional setup command', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      setup: 'pnpm install --frozen-lockfile',
+    })
+    expect(parsed.setup).toBe('pnpm install --frozen-lockfile')
+  })
+
   it('accepts an optional research path', () => {
     const parsed = loopConfigSchema.parse({
       verify: 'true',

@@ -182,6 +182,27 @@ describe('loopFailureDomain', () => {
     expect(entry?.suggestion).toMatch(/Transport\/provider failure before verify/)
   })
 
+  it('suggests toolchain fix for verify_env', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
+    logFailureDomainFromVerify(tmpDir, {
+      iteration: 1,
+      reason: 'verify_env',
+      verify: {
+        complete: false,
+        command: 'bash verify.sh',
+        exitCode: 75,
+        stdout: '',
+        stderr: 'missing pnpm',
+        reason: 'Verifier failed (exit 75).',
+      },
+      status: 'waiting',
+    })
+    const entry = readLatestFailureDomain(tmpDir)
+    expect(entry?.reason).toBe('verify_env')
+    expect(isHitlWaitingFailureDomain(entry)).toBe(true)
+    expect(entry?.suggestion).toMatch(/environment limitation/)
+  })
+
   it('tags hung-worker agent_error with an escalate hint', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'failure-domain-'))
     logFailureDomainFromAgentError(tmpDir, {

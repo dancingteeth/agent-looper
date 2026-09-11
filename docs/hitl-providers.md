@@ -15,6 +15,7 @@ Triggers:
 
 - `hitlCheck` in `loop.json` after a **successful** loop (post-verify / post-review)
 - `reviewGateHitl: true` when the review gate **exhausts** cycles (instead of a hard fail only)
+- **Environment verify** (`verify_env`) or **setup** failure — the harness parks `status: waiting` instead of iterating
 - **Notify fallback:** when the loop ends **incomplete**, Telegram notify was configured, and the failure report did not land → HITL with reason `notify_failed`
 - `hitlOnFailure: true` → HITL on every incomplete run (reason `loop_failure`), even when Telegram succeeded
 

@@ -26,13 +26,13 @@ here is exported from `src/index.ts` — there is no second, thinner entry point
 | `AgentLoopPhaseEvent` | type | Experimental | Payload delivered to `onPhase`; see [Phase events](#phase-events) |
 | `LoopIterationLog` | type | Experimental | Per-iteration record written to `log.ndjson`; growing shape |
 | `LoopRunStatus` | type | Stable | `'done' \| 'continue' \| 'waiting'`, the HITL-aware view of a result |
-| `deriveLoopRunStatus` | function | Stable | Derives `LoopRunStatus` from `complete` + `reviewEscalatedToHitl` |
+| `deriveLoopRunStatus` | function | Stable | Derives `LoopRunStatus` from `complete`, `reviewEscalatedToHitl`, env-class `lastVerify` / failed `setup`, and an explicit `status: 'waiting'` |
 | `loadLoopBundle` | function | Stable | Reads `loop.json` + `GOAL.md` + `verify.sh` off disk into a `LoadedLoopBundle` |
 | `LoopConfig` | type | Stable | Parsed, defaulted `loop.json` shape `runAgentLoop` expects (`LoadedLoopBundle.config`) |
 | `resolveRepoContext` | function | Stable | Resolves the repo root and repo profile a loop run should use |
 | `RepoContext` | type | Stable | Return value of `resolveRepoContext`: `{ repoRoot, profile }` |
 | `runVerifyCommand` | function | Stable | Runs the shell `verify` (or `finalVerify`) command; the hard gate |
-| `VerifyResult` | type | Stable | Exit code, stdout/stderr, timing from `runVerifyCommand` |
+| `VerifyResult` | type | Stable | Exit code, stdout/stderr, optional `verifyClass` (`ok` \| `product` \| `env`) from `runVerifyCommand` |
 | `buildRunReportMarkdown` | function | Stable | Renders `run-report.md`; see [Run-report header](#run-report-header) |
 
 `AgentLoopPhaseEvent` is marked Experimental because it does not yet carry a `schemaVersion`
@@ -50,7 +50,7 @@ loses data.
 ### Loop result
 
 `AgentLoopResult` (`src/loop/agentLoop.ts`) is the return value of `runAgentLoop`. Seven fields
-are always present; four are optional and only appear when the corresponding path fired.
+are always present; optional fields appear when the corresponding path fired.
 
 | Field | Always present | Meaning |
 | --- | --- | --- |
@@ -65,9 +65,12 @@ are always present; four are optional and only appear when the corresponding pat
 | `innerAgentIncomplete` | no | `true` when the last iteration's inner agent did not finish cleanly |
 | `hitlCheckTaskUuid` | no | Taskwarrior UUID when `hitlCheck` created a manual validation task |
 | `reviewEscalatedToHitl` | no | `true` when the review gate exhausted retries and escalated to a human |
+| `setup` | no | `VerifyResult` of harness bootstrap when `setup` / `setup.sh` ran |
 
-`status` is derived from `complete` and `reviewEscalatedToHitl` by `deriveLoopRunStatus` — store
-`status`, not `complete`, if you want the waiting-on-human state.
+`status` is derived by `deriveLoopRunStatus` from `complete`, `reviewEscalatedToHitl`,
+env-class `lastVerify` / failed `setup`, and an explicit `status: 'waiting'` (budget parks).
+Store `status`, not `complete`, if you want the waiting-on-human state. Re-deriving from
+`complete` + `reviewEscalatedToHitl` alone misses env/setup parks.
 
 ### Phase events
 
@@ -77,16 +80,17 @@ per phase transition, via the internal `emitPhase` helper. A host subscribes by 
 
 | Field | Always present | Meaning |
 | --- | --- | --- |
-| `phase` | yes | One of `GOAL`, `WORKER`, `VERIFY`, `JUDGE` |
+| `phase` | yes | One of `SETUP`, `GOAL`, `WORKER`, `VERIFY`, `JUDGE` |
 | `iteration` | yes | Current iteration number (1-based) |
 | `maxIterations` | yes | The bundle's configured iteration ceiling |
 | `costUsd` | yes | Cumulative budget figure (`usageSummary.totalCostUsd`): provider invoice when it is above `$0`, otherwise the list-price estimate — the number `maxCostUsd` gates against |
 | `listCostUsd` | no | Cumulative list price (`usageSummary.totalListCostUsd`), present when at least one record has a list figure |
 | `billedCostUsd` | no | Cumulative provider invoice (`usageSummary.totalBilledCostUsd`; may be `$0` on hosted-free tiers) |
 
-The four phase values map to the loop's control-flow graph: `GOAL` (preflight / prompt build),
-`WORKER` (the agent SDK session that edits the repo), `VERIFY` (the shell gate), `JUDGE` (the
-post-success LLM review, when configured). A fleet UI can drive a per-run progress bar off
+The phase values map to the loop's control-flow graph: `GOAL` (preflight / prompt build),
+`SETUP` (optional harness bootstrap, once), `WORKER` (the agent SDK session that edits the repo),
+`VERIFY` (the shell gate), `JUDGE` (the post-success LLM review, when configured). `SETUP` is
+omitted when the bundle has no `setup` / `setup.sh`. A fleet UI can drive a per-run progress bar off
 `phase` + `iteration` / `maxIterations` alone, without parsing `log.ndjson`.
 
 ### Run-report header

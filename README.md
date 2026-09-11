@@ -192,12 +192,14 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
   GOAL.md                  # frozen spec (four-part finish line + optional golden)
   RESEARCH.md              # optional — frozen brownfield map (indexed in the worker prompt)
   loop.json                # verify, runtime, optional taskwarriorUuid
-  verify.sh                # measurable shell checks (exit 0 = pass)
+  verify.sh                # measurable shell checks (exit 0 = pass; 75 / 127 = env)
+  setup.sh                 # optional — harness bootstrap before the first worker
   VERIFY.skill.md          # agent-readable verify procedure (optional; required for verifyMode: skill)
   log.ndjson               # append-only iteration log (runtime)
   assistant.stream         # live token/thinking tail for watch (runtime)
   run-report.md            # report card + iteration timeline (when exportRunReport)
   transcript.ndjson        # tool timeline (when exportTranscript)
+  setup.log                # optional — bootstrap evidence (runtime)
   verify-logs/             # optional — sidecar verify stdout/stderr (`verifyLogMode`)
   failure-domains.ndjson   # optional — stagnation / max iterations / gate exhaust
   failure-context.md       # optional — written by meta-loop probe for fix loop
@@ -207,7 +209,7 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 
 | Field | Default | Purpose |
 | --- | --- | --- |
-| `verify` | (required) | Shell command every iteration (usually `bash …/verify.sh`). Exit `0` = pass. |
+| `verify` | (required) | Shell command every iteration (usually `bash …/verify.sh`). Exit `0` = pass. Exit `75` (`EX_TEMPFAIL`), exit `127` (command not found), or a `VERIFY_CLASS=env` line parks as an environment limitation (`status: waiting`, HITL) — the worker does not iterate. Other non-zero exits are product failures and continue the loop. |
 | `verifyMode` | `command` | `command` = shell only. `skill` = verify agent reads `verifySkill`, emits `VERIFY_RESULT: PASS/FAIL`, then runs shell `verify` on PASS. Skill-verify uses the same iteration agent as the worker (reasoning ladder / `escalateModel` apply). |
 | `verifySkill` | — | Path to `VERIFY.skill.md` (required when `verifyMode` is `skill`). |
 | `finalVerify` | — | Stricter outer check after inner `verify` passes. |
@@ -225,6 +227,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `costPreset` | — | Named worker+judge stack: `minmax` (efficiency — cheapest *capable* worker + strongest included judge; Grok whenever Cursor is installed), `balanced` (escalate-tier worker, same judge), `cursor` (Composer + Grok). Detect-bound at parse when `runtime`/`model` are unset; explicit keys win. Not Auto. |
 | `model` / `escalateModel` | (defaults) | Worker model; escalate on identical verifier stagnation **or** immediately after a hung/timed-out worker (OpenCode/Pi/Codex/DSH/Muse/Claude: after threshold; Cline: after reasoning ceiling — worker fault skips the ceiling). |
 | `maxIterations` | `8` | Cap implement iterations. |
+| `setup` | — | Harness bootstrap shell, run **once** before the first worker. When unset, `setup.sh` beside `GOAL.md` is used if that file exists. Failure parks `status: waiting` (no worker) and restores frozen spec files if setup mutated them. Template: [`templates/setup.example.sh`](./templates/setup.example.sh). |
 | `maxCostUsd` | — | Dollar cap on the **budget** figure: billed invoice when the runtime reports more than $0 (PAYG), otherwise API **list** price so a $0 subscription quota still stops. Watch/report show list and billed when they differ (`--max-cost`). Omit = no cap. |
 | `stagnationThreshold` | `3` | Stop after N identical verifier failures (`0` = disable). |
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |

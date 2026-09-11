@@ -29,6 +29,14 @@ import {
 } from '../loop/loopPostSuccessReview.js'
 import type { GuidePacket } from '../review/guidePackets.js'
 import { runVerifyCommand, type VerifyResult } from '../loop/loopVerify.js'
+import { attachVerifyClass, isEnvVerifyFailure } from './verifyClass.js'
+import { resolveLoopSetupCommand, runLoopSetup } from './loopSetup.js'
+import {
+  frozenFilesVerifyResult,
+  restoreFrozenFiles,
+  snapshotFrozenFiles,
+  type FrozenFileSnapshot,
+} from './loopFrozenFiles.js'
 import { runVerifySkill } from '../loop/loopVerifySkill.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
 import type { InnerAgentStatus } from '../agents/innerAgentStatus.js'
@@ -98,7 +106,7 @@ export type LoopIterationLog = {
 /**
  * Run lifecycle (additive; `complete` remains the boolean API).
  * - done — verify (+ optional review) succeeded
- * - waiting — parked for human (reviewGateHitl)
+ * - waiting — parked for human (reviewGateHitl, verify_env, setup, budget)
  * - continue — incomplete; re-run or fix manually (stagnation, max iters, hard-fail gate)
  */
 export type LoopRunStatus = 'done' | 'continue' | 'waiting'
@@ -120,17 +128,21 @@ export type AgentLoopResult = {
   hitlCheckTaskUuid?: string
   /** True when the review gate exhausted and was escalated to a human (HITL) instead of hard-failing. */
   reviewEscalatedToHitl?: boolean
+  /** Harness bootstrap result when `setup` / `setup.sh` ran. */
+  setup?: VerifyResult
 }
 
 export function deriveLoopRunStatus(
-  result: Pick<AgentLoopResult, 'complete' | 'reviewEscalatedToHitl'>,
+  result: Pick<AgentLoopResult, 'complete' | 'reviewEscalatedToHitl'> &
+    Partial<Pick<AgentLoopResult, 'lastVerify' | 'setup' | 'status'>>,
 ): LoopRunStatus {
   if (result.complete) return 'done'
-  if (result.reviewEscalatedToHitl) return 'waiting'
+  if (result.status === 'waiting' || result.reviewEscalatedToHitl) return 'waiting'
+  if (isEnvVerifyFailure(result.lastVerify) || isEnvVerifyFailure(result.setup)) return 'waiting'
   return 'continue'
 }
 
-export type AgentLoopPhase = 'GOAL' | 'WORKER' | 'VERIFY' | 'JUDGE'
+export type AgentLoopPhase = 'SETUP' | 'GOAL' | 'WORKER' | 'VERIFY' | 'JUDGE'
 
 export type AgentLoopPhaseEvent = {
   phase: AgentLoopPhase
@@ -205,14 +217,14 @@ function workerSdkVerifyResult(message: string, escalateModel?: string): VerifyR
   } else {
     reason = 'Agent SDK error before verify.'
   }
-  return {
+  return attachVerifyClass({
     complete: false,
     command: AGENT_SDK_VERIFY_COMMAND,
     exitCode: null,
     stdout: '',
     stderr: message,
     reason,
-  }
+  })
 }
 
 async function recycleWorkerSession(session: LoopAgentSession): Promise<void> {
@@ -420,7 +432,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   if (researchRelative) {
     console.error(`[agent-loop] indexed research map ${researchRelative}`)
   }
-  const agentSession = options.workerSession ?? (await createLoopAgentSession(config, ctx))
+  let agentSession: LoopAgentSession | undefined = options.workerSession
   const baseAgent = resolveLoopAgent(config)
   const reviewAgent = resolveReviewAgent(config)
 
@@ -431,6 +443,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
   const priorFailures: VerifyResult[] = []
   let lastVerify: VerifyResult | null = null
+  let setupResult: VerifyResult | undefined
+  let frozenSnapshot: FrozenFileSnapshot[] = []
   let iterations = 0
   let workerFaults = 0
   let reviewBlockers: string[] | undefined
@@ -463,7 +477,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     const usage = result.usage ?? usageSummary
     logUsageSummary('agent-loop', usage)
     const status = result.status ?? deriveLoopRunStatus(result)
-    const finalResult: AgentLoopResult = { ...result, usage, status }
+    const finalResult: AgentLoopResult = {
+      ...result,
+      usage,
+      status,
+      ...(setupResult && !result.setup ? { setup: setupResult } : {}),
+    }
     if (config.exportRunReport) {
       const { reportPath, transcriptPath } = writeRunReportArtifacts({
         ctx,
@@ -569,6 +588,38 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     return parkOnBudget(Math.max(0, startedIteration - 1), reason)
   }
 
+  const parkOnEnv = async (
+    iteration: number,
+    verify: VerifyResult,
+    reason: 'verify_env' | 'setup',
+    completionReason: string,
+  ): Promise<AgentLoopResult> => {
+    console.error(`[agent-loop] ${completionReason}`)
+    logFailureDomainFromVerify(bundle.loopDir, {
+      iteration,
+      reason,
+      verify,
+      status: 'waiting',
+    })
+    const hitlCheckTaskUuid = await createHitlCheckpoint({
+      description: completionReason,
+      reason,
+      ctx,
+      loopDir: bundle.loopDir,
+      loopOverrides: hitlLoopOverridesFrom(config),
+    })
+    return finish({
+      complete: false,
+      iterations: iteration,
+      completionReason,
+      lastVerify: reason === 'setup' ? lastVerify : verify,
+      logPath,
+      status: 'waiting',
+      ...(reason === 'setup' ? { setup: verify } : {}),
+      ...(hitlCheckTaskUuid ? { hitlCheckTaskUuid } : {}),
+    })
+  }
+
   const uninstallAssistantStream = installLoopAssistantStream(bundle.loopDir)
   try {
     emitPhase({
@@ -577,6 +628,41 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       maxIterations: config.maxIterations,
       ...phaseCosts(),
     })
+
+    const researchAbs = researchRelative ? path.join(repoRoot, researchRelative) : undefined
+    const frozenExtras = researchAbs ? [researchAbs] : []
+    frozenSnapshot = snapshotFrozenFiles(bundle.loopDir, repoRoot, frozenExtras)
+
+    const setupCommand = resolveLoopSetupCommand(bundle.loopDir, repoRoot, config.setup)
+    if (setupCommand) {
+      emitPhase({
+        phase: 'SETUP',
+        iteration: 1,
+        maxIterations: config.maxIterations,
+        ...phaseCosts(),
+      })
+      console.error(`[agent-loop] setup: ${setupCommand}`)
+      setupResult = runLoopSetup(setupCommand, repoRoot, bundle.loopDir)
+      if (!setupResult.complete) {
+        const rolledBack = restoreFrozenFiles(frozenSnapshot)
+        if (rolledBack.restored.length > 0) {
+          console.error(
+            `[agent-loop] frozen files restored after setup failure: ${rolledBack.restored.join(', ')}`,
+          )
+        }
+        return await parkOnEnv(
+          0,
+          setupResult,
+          'setup',
+          `Setup failed (exit ${setupResult.exitCode ?? 'null'}). Fix the toolchain or lockfile install, then re-run. ${setupResult.reason}`,
+        )
+      }
+      console.error(`[agent-loop] setup passed — ${setupResult.reason}`)
+      frozenSnapshot = snapshotFrozenFiles(bundle.loopDir, repoRoot, frozenExtras)
+    }
+
+    const session = agentSession ?? (await createLoopAgentSession(config, ctx))
+    agentSession = session
 
     for (let i = 1; i <= config.maxIterations; i++) {
       iterations = i
@@ -637,7 +723,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       let assistantRun: AgentRunResult
       try {
         assistantRun = await runIterationWithRetry(
-          agentSession,
+          session,
           prompt,
           iterationAgent,
           {
@@ -673,7 +759,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         )
         logFailureDomainFromAgentError(bundle.loopDir, { iteration: i, message })
         workerFaults += 1
-        await recycleWorkerSession(agentSession)
+        await recycleWorkerSession(session)
         await maybePauseAfterIteration(config, i)
         continue
       }
@@ -701,7 +787,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         await sleep(config.delayMs)
       }
 
-      console.error(`[agent-loop] iteration ${i} — verify: ${config.verify}`)
+      const frozenAfterWorker = restoreFrozenFiles(frozenSnapshot)
       emitPhase({
         phase: 'VERIFY',
         iteration: i,
@@ -709,31 +795,47 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         ...phaseCosts(),
       })
       const verifyStartedAt = Date.now()
-      const verify =
-        config.verifyMode === 'skill'
-          ? await runVerifySkill({
-              ctx,
-              loopDir: bundle.loopDir,
-              goal,
-              config,
-              verbose,
-              agent: iterationAgent,
-              iteration: i,
-              escalationRepeatCount: stagnation.escalationRepeatCount,
-              reviewCycleEscalation: reviewCyclesUsed,
-            })
-          : runVerifyCommand(config.verify, repoRoot)
-      lastVerify = verify
-
+      let verify: VerifyResult
       let finalVerify: VerifyResult | undefined
-      if (verify.complete && config.finalVerify) {
-        console.error(`[agent-loop] inner verify passed — final: ${config.finalVerify}`)
-        finalVerify = runVerifyCommand(config.finalVerify, repoRoot)
-        lastVerify = finalVerify
+      if (frozenAfterWorker.restored.length > 0) {
+        console.error(
+          `[agent-loop] frozen files restored after worker: ${frozenAfterWorker.restored.join(', ')}`,
+        )
+        verify = frozenFilesVerifyResult(frozenAfterWorker.restored)
+      } else {
+        console.error(`[agent-loop] iteration ${i} — verify: ${config.verify}`)
+        verify = attachVerifyClass(
+          config.verifyMode === 'skill'
+            ? await runVerifySkill({
+                ctx,
+                loopDir: bundle.loopDir,
+                goal,
+                config,
+                verbose,
+                agent: iterationAgent,
+                iteration: i,
+                escalationRepeatCount: stagnation.escalationRepeatCount,
+                reviewCycleEscalation: reviewCyclesUsed,
+              })
+            : runVerifyCommand(config.verify, repoRoot),
+        )
+        if (verify.complete && config.finalVerify) {
+          console.error(`[agent-loop] inner verify passed — final: ${config.finalVerify}`)
+          finalVerify = attachVerifyClass(runVerifyCommand(config.finalVerify, repoRoot))
+        }
+        const frozenAfterVerify = restoreFrozenFiles(frozenSnapshot)
+        if (frozenAfterVerify.restored.length > 0) {
+          console.error(
+            `[agent-loop] frozen files restored after verify: ${frozenAfterVerify.restored.join(', ')}`,
+          )
+          verify = frozenFilesVerifyResult(frozenAfterVerify.restored)
+          finalVerify = undefined
+        }
       }
+      lastVerify = finalVerify ?? verify
       const verifyMs = elapsedMs(verifyStartedAt)
 
-      const passed = finalVerify ? finalVerify.complete : verify.complete
+      const passed = lastVerify.complete
       const siblingRepos = siblingReposForIterationLog(config)
       const { verifyForLog, verifyLog, finalVerifyForLog } = persistVerifyResultsForLog(
         bundle.loopDir,
@@ -775,6 +877,17 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             },
             ...workerLogFields,
           }),
+        )
+      }
+
+      if (isEnvVerifyFailure(lastVerify)) {
+        appendCurrentIterationLog()
+        const envVerify = lastVerify
+        return await parkOnEnv(
+          i,
+          envVerify,
+          'verify_env',
+          `Verifier environment limitation (exit ${envVerify.exitCode ?? 'null'}). Fix the toolchain or deps, then re-run. ${envVerify.reason}`,
         )
       }
 
@@ -935,6 +1048,6 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     })
   } finally {
     uninstallAssistantStream()
-    await agentSession.dispose()
+    await agentSession?.dispose()
   }
 }

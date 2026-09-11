@@ -22,11 +22,12 @@ import {
   shouldPreflightTelegram,
 } from '../integrations/telegramNotify.js'
 import { formatBatchCompletionReport } from '../loop/loopReport.js'
-import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
+import { assertShellConfigTrusted, type LabeledShellCommand } from '../loop/loopShellTrust.js'
 import { assertLoopCredentials } from '../loop/loopCredentialPreflight.js'
 import { parseRunBatchArgs, type RunBatchCliOptions } from './runBatchArgs.js'
 import { loadLoopBundle } from '../loop/loopConfig.js'
 import { detectLoopRuntimes } from './detectRuntimes.js'
+import { resolveLoopSetupCommand } from '../loop/loopSetup.js'
 
 const parsedArgs = parseRunBatchArgs(process.argv.slice(2))
 if (parsedArgs.kind === 'help') {
@@ -61,10 +62,20 @@ const batchTrusted =
       }
     }))
 
+const loopShellCommands: LabeledShellCommand[] = []
 for (const loopEntry of loops) {
   const { path: loopRel } = normalizeBatchLoopEntry(loopEntry)
   const loopDir = resolveBatchLoopDir(loopRel, batchDir, ctx.repoRoot)
-  assertLoopCredentials(loadLoopBundle(loopDir, { detection }).config)
+  const bundle = loadLoopBundle(loopDir, { detection })
+  assertLoopCredentials(bundle.config)
+  loopShellCommands.push({ label: `verify[${loopRel}]`, command: bundle.config.verify })
+  if (bundle.config.finalVerify) {
+    loopShellCommands.push({ label: `finalVerify[${loopRel}]`, command: bundle.config.finalVerify })
+  }
+  const setup = resolveLoopSetupCommand(loopDir, ctx.repoRoot, bundle.config.setup)
+  if (setup) {
+    loopShellCommands.push({ label: `setup[${loopRel}]`, command: setup })
+  }
 }
 
 const notifyTelegram =
@@ -154,6 +165,7 @@ try {
     skipSync: cli.skipSync,
     trustConfig: batchTrusted,
     requireTrustConfig: cli.requireTrustConfig,
+    additional: loopShellCommands,
   })
 
   if (shouldPreflightTelegram({ profile: ctx.profile, notifyTelegram })) {

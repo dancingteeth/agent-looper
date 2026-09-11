@@ -7,6 +7,7 @@ import {
 } from '../loop/loopReport.js'
 import { FAILURE_DOMAINS_FILENAME } from '../loop/loopFailureDomain.js'
 import { RUN_REPORT_FILENAME } from '../loop/loopRunReport.js'
+import { SETUP_LOG_FILENAME } from '../loop/loopSetup.js'
 
 /** Durable, commit-friendly snapshot of a finished loop (not gitignored). */
 export const LOOP_EXPORTS_DIRNAME = '.cursor/loop-exports'
@@ -180,6 +181,15 @@ export function writeLoopExportPack(input: {
 
   if (writeLogTail(path.join(input.loopDir, 'log.ndjson'), path.join(exportDir, EXPORT_LOG_TAIL_FILENAME))) {
     files.push(EXPORT_LOG_TAIL_FILENAME)
+  }
+
+  if (
+    copyIfExists(
+      path.join(input.loopDir, SETUP_LOG_FILENAME),
+      path.join(exportDir, SETUP_LOG_FILENAME),
+    )
+  ) {
+    files.push(SETUP_LOG_FILENAME)
   }
 
   console.error(

@@ -120,6 +120,34 @@ describe('reconstructAgentLoopResultFromLog', () => {
     expect(() => reconstructAgentLoopResultFromLog(logPath)).toThrow(/No iterations/)
   })
 
+  it('marks waiting when last verify is env-class (exit 75, no stored verifyClass)', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-run-report-env-'))
+    const logPath = path.join(tmpDir, 'log.ndjson')
+    fs.writeFileSync(
+      logPath,
+      `${JSON.stringify({
+        at: '2026-09-11T00:00:00.000Z',
+        iteration: 1,
+        branch: 'main',
+        shortSha: 'abc1234',
+        verify: {
+          complete: false,
+          command: 'bash verify.sh',
+          exitCode: 75,
+          stdout: '',
+          stderr: 'pnpm: command not found',
+          reason: 'Verifier failed (exit 75).',
+        },
+        assistantPreview: 'tried',
+      })}\n`,
+      'utf8',
+    )
+
+    const result = reconstructAgentLoopResultFromLog(logPath)
+    expect(result.complete).toBe(false)
+    expect(result.status).toBe('waiting')
+  })
+
   it('marks incomplete when review gate stopped after verify passed', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-run-report-gate-'))
     const logPath = path.join(tmpDir, 'log.ndjson')

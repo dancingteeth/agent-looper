@@ -12,6 +12,43 @@ describe('deriveLoopRunStatus', () => {
     ).toBe('waiting')
   })
 
+  it('maps env-class lastVerify to waiting', () => {
+    expect(
+      deriveLoopRunStatus({
+        complete: false,
+        lastVerify: {
+          complete: false,
+          command: 'bash verify.sh',
+          exitCode: 75,
+          stdout: '',
+          stderr: '',
+          reason: 'Verifier failed (exit 75).',
+        },
+      }),
+    ).toBe('waiting')
+  })
+
+  it('maps failed setup to waiting', () => {
+    expect(
+      deriveLoopRunStatus({
+        complete: false,
+        setup: {
+          complete: false,
+          command: 'bash setup.sh',
+          exitCode: 1,
+          stdout: '',
+          stderr: '',
+          reason: 'Setup failed (exit 1).',
+          verifyClass: 'env',
+        },
+      }),
+    ).toBe('waiting')
+  })
+
+  it('keeps an explicit waiting status (budget)', () => {
+    expect(deriveLoopRunStatus({ complete: false, status: 'waiting' })).toBe('waiting')
+  })
+
   it('maps other incomplete to continue', () => {
     expect(deriveLoopRunStatus({ complete: false })).toBe('continue')
   })

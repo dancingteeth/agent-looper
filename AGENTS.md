@@ -12,7 +12,7 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 ## Working agreements
 
 - Prefer small, test-backed changes. Run focused vitest paths before broadening.
-- Do not edit `GOAL.md` mid-loop.
+- Do not edit `GOAL.md` mid-loop. The harness restores `GOAL.md`, `verify.sh`, `loop.json`, and `RESEARCH.md` if a worker edits them.
 - `agent-loop-prompt` scaffold uses the **judge** (`reviewRuntime` / `reviewModel`), not the worker, to write `GOAL.md` + `verify.sh`. Freeze lint rejects gameable `verify.sh` greps (title `A|B|C` ORs, single-line `"[^"]+"` extractors).
 - Taskwarrior: use **UUID** in `GOAL.md` / `loop.json` (`taskwarriorUuid`) when linking a TW goal task — never numeric ID alone.
 - Dogfood: `costPreset` **minmax** (Hy3 worker + Grok judge when OpenCode Go and Cursor are both installed; Composer + Grok on Cursor-only). Not Cursor Auto / build.

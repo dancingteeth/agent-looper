@@ -16,6 +16,8 @@ export type FailureDomainReason =
   | 'review_gate_hitl'
   | 'meta_probe_failed'
   | 'agent_error'
+  | 'verify_env'
+  | 'setup'
 
 /** Lifecycle status aligned with Mastra-style done|continue|waiting (additive). */
 export type FailureDomainStatus = 'waiting'
@@ -62,7 +64,12 @@ export function readLatestFailureDomain(loopDir: string): FailureDomainEntry | n
 /** True when the loop was parked for human closure (review_gate_hitl / status waiting). */
 export function isHitlWaitingFailureDomain(entry: FailureDomainEntry | null): boolean {
   if (!entry) return false
-  return entry.reason === 'review_gate_hitl' || entry.status === 'waiting'
+  return (
+    entry.reason === 'review_gate_hitl' ||
+    entry.reason === 'verify_env' ||
+    entry.reason === 'setup' ||
+    entry.status === 'waiting'
+  )
 }
 
 /** One-line domain summary for reports (reason + optional status). */
@@ -87,6 +94,10 @@ function suggestionForReason(reason: FailureDomainReason, repeatCount?: number):
       return 'Meta-loop probe still failing after fix cycle — inspect failure-context.md and failure-domains.ndjson.'
     case 'agent_error':
       return 'Agent SDK threw during an iteration — see stderr. Re-run or inspect the agent session/API key.'
+    case 'verify_env':
+      return 'Verifier reported an environment limitation (exit 75, exit 127, or VERIFY_CLASS=env) — fix the toolchain/deps, then re-run. The worker will not iterate on this.'
+    case 'setup':
+      return 'Harness setup/bootstrap failed — fix lockfile install or toolchain, then re-run. No worker was started.'
     default: {
       const _exhaustive: never = reason
       return String(_exhaustive)

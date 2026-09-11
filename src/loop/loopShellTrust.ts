@@ -15,6 +15,11 @@ export type ShellCommandWarning = {
   suspicious: string[]
 }
 
+export type LabeledShellCommand = {
+  label: string
+  command: string
+}
+
 export type ShellTrustInput = {
   cwd: string
   verify?: string
@@ -31,6 +36,10 @@ export type ShellTrustInput = {
   /** CLI --require-trust-config */
   requireTrustConfig?: boolean
   env?: NodeJS.ProcessEnv
+  /** Harness bootstrap (`setup` / `setup.sh`). */
+  setup?: string
+  /** Extra labeled commands (e.g. per-loop verify/setup in a batch). */
+  additional?: LabeledShellCommand[]
 }
 
 export function collectShellCommandWarnings(input: {
@@ -40,14 +49,22 @@ export function collectShellCommandWarnings(input: {
   syncCommand?: string | null
   hitlCommand?: string | null
   notifyCommand?: string | null
+  setup?: string
+  additional?: LabeledShellCommand[]
 }): ShellCommandWarning[] {
-  const entries: Array<{ label: string; command: string }> = []
+  const entries: LabeledShellCommand[] = []
   if (input.verify) entries.push({ label: 'verify', command: input.verify })
   if (input.finalVerify) entries.push({ label: 'finalVerify', command: input.finalVerify })
   if (input.preview) entries.push({ label: 'preview', command: input.preview })
+  if (input.setup) entries.push({ label: 'setup', command: input.setup })
   if (input.syncCommand) entries.push({ label: 'syncCommand', command: input.syncCommand })
   if (input.hitlCommand) entries.push({ label: 'hitlCommand', command: input.hitlCommand })
   if (input.notifyCommand) entries.push({ label: 'notifyCommand', command: input.notifyCommand })
+  if (input.additional) {
+    for (const extra of input.additional) {
+      if (extra.command.trim()) entries.push(extra)
+    }
+  }
 
   return entries.map(({ label, command }) => ({
     label,
@@ -76,15 +93,21 @@ export function isTrustConfigRequired(
   return truthyEnv(env[AGENT_LOOP_REQUIRE_TRUST_CONFIG_ENV])
 }
 
-export function formatTrustConfigRequiredError(input: ShellTrustInput): string {
-  const warnings = collectShellCommandWarnings({
+function warningsFromTrustInput(input: ShellTrustInput): ShellCommandWarning[] {
+  return collectShellCommandWarnings({
     verify: input.verify,
     finalVerify: input.finalVerify,
     preview: input.preview,
     syncCommand: input.skipSync ? null : input.syncCommand,
     hitlCommand: input.hitlCommand,
     notifyCommand: input.notifyCommand,
+    setup: input.setup,
+    additional: input.additional,
   })
+}
+
+export function formatTrustConfigRequiredError(input: ShellTrustInput): string {
+  const warnings = warningsFromTrustInput(input)
 
   const lines = [
     '[agent-loop] shell commands from loop.json / repo profile were not trusted.',
@@ -114,14 +137,7 @@ export function assertShellConfigTrusted(input: ShellTrustInput): void {
 }
 
 export function warnShellCommandsFromConfig(input: ShellTrustInput): void {
-  const warnings = collectShellCommandWarnings({
-    verify: input.verify,
-    finalVerify: input.finalVerify,
-    preview: input.preview,
-    syncCommand: input.skipSync ? null : input.syncCommand,
-    hitlCommand: input.hitlCommand,
-    notifyCommand: input.notifyCommand,
-  })
+  const warnings = warningsFromTrustInput(input)
 
   if (warnings.length === 0) return
 

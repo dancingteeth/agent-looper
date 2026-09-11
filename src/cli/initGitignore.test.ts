@@ -19,6 +19,7 @@ describe('ensureLoopGitignoreBlock', () => {
     expect(content).toContain('.cursor/loops/**/assistant.stream')
     expect(content).toContain('.cursor/loops/**/prompt-run.log')
     expect(content).toContain('.cursor/loops/**/verify-logs/')
+    expect(content).toContain('.cursor/loops/**/setup.log')
     expect(content).toContain('.cursor/loops/**/log.ndjson')
     expect(content).toContain('.cursor/loops/**/watch-status.json')
     expect(content).toContain('.cursor/sdk-runs/')

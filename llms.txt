@@ -23,7 +23,7 @@ Start here:
 ## Non-negotiables
 
 1. Shell `verify` / `finalVerify` exit 0 is the only completion truth (not LLM self-assessment).
-2. Do not edit GOAL.md mid-loop.
+2. Do not edit GOAL.md / verify.sh / loop.json / RESEARCH.md mid-loop (the harness restores them).
 3. Fresh worker session each iteration (Ralph): no accumulating chat memory as the product.
 4. reviewGate is optional and only re-opens on gating findings (error + impact), never replaces verify.
 5. Taskwarrior: UUID only (`taskwarriorUuid`), never numeric ID alone.

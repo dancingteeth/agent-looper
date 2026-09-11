@@ -12,6 +12,21 @@ describe('runVerifyCommand', () => {
     const result = runVerifyCommand('false', process.cwd())
     expect(result.complete).toBe(false)
     expect(result.exitCode).toBe(1)
+    expect(result.verifyClass).toBe('product')
+  })
+
+  it('classifies exit 75 as env', () => {
+    const result = runVerifyCommand('sh -c "exit 75"', process.cwd())
+    expect(result.complete).toBe(false)
+    expect(result.exitCode).toBe(75)
+    expect(result.verifyClass).toBe('env')
+  })
+
+  it('classifies exit 127 as env', () => {
+    const result = runVerifyCommand('sh -c "exit 127"', process.cwd())
+    expect(result.complete).toBe(false)
+    expect(result.exitCode).toBe(127)
+    expect(result.verifyClass).toBe('env')
   })
 
   it('keeps exit 0 when output exceeds the 64KB capture cap', () => {

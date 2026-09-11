@@ -8,6 +8,7 @@ import {
 import { runAgentLoop } from '../loop/agentLoop.js'
 import type { LoopRuntime } from '../loop/loopAgentConfig.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
+import { resolveLoopSetupCommand } from '../loop/loopSetup.js'
 import { detectLoopRuntimes } from './detectRuntimes.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { maybeCreateIncompleteLoopHitl } from '../integrations/loopFailureVisibility.js'
@@ -251,6 +252,7 @@ try {
     notifyCommand: cli.noNotifyCommand
       ? null
       : (bundle.config.notifyCommand ?? ctx.profile.notifyCommand),
+    setup: resolveLoopSetupCommand(loopDir, ctx.repoRoot, bundle.config.setup),
     skipSync: cli.skipSync,
     trustConfig: cli.trustConfig || bundle.config.trustConfig,
     requireTrustConfig: cli.requireTrustConfig,

@@ -56,7 +56,7 @@ Delete any arrow whose only answer is “the previous step finished.”
 ## Constraints
 
 - Scope limits (directories, patterns from `AGENTS.md` / skills).
-- **Do not edit this `GOAL.md` during the loop** — spec is frozen; change it only before re-running.
+- **Do not edit this `GOAL.md` during the loop** — the harness restores `GOAL.md`, `verify.sh`, `loop.json`, and `RESEARCH.md` if a worker edits them.
 
 ## Out of scope
 

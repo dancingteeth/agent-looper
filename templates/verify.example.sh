@@ -23,3 +23,9 @@ step "3 — optional integration/smoke"
 # curl -fsS http://localhost:3000/health
 
 step "done — all checks passed (edit this script before relying on it)"
+
+# Environment limitation (missing toolchain / deps) — park the loop, do not iterate:
+#   echo "VERIFY_CLASS=env missing pnpm" >&2
+#   exit 75
+# Exit 127 (command not found) is also classified as env.
+

@@ -16,7 +16,7 @@ import {
 
 describe('formatWatchStatusLine', () => {
   it('formats a structured phase line for every stage', () => {
-    for (const phase of ['GOAL', 'WORKER', 'VERIFY', 'JUDGE'] as const) {
+    for (const phase of ['SETUP', 'GOAL', 'WORKER', 'VERIFY', 'JUDGE'] as const) {
       const line = formatWatchStatusLine({
         phase,
         iteration: 3,

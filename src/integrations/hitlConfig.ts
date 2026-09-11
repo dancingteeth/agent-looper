@@ -24,6 +24,8 @@ export const hitlCheckpointReasonSchema = z.enum([
   'loop_failure',
   'notify_failed',
   'budget',
+  'verify_env',
+  'setup',
 ])
 
 export type HitlCheckpointReason = z.infer<typeof hitlCheckpointReasonSchema>

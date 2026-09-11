@@ -44,7 +44,7 @@ Edit `verify.sh` with measurable checks; see `VERIFY.skill.md`.
 ## Constraints
 
 - Keep changes scoped to the goal.
-- Do **not** edit `GOAL.md` during the loop.
+- Do **not** edit `GOAL.md`, `verify.sh`, or `loop.json` during the loop — the harness restores them.
 
 ## Out of scope
 

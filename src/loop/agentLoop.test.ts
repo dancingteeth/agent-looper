@@ -13,6 +13,7 @@ import { captureGitWorkspaceSnapshot } from './loopGit.js'
 import { isTransientAgentError, isRecoverableWorkerFault, runAgentLoop } from './agentLoop.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
+import { VERIFY_CLASS_ENV, VERIFY_ENV_EXIT_CODE } from './verifyClass.js'
 import { runVerifySkill } from './loopVerifySkill.js'
 import { runPostLoopQualityReview, runPostLoopBlockerRecheck } from '../review/loopPostReview.js'
 import type { PostLoopReviewResult } from '../review/loopPostReview.js'
@@ -624,7 +625,7 @@ describe('runAgentLoop', () => {
     expect(JSON.parse(domains[0]!).reason).toBe('agent_error')
   })
 
-  it('disposes the agent session when onPhase throws before the first iteration', async () => {
+  it('does not create an agent session when onPhase throws during GOAL', async () => {
     const { dispose } = mockSession()
     const result = await runAgentLoop({
       ctx: makeCtx(),
@@ -635,7 +636,125 @@ describe('runAgentLoop', () => {
     })
     expect(result.complete).toBe(false)
     expect(result.completionReason).toMatch(/phase boom/)
-    expect(dispose).toHaveBeenCalledOnce()
+    expect(dispose).not.toHaveBeenCalled()
+  })
+
+  it('parks waiting on env-class verify instead of iterating', async () => {
+    const { runIterationPrompt } = mockSession()
+    vi.mocked(createHitlCheckpoint).mockResolvedValue('hitl-env-1')
+    mockedRunVerify.mockReturnValue({
+      complete: false,
+      command: 'bash verify.sh',
+      exitCode: VERIFY_ENV_EXIT_CODE,
+      stdout: '',
+      stderr: 'pnpm: command not found',
+      reason: `Verifier failed (exit ${VERIFY_ENV_EXIT_CODE}).`,
+      verifyClass: VERIFY_CLASS_ENV,
+    })
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 5, stagnationThreshold: 0 }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.status).toBe('waiting')
+    expect(result.iterations).toBe(1)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+    expect(result.completionReason).toMatch(/environment limitation/i)
+    expect(createHitlCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'verify_env' }),
+    )
+    const domain = JSON.parse(
+      fs.readFileSync(path.join(tmpLoopDir, 'failure-domains.ndjson'), 'utf8').trim(),
+    ) as { reason: string; status?: string }
+    expect(domain.reason).toBe('verify_env')
+    expect(domain.status).toBe('waiting')
+  })
+
+  it('skips the worker when harness setup fails', async () => {
+    const { runIterationPrompt } = mockSession()
+    vi.mocked(createHitlCheckpoint).mockResolvedValue('hitl-setup-1')
+    fs.writeFileSync(path.join(tmpLoopDir, 'setup.sh'), '#!/bin/sh\nexit 1\n')
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 3 }),
+    })
+
+    expect(runIterationPrompt).not.toHaveBeenCalled()
+    expect(mockedCreateSession).not.toHaveBeenCalled()
+    expect(result.complete).toBe(false)
+    expect(result.status).toBe('waiting')
+    expect(result.iterations).toBe(0)
+    expect(result.setup?.complete).toBe(false)
+    expect(result.completionReason).toMatch(/Setup failed/)
+    expect(createHitlCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: 'setup' }),
+    )
+  })
+
+  it('restores GOAL.md when setup mutates it then fails', async () => {
+    const goalPath = path.join(tmpLoopDir, 'GOAL.md')
+    fs.writeFileSync(goalPath, 'frozen goal\n')
+    const mess = path.join(tmpLoopDir, 'mess-setup.sh')
+    fs.writeFileSync(mess, `#!/bin/sh\nprintf 'gamed\\n' > '${goalPath}'\nexit 1\n`)
+    vi.mocked(createHitlCheckpoint).mockResolvedValue('hitl-setup-rollback-1')
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 2, setup: `sh ${mess}` }),
+    })
+
+    expect(fs.readFileSync(goalPath, 'utf8')).toBe('frozen goal\n')
+    expect(mockedCreateSession).not.toHaveBeenCalled()
+    expect(result.status).toBe('waiting')
+    expect(result.setup?.complete).toBe(false)
+  })
+
+  it('restores frozen GOAL.md and fails that visit without treating verify as pass', async () => {
+    const goalPath = path.join(tmpLoopDir, 'GOAL.md')
+    fs.writeFileSync(goalPath, 'frozen goal\n')
+    fs.writeFileSync(path.join(tmpLoopDir, 'loop.json'), '{"verify":"true"}\n')
+    const { runIterationPrompt } = mockSession(
+      vi.fn().mockImplementation(async () => {
+        fs.writeFileSync(goalPath, 'gamed goal\n')
+        return { text: 'assistant ok' }
+      }),
+    )
+    mockedRunVerify.mockReturnValue(passVerify())
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 1, stagnationThreshold: 0 }),
+    })
+
+    expect(fs.readFileSync(goalPath, 'utf8')).toBe('frozen goal\n')
+    expect(mockedRunVerify).not.toHaveBeenCalled()
+    expect(result.complete).toBe(false)
+    expect(result.lastVerify?.command).toBe('(frozen files)')
+    expect(result.completionReason).toMatch(/Max iterations/)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+  })
+
+  it('restores GOAL.md mutated during verify and does not treat that visit as pass', async () => {
+    const goalPath = path.join(tmpLoopDir, 'GOAL.md')
+    fs.writeFileSync(goalPath, 'frozen goal\n')
+    mockSession()
+    mockedRunVerify.mockImplementation(() => {
+      fs.writeFileSync(goalPath, 'gamed by verify\n')
+      return passVerify()
+    })
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({ maxIterations: 1, stagnationThreshold: 0 }),
+    })
+
+    expect(fs.readFileSync(goalPath, 'utf8')).toBe('frozen goal\n')
+    expect(mockedRunVerify).toHaveBeenCalledOnce()
+    expect(result.complete).toBe(false)
+    expect(result.lastVerify?.command).toBe('(frozen files)')
   })
 
   it('continues loop when review gate returns BLOCKERS then completes on a re-check PASS', async () => {

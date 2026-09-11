@@ -46,7 +46,8 @@ small directed graph:
 | Node | Job | Why it is a separate node |
 | --- | --- | --- |
 | **Worker** | Implement toward frozen `GOAL.md` | Fresh session every visit — context rot stays in one node |
-| **Verify** | Shell `verify` / `finalVerify`, exit `0` | Deterministic edge. Models do not mark their own exam |
+| **Setup** | Optional lockfile / toolchain bootstrap | Harness-owned, once, before the first worker. Failure is env, not a code bug |
+| **Verify** | Shell `verify` / `finalVerify`, exit `0` | Deterministic edge. Exit `75` / `127` / `VERIFY_CLASS=env` parks instead of iterating. Models do not mark their own exam |
 | **Judge** | Residual `review.md` after green verify | Athlete ≠ referee. Optional `reviewGate` is the only edge back to the worker |
 
 The human is **not** a fourth LLM. Approval is an **edge condition** on irreversible
@@ -62,7 +63,8 @@ the token exists. Not “the model was told to ask first.”
 | Judge | Done | `review.md`; blocked until HITL when `reviewGateHitl` is on |
 
 Frozen `GOAL.md` + `verify.sh` + permissions are the slow-changing **role graph**
-(who may finish, who may reopen). Iteration order is the **work graph** (retries
+(who may finish, who may reopen). The harness **restores** those files after each
+visit if a worker edits them. Iteration order is the **work graph** (retries
 allowed; rewriting the finish line is not). `verify.sh` is the **reducer** (code
 before another model). Hung workers continue onto `escalateModel` instead of
 aborting the batch.

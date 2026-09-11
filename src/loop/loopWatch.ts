@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { usageCostsDifferForDisplay } from '../usage/loopUsage.js'
 
-export type WatchPhase = 'GOAL' | 'WORKER' | 'VERIFY' | 'JUDGE'
+export type WatchPhase = 'SETUP' | 'GOAL' | 'WORKER' | 'VERIFY' | 'JUDGE'
 
 export type WatchStatus = {
   phase: WatchPhase
@@ -46,7 +46,7 @@ export function formatWatchStatusLine(status: WatchStatus): string {
   )
 }
 
-const HEARTBEAT_PHASES: readonly WatchPhase[] = ['WORKER', 'JUDGE']
+const HEARTBEAT_PHASES: readonly WatchPhase[] = ['SETUP', 'WORKER', 'JUDGE']
 
 export type WatchHeartbeatOptions = {
   /** Clock source; injectable so tests can fake elapsed time. Defaults to Date.now. */
@@ -215,7 +215,7 @@ export function readWatchSnapshot(
 
 export const WATCH_STATUS_BASENAME = 'watch-status.json'
 
-const WATCH_PHASES: readonly WatchPhase[] = ['GOAL', 'WORKER', 'VERIFY', 'JUDGE']
+const WATCH_PHASES: readonly WatchPhase[] = ['SETUP', 'GOAL', 'WORKER', 'VERIFY', 'JUDGE']
 
 export type WatchLiveFile = {
   phase: WatchPhase

@@ -1,14 +1,14 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { RepoContext } from '../context/repoContext.js'
-import type { AgentLoopResult, LoopIterationLog } from './agentLoop.js'
-import { deriveLoopRunStatus } from './agentLoop.js'
+import { deriveLoopRunStatus, type AgentLoopResult, type LoopIterationLog } from './agentLoop.js'
 import type { LoopConfig } from './loopConfig.js'
 import {
   isHitlWaitingFailureDomain,
   readFailureDomainEntries,
   readLatestFailureDomain,
 } from './loopFailureDomain.js'
+import { isEnvVerifyFailure } from './verifyClass.js'
 import { gitDiffStatSinceBranchBase } from '../review/loopPostReview.js'
 import { readLatestLoopReview, resolveLatestReviewPath } from './loopReport.js'
 import {
@@ -83,10 +83,15 @@ export function reconstructAgentLoopResultFromLog(
 
   const loopDir = path.dirname(logPath)
   const reviewEscalatedToHitl = isHitlWaitingFailureDomain(readLatestFailureDomain(loopDir))
+  const status = deriveLoopRunStatus({
+    complete,
+    reviewEscalatedToHitl,
+    lastVerify,
+  })
 
   return {
     complete,
-    status: deriveLoopRunStatus({ complete, reviewEscalatedToHitl }),
+    status,
     iterations: last.iteration,
     completionReason,
     lastVerify,
@@ -116,7 +121,11 @@ function formatVerifyStep(
   verify: LoopIterationLog['verify'],
   options: { verifyLog?: LoopIterationLog['verifyLog']; baseDir?: string } = {},
 ): string {
-  const status = verify.complete ? 'PASS' : 'FAIL'
+  const status = verify.complete
+    ? 'PASS'
+    : isEnvVerifyFailure(verify)
+      ? 'ENV'
+      : 'FAIL'
   const header = `**${status}** (exit ${verify.exitCode}) — \`${verify.command}\``
 
   const links: string[] = []
@@ -202,6 +211,11 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     ...(input.config.reviewGate
       ? ['- **Review gate armed** — gating blockers would re-open the fix loop (up to `maxReviewCycles`).']
       : []),
+    ...(input.result.setup
+      ? [
+          `- **Setup** — \`${input.result.setup.command}\` ${input.result.setup.complete ? 'passed' : `failed (exit ${input.result.setup.exitCode ?? 'null'})`}.`,
+        ]
+      : []),
     ...(input.config.reviewGate
       ? []
       : input.config.postQualityReview === false
@@ -281,6 +295,7 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     '| --- | --- |',
     '| `GOAL.md` | Frozen loop spec |',
     '| `loop.json` | Runtime + verify + gates |',
+    '| `setup.log` | Harness bootstrap evidence (when setup ran) |',
     '| `log.ndjson` | Machine-readable iteration log |',
     '| `run-report.md` | This human-readable report |',
     '| `transcript.ndjson` | Tool timeline (when enabled) |',

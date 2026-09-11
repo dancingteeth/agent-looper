@@ -39,7 +39,7 @@ the raw values — describe what leaked and how.
 
 ## Scope and threat model
 
-This package runs a shell `verify` (and optional `finalVerify` / `syncCommand`) command via
+This package runs a shell `verify` (and optional `finalVerify` / `setup` / `syncCommand`) command via
 `shell: true` — those are **host-authored commands from `loop.json`**, not sandboxed, and a
 malicious or compromised `loop.json` is equivalent to arbitrary shell execution in the checkout
 it runs against. That is why `trustConfig` exists: it is an explicit opt-in flag (`loop.json`

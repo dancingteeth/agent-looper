@@ -61,6 +61,11 @@ export const loopConfigSchema = loopExtensionFieldsSchema
      */
     maxCostUsd: z.number().positive().optional(),
     verify: z.string().min(1),
+    /**
+     * Harness-owned bootstrap shell, run once before the first worker.
+     * When unset, `setup.sh` beside GOAL.md is used if that file exists.
+     */
+    setup: z.string().trim().min(1).optional(),
     /** command = shell verify only (default); skill = agent reads verifySkill then runs verify shell. */
     verifyMode: loopVerifyModeSchema,
     /** Path to VERIFY.skill.md — required when verifyMode is skill (loop dir or repo root). */

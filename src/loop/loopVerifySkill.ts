@@ -6,6 +6,7 @@ import { runOneShotAgentPrompt } from '../agents/oneShotAgentRun.js'
 import { resolveIterationAgent, type ResolvedLoopAgent } from './loopAgentConfig.js'
 import type { LoopConfig } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
+import { attachVerifyClass } from './verifyClass.js'
 
 export type SkillVerifyAgentRun = (input: {
   ctx: RepoContext
@@ -86,14 +87,14 @@ function skillVerifyFailure(
   stdout: string,
   stderr: string,
 ): VerifyResult {
-  return {
+  return attachVerifyClass({
     complete: false,
     command: `skill:${verifySkillPath} → ${shellCommand}`,
     exitCode: 1,
     stdout,
     stderr,
     reason,
-  }
+  })
 }
 
 function skillVerifyPassShellGate(

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { attachVerifyClass, type VerifyClass } from './verifyClass.js'
 
 export type VerifyResult = {
   complete: boolean
@@ -7,6 +8,8 @@ export type VerifyResult = {
   stdout: string
   stderr: string
   reason: string
+  /** `ok` on exit 0; `env` for toolchain/deps; `product` for real check failures. */
+  verifyClass?: VerifyClass
 }
 
 const MAX_CAPTURE = 64 * 1024
@@ -37,12 +40,12 @@ export function runVerifyCommand(command: string, cwd: string): VerifyResult {
     reason = `Verifier error: ${result.error.message}`
   }
 
-  return {
+  return attachVerifyClass({
     complete,
     command,
     exitCode,
     stdout,
     stderr,
     reason,
-  }
+  })
 }

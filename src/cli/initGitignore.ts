@@ -17,6 +17,7 @@ const LOOP_GITIGNORE_LINES: readonly string[] = [
   '.cursor/loops/**/assistant.stream',
   '.cursor/loops/**/prompt-run.log',
   '.cursor/loops/**/verify-logs/',
+  '.cursor/loops/**/setup.log',
 ]
 
 /**

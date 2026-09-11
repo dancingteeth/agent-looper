@@ -23,6 +23,9 @@ Research context and citations live in the patterns doc. This file is the
 | Capability | Where |
 | --- | --- |
 | Hard verify + optional final verify | `loopVerify`, `agentLoop` |
+| Env vs product verify class | `verifyClass.ts` — exit 75 / 127 / `VERIFY_CLASS=env` parks — **0.6.0** |
+| Harness setup / bootstrap | `loopSetup.ts` — `setup` / `setup.sh` before first worker — **0.6.0** |
+| Frozen spec restore | `loopFrozenFiles.ts` — GOAL / verify / loop.json / RESEARCH — **0.6.0** |
 | Quality review + review-gate | `loopPostReview`, `reviewGate`, `maxReviewCycles` |
 | PASS / ADVISORY / BLOCKERS parse | `reviewVerdict.ts` |
 | Scoped blocker re-check (same family) | `reviewBlockerRecheck` |

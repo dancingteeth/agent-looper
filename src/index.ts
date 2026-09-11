@@ -183,6 +183,16 @@ export type { ResolvedLoopAgent, ResolvedReviewAgent, LoopRuntime } from './loop
 
 export { runVerifyCommand } from './loop/loopVerify.js'
 export type { VerifyResult } from './loop/loopVerify.js'
+export {
+  attachVerifyClass,
+  classifyVerifyClass,
+  isEnvVerifyFailure,
+  VERIFY_ENV_EXIT_CODE,
+  VERIFY_COMMAND_NOT_FOUND_EXIT_CODE,
+  VERIFY_CLASS_ENV_MARKER,
+} from './loop/verifyClass.js'
+export type { VerifyClass } from './loop/verifyClass.js'
+export { resolveLoopSetupCommand, SETUP_LOG_FILENAME } from './loop/loopSetup.js'
 export type { LoopAgentSession } from './agents/agentRunner.js'
 
 export { buildAgentLoopPrompt } from './loop/loopPrompt.js'
@@ -327,7 +337,7 @@ export {
   AGENT_LOOP_TRUST_CONFIG_ENV,
   AGENT_LOOP_REQUIRE_TRUST_CONFIG_ENV,
 } from './loop/loopShellTrust.js'
-export type { ShellCommandWarning, ShellTrustInput } from './loop/loopShellTrust.js'
+export type { ShellCommandWarning, ShellTrustInput, LabeledShellCommand } from './loop/loopShellTrust.js'
 
 export { assertLoopModelAllowed, assertCursorSdkModelAllowed, isBannedCursorLoopModel } from './usage/modelPolicy.js'
 

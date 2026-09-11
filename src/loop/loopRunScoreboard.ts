@@ -36,6 +36,8 @@ const ZERO_FAILURE_COUNTS: Record<FailureDomainReason, number> = {
   review_gate_hitl: 0,
   meta_probe_failed: 0,
   agent_error: 0,
+  verify_env: 0,
+  setup: 0,
 }
 
 export function emptyFailureCounts(): Record<FailureDomainReason, number> {
@@ -100,7 +102,10 @@ export function buildLoopRunScoreboard(input: {
     reviewCostUsd: review.totalCostUsd,
     hasCost: usage.records.length > 0,
     failureCounts,
-    hitl: failureCounts.review_gate_hitl > 0,
+    hitl:
+      failureCounts.review_gate_hitl > 0 ||
+      failureCounts.verify_env > 0 ||
+      failureCounts.setup > 0,
   }
 }
 
