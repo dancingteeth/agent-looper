@@ -40,13 +40,21 @@ Two paths:
 
 1. **If you see your coding agent's logo on this page** — type your idea as a normal prompt, and ask it to implement the feature **with Agent Looper**. It sets up the loop and keeps grinding until the check is green.
 
-2. **If you like the terminal** — set worker and judge with `pnpm exec agent-loop-setup`, then use `pnpm exec agent-loop-prompt` to type your idea and start the run.
+2. **If you like the terminal** — run `pnpm exec agent-loop-setup`: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use `pnpm exec agent-loop-prompt` to type your idea and start the run.
 
 The check stays the finish line.
+
+## What if verify fails because my environment is broken?
+
+When the check fails because something on your machine is missing or broken — not because the feature is wrong — the loop waits for you instead of sending another worker. Fix the environment, then resume. Real product failures still iterate.
 
 ## What do the spend numbers mean?
 
 Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`.
+
+## How it works
+
+Your agent writes `GOAL.md` and a deterministic check. Optional `setup.sh` (or `setup` in `loop.json`) runs once before the first worker — setup failure does not spawn a worker. A fresh worker loops until the check passes. After each visit the harness restores frozen specs if a worker edited them.
 
 ## How is Agent Looper different from looping in chat?
 

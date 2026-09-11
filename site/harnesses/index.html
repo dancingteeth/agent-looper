@@ -129,10 +129,11 @@
             <p class="harness-card__job">DeepSeek Harness CLI — worker is <code>dsh --profile headless</code>; <code>dsh-agent-looper</code> plugin for <code>dsh web</code>.</p>
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>deepseek-v4-flash</code> → <code>v4-pro</code></span>
+              <span class="harness-chip">Opt-in <code>deepseek-flash</code> (4.1 Flash)</span>
               <span class="harness-chip">Judge <code>deepseek-v4-pro</code></span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate</code></p>
-            <p class="harness-card__note">Ensure <code>dsh</code> is on PATH. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">docs/dsh-plugin.md</a> and <a href="https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper">plugins/dsh-agent-looper/</a>.</p>
+            <p class="harness-card__note">Default worker stays <code>deepseek-official/deepseek-v4-flash</code>; opt in to <code>deepseek-official/deepseek-flash</code> (DeepSeek-V41-Flash, image-capable) per loop in setup. Ensure <code>dsh</code> is on PATH. DSH companion plugin guard blocks accidental foreground grinds. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">docs/dsh-plugin.md</a> and <a href="https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper">plugins/dsh-agent-looper/</a>.</p>
           </article>
 
           <article class="harness-card" id="cline">

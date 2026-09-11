@@ -38,9 +38,10 @@ Export `CURSOR_API_KEY` or run under Doppler. Run `pnpm exec agent-loop-init` on
 
 DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` plugin for `dsh web`. See [docs/dsh-plugin.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md) and [plugins/dsh-agent-looper/](https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper).
 
-- Worker: `deepseek-official/deepseek-v4-flash` (escalates to `deepseek-official/deepseek-v4-pro`)
+- Worker: `deepseek-official/deepseek-v4-flash` (escalates to `deepseek-official/deepseek-v4-pro`) — default; opt in per loop to `deepseek-official/deepseek-flash` (DeepSeek-V41-Flash, image-capable)
 - Judge: `deepseek-official/deepseek-v4-pro` (when `reviewRuntime: dsh`)
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate`
+- DSH companion plugin guard blocks accidental foreground grinds
 
 ### Cline (`--runtime cline-pass` · `cline`)
 
