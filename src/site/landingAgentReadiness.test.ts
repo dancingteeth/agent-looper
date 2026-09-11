@@ -652,6 +652,68 @@ describe('landing agent readiness', () => {
     }
   })
 
+  it('names 0.6.0 setup wizard, env-wait, harness setup, frozen restore, and DSH 4.1 Flash opt-in', () => {
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    const llms = readSite('llms.txt')
+    const harnessHtml = readSite('harnesses/index.html')
+    const harnessMd = readSite('harnesses/index.md')
+    const graph = jsonLdGraph(html)
+
+    const faq = graph.find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as {
+      mainEntity?: Array<{
+        name?: string
+        acceptedAnswer?: { text?: string }
+      }>
+    }
+
+    const promptQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'How do I start a loop from an idea?',
+    )
+    const envQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'What if verify fails because my environment is broken?',
+    )
+
+    const setupWizardBeat = 'one-screen setup wizard'
+    const envWaitBeat = 'waits for you instead of sending another worker'
+    const setupBeat = 'setup.sh'
+    const frozenBeat = 'restores frozen specs'
+    const flashOptIn = 'deepseek-flash'
+    const flashLabel = '4.1 Flash'
+
+    for (const surface of [html, md] as const) {
+      expect(surface).toContain(setupWizardBeat)
+      expect(surface).toContain(envWaitBeat)
+      expect(surface).toContain(setupBeat)
+      expect(surface).toContain(frozenBeat)
+      expect(surface).not.toContain('0.5.0')
+      expect(surface).not.toMatch(/\bInk\b/i)
+    }
+
+    expect(llms).toContain('Current npm: **0.6.0**')
+    expect(llms).toContain('0.6.x')
+    expect(llms).not.toContain('0.5.0')
+    expect(llms).toContain(setupWizardBeat)
+
+    expect(promptQuestion?.acceptedAnswer?.text).toContain(setupWizardBeat)
+    expect(envQuestion?.acceptedAnswer?.text).toContain(envWaitBeat)
+
+    const dshCard =
+      harnessHtml.match(
+        /<article class="harness-card" id="dsh">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(dshCard).toContain(flashOptIn)
+    expect(dshCard).toContain(flashLabel)
+    expect(dshCard).toContain('deepseek-v4-flash')
+    expect(harnessMd).toContain(flashOptIn)
+    expect(harnessMd).toContain('deepseek-v4-flash')
+  })
+
   it('every HTML page loads analytics.js', () => {
     const htmlFiles: string[] = []
     function walk(dir: string) {

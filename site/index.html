@@ -155,7 +155,15 @@
             "name": "How do I start a loop from an idea?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Two paths: (1) If you see your coding agent's logo on this page — type your idea as a normal prompt, and ask it to implement the feature with Agent Looper. It sets up the loop and keeps grinding until the check is green. (2) If you like the terminal — set worker and judge with pnpm exec agent-loop-setup, then use pnpm exec agent-loop-prompt to type your idea and start the run. The check stays the finish line."
+              "text": "Two paths: (1) If you see your coding agent's logo on this page — type your idea as a normal prompt, and ask it to implement the feature with Agent Looper. It sets up the loop and keeps grinding until the check is green. (2) If you like the terminal — run pnpm exec agent-loop-setup: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use pnpm exec agent-loop-prompt to type your idea and start the run. The check stays the finish line."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What if verify fails because my environment is broken?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "When the check fails because something on your machine is missing or broken — not because the feature is wrong — the loop waits for you instead of sending another worker. Fix the environment, then resume. Real product failures still iterate."
             }
           },
           {
@@ -209,7 +217,7 @@
     ]
   }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260904-faqtype">
+  <link rel="stylesheet" href="styles.css?v=20260911-060">
 </head>
 <body>
   <header class="site-header">
@@ -375,7 +383,13 @@
               <strong>If you see your coding agent's logo on this page</strong> — type your idea as a normal prompt, and ask it to implement the feature <strong>with Agent Looper</strong>. It sets up the loop and keeps grinding until the check is green.
             </p>
             <p>
-              <strong>If you like the terminal</strong> — set worker and judge with <code>pnpm exec agent-loop-setup</code>, then use <code>pnpm exec agent-loop-prompt</code> to type your idea and start the run. The check stays the finish line.
+              <strong>If you like the terminal</strong> — run <code>pnpm exec agent-loop-setup</code>: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use <code>pnpm exec agent-loop-prompt</code> to type your idea and start the run. The check stays the finish line.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--env">
+            <h2>What if verify fails because my environment is broken?</h2>
+            <p>
+              When the check fails because something on your machine is missing or broken — not because the feature is wrong — the loop waits for you instead of sending another worker. Fix the environment, then resume. Real product failures still iterate.
             </p>
           </article>
           <article class="tui-answer tui-answer--spend">
@@ -393,7 +407,9 @@
         <h2>How it works</h2>
         <p class="section-intro">
           Your agent writes <code>GOAL.md</code> and a deterministic check that the feature really works.
+          Optional <code>setup.sh</code> (or <code>setup</code> in <code>loop.json</code>) runs once before the first worker — setup failure does not spawn a worker.
           A fresh worker loops until that check passes — optional judge / <code>reviewGate</code> only on serious findings.
+          After each visit the harness restores frozen specs if a worker edited them.
           Progress lives in git and files, not chat memory.
         </p>
         <div class="grid two-col">
@@ -403,7 +419,7 @@
           </div>
           <div class="card card--verify">
             <h3>Verifier</h3>
-            <p>A deterministic check. Green is only as good as the check you froze. The model doesn't get to hallucinate done. If something's wrong, the mistake is in the goal or the script.</p>
+            <p>A deterministic check. Green is only as good as the check you froze. The model doesn't get to hallucinate done. If your machine is broken, the loop waits — it doesn't burn another worker on a missing command. Real product failures still iterate.</p>
           </div>
           <div class="card card--judge">
             <h3>Judge <span class="optional">optional</span></h3>
