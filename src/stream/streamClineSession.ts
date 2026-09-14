@@ -62,6 +62,8 @@ export function printClineAgentEvent(
     case 'done':
       break
     default:
+      // External SDK stream: new event kinds may arrive at runtime, so this is a
+      // deliberate permissive default rather than the usual `never` exhaustiveness check.
       if (options.verbose) {
         console.error(`[agent-loop:cline] event ${(event as AgentEvent).type}`)
       }

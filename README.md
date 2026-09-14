@@ -271,7 +271,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reviewReproduceAgent` | `false` | Fresh KEEP/DROP session on gating blockers (needs `reviewReproduce`; uses primary `reviewRuntime`) |
 | `reviewSecondaryRuntime` | (unset) | Second residual judge (`cursor` \| `cline-pass` \| `cline` \| `opencode` \| `pi` \| `codex` \| `dsh` \| `muse` \| `claude`); unset = off |
 | `reviewSecondaryModel` | (default) | Model for secondary review (defaults per that runtime) |
-| `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate) |
+| `trustConfig` | `false` | Mark this loop's shell commands as pre-reviewed (pairs with `--trust-config` gate). Only consulted in strict mode (`--require-trust-config`); by default untrusted commands warn and still run. |
 | `exportRunReport` | `true` | Write `run-report.md` when the loop finishes (report card + timeline) |
 | `exportTranscript` | `true` | Record tool events in `transcript.ndjson` and per-iteration tool counts in `log.ndjson` |
 
@@ -448,7 +448,7 @@ For **trusted checkouts** you control:
 
 **Trust gate (opt-in strict mode):**
 
-- Default: warn + tip (`--trust-config` after review).
+- Default is **permissive**: the run proceeds after printing the warning + tip (`--trust-config` after review). Nothing is blocked unless you enable strict mode below — do that before running loop bundles you did not author.
 - `--require-trust-config` or `AGENT_LOOP_REQUIRE_TRUST_CONFIG=1`: abort unless you pass `--trust-config`, set `trustConfig: true` in `loop.json`, or `AGENT_LOOP_TRUST_CONFIG=1`.
 - Dogfood / CI: set `trustConfig: true` on known-safe loop bundles, or export `AGENT_LOOP_TRUST_CONFIG=1` in Doppler.
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { resolveIterationAgent } from './loopAgentEscalation.js'
 import {
   CLINE_PASS_LOOP_MODELS,
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
   clearIncompatibleReviewFieldsOnRuntimeSwitch,
-  resolveIterationAgent,
   resolveLoopAgent,
   resolveReviewAgent,
   resolveReviewModel,

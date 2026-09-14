@@ -109,7 +109,7 @@ type WorkerRow = {
   probe: DetectableRuntime
   runtime: LoopRuntime
   minmaxModel: string
-  balancedModel: string
+  /** Stronger tier; also the `balanced` worker pick. Unset when the runtime has a single tier. */
   escalateModel?: string
 }
 
@@ -124,42 +124,36 @@ const WORKER_LADDER: readonly WorkerRow[] = [
     probe: 'opencode',
     runtime: LOOP_RUNTIME_OPENCODE,
     minmaxModel: 'opencode-go/hy3',
-    balancedModel: DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
     escalateModel: DEFAULT_OPENCODE_GO_ESCALATE_MODEL,
   },
   {
     probe: 'cline',
     runtime: LOOP_RUNTIME_CLINE_PASS,
     minmaxModel: DEFAULT_CLINE_PASS_LOOP_MODEL,
-    balancedModel: DEFAULT_CLINE_PASS_ESCALATE_MODEL,
     escalateModel: DEFAULT_CLINE_PASS_ESCALATE_MODEL,
   },
   {
     probe: 'dsh',
     runtime: LOOP_RUNTIME_DSH,
     minmaxModel: DEFAULT_DSH_LOOP_MODEL,
-    balancedModel: DEFAULT_DSH_ESCALATE_MODEL,
     escalateModel: DEFAULT_DSH_ESCALATE_MODEL,
   },
   {
     probe: 'pi',
     runtime: LOOP_RUNTIME_PI,
     minmaxModel: DEFAULT_PI_LOOP_MODEL,
-    balancedModel: DEFAULT_PI_ESCALATE_MODEL,
     escalateModel: DEFAULT_PI_ESCALATE_MODEL,
   },
   {
     probe: 'codex',
     runtime: LOOP_RUNTIME_CODEX,
     minmaxModel: DEFAULT_CODEX_LOOP_MODEL,
-    balancedModel: DEFAULT_CODEX_ESCALATE_MODEL,
     escalateModel: DEFAULT_CODEX_ESCALATE_MODEL,
   },
   {
     probe: 'cursor',
     runtime: LOOP_RUNTIME_CURSOR,
     minmaxModel: CURSOR_LOOP_MODEL,
-    balancedModel: CURSOR_LOOP_MODEL,
   },
 ]
 
@@ -191,7 +185,7 @@ function pickWorker(
 ): Pick<CostPresetStack, 'runtime' | 'model' | 'escalateModel'> {
   for (const row of WORKER_LADDER) {
     if (!isRuntimeDetected(detection, row.probe)) continue
-    const model = preset === 'minmax' ? row.minmaxModel : row.balancedModel
+    const model = preset === 'minmax' ? row.minmaxModel : row.escalateModel ?? row.minmaxModel
     return {
       runtime: row.runtime,
       model,
@@ -342,16 +336,12 @@ export function describeUserCostPresetRaw(raw: unknown): string {
   return `saved preset — ${worker} / ${judge} (${mix}).`
 }
 
-function isUnset(value: unknown): boolean {
-  return value === undefined
-}
-
 function workerAndJudgeAreSet(record: Record<string, unknown>): boolean {
   return (
-    !isUnset(record.runtime) &&
-    !isUnset(record.model) &&
-    !isUnset(record.reviewRuntime) &&
-    !isUnset(record.reviewModel)
+    record.runtime !== undefined &&
+    record.model !== undefined &&
+    record.reviewRuntime !== undefined &&
+    record.reviewModel !== undefined
   )
 }
 
@@ -378,17 +368,17 @@ export function applyCostPreset(
   }
   if (stack === undefined) return raw
   const next: Record<string, unknown> = { ...record }
-  if (isUnset(next.runtime)) next.runtime = stack.runtime
-  if (isUnset(next.model) && next.runtime === stack.runtime) next.model = stack.model
+  if (next.runtime === undefined) next.runtime = stack.runtime
+  if (next.model === undefined && next.runtime === stack.runtime) next.model = stack.model
   if (
-    isUnset(next.escalateModel) &&
+    next.escalateModel === undefined &&
     stack.escalateModel !== undefined &&
     next.runtime === stack.runtime
   ) {
     next.escalateModel = stack.escalateModel
   }
-  if (isUnset(next.reviewRuntime)) next.reviewRuntime = stack.reviewRuntime
-  if (isUnset(next.reviewModel) && next.reviewRuntime === stack.reviewRuntime) {
+  if (next.reviewRuntime === undefined) next.reviewRuntime = stack.reviewRuntime
+  if (next.reviewModel === undefined && next.reviewRuntime === stack.reviewRuntime) {
     next.reviewModel = stack.reviewModel
   }
   return next

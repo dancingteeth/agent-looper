@@ -89,6 +89,7 @@ export async function printRunStream(
         }
         break
       default:
+        // External SDK stream: unknown event kinds are ignored on purpose (no `never` check).
         break
     }
   }

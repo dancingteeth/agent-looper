@@ -21,7 +21,7 @@ From `dsh web`, switch the session to **Full Access** (or start the grind bash w
 | Skills `design-loop`, `install-agent-looper`, `review-gate`, `run-loop-in-dsh` | Cursor-parity design/install/review; start grind as a DSH background job |
 | Command `loop-scaffold` | Guided GOAL + verify scaffold (direct UI handler — not sent to the model) |
 | System prompt `plugin:agent-looper` | Always-on routing: plugin is already loaded; do not inspect DSH internals |
-| Bash guard | Denies *foreground* `agent-loop run` and Doppler / DSH credentials-local / OpenCode secret dumps. Background grind is allowed (`blockNestedRun` toggles the foreground deny). |
+| Bash guard | Denies *foreground* `agent-loop run` and Doppler / DSH credentials-local / OpenCode secret dumps. Background grind is allowed (`blockNestedRun` toggles the foreground deny). **Best-effort tripwire, not a boundary:** it matches literal command text, so `sh -c env`, variable indirection, or a pipe through `bash` slip past by design. Its job is to stop *accidental* leaks into session logs and ~60s bash timeouts; do not rely on it for egress or secrets policy (that lives in `verify` + permissions). |
 | `cordis.patch.yml` | Inserts plugin row `id: agent-looper` |
 
 Parity reference: [`plugins/agent-looper/`](../plugins/agent-looper/) and [`docs/cursor-marketplace-plugin.md`](./cursor-marketplace-plugin.md). Harness heartbeat (`ps` + `watch-status.json`) is runtime-agnostic; Cursor Agent Shell terminal files are an extra probe in `check-running-loops` when the grind was started from that chat.

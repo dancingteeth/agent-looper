@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import {
+  AgentModelError,
   LOOP_RUNTIME_CURSOR,
   LOOP_RUNTIME_VALUES,
   LOOP_REASONING_EFFORTS,
@@ -212,16 +213,8 @@ export const loopConfigSchema = loopExtensionFieldsSchema
       validateLoopAgentConfig(config)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      const issuePath = message.includes('escalateModel')
-        ? ['escalateModel']
-        : message.includes('reviewSecondaryModel')
-          ? ['reviewSecondaryModel']
-          : message.includes('reviewModel')
-            ? ['reviewModel']
-            : message.includes('reviewRuntime')
-              ? ['reviewRuntime']
-              : ['model']
-      ctx.addIssue({ code: 'custom', message, path: issuePath })
+      const field = err instanceof AgentModelError ? err.field : 'model'
+      ctx.addIssue({ code: 'custom', message, path: [field] })
     }
   })
 
@@ -338,131 +331,57 @@ export function loadLoopBundle(
   }
 }
 
-export function mergeLoopConfig(
-  base: LoopConfig,
-  overrides: Partial<
-      Pick<
-      LoopConfig,
-      | 'maxIterations'
-      | 'maxCostUsd'
-      | 'verify'
-      | 'finalVerify'
-      | 'postQualityReview'
-      | 'reviewRisk'
-      | 'loopRiskProfile'
-      | 'reviewGate'
-      | 'maxReviewCycles'
-      | 'reviewGateHitl'
-      | 'unparseableReviewRetries'
-      | 'reviewBlockerRecheck'
-      | 'reviewReproduce'
-      | 'reviewReproduceAgent'
-      | 'reviewSecondaryRuntime'
-      | 'reviewSecondaryModel'
-      | 'syncOnSuccess'
-      | 'runtime'
-      | 'model'
-      | 'reviewRuntime'
-      | 'reviewModel'
-      | 'escalateModel'
-      | 'reasoningEffort'
-      | 'escalateReasoningEffort'
-      | 'reasoningEscalationStep'
-      | 'escalateModelReasoningEffort'
-      | 'taskwarriorProject'
-      | 'mode'
-      | 'pauseAfterIteration'
-      | 'injectFailureContext'
-      | 'notifyTelegram'
-      | 'notifyCommand'
-      | 'hitlOnFailure'
-      | 'requireNotify'
-      | 'completionSignal'
-      | 'trustConfig'
-      | 'exportRunReport'
-      | 'exportPack'
-      | 'exportTranscript'
-      | 'notifyPrComment'
-    >
-  >,
-): LoopConfig {
-  const cleanedOverrides = Object.fromEntries(
+/** Fields whose values may be cleared when the owning runtime switches. */
+type ReconciledModelField = 'model' | 'escalateModel' | 'reviewModel' | 'reviewSecondaryModel'
+
+export function mergeLoopConfig(base: LoopConfig, overrides: Partial<LoopConfig>): LoopConfig {
+  const cleanedOverrides: Partial<LoopConfig> = Object.fromEntries(
     Object.entries(overrides).filter(([, v]) => v !== undefined),
-  ) as typeof overrides
+  )
+  const next = { ...base, ...cleanedOverrides }
 
-  const nextRuntime = (cleanedOverrides.runtime ?? base.runtime) as LoopRuntime
-  const previousRuntime = base.runtime as LoopRuntime
-
-  const reconciled = clearIncompatibleAgentFieldsOnRuntimeSwitch({
-    previousRuntime,
-    nextRuntime,
-    model: (cleanedOverrides.model ?? base.model) as string | undefined,
-    escalateModel: (cleanedOverrides.escalateModel ?? base.escalateModel) as string | undefined,
+  const worker = clearIncompatibleAgentFieldsOnRuntimeSwitch({
+    previousRuntime: base.runtime,
+    nextRuntime: next.runtime,
+    model: next.model,
+    escalateModel: next.escalateModel,
     modelOverridden: cleanedOverrides.model !== undefined,
     escalateModelOverridden: cleanedOverrides.escalateModel !== undefined,
   })
 
-  const nextReviewRuntime = (cleanedOverrides.reviewRuntime ??
-    base.reviewRuntime ??
-    LOOP_RUNTIME_CURSOR) as LoopRuntime
-  const previousReviewRuntime = (base.reviewRuntime ?? LOOP_RUNTIME_CURSOR) as LoopRuntime
-
-  const reviewReconciled = clearIncompatibleReviewFieldsOnRuntimeSwitch({
-    previousReviewRuntime,
-    nextReviewRuntime,
-    reviewModel: (cleanedOverrides.reviewModel ?? base.reviewModel) as string | undefined,
+  const review = clearIncompatibleReviewFieldsOnRuntimeSwitch({
+    previousReviewRuntime: base.reviewRuntime ?? LOOP_RUNTIME_CURSOR,
+    nextReviewRuntime: next.reviewRuntime ?? LOOP_RUNTIME_CURSOR,
+    reviewModel: next.reviewModel,
     reviewModelOverridden: cleanedOverrides.reviewModel !== undefined,
   })
 
-  const nextSecondaryRuntime = (cleanedOverrides.reviewSecondaryRuntime ??
-    base.reviewSecondaryRuntime) as LoopRuntime | undefined
-  const previousSecondaryRuntime = base.reviewSecondaryRuntime as LoopRuntime | undefined
-  const secondaryReconciled =
-    nextSecondaryRuntime !== undefined && previousSecondaryRuntime !== undefined
+  const secondary =
+    base.reviewSecondaryRuntime !== undefined && next.reviewSecondaryRuntime !== undefined
       ? clearIncompatibleReviewFieldsOnRuntimeSwitch({
-          previousReviewRuntime: previousSecondaryRuntime,
-          nextReviewRuntime: nextSecondaryRuntime,
-          reviewModel: (cleanedOverrides.reviewSecondaryModel ?? base.reviewSecondaryModel) as
-            | string
-            | undefined,
+          previousReviewRuntime: base.reviewSecondaryRuntime,
+          nextReviewRuntime: next.reviewSecondaryRuntime,
+          reviewModel: next.reviewSecondaryModel,
           reviewModelOverridden: cleanedOverrides.reviewSecondaryModel !== undefined,
           runtimeField: 'reviewSecondaryRuntime',
           modelField: 'reviewSecondaryModel',
         })
-      : { reviewModel: (cleanedOverrides.reviewSecondaryModel ?? base.reviewSecondaryModel) as string | undefined, warnings: [] }
+      : { reviewModel: next.reviewSecondaryModel, warnings: [] }
 
-  for (const warning of [...reconciled.warnings, ...reviewReconciled.warnings, ...secondaryReconciled.warnings]) {
+  for (const warning of [...worker.warnings, ...review.warnings, ...secondary.warnings]) {
     console.error(`[agent-loop] ${warning}`)
   }
 
-  const merged: Record<string, unknown> = {
-    ...base,
-    ...cleanedOverrides,
+  const reconciled: Array<[ReconciledModelField, string | undefined]> = [
+    ['model', worker.model],
+    ['escalateModel', worker.escalateModel],
+    ['reviewModel', review.reviewModel],
+    ['reviewSecondaryModel', secondary.reviewModel],
+  ]
+  for (const [field, value] of reconciled) {
+    if (value === undefined) delete next[field]
+    else next[field] = value
   }
 
-  if (reconciled.model === undefined) {
-    delete merged.model
-  } else {
-    merged.model = reconciled.model
-  }
-
-  if (reconciled.escalateModel === undefined) {
-    delete merged.escalateModel
-  } else {
-    merged.escalateModel = reconciled.escalateModel
-  }
-
-  if (reviewReconciled.reviewModel === undefined) {
-    delete merged.reviewModel
-  } else {
-    merged.reviewModel = reviewReconciled.reviewModel
-  }
-
-  if (secondaryReconciled.reviewModel === undefined) {
-    delete merged.reviewSecondaryModel
-  } else {
-    merged.reviewSecondaryModel = secondaryReconciled.reviewModel
-  }
-
-  return loopConfigSchema.parse(merged)
+  return loopConfigSchema.parse(next)
 }

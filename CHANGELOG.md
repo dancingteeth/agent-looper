@@ -7,6 +7,14 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
+## Unreleased
+
+- **Soft-gate unknown Go / Cline Pass slugs** — well-formed `opencode-go/<id>` and `cline-pass/<id>` slugs parse even when absent from the curated catalog; unpriced models warn at loop start and report `$0` cost. `maxCostUsd` rejects worker or `escalateModel` slugs with no pricing row.
+- **Model catalog from models.dev** — `pnpm sync:models` regenerates `OPENCODE_GO_LOOP_MODELS`, `CLINE_PASS_LOOP_MODELS`, and pricing from https://models.dev/api.json; weekly CI PR via `sync-models.yml`.
+- **Frozen files also cover creation** — a worker that *adds* a frozen basename (`setup.sh`, `RESEARCH.md`, …) that did not exist at loop start now has it removed on restore and the visit fails, closing the cross-run persistence path where a planted `setup.sh` would be auto-selected by the next `agent-loop run`.
+- **Runtime spec table** — per-runtime defaults, model-shape validation, and capability flags (`honorsReasoningEffort`, `offersEscalateModel`) live in one `RUNTIME_SPEC` table (`src/loop/runtimeSpec.ts`). Invalid-model errors now read `Invalid <field> "<slug>" for <runtimeField> "<runtime>". <hint>`; the zod issue path comes from the typed `AgentModelError.field` instead of message sniffing. Public exports from `loopAgentConfig` are unchanged.
+- **Docs** — DSH companion bash guard documented as a best-effort tripwire (not a sandbox); README states the shell-trust default is warn-and-run.
+
 ## 0.6.0 — 2026-09-11
 
 Single-screen setup wizard, DeepSeek 4.1 Flash on the DSH runtime, a hardened DSH companion guard, and harness control-plane gates.
