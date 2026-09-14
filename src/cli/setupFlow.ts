@@ -10,6 +10,7 @@ import {
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
   runtimeHonorsReasoningEffort,
+  runtimeOffersEscalateModel,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
 import { detectionOf, type DetectableRuntime, type DetectionResult } from './detectRuntimes.js'
@@ -158,7 +159,7 @@ export async function collectSetupAnswers(
       'Custom worker model slug',
     )
     let escalateModel: string | undefined
-    if (runtime !== LOOP_RUNTIME_CURSOR && runtime !== LOOP_RUNTIME_MUSE) {
+    if (runtimeOffersEscalateModel(runtime)) {
       escalateModel = await askOptionalSlug(
         'Escalate model',
         `Stronger ${runtime} model after repeated identical verify failures. Omit for the default.`,

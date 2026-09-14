@@ -9,7 +9,6 @@ import {
   DEFAULT_CODEX_REVIEW_MODEL,
   DEFAULT_DSH_ESCALATE_MODEL,
   DEFAULT_DSH_LOOP_MODEL,
-  DEFAULT_DSH_REVIEW_MODEL,
   DSH_41_FLASH_LOOP_MODEL,
   DSH_VISION_LOOP_MODEL,
   DEFAULT_MUSE_LOOP_MODEL,
@@ -19,10 +18,8 @@ import {
   MUSE_SPARK_1_1_MODEL,
   DEFAULT_CLAUDE_LOOP_MODEL,
   DEFAULT_CLAUDE_ESCALATE_MODEL,
-  DEFAULT_CLAUDE_REVIEW_MODEL,
   CLAUDE_HAIKU_MODEL,
   CLAUDE_FABLE_MODEL,
-  DEFAULT_OPENCODE_GO_REVIEW_MODEL,
   DEFAULT_PI_ESCALATE_MODEL,
   DEFAULT_PI_LOOP_MODEL,
   OPENROUTER_FREE_LOOP_MODELS,
@@ -38,6 +35,8 @@ import {
   LOOP_RUNTIME_PI,
   OPENCODE_GO_LOOP_MODELS,
   defaultModelForRuntime,
+  defaultReviewModel,
+  runtimeOffersEscalateModel,
   type LoopRuntime,
 } from '../loop/loopAgentConfig.js'
 import {
@@ -361,228 +360,75 @@ export function modelChoiceDescription(slug: string): string {
   )
 }
 
+function slugChoice(slug: string): MenuChoice {
+  return { value: slug, title: slug, description: modelChoiceDescription(slug) }
+}
+
+/**
+ * Curated worker-menu slugs per runtime (wizard UX, not validation — see RUNTIME_SPEC for that).
+ * `custom` adds a free-form entry with the given example.
+ */
+const WORKER_MENU: Record<LoopRuntime, { slugs: readonly string[]; custom?: string }> = {
+  [LOOP_RUNTIME_CURSOR]: { slugs: [CURSOR_LOOP_MODEL] },
+  [LOOP_RUNTIME_DSH]: {
+    slugs: [DEFAULT_DSH_LOOP_MODEL, DSH_41_FLASH_LOOP_MODEL, DSH_VISION_LOOP_MODEL, DEFAULT_DSH_ESCALATE_MODEL],
+  },
+  [LOOP_RUNTIME_CLINE_PASS]: { slugs: CLINE_PASS_LOOP_MODELS },
+  [LOOP_RUNTIME_OPENCODE]: {
+    slugs: [...OPENCODE_GO_LOOP_MODELS, ...OPENROUTER_FREE_LOOP_MODELS],
+    custom: 'openrouter/deepseek/deepseek-chat',
+  },
+  [LOOP_RUNTIME_CLINE]: {
+    slugs: [DEFAULT_CLINE_CREDITS_LOOP_MODEL, DEFAULT_CLINE_CREDITS_ESCALATE_MODEL],
+    custom: 'minimax/minimax-m2.5',
+  },
+  [LOOP_RUNTIME_PI]: {
+    slugs: [DEFAULT_PI_LOOP_MODEL, DEFAULT_PI_ESCALATE_MODEL],
+    custom: 'openrouter/qwen/qwen3-coder-plus',
+  },
+  [LOOP_RUNTIME_CODEX]: {
+    slugs: [DEFAULT_CODEX_LOOP_MODEL, DEFAULT_CODEX_ESCALATE_MODEL, DEFAULT_CODEX_REVIEW_MODEL],
+  },
+  [LOOP_RUNTIME_MUSE]: {
+    slugs: [
+      DEFAULT_MUSE_LOOP_MODEL,
+      DEFAULT_MUSE_REVIEW_MODEL,
+      MUSE_SPARK_1_2_LOOP_MODEL,
+      MUSE_SPARK_1_2_REVIEW_MODEL,
+      MUSE_SPARK_1_1_MODEL,
+    ],
+  },
+  [LOOP_RUNTIME_CLAUDE]: {
+    slugs: [DEFAULT_CLAUDE_LOOP_MODEL, DEFAULT_CLAUDE_ESCALATE_MODEL, CLAUDE_FABLE_MODEL, CLAUDE_HAIKU_MODEL],
+  },
+}
+
+function menuChoices(runtime: LoopRuntime, omitDefault: string): MenuChoice[] {
+  const menu = WORKER_MENU[runtime]
+  return [
+    omitChoice(omitDefault),
+    ...menu.slugs.map(slugChoice),
+    ...(menu.custom ? [customChoice(menu.custom)] : []),
+  ]
+}
+
 export function workerModelChoices(runtime: LoopRuntime): MenuChoice[] {
-  const omit = omitChoice(defaultModelForRuntime(runtime))
-  switch (runtime) {
-    case LOOP_RUNTIME_CURSOR:
-      return [
-        omit,
-        {
-          value: CURSOR_LOOP_MODEL,
-          title: CURSOR_LOOP_MODEL,
-          description: modelChoiceDescription(CURSOR_LOOP_MODEL),
-        },
-      ]
-    case LOOP_RUNTIME_DSH:
-      return [
-        omit,
-        {
-          value: DEFAULT_DSH_LOOP_MODEL,
-          title: DEFAULT_DSH_LOOP_MODEL,
-          description: modelChoiceDescription(DEFAULT_DSH_LOOP_MODEL),
-        },
-        {
-          value: DSH_41_FLASH_LOOP_MODEL,
-          title: DSH_41_FLASH_LOOP_MODEL,
-          description: modelChoiceDescription(DSH_41_FLASH_LOOP_MODEL),
-        },
-        {
-          value: DSH_VISION_LOOP_MODEL,
-          title: DSH_VISION_LOOP_MODEL,
-          description: modelChoiceDescription(DSH_VISION_LOOP_MODEL),
-        },
-        {
-          value: DEFAULT_DSH_ESCALATE_MODEL,
-          title: DEFAULT_DSH_ESCALATE_MODEL,
-          description: modelChoiceDescription(DEFAULT_DSH_ESCALATE_MODEL),
-        },
-      ]
-    case LOOP_RUNTIME_CLINE_PASS:
-      return [
-        omit,
-        ...CLINE_PASS_LOOP_MODELS.map((slug) => ({
-          value: slug,
-          title: slug,
-          description: modelChoiceDescription(slug),
-        })),
-      ]
-    case LOOP_RUNTIME_OPENCODE:
-      return [
-        omit,
-        ...OPENCODE_GO_LOOP_MODELS.map((slug) => ({
-          value: slug,
-          title: slug,
-          description: modelChoiceDescription(slug),
-        })),
-        ...OPENROUTER_FREE_LOOP_MODELS.map((slug) => ({
-          value: slug,
-          title: slug,
-          description: modelChoiceDescription(slug),
-        })),
-        customChoice('openrouter/deepseek/deepseek-chat'),
-      ]
-    case LOOP_RUNTIME_CLINE:
-      return [
-        omit,
-        {
-          value: DEFAULT_CLINE_CREDITS_LOOP_MODEL,
-          title: DEFAULT_CLINE_CREDITS_LOOP_MODEL,
-          description: modelChoiceDescription(DEFAULT_CLINE_CREDITS_LOOP_MODEL),
-        },
-        {
-          value: DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
-          title: DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
-          description: modelChoiceDescription(DEFAULT_CLINE_CREDITS_ESCALATE_MODEL),
-        },
-        customChoice('minimax/minimax-m2.5'),
-      ]
-    case LOOP_RUNTIME_PI:
-      return [
-        omit,
-        {
-          value: DEFAULT_PI_LOOP_MODEL,
-          title: DEFAULT_PI_LOOP_MODEL,
-          description: modelChoiceDescription(DEFAULT_PI_LOOP_MODEL),
-        },
-        {
-          value: DEFAULT_PI_ESCALATE_MODEL,
-          title: DEFAULT_PI_ESCALATE_MODEL,
-          description: modelChoiceDescription(DEFAULT_PI_ESCALATE_MODEL),
-        },
-        customChoice('openrouter/qwen/qwen3-coder-plus'),
-      ]
-    case LOOP_RUNTIME_CODEX:
-      return [
-        omit,
-        {
-          value: DEFAULT_CODEX_LOOP_MODEL,
-          title: DEFAULT_CODEX_LOOP_MODEL,
-          description: modelChoiceDescription(DEFAULT_CODEX_LOOP_MODEL),
-        },
-        {
-          value: DEFAULT_CODEX_ESCALATE_MODEL,
-          title: DEFAULT_CODEX_ESCALATE_MODEL,
-          description: modelChoiceDescription(DEFAULT_CODEX_ESCALATE_MODEL),
-        },
-        {
-          value: DEFAULT_CODEX_REVIEW_MODEL,
-          title: DEFAULT_CODEX_REVIEW_MODEL,
-          description: modelChoiceDescription(DEFAULT_CODEX_REVIEW_MODEL),
-        },
-      ]
-    case LOOP_RUNTIME_MUSE:
-      return [
-        omit,
-        {
-          value: DEFAULT_MUSE_LOOP_MODEL,
-          title: DEFAULT_MUSE_LOOP_MODEL,
-          description: modelChoiceDescription(DEFAULT_MUSE_LOOP_MODEL),
-        },
-        {
-          value: DEFAULT_MUSE_REVIEW_MODEL,
-          title: DEFAULT_MUSE_REVIEW_MODEL,
-          description: modelChoiceDescription(DEFAULT_MUSE_REVIEW_MODEL),
-        },
-        {
-          value: MUSE_SPARK_1_2_LOOP_MODEL,
-          title: MUSE_SPARK_1_2_LOOP_MODEL,
-          description: modelChoiceDescription(MUSE_SPARK_1_2_LOOP_MODEL),
-        },
-        {
-          value: MUSE_SPARK_1_2_REVIEW_MODEL,
-          title: MUSE_SPARK_1_2_REVIEW_MODEL,
-          description: modelChoiceDescription(MUSE_SPARK_1_2_REVIEW_MODEL),
-        },
-        {
-          value: MUSE_SPARK_1_1_MODEL,
-          title: MUSE_SPARK_1_1_MODEL,
-          description: modelChoiceDescription(MUSE_SPARK_1_1_MODEL),
-        },
-      ]
-    case LOOP_RUNTIME_CLAUDE:
-      return [
-        omit,
-        {
-          value: DEFAULT_CLAUDE_LOOP_MODEL,
-          title: DEFAULT_CLAUDE_LOOP_MODEL,
-          description: modelChoiceDescription(DEFAULT_CLAUDE_LOOP_MODEL),
-        },
-        {
-          value: DEFAULT_CLAUDE_ESCALATE_MODEL,
-          title: DEFAULT_CLAUDE_ESCALATE_MODEL,
-          description: modelChoiceDescription(DEFAULT_CLAUDE_ESCALATE_MODEL),
-        },
-        {
-          value: CLAUDE_FABLE_MODEL,
-          title: CLAUDE_FABLE_MODEL,
-          description: modelChoiceDescription(CLAUDE_FABLE_MODEL),
-        },
-        {
-          value: CLAUDE_HAIKU_MODEL,
-          title: CLAUDE_HAIKU_MODEL,
-          description: modelChoiceDescription(CLAUDE_HAIKU_MODEL),
-        },
-      ]
-    default: {
-      const _exhaustive: never = runtime
-      return _exhaustive
-    }
-  }
+  return menuChoices(runtime, defaultModelForRuntime(runtime))
 }
 
 export function escalateModelChoices(runtime: LoopRuntime): MenuChoice[] {
-  if (runtime === LOOP_RUNTIME_MUSE) {
+  if (!runtimeOffersEscalateModel(runtime)) {
     return [omitChoice(defaultModelForRuntime(runtime))]
   }
   return workerModelChoices(runtime)
 }
 
 export function judgeModelChoices(reviewRuntime: LoopRuntime, workerRuntime: LoopRuntime): MenuChoice[] {
-  const omitDefault =
-    reviewRuntime === LOOP_RUNTIME_CURSOR
-      ? workerRuntime === LOOP_RUNTIME_CURSOR
-        ? 'grok-4.6'
-        : CURSOR_LOOP_MODEL
-      : reviewRuntime === LOOP_RUNTIME_DSH
-        ? DEFAULT_DSH_REVIEW_MODEL
-        : reviewRuntime === LOOP_RUNTIME_OPENCODE
-          ? DEFAULT_OPENCODE_GO_REVIEW_MODEL
-          : reviewRuntime === LOOP_RUNTIME_CODEX
-            ? DEFAULT_CODEX_REVIEW_MODEL
-            : reviewRuntime === LOOP_RUNTIME_MUSE
-              ? DEFAULT_MUSE_REVIEW_MODEL
-              : reviewRuntime === LOOP_RUNTIME_CLAUDE
-                ? DEFAULT_CLAUDE_REVIEW_MODEL
-            : defaultModelForRuntime(reviewRuntime)
-  const omit = omitChoice(omitDefault)
-  switch (reviewRuntime) {
-    case LOOP_RUNTIME_CURSOR:
-      return [
-        omit,
-        ...CURSOR_REVIEW_MODELS.map((slug) => ({
-          value: slug,
-          title: slug,
-          description: modelChoiceDescription(slug),
-        })),
-      ]
-    case LOOP_RUNTIME_DSH:
-    case LOOP_RUNTIME_CLINE_PASS:
-    case LOOP_RUNTIME_CLINE:
-    case LOOP_RUNTIME_OPENCODE:
-    case LOOP_RUNTIME_PI:
-    case LOOP_RUNTIME_CODEX:
-    case LOOP_RUNTIME_MUSE:
-    case LOOP_RUNTIME_CLAUDE:
-      return workerModelChoices(reviewRuntime).map((choice, index) =>
-        index === 0
-          ? omit
-          : choice,
-      )
-    default: {
-      const _exhaustive: never = reviewRuntime
-      return _exhaustive
-    }
+  const omitDefault = defaultReviewModel(reviewRuntime, workerRuntime)
+  if (reviewRuntime === LOOP_RUNTIME_CURSOR) {
+    return [omitChoice(omitDefault), ...CURSOR_REVIEW_MODELS.map(slugChoice)]
   }
+  return menuChoices(reviewRuntime, omitDefault)
 }
 
 export function escalateAfterChoices(): MenuChoice[] {

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { attachVerifyClass } from './verifyClass.js'
@@ -16,33 +15,28 @@ export const FROZEN_LOOP_BASENAMES = [
   'setup.sh',
 ] as const
 
+/** Frozen spec file as it stood when the loop started. `contents: null` = did not exist. */
 export type FrozenFileSnapshot = {
   absPath: string
   relPath: string
-  hash: string
-  contents: string
-}
-
-function fileHash(contents: string): string {
-  return createHash('sha256').update(contents, 'utf8').digest('hex')
+  contents: string | null
 }
 
 function posixRel(from: string, to: string): string {
   return path.relative(from, to).split(path.sep).join('/')
 }
 
-function snapshotOne(absPath: string, repoRoot: string): FrozenFileSnapshot | undefined {
-  if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) return undefined
-  const contents = fs.readFileSync(absPath, 'utf8')
-  return {
-    absPath,
-    relPath: posixRel(repoRoot, absPath),
-    hash: fileHash(contents),
-    contents,
-  }
+function readIfFile(absPath: string): string | null {
+  return fs.existsSync(absPath) && fs.statSync(absPath).isFile()
+    ? fs.readFileSync(absPath, 'utf8')
+    : null
 }
 
-/** Capture frozen spec files. Extra paths (e.g. custom `research`) are included when they exist. */
+/**
+ * Capture frozen spec files. Absent files are recorded too, so a worker cannot
+ * introduce a new `verify.sh` / `setup.sh` mid-loop. Extra paths (e.g. custom `research`)
+ * follow the same rule.
+ */
 export function snapshotFrozenFiles(
   loopDir: string,
   repoRoot: string,
@@ -54,8 +48,11 @@ export function snapshotFrozenFiles(
     const resolved = path.resolve(absPath)
     if (seen.has(resolved)) return
     seen.add(resolved)
-    const snap = snapshotOne(resolved, repoRoot)
-    if (snap) snapshots.push(snap)
+    snapshots.push({
+      absPath: resolved,
+      relPath: posixRel(repoRoot, resolved),
+      contents: readIfFile(resolved),
+    })
   }
 
   for (const name of FROZEN_LOOP_BASENAMES) {
@@ -71,15 +68,18 @@ export type FrozenRestoreResult = {
   restored: string[]
 }
 
-/** Write original bytes back. Missing files are recreated; extra new files are left alone. */
+/** Put every frozen path back to its snapshot state: rewrite edits, recreate deletions, remove additions. */
 export function restoreFrozenFiles(snapshots: FrozenFileSnapshot[]): FrozenRestoreResult {
   const restored: string[] = []
   for (const snap of snapshots) {
-    const exists = fs.existsSync(snap.absPath)
-    const current = exists && fs.statSync(snap.absPath).isFile() ? fs.readFileSync(snap.absPath, 'utf8') : null
+    const current = readIfFile(snap.absPath)
     if (current === snap.contents) continue
-    fs.mkdirSync(path.dirname(snap.absPath), { recursive: true })
-    fs.writeFileSync(snap.absPath, snap.contents, 'utf8')
+    if (snap.contents === null) {
+      fs.rmSync(snap.absPath, { force: true })
+    } else {
+      fs.mkdirSync(path.dirname(snap.absPath), { recursive: true })
+      fs.writeFileSync(snap.absPath, snap.contents, 'utf8')
+    }
     restored.push(snap.relPath)
   }
   return { restored }

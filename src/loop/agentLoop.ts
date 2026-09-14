@@ -1,34 +1,24 @@
 import path from 'node:path'
 import { type RepoContext } from '../context/repoContext.js'
 import { createLoopAgentSession, loopRuntimeLabel, type LoopAgentSession } from '../agents/agentRunner.js'
-import { formatErrorChain, isTransportAgentError } from '../agents/errorFormat.js'
+import { formatErrorChain } from '../agents/errorFormat.js'
 import { appendJsonlLine } from './appendJsonl.js'
-import { resolveIterationAgent, resolveLoopAgent, resolveReviewAgent, type ResolvedLoopAgent } from '../loop/loopAgentConfig.js'
-import type { LoadedLoopBundle } from '../loop/loopConfig.js'
-import { captureGitWorkspaceSnapshot } from '../loop/loopGit.js'
-import { buildAgentLoopPrompt } from '../loop/loopPrompt.js'
+import { resolveLoopAgent, resolveReviewAgent } from './loopAgentConfig.js'
+import { resolveIterationAgent } from './loopAgentEscalation.js'
+import type { LoadedLoopBundle } from './loopConfig.js'
+import { captureGitWorkspaceSnapshot } from './loopGit.js'
+import { buildAgentLoopPrompt } from './loopPrompt.js'
 import { loadLoopResearchSection, resolveLoopResearchRelativePath } from './loopResearch.js'
-import type { ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
-import { detectStagnation } from '../loop/loopStagnation.js'
-import { resolveStagnationPolicy } from '../loop/loopStagnationPolicy.js'
-import {
-  AGENT_SDK_VERIFY_COMMAND,
-  logFailureDomainFromVerify,
-  logFailureDomainFromAgentError,
-} from '../loop/loopFailureDomain.js'
-import { readFailureContext } from '../loop/loopFailureContext.js'
-import { pauseForContinue } from '../loop/loopPause.js'
-import {
-  createHitlCheckpoint,
-  hitlLoopOverridesFrom,
-} from '../integrations/hitlCheckpoint.js'
+import { detectStagnation } from './loopStagnation.js'
+import { resolveStagnationPolicy } from './loopStagnationPolicy.js'
+import { logFailureDomainFromVerify, logFailureDomainFromAgentError } from './loopFailureDomain.js'
+import { readFailureContext } from './loopFailureContext.js'
+import { pauseForContinue } from './loopPause.js'
+import { createHitlCheckpoint, hitlLoopOverridesFrom } from '../integrations/hitlCheckpoint.js'
 import { markTaskwarriorDoneByUuid, runTaskwarriorSync } from '../integrations/taskwarrior.js'
-import {
-  logReviewGateFailureDomain,
-  runPostSuccessReviewPhase,
-} from '../loop/loopPostSuccessReview.js'
+import { logReviewGateFailureDomain, runPostSuccessReviewPhase } from './loopPostSuccessReview.js'
 import type { GuidePacket } from '../review/guidePackets.js'
-import { runVerifyCommand, type VerifyResult } from '../loop/loopVerify.js'
+import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
 import { attachVerifyClass, isEnvVerifyFailure } from './verifyClass.js'
 import { resolveLoopSetupCommand, runLoopSetup } from './loopSetup.js'
 import {
@@ -37,71 +27,33 @@ import {
   snapshotFrozenFiles,
   type FrozenFileSnapshot,
 } from './loopFrozenFiles.js'
-import { runVerifySkill } from '../loop/loopVerifySkill.js'
+import { runVerifySkill } from './loopVerifySkill.js'
 import type { AgentRunResult } from '../agents/agentRunResult.js'
-import type { InnerAgentStatus } from '../agents/innerAgentStatus.js'
-import { previewAssistantText } from '../agents/innerAgentStatus.js'
 import {
   formatLoopExtensionPreflight,
-  persistVerifyOutput,
   runPostVerifierExtensionHooks,
   siblingReposForIterationLog,
   validateLoopExtensionPreflight,
   SKILL_DISCLOSURE_INLINE,
-  type SiblingRepoRef,
-  type VerifyLogRefs,
 } from './loopExtensions.js'
 import { loadConfiguredAgentPlugins } from '../plugins/agentPluginsLoad.js'
 import { installLoopAssistantStream, resetAssistantStream } from './grindStream.js'
 import { loadLoopSkillSection, resolveLoopSkillPaths } from './loopSkills.js'
-import {
-  addUsageRecord,
-  costSourceMix,
-  emptyUsageSummary,
-  lastPhaseCostUsd,
-  logUsageSummary,
-  nextCallFitsBudget,
-  usageCostsDifferForDisplay,
-  type LoopUsageRecord,
-  type LoopUsageSummary,
-} from '../usage/loopUsage.js'
-import { StreamCollector, type AgentSessionRef, type TranscriptEvent } from '../stream/streamCollect.js'
+import { addUsageRecord, emptyUsageSummary, logUsageSummary, type LoopUsageSummary } from '../usage/loopUsage.js'
+import { StreamCollector, type TranscriptEvent } from '../stream/streamCollect.js'
 import { writeRunReportArtifacts } from './loopRunReport.js'
 import { writeLoopExportPack } from '../integrations/loopExportPack.js'
+import { budgetCompletionReason, budgetCrossed, nextWorkerBudgetRefusal } from './loopBudgetGuard.js'
+import { buildIterationLog, persistVerifyResultsForLog, type LoopIterationLog } from './loopIterationLog.js'
+import {
+  recycleWorkerSession,
+  runIterationWithRetry,
+  shouldEscalateAfterWorkerFault,
+  sleep,
+  workerSdkVerifyResult,
+} from './loopWorkerRetry.js'
 
-export type LoopIterationLog = {
-  at: string
-  iteration: number
-  branch: string
-  shortSha: string
-  verify: VerifyResult
-  finalVerify?: VerifyResult
-  verifyLog?: VerifyLogRefs
-  siblingRepos?: SiblingRepoRef[]
-  assistantPreview: string
-  innerAgent?: InnerAgentStatus
-  review?: {
-    verdict: ReviewVerdict
-    risk: ReviewRisk
-    blockersCount: number
-    reviewCycle?: number
-  }
-  usage?: LoopUsageRecord
-  /** Resolved model for the iteration (e.g. cline-pass/deepseek-v4-flash or escalated qwen). */
-  model?: string
-  /** Resolved reasoning tier for the iteration; 'default' when none was requested. */
-  reasoningEffort?: string
-  workerSession?: AgentSessionRef
-  toolSummary?: Record<string, number>
-  /** Transient SDK retries before this iteration's worker call succeeded (0 omitted). */
-  sdkRetries?: number
-  /** Wall-clock per phase for this iteration (ms). */
-  durationsMs?: {
-    worker?: number
-    verify?: number
-    judge?: number
-  }
-}
+export type { LoopIterationLog } from './loopIterationLog.js'
 
 /**
  * Run lifecycle (additive; `complete` remains the boolean API).
@@ -167,194 +119,8 @@ export type AgentLoopOptions = {
   workerSession?: LoopAgentSession
 }
 
-const SDK_RETRY_DELAYS_MS = [5000, 15_000] as const
-
-/**
- * Heuristic for retryable provider errors. Deliberately narrow: bare substrings
- * like `network` or `503` anywhere in a message produced false positives (paths,
- * validation errors) and burned retries on permanent failures. Internal long-run
- * timeouts ("timed out after …ms") intentionally do NOT match — a 45-minute run
- * should not be repeated blindly.
- */
-const TRANSIENT_AGENT_ERROR_PATTERN =
-  /rate.?limit|\b429\b|\b50[234]\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|fetch failed|\btimeout\b|retryable=true/i
-
-export function isTransientAgentError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err)
-  return TRANSIENT_AGENT_ERROR_PATTERN.test(message) || isTransportAgentError(err)
-}
-
-/**
- * Hung or wall-clock worker turns. Not retried on the same model (that would
- * re-burn the 45m cap). The loop continues onto `escalateModel` instead.
- */
-const RECOVERABLE_WORKER_FAULT_PATTERN = /timed out after \d+ms|no tool progress/i
-
-export function isRecoverableWorkerFault(err: unknown): boolean {
-  return RECOVERABLE_WORKER_FAULT_PATTERN.test(formatErrorChain(err))
-}
-
-function shouldEscalateAfterWorkerFault(
-  err: unknown,
-  config: { escalateModel?: string; maxIterations: number },
-  iterationAgent: ResolvedLoopAgent,
-  iteration: number,
-): boolean {
-  if (!isRecoverableWorkerFault(err)) return false
-  if (!config.escalateModel) return false
-  if (iterationAgent.model === config.escalateModel) return false
-  if (iteration >= config.maxIterations) return false
-  return true
-}
-
-function workerSdkVerifyResult(message: string, escalateModel?: string): VerifyResult {
-  const hung = RECOVERABLE_WORKER_FAULT_PATTERN.test(message)
-  let reason: string
-  if (escalateModel) {
-    reason = `Worker timed out or made no tool progress — next iteration uses ${escalateModel}.`
-  } else if (hung) {
-    reason = 'Worker timed out or made no tool progress — loop stopped.'
-  } else {
-    reason = 'Agent SDK error before verify.'
-  }
-  return attachVerifyClass({
-    complete: false,
-    command: AGENT_SDK_VERIFY_COMMAND,
-    exitCode: null,
-    stdout: '',
-    stderr: message,
-    reason,
-  })
-}
-
-async function recycleWorkerSession(session: LoopAgentSession): Promise<void> {
-  if (!session.recycle) return
-  try {
-    await session.recycle()
-  } catch (recycleErr) {
-    console.error(
-      `[agent-loop] warn: agent session recycle failed: ${formatErrorChain(recycleErr)}`,
-    )
-  }
-}
-
-async function runIterationWithRetry(
-  session: LoopAgentSession,
-  prompt: string,
-  iterationAgent: ResolvedLoopAgent,
-  options: { verbose?: boolean; assistantOutput?: 'stdout' | 'none'; collector?: StreamCollector },
-): Promise<AgentRunResult> {
-  let lastError: unknown
-  for (let attempt = 0; attempt <= SDK_RETRY_DELAYS_MS.length; attempt++) {
-    try {
-      const result = await session.runIterationPrompt(prompt, iterationAgent, options)
-      return attempt > 0 ? { ...result, sdkRetries: attempt } : result
-    } catch (err) {
-      lastError = err
-      if (attempt >= SDK_RETRY_DELAYS_MS.length || !isTransientAgentError(err)) {
-        throw err
-      }
-      const delayMs = SDK_RETRY_DELAYS_MS[attempt]!
-      const message = formatErrorChain(err)
-      console.error(
-        `[agent-loop] transient agent error (retry ${attempt + 1}/${SDK_RETRY_DELAYS_MS.length} in ${delayMs}ms): ${message}`,
-      )
-      // New OpenCode sessions on the same wedged local server still fail with
-      // bare "fetch failed" — recycle the backend before sleeping.
-      if (session.recycle && isTransportAgentError(err)) {
-        try {
-          await session.recycle()
-        } catch (recycleErr) {
-          console.error(
-            `[agent-loop] warn: agent session recycle failed: ${formatErrorChain(recycleErr)}`,
-          )
-        }
-      }
-      await sleep(delayMs)
-    }
-  }
-  throw lastError
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 function elapsedMs(startedAt: number): number {
   return Math.max(0, Date.now() - startedAt)
-}
-
-function appendLog(logPath: string, entry: LoopIterationLog): void {
-  appendJsonlLine(logPath, entry)
-}
-
-function buildIterationLog(input: {
-  iteration: number
-  git: ReturnType<typeof captureGitWorkspaceSnapshot>
-  verify: VerifyResult
-  finalVerify?: VerifyResult
-  verifyLog?: VerifyLogRefs
-  siblingRepos?: SiblingRepoRef[]
-  assistantText: string
-  innerAgent?: InnerAgentStatus
-  review?: LoopIterationLog['review']
-  usage?: LoopUsageRecord
-  model?: string
-  reasoningEffort?: string
-  workerSession?: AgentSessionRef
-  toolSummary?: Record<string, number>
-  sdkRetries?: number
-  durationsMs?: LoopIterationLog['durationsMs']
-}): LoopIterationLog {
-  return {
-    at: new Date().toISOString(),
-    iteration: input.iteration,
-    branch: input.git.branch,
-    shortSha: input.git.shortSha,
-    verify: input.verify,
-    ...(input.finalVerify ? { finalVerify: input.finalVerify } : {}),
-    ...(input.verifyLog ? { verifyLog: input.verifyLog } : {}),
-    ...(input.siblingRepos ? { siblingRepos: input.siblingRepos } : {}),
-    assistantPreview: previewAssistantText(input.assistantText, input.innerAgent),
-    ...(input.innerAgent ? { innerAgent: input.innerAgent } : {}),
-    ...(input.review ? { review: input.review } : {}),
-    ...(input.usage ? { usage: input.usage } : {}),
-    ...(input.model ? { model: input.model } : {}),
-    ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {}),
-    ...(input.workerSession ? { workerSession: input.workerSession } : {}),
-    ...(input.toolSummary ? { toolSummary: input.toolSummary } : {}),
-    ...(input.sdkRetries ? { sdkRetries: input.sdkRetries } : {}),
-    ...(input.durationsMs &&
-    (input.durationsMs.worker || input.durationsMs.verify || input.durationsMs.judge)
-      ? { durationsMs: input.durationsMs }
-      : {}),
-  }
-}
-
-/** Persist verify (+ optional finalVerify) output per verifyLogMode; returns log-ready copies. */
-function persistVerifyResultsForLog(
-  loopDir: string,
-  iteration: number,
-  verify: VerifyResult,
-  finalVerify: VerifyResult | undefined,
-  verifyLogMode: LoadedLoopBundle['config']['verifyLogMode'],
-): { verifyForLog: VerifyResult; verifyLog?: VerifyLogRefs; finalVerifyForLog?: VerifyResult } {
-  const persisted = persistVerifyOutput(loopDir, iteration, verify, verifyLogMode)
-  return {
-    verifyForLog: persisted.verify,
-    verifyLog: persisted.verifyLog,
-    ...(finalVerify
-      ? {
-          finalVerifyForLog: persistVerifyOutput(
-            loopDir,
-            iteration,
-            finalVerify,
-            verifyLogMode,
-            'final',
-          ).verify,
-        }
-      : {}),
-  }
 }
 
 function maybeRunSync(ctx: RepoContext, enabled: boolean): void {
@@ -455,18 +221,19 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const transcriptEvents: TranscriptEvent[] = []
   const stagnationThreshold = config.stagnationThreshold
 
-  const emitPhase = (event: AgentLoopPhaseEvent): void => {
-    if (event.phase === 'WORKER' || event.phase === 'JUDGE') {
+  const emitPhase = (phase: AgentLoopPhase, iteration: number): void => {
+    if (phase === 'WORKER' || phase === 'JUDGE') {
       resetAssistantStream(bundle.loopDir)
     }
-    options.onPhase?.(event)
+    options.onPhase?.({
+      phase,
+      iteration,
+      maxIterations: config.maxIterations,
+      costUsd: usageSummary.totalCostUsd,
+      listCostUsd: usageSummary.totalListCostUsd,
+      billedCostUsd: usageSummary.totalBilledCostUsd,
+    })
   }
-
-  const phaseCosts = (): Pick<AgentLoopPhaseEvent, 'costUsd' | 'listCostUsd' | 'billedCostUsd'> => ({
-    costUsd: usageSummary.totalCostUsd,
-    listCostUsd: usageSummary.totalListCostUsd,
-    billedCostUsd: usageSummary.totalBilledCostUsd,
-  })
 
   const finish = (
     result: Omit<AgentLoopResult, 'usage' | 'status'> & {
@@ -515,24 +282,6 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     return finalResult
   }
 
-  const budgetCrossed = (): boolean =>
-    config.maxCostUsd !== undefined && usageSummary.totalCostUsd >= config.maxCostUsd
-
-  const budgetCompletionReason = (): string => {
-    const source = costSourceMix(usageSummary)
-    const list = usageSummary.totalListCostUsd
-    const billed = usageSummary.totalBilledCostUsd
-    const split =
-      list !== undefined && billed !== undefined && usageCostsDifferForDisplay(list, billed)
-        ? ` list ~$${list.toFixed(4)} billed $${billed.toFixed(4)}.`
-        : ''
-    return (
-      `Budget cap reached: totalCostUsd $${usageSummary.totalCostUsd.toFixed(4)} ` +
-      `>= maxCostUsd $${config.maxCostUsd!.toFixed(4)} (costSource ${source}).` +
-      split
-    )
-  }
-
   const parkOnBudget = async (
     iteration: number,
     reason: string,
@@ -558,8 +307,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
   /** Stop the loop (waiting) when cumulative cost crosses the dollar cap. */
   const stopOnBudget = async (iteration: number): Promise<AgentLoopResult | undefined> => {
-    if (!budgetCrossed()) return undefined
-    return parkOnBudget(iteration, budgetCompletionReason())
+    if (config.maxCostUsd === undefined || !budgetCrossed(config, usageSummary)) return undefined
+    return parkOnBudget(iteration, budgetCompletionReason(config.maxCostUsd, usageSummary))
   }
 
   /**
@@ -572,19 +321,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     promptChars: number,
     startedIteration: number,
   ): Promise<AgentLoopResult | undefined> => {
-    const fit = nextCallFitsBudget({
-      maxCostUsd: config.maxCostUsd,
-      spentUsd: usageSummary.totalCostUsd,
-      model,
-      promptChars,
-      lastSessionCostUsd: lastPhaseCostUsd(usageSummary, 'implement'),
-    })
-    if (fit.ok) return undefined
-    const source = costSourceMix(usageSummary)
-    const reason =
-      `Budget cap: next WORKER call predicted ~$${fit.predictedUsd.toFixed(4)} ` +
-      `> remaining $${fit.remainingUsd.toFixed(4)} of maxCostUsd $${config.maxCostUsd!.toFixed(4)} ` +
-      `(did not start the call; costSource ${source}).`
+    const reason = nextWorkerBudgetRefusal(config, usageSummary, model, promptChars)
+    if (!reason) return undefined
     return parkOnBudget(Math.max(0, startedIteration - 1), reason)
   }
 
@@ -622,12 +360,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
   const uninstallAssistantStream = installLoopAssistantStream(bundle.loopDir)
   try {
-    emitPhase({
-      phase: 'GOAL',
-      iteration: 1,
-      maxIterations: config.maxIterations,
-      ...phaseCosts(),
-    })
+    emitPhase('GOAL', 1)
 
     const researchAbs = researchRelative ? path.join(repoRoot, researchRelative) : undefined
     const frozenExtras = researchAbs ? [researchAbs] : []
@@ -635,12 +368,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
     const setupCommand = resolveLoopSetupCommand(bundle.loopDir, repoRoot, config.setup)
     if (setupCommand) {
-      emitPhase({
-        phase: 'SETUP',
-        iteration: 1,
-        maxIterations: config.maxIterations,
-        ...phaseCosts(),
-      })
+      emitPhase('SETUP', 1)
       console.error(`[agent-loop] setup: ${setupCommand}`)
       setupResult = runLoopSetup(setupCommand, repoRoot, bundle.loopDir)
       if (!setupResult.complete) {
@@ -710,12 +438,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         i,
       )
       if (budgetRefuse) return budgetRefuse
-      emitPhase({
-        phase: 'WORKER',
-        iteration: i,
-        maxIterations: config.maxIterations,
-        ...phaseCosts(),
-      })
+      emitPhase('WORKER', i)
       const collector = config.exportTranscript
         ? new StreamCollector({ phase: 'implement', iteration: i })
         : undefined
@@ -741,7 +464,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         )
         lastVerify = workerFaultVerify
         priorFailures.push(workerFaultVerify)
-        appendLog(
+        appendJsonlLine(
           logPath,
           buildIterationLog({
             iteration: i,
@@ -788,12 +511,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
 
       const frozenAfterWorker = restoreFrozenFiles(frozenSnapshot)
-      emitPhase({
-        phase: 'VERIFY',
-        iteration: i,
-        maxIterations: config.maxIterations,
-        ...phaseCosts(),
-      })
+      emitPhase('VERIFY', i)
       const verifyStartedAt = Date.now()
       let verify: VerifyResult
       let finalVerify: VerifyResult | undefined
@@ -832,10 +550,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           finalVerify = undefined
         }
       }
-      lastVerify = finalVerify ?? verify
+      const iterationVerify = finalVerify ?? verify
+      lastVerify = iterationVerify
       const verifyMs = elapsedMs(verifyStartedAt)
 
-      const passed = lastVerify.complete
+      const passed = iterationVerify.complete
       const siblingRepos = siblingReposForIterationLog(config)
       const { verifyForLog, verifyLog, finalVerifyForLog } = persistVerifyResultsForLog(
         bundle.loopDir,
@@ -854,7 +573,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       // Every iteration-log call site below shares these fields; only `review` varies.
       const appendCurrentIterationLog = (review?: LoopIterationLog['review']): void => {
-        appendLog(
+        appendJsonlLine(
           logPath,
           buildIterationLog({
             iteration: i,
@@ -880,24 +599,18 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         )
       }
 
-      if (isEnvVerifyFailure(lastVerify)) {
+      if (isEnvVerifyFailure(iterationVerify)) {
         appendCurrentIterationLog()
-        const envVerify = lastVerify
         return await parkOnEnv(
           i,
-          envVerify,
+          iterationVerify,
           'verify_env',
-          `Verifier environment limitation (exit ${envVerify.exitCode ?? 'null'}). Fix the toolchain or deps, then re-run. ${envVerify.reason}`,
+          `Verifier environment limitation (exit ${iterationVerify.exitCode ?? 'null'}). Fix the toolchain or deps, then re-run. ${iterationVerify.reason}`,
         )
       }
 
       if (passed) {
-        emitPhase({
-          phase: 'JUDGE',
-          iteration: i,
-          maxIterations: config.maxIterations,
-          ...phaseCosts(),
-        })
+        emitPhase('JUDGE', i)
         const judgeStartedAt = Date.now()
         const reviewPhase = await runPostSuccessReviewPhase({
           config,
@@ -977,7 +690,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         return finish({
           complete: true,
           iterations: i,
-          completionReason: lastVerify!.reason,
+          completionReason: iterationVerify.reason,
           lastVerify,
           logPath,
           ...(reviewAdvisoryBlockers ? { reviewAdvisoryBlockers: true } : {}),
@@ -994,8 +707,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       reviewCyclesUsed = 0
       reviewBlockers = undefined
       guidePackets = undefined
-      priorFailures.push(lastVerify!)
-      console.error(`[agent-loop] iteration ${i} failed — ${lastVerify!.reason}`)
+      priorFailures.push(iterationVerify)
+      console.error(`[agent-loop] iteration ${i} failed — ${iterationVerify.reason}`)
 
       await maybePauseAfterIteration(config, i)
 
@@ -1007,7 +720,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         logFailureDomainFromVerify(bundle.loopDir, {
           iteration: i,
           reason: 'stagnation',
-          verify: lastVerify!,
+          verify: iterationVerify,
           repeatCount: afterFailure.repeatCount,
         })
         return finish({

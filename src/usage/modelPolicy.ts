@@ -1,17 +1,10 @@
 import {
   CURSOR_REVIEW_MODELS,
   CURSOR_WORKER_MODEL,
-  isClineSdkRuntime,
-  isCodexRuntime,
   isCursorSdkModel,
-  isDshRuntime,
-  isMuseRuntime,
-  isClaudeRuntime,
-  isOpencodeRuntime,
-  isPiRuntime,
   LOOP_RUNTIME_CURSOR,
   type LoopRuntime,
-} from '../loop/loopAgentConfig.js'
+} from '../loop/modelCatalog.js'
 
 /** Expensive / disallowed Cursor models for loop runs (reviews included). */
 export const BANNED_CURSOR_LOOP_MODELS = new Set([
@@ -44,16 +37,7 @@ export function assertLoopModelAllowed(runtime: LoopRuntime, model: string): voi
     return
   }
 
-  if (
-    (isClineSdkRuntime(runtime) ||
-      isOpencodeRuntime(runtime) ||
-      isPiRuntime(runtime) ||
-      isCodexRuntime(runtime) ||
-      isDshRuntime(runtime) ||
-      isMuseRuntime(runtime) ||
-      isClaudeRuntime(runtime)) &&
-    isBannedCursorLoopModel(model)
-  ) {
+  if (isBannedCursorLoopModel(model)) {
     throw new Error(
       `Model "${model}" looks like a Fast variant — not allowed in loops.`,
     )

@@ -10,7 +10,8 @@ import {
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
 import { captureGitWorkspaceSnapshot } from './loopGit.js'
-import { isTransientAgentError, isRecoverableWorkerFault, runAgentLoop } from './agentLoop.js'
+import { runAgentLoop } from './agentLoop.js'
+import { isTransientAgentError, isRecoverableWorkerFault } from './loopWorkerRetry.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
 import { VERIFY_CLASS_ENV, VERIFY_ENV_EXIT_CODE } from './verifyClass.js'
