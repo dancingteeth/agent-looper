@@ -73,7 +73,7 @@ export type OpencodeGoLoopModel = (typeof OPENCODE_GO_LOOP_MODELS)[number]
 
 export const DEFAULT_OPENCODE_GO_LOOP_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-flash'
 export const DEFAULT_OPENCODE_GO_ESCALATE_MODEL: OpencodeGoLoopModel = 'opencode-go/qwen3.7-plus'
-/** Default OpenCode judge — DeepSeek V4 Pro (Go has Grok 4.5 only; not Flash). */
+/** Default OpenCode judge — DeepSeek V4 Pro (not Flash; Grok on Go tracks models.dev, currently 4.6). */
 export const DEFAULT_OPENCODE_GO_REVIEW_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-pro'
 
 /**

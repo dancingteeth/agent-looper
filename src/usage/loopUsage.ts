@@ -77,18 +77,24 @@ const HAND_MAINTAINED_PRICING: Record<string, ModelTokenRates> = {
   'openrouter/deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
   'qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
   'openrouter/qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
+  // Codex — estimates for costUsd when provider cost is absent (Luna cheap / Terra mid)
   'gpt-5.6-luna': { input: 0.25, output: 2.0 },
   'gpt-5.6-terra': { input: 1.25, output: 10.0 },
   'gpt-5.6-sol': { input: 2.5, output: 15.0 },
+  // DSH official DeepSeek (headless agent-default-model)
+  // `deepseek-flash` is the 4.1 row (`DeepSeek-V41-Flash`); DeepSeek lists it at V4 Flash rates.
   'deepseek-official/deepseek-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash-vision-exp': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-pro': { input: 0.435, output: 0.87 },
+  // Muse Spark — PAYG list price (contributor login uses the same estimate)
   'muse-spark-1.1': { input: 1.25, output: 4.25 },
   'muse-spark-1.2': { input: 1.25, output: 4.25 },
   'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
   'muse-spark-1.3': { input: 1.25, output: 4.25 },
   'muse-spark-1.3-contributor': { input: 1.25, output: 4.25 },
+  // Claude Code aliases — list-price estimates; spawn prefers subscription quota (`total_cost_usd` when present).
+  // Cache rates are Anthropic's published 5-minute prompt-cache multipliers (read 0.1× / write 1.25×).
   sonnet: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 3.75 },
   opus: { input: 15.0, output: 75.0, cacheRead: 1.5, cacheWrite: 18.75 },
   haiku: { input: 1.0, output: 5.0, cacheRead: 0.1, cacheWrite: 1.25 },
