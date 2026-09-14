@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isClinePassModelShape,
   isOpencodeGoModel,
+  isOpencodeGoModelShape,
   isOpencodeLoopModel,
   isPiLoopModel,
   parseProviderModel,
@@ -51,9 +53,16 @@ describe('isOpencodeLoopModel', () => {
     expect(isOpencodeLoopModel('open:router/minimax-m3:free')).toBe(false)
   })
 
-  it('rejects unknown Go slugs and ClinePass ids', () => {
-    expect(isOpencodeLoopModel('opencode-go/not-a-real-model')).toBe(false)
+  it('accepts well-formed unknown Go slugs and rejects ClinePass ids', () => {
+    expect(isOpencodeLoopModel('opencode-go/brand-new-model')).toBe(true)
     expect(isOpencodeLoopModel('cline-pass/deepseek-v4-flash')).toBe(false)
+  })
+
+  it('rejects malformed Go and Cline Pass slug shapes', () => {
+    expect(isOpencodeGoModelShape('opencode-go/')).toBe(false)
+    expect(isOpencodeGoModelShape('opencode-go/a b')).toBe(false)
+    expect(isClinePassModelShape('cline-pass/x.y:z')).toBe(true)
+    expect(isClinePassModelShape('cline-pass/')).toBe(false)
   })
 })
 

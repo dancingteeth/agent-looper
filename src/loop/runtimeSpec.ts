@@ -1,5 +1,4 @@
 import {
-  CLINE_PASS_LOOP_MODELS,
   CURSOR_LOOP_MODEL,
   CURSOR_REVIEW_MODEL,
   CURSOR_REVIEW_MODELS,
@@ -26,7 +25,7 @@ import {
   DEFAULT_PI_LOOP_MODEL,
   isClaudeLoopModel,
   isClineCreditsModelShape,
-  isClinePassModel,
+  isClinePassModelShape,
   isCodexLoopModel,
   isCursorSdkModel,
   isDshLoopModel,
@@ -88,8 +87,9 @@ export const RUNTIME_SPEC: Record<LoopRuntime, RuntimeSpec> = {
     defaultWorkerModel: DEFAULT_CLINE_PASS_LOOP_MODEL,
     defaultEscalateModel: DEFAULT_CLINE_PASS_ESCALATE_MODEL,
     defaultReviewModel: () => DEFAULT_CLINE_PASS_LOOP_MODEL,
-    isWorkerModel: isClinePassModel,
-    modelHint: () => `Use a ClinePass slug from CLINE_PASS_LOOP_MODELS (${CLINE_PASS_LOOP_MODELS.length} ids).`,
+    isWorkerModel: isClinePassModelShape,
+    modelHint: () =>
+      'Expected cline-pass/<model-id> (curated ids: CLINE_PASS_LOOP_MODELS; other ids are accepted but unpriced).',
     honorsReasoningEffort: true,
     offersEscalateModel: true,
   },
@@ -113,7 +113,7 @@ export const RUNTIME_SPEC: Record<LoopRuntime, RuntimeSpec> = {
     isWorkerModel: isOpencodeLoopModel,
     modelHint: (model) =>
       model.startsWith('opencode-go/')
-        ? `Unknown OpenCode Go slug. Use a slug from OPENCODE_GO_LOOP_MODELS (see https://opencode.ai/docs/go/).`
+        ? 'Expected opencode-go/<model-id> (curated ids: OPENCODE_GO_LOOP_MODELS; other ids are accepted but unpriced).'
         : OPENCODE_SHAPE_HINT,
     honorsReasoningEffort: false,
     offersEscalateModel: true,

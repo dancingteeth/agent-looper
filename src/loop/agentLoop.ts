@@ -43,7 +43,12 @@ import { addUsageRecord, emptyUsageSummary, logUsageSummary, type LoopUsageSumma
 import { StreamCollector, type TranscriptEvent } from '../stream/streamCollect.js'
 import { writeRunReportArtifacts } from './loopRunReport.js'
 import { writeLoopExportPack } from '../integrations/loopExportPack.js'
-import { budgetCompletionReason, budgetCrossed, nextWorkerBudgetRefusal } from './loopBudgetGuard.js'
+import {
+  budgetCompletionReason,
+  budgetCrossed,
+  nextWorkerBudgetRefusal,
+  unpricedModelWarnings,
+} from './loopBudgetGuard.js'
 import { buildIterationLog, persistVerifyResultsForLog, type LoopIterationLog } from './loopIterationLog.js'
 import {
   recycleWorkerSession,
@@ -206,6 +211,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     `[agent-loop] repo=${repoRoot} runtime=${loopRuntimeLabel(baseAgent.runtime)} ` +
       `worker=${baseAgent.model} review=${loopRuntimeLabel(reviewAgent.runtime)}/${reviewAgent.model} verify mode=${config.verifyMode}`,
   )
+  for (const line of unpricedModelWarnings([
+    baseAgent.model,
+    config.escalateModel,
+    reviewAgent.model,
+  ])) {
+    console.error(line)
+  }
 
   const priorFailures: VerifyResult[] = []
   let lastVerify: VerifyResult | null = null

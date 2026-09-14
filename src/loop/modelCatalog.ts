@@ -3,6 +3,13 @@
  * Pure data + predicates — no config resolution here (see runtimeSpec.ts / loopAgentConfig.ts).
  */
 
+import {
+  CLINE_PASS_LOOP_MODELS,
+  OPENCODE_GO_LOOP_MODELS,
+} from './modelCatalog.generated.js'
+
+export { CLINE_PASS_LOOP_MODELS, OPENCODE_GO_LOOP_MODELS } from './modelCatalog.generated.js'
+
 export const LOOP_RUNTIME_CURSOR = 'cursor' as const
 export const LOOP_RUNTIME_CLINE_PASS = 'cline-pass' as const
 /** Cline usage-billing (pay-as-you-go credits). Same SDK/API key as ClinePass. */
@@ -49,23 +56,6 @@ export const CURSOR_REVIEW_MODELS = [CURSOR_REVIEW_MODEL, 'grok-4.5', CURSOR_WOR
 export type CursorReviewModel = (typeof CURSOR_REVIEW_MODELS)[number]
 export type CursorSdkModel = typeof CURSOR_WORKER_MODEL | CursorReviewModel
 
-/** Canonical slugs — https://docs.cline.bot/getting-started/clinepass */
-export const CLINE_PASS_LOOP_MODELS = [
-  'cline-pass/deepseek-v4-flash',
-  'cline-pass/mimo-v2.5',
-  'cline-pass/minimax-m3',
-  'cline-pass/qwen3.7-plus',
-  'cline-pass/kimi-k3',
-  'cline-pass/kimi-k2.7-code',
-  'cline-pass/deepseek-v4-pro',
-  'cline-pass/glm-5.3',
-  'cline-pass/glm-5.2',
-  'cline-pass/kimi-k2.6',
-  'cline-pass/mimo-v2.5-pro',
-  'cline-pass/qwen3.8-max',
-  'cline-pass/qwen3.7-max',
-] as const
-
 export type ClinePassLoopModel = (typeof CLINE_PASS_LOOP_MODELS)[number]
 
 export const DEFAULT_CLINE_PASS_LOOP_MODEL: ClinePassLoopModel = 'cline-pass/deepseek-v4-flash'
@@ -76,28 +66,8 @@ export const DEFAULT_CLINE_CREDITS_LOOP_MODEL = 'deepseek/deepseek-chat'
 /** Mid-tier escalate recommendation for credits (Qwen coder — avoid Gemini in the default stack). */
 export const DEFAULT_CLINE_CREDITS_ESCALATE_MODEL = 'qwen/qwen3-coder-plus'
 
-/**
- * OpenCode Go curated slugs — https://opencode.ai/docs/go/
- * Format: `opencode-go/<modelID>` (providerID `opencode-go`).
- */
-export const OPENCODE_GO_LOOP_MODELS = [
-  'opencode-go/deepseek-v4-flash',
-  'opencode-go/hy3',
-  'opencode-go/mimo-v2.5',
-  'opencode-go/minimax-m3',
-  'opencode-go/qwen3.7-plus',
-  'opencode-go/kimi-k3',
-  'opencode-go/kimi-k2.7-code',
-  'opencode-go/deepseek-v4-pro',
-  'opencode-go/glm-5.3',
-  'opencode-go/glm-5.2',
-  'opencode-go/kimi-k2.6',
-  'opencode-go/mimo-v2.5-pro',
-  'opencode-go/qwen3.8-max',
-  'opencode-go/qwen3.7-max',
-  'opencode-go/gpt-5.6-luna',
-  'opencode-go/grok-4.5',
-] as const
+/** OpenCode Go / ClinePass model id after the provider prefix. */
+const GO_CLINE_PASS_MODEL_ID_RE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/
 
 export type OpencodeGoLoopModel = (typeof OPENCODE_GO_LOOP_MODELS)[number]
 
@@ -207,6 +177,18 @@ export function isCursorSdkModel(model: string): model is CursorSdkModel {
   return model === CURSOR_WORKER_MODEL || isCursorReviewModel(model)
 }
 
+export function isOpencodeGoModelShape(model: string): boolean {
+  if (!model.startsWith('opencode-go/')) return false
+  const id = model.slice('opencode-go/'.length)
+  return id.length > 0 && GO_CLINE_PASS_MODEL_ID_RE.test(id)
+}
+
+export function isClinePassModelShape(model: string): boolean {
+  if (!model.startsWith('cline-pass/')) return false
+  const id = model.slice('cline-pass/'.length)
+  return id.length > 0 && GO_CLINE_PASS_MODEL_ID_RE.test(id)
+}
+
 export function isClinePassModel(model: string): model is ClinePassLoopModel {
   return (CLINE_PASS_LOOP_MODELS as readonly string[]).includes(model)
 }
@@ -291,6 +273,6 @@ export function isClaudeLoopModel(model: string): boolean {
 export function isOpencodeLoopModel(model: string): boolean {
   if (!isOpencodeLoopModelShape(model)) return false
   const { providerID } = parseProviderModel(model)
-  if (providerID === 'opencode-go') return isOpencodeGoModel(model)
+  if (providerID === 'opencode-go') return isOpencodeGoModelShape(model)
   return true
 }

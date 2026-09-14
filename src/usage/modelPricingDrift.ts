@@ -111,6 +111,6 @@ export function formatModelPricingDriftReport(issues: ModelPricingDriftIssue[]):
       lines.push(`  stale MODEL_PRICING_PER_MILLION entry (not in harness model lists): ${issue.model}`)
     }
   }
-  lines.push('  fix: update src/usage/loopUsage.ts and src/loop/loopAgentConfig.ts together')
+  lines.push('  fix: run pnpm sync:models and update HAND_MAINTAINED_PRICING in src/usage/loopUsage.ts if needed')
   return lines.join('\n')
 }

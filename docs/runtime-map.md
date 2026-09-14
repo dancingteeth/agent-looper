@@ -114,6 +114,16 @@ Keep this file and `README.intro.md` / `README.md` worker–judge tables in sync
 | **Kilo Gateway / `runtime: kilo`** | Same OpenRouter `:free` pool. Use `openrouter/…:free` + `OPENROUTER_API_KEY` — [`opencode-providers.md`](./opencode-providers.md). No second runtime. |
 | **TrueForge (`@truefoundry/trueforge-sdk`)** | Competing agent *platform* (sessions, MCP, Daytona, chat UI), not a repo-editing worker. Lean-context steals (sidecar verify logs, progressive skills, cost bench) are already in-tree — do not nest as `runtime: trueforge` |
 
+## Model catalog source
+
+OpenCode Go (`opencode-go/*`) and Cline Pass (`cline-pass/*`) model lists and per-slug pricing are generated from [models.dev](https://models.dev/api.json):
+
+- Regenerate locally: `pnpm sync:models`
+- CI opens a weekly PR (`chore/sync-model-catalog`) when upstream changes
+- **Parse-time:** well-formed unknown slugs are accepted (shape check only)
+- **Runtime:** unpriced slugs log a warning; `costUsd` for their turns reads `$0`
+- **`maxCostUsd`:** rejects loops whose worker or `escalateModel` lacks a pricing row — the budget cap must be enforceable
+
 ## Open-source positioning (share / fork)
 
 When you publish or fork Agent Looper, the sell is not “another coding agent.” It is an **MIT spine** you (or your agent) can rewrite: `GOAL.md`, `verify.sh`, `REVIEWS.md`, and orchestration. Models stay BYO; [devtools must be open source](https://blog.exe.dev/devtools-must-be-open-source) because **source is the extension system** — closed agents cap you at vendor hooks.

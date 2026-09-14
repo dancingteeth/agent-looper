@@ -1,3 +1,5 @@
+import { GENERATED_MODEL_PRICING } from './modelPricing.generated.js'
+
 export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
 export type LoopUsageRecord = {
@@ -66,67 +68,41 @@ export type ModelTokenRates = {
 const DEFAULT_CACHE_READ_MULT = 0.1
 const DEFAULT_CACHE_WRITE_MULT = 1.25
 
-/** Official API rates (USD per 1M tokens). Kept in sync with CLINE_PASS_LOOP_MODELS / OPENCODE_GO_LOOP_MODELS via modelPricingDrift.test.ts */
-export const MODEL_PRICING_PER_MILLION: Record<string, ModelTokenRates> = {
+/** Hand-maintained rates for runtimes models.dev does not cover (Cursor, Codex, DSH, Muse, Claude, BYOK). */
+const HAND_MAINTAINED_PRICING: Record<string, ModelTokenRates> = {
   'composer-2.5': { input: 0.5, output: 2.5 },
   'grok-4.6': { input: 2.0, output: 6.0 },
   'grok-4.5': { input: 2.0, output: 6.0 },
-  'cline-pass/deepseek-v4-flash': { input: 0.14, output: 0.28 },
-  'cline-pass/mimo-v2.5': { input: 0.14, output: 0.28 },
-  'cline-pass/minimax-m3': { input: 0.14, output: 0.28 },
-  'cline-pass/qwen3.7-plus': { input: 0.2, output: 0.4 },
-  'cline-pass/kimi-k3': { input: 3.0, output: 15.0 },
-  'cline-pass/kimi-k2.7-code': { input: 0.2, output: 0.4 },
-  'cline-pass/deepseek-v4-pro': { input: 0.2, output: 0.4 },
-  'cline-pass/glm-5.3': { input: 1.4, output: 4.4 },
-  'cline-pass/glm-5.2': { input: 0.2, output: 0.4 },
-  'cline-pass/kimi-k2.6': { input: 0.2, output: 0.4 },
-  'cline-pass/mimo-v2.5-pro': { input: 0.2, output: 0.4 },
-  'cline-pass/qwen3.8-max': { input: 2.0, output: 6.0 },
-  'cline-pass/qwen3.7-max': { input: 0.25, output: 0.5 },
   'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
   'openrouter/deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
   'qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
   'openrouter/qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
-  // OpenCode Go — rates from https://opencode.ai/docs/go/ (subscription quota; estimates for costUsd)
-  'opencode-go/deepseek-v4-flash': { input: 0.14, output: 0.28 },
-  'opencode-go/hy3': { input: 0.14, output: 0.58 },
-  'opencode-go/mimo-v2.5': { input: 0.14, output: 0.28 },
-  'opencode-go/minimax-m3': { input: 0.3, output: 1.2 },
-  'opencode-go/qwen3.7-plus': { input: 0.4, output: 1.6 },
-  'opencode-go/kimi-k3': { input: 3.0, output: 15.0 },
-  'opencode-go/kimi-k2.7-code': { input: 0.95, output: 4.0 },
-  'opencode-go/deepseek-v4-pro': { input: 0.435, output: 0.87 },
-  'opencode-go/glm-5.3': { input: 1.4, output: 4.4 },
-  'opencode-go/glm-5.2': { input: 1.4, output: 4.4 },
-  'opencode-go/kimi-k2.6': { input: 0.95, output: 4.0 },
-  'opencode-go/mimo-v2.5-pro': { input: 0.435, output: 0.87 },
-  'opencode-go/qwen3.8-max': { input: 2.0, output: 6.0 },
-  'opencode-go/qwen3.7-max': { input: 2.5, output: 7.5 },
-  'opencode-go/gpt-5.6-luna': { input: 0.2, output: 1.2 },
-  'opencode-go/grok-4.5': { input: 2.0, output: 6.0 },
-  // Codex — estimates for costUsd when provider cost is absent (Luna cheap / Terra mid)
   'gpt-5.6-luna': { input: 0.25, output: 2.0 },
   'gpt-5.6-terra': { input: 1.25, output: 10.0 },
   'gpt-5.6-sol': { input: 2.5, output: 15.0 },
-  // DSH official DeepSeek (headless agent-default-model)
-  // `deepseek-flash` is the 4.1 row (`DeepSeek-V41-Flash`); DeepSeek lists it at V4 Flash rates.
   'deepseek-official/deepseek-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash-vision-exp': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-pro': { input: 0.435, output: 0.87 },
-  // Muse Spark — PAYG list price (contributor login uses the same estimate)
   'muse-spark-1.1': { input: 1.25, output: 4.25 },
   'muse-spark-1.2': { input: 1.25, output: 4.25 },
   'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
   'muse-spark-1.3': { input: 1.25, output: 4.25 },
   'muse-spark-1.3-contributor': { input: 1.25, output: 4.25 },
-  // Claude Code aliases — list-price estimates; spawn prefers subscription quota (`total_cost_usd` when present).
-  // Cache rates are Anthropic's published 5-minute prompt-cache multipliers (read 0.1× / write 1.25×).
   sonnet: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 3.75 },
   opus: { input: 15.0, output: 75.0, cacheRead: 1.5, cacheWrite: 18.75 },
   haiku: { input: 1.0, output: 5.0, cacheRead: 0.1, cacheWrite: 1.25 },
   fable: { input: 15.0, output: 75.0, cacheRead: 1.5, cacheWrite: 18.75 },
+}
+
+/** Official API rates (USD per 1M tokens). Go/ClinePass from models.dev via modelPricingDrift.test.ts */
+export const MODEL_PRICING_PER_MILLION: Record<string, ModelTokenRates> = {
+  ...GENERATED_MODEL_PRICING,
+  ...HAND_MAINTAINED_PRICING,
+}
+
+export function isPricedLoopModel(model: string): boolean {
+  return MODEL_PRICING_PER_MILLION[model] !== undefined
 }
 
 const TOKENS_PER_MILLION = 1_000_000

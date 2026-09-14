@@ -1,0 +1,37 @@
+name: Sync model catalog
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm sync:models
+      - run: git diff --stat > /tmp/sync-models-stat.txt
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/sync-model-catalog
+          title: 'chore: sync model catalog from models.dev'
+          body-path: /tmp/sync-models-stat.txt
+          commit-message: 'chore: sync model catalog from models.dev'

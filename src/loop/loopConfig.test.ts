@@ -95,14 +95,36 @@ describe('loopConfigSchema', () => {
     expect(resolveLoopAgent(parsed).model).toBe('opencode-go/hy3')
   })
 
-  it('rejects unknown OpenCode Go model slugs', () => {
-    expect(() =>
-      loopConfigSchema.parse({
-        verify: 'true',
-        runtime: 'opencode',
-        model: 'opencode-go/not-a-real-model',
-      }),
-    ).toThrow(/OPENCODE_GO_LOOP_MODELS|Unknown OpenCode Go/)
+  it('accepts unknown OpenCode Go model slugs when maxCostUsd is unset', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'opencode',
+      model: 'opencode-go/brand-new-model',
+    })
+    expect(resolveLoopAgent(parsed).model).toBe('opencode-go/brand-new-model')
+  })
+
+  it('rejects unpriced OpenCode Go slugs when maxCostUsd is set', () => {
+    const result = loopConfigSchema.safeParse({
+      verify: 'true',
+      runtime: 'opencode',
+      model: 'opencode-go/brand-new-model',
+      maxCostUsd: 5,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toMatch(/no pricing row/)
+      expect(result.error.issues[0]?.path).toEqual(['model'])
+    }
+  })
+
+  it('accepts unknown Cline Pass model slugs when maxCostUsd is unset', () => {
+    const parsed = loopConfigSchema.parse({
+      verify: 'true',
+      runtime: 'cline-pass',
+      model: 'cline-pass/brand-new',
+    })
+    expect(resolveLoopAgent(parsed).model).toBe('cline-pass/brand-new')
   })
 
   it('accepts pi runtime with default BYOK model', () => {

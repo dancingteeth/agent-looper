@@ -1,10 +1,27 @@
 import {
   costSourceMix,
+  isPricedLoopModel,
   lastPhaseCostUsd,
   nextCallFitsBudget,
   usageCostsDifferForDisplay,
   type LoopUsageSummary,
 } from '../usage/loopUsage.js'
+
+/** Warn lines for models missing from MODEL_PRICING_PER_MILLION (deduped, skips undefined). */
+export function unpricedModelWarnings(models: Array<string | undefined>): string[] {
+  const seen = new Set<string>()
+  const warnings: string[] = []
+  for (const model of models) {
+    if (model === undefined || seen.has(model)) continue
+    seen.add(model)
+    if (!isPricedLoopModel(model)) {
+      warnings.push(
+        `[agent-loop] warn: model "${model}" is not in the priced catalog — costUsd for its turns will read 0.`,
+      )
+    }
+  }
+  return warnings
+}
 
 type BudgetConfig = { maxCostUsd?: number }
 

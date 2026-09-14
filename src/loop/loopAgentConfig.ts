@@ -1,5 +1,6 @@
 import type { LoopConfig } from '../loop/loopConfig.js'
 import { assertLoopModelAllowed } from '../usage/modelPolicy.js'
+import { isPricedLoopModel } from '../usage/loopUsage.js'
 import {
   CURSOR_LOOP_MODEL,
   isCursorSdkModel,
@@ -18,6 +19,7 @@ import {
   type NonCursorLoopRuntime,
 } from './modelCatalog.js'
 import {
+  AgentModelError,
   assertRuntimeModel,
   defaultModelForRuntime,
   defaultReviewModel,
@@ -171,11 +173,25 @@ export function resolveSecondaryReviewAgent(
 
 /** Parse-time validation for loop.json (model + escalateModel + review agents). */
 export function validateLoopAgentConfig(config: LoopConfig): void {
-  resolveLoopAgent(config)
+  const worker = resolveLoopAgent(config)
   resolveReviewAgent(config)
   resolveSecondaryReviewAgent(config)
   if (config.escalateModel) {
     assertRuntimeModel(config.runtime ?? LOOP_RUNTIME_CURSOR, config.escalateModel, 'worker', 'escalateModel')
+  }
+  if (config.maxCostUsd !== undefined) {
+    if (!isPricedLoopModel(worker.model)) {
+      throw new AgentModelError(
+        `maxCostUsd is set but model "${worker.model}" has no pricing row — the budget cap cannot be enforced. Use a catalogued slug or drop maxCostUsd.`,
+        'model',
+      )
+    }
+    if (config.escalateModel && !isPricedLoopModel(config.escalateModel)) {
+      throw new AgentModelError(
+        `maxCostUsd is set but model "${config.escalateModel}" has no pricing row — the budget cap cannot be enforced. Use a catalogued slug or drop maxCostUsd.`,
+        'escalateModel',
+      )
+    }
   }
 }
 
