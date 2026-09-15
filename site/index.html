@@ -171,7 +171,7 @@
             "name": "What do the spend numbers mean?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Watch and the report card show two numbers when they differ: list (public API rates, including prompt-cache) and billed (what the runtime invoice says). $0 on a subscription quota is billed $0, not free. Budget caps use billed when you are on PAYG and list when the invoice is $0."
+              "text": "Watch and the report card show two numbers when they differ: list (public API rates, including prompt-cache) and billed (what the runtime invoice says). $0 on a subscription quota is billed $0, not free. Budget caps use billed when you are on PAYG and list when the invoice is $0. OpenCode Go and Cline Pass model lists and list prices come from models.dev; unknown but well-formed slugs soft-gate — warn at loop start, show $0 until priced. Budget caps still reject unpriced worker or escalate models."
             }
           }
         ]
@@ -395,7 +395,7 @@
           <article class="tui-answer tui-answer--spend">
             <h2>What do the spend numbers mean?</h2>
             <p>
-              Watch and the report card show two numbers when they differ: <strong>list</strong> (public API rates, including prompt-cache) and <strong>billed</strong> (what the runtime invoice says). <code>$0</code> on a subscription quota is billed <code>$0</code>, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is <code>$0</code>.
+              Watch and the report card show two numbers when they differ: <strong>list</strong> (public API rates, including prompt-cache) and <strong>billed</strong> (what the runtime invoice says). <code>$0</code> on a subscription quota is billed <code>$0</code>, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is <code>$0</code>. OpenCode Go and Cline Pass model lists and list prices come from <a href="https://models.dev/api.json">models.dev</a>; unknown but well-formed slugs soft-gate — warn at loop start, show <code>$0</code> until priced. Budget caps still reject unpriced worker or escalate models.
             </p>
           </article>
         </div>
@@ -409,7 +409,7 @@
           Your agent writes <code>GOAL.md</code> and a deterministic check that the feature really works.
           Optional <code>setup.sh</code> (or <code>setup</code> in <code>loop.json</code>) runs once before the first worker — setup failure does not spawn a worker.
           A fresh worker loops until that check passes — optional judge / <code>reviewGate</code> only on serious findings.
-          After each visit the harness restores frozen specs if a worker edited them.
+          After each visit the harness restores frozen specs if a worker edited them — and removes any frozen basename they planted (like <code>setup.sh</code>) so it cannot carry into the next run.
           Progress lives in git and files, not chat memory.
         </p>
         <div class="grid two-col">

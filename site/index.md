@@ -50,11 +50,11 @@ When the check fails because something on your machine is missing or broken — 
 
 ## What do the spend numbers mean?
 
-Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`.
+Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`. OpenCode Go and Cline Pass model lists and list prices come from [models.dev](https://models.dev/api.json); unknown but well-formed slugs soft-gate — warn at loop start, show `$0` until priced. Budget caps still reject unpriced worker or escalate models.
 
 ## How it works
 
-Your agent writes `GOAL.md` and a deterministic check. Optional `setup.sh` (or `setup` in `loop.json`) runs once before the first worker — setup failure does not spawn a worker. A fresh worker loops until the check passes. After each visit the harness restores frozen specs if a worker edited them.
+Your agent writes `GOAL.md` and a deterministic check. Optional `setup.sh` (or `setup` in `loop.json`) runs once before the first worker — setup failure does not spawn a worker. A fresh worker loops until the check passes. After each visit the harness restores frozen specs if a worker edited them — and removes any frozen basename they planted (like `setup.sh`) so it cannot carry into the next run.
 
 ## How is Agent Looper different from looping in chat?
 

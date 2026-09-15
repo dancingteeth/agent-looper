@@ -652,7 +652,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('names 0.6.0 setup wizard, env-wait, harness setup, frozen restore, and DSH 4.1 Flash opt-in', () => {
+  it('names 0.6.1 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, and DSH 4.1 Flash opt-in', () => {
     const html = readSite('index.html')
     const md = readSite('index.md')
     const llms = readSite('llms.txt')
@@ -683,6 +683,9 @@ describe('landing agent readiness', () => {
     const envWaitBeat = 'waits for you instead of sending another worker'
     const setupBeat = 'setup.sh'
     const frozenBeat = 'restores frozen specs'
+    const plantBeat = 'removes any frozen basename'
+    const modelsDevBeat = 'models.dev'
+    const softGateBeat = 'soft-gate'
     const flashOptIn = 'deepseek-flash'
     const flashLabel = '4.1 Flash'
 
@@ -691,17 +694,30 @@ describe('landing agent readiness', () => {
       expect(surface).toContain(envWaitBeat)
       expect(surface).toContain(setupBeat)
       expect(surface).toContain(frozenBeat)
+      expect(surface).toContain(plantBeat)
+      expect(surface).toContain(modelsDevBeat)
+      expect(surface).toContain(softGateBeat)
       expect(surface).not.toContain('0.5.0')
       expect(surface).not.toMatch(/\bInk\b/i)
+      expect(surface).not.toMatch(/Current npm.*0\.6\.0/i)
     }
 
     expect(llms).toContain('Current npm: **0.6.1**')
     expect(llms).toContain('0.6.x')
     expect(llms).not.toContain('0.5.0')
+    expect(llms).not.toContain('Current npm: **0.6.0**')
     expect(llms).toContain(setupWizardBeat)
+    expect(llms).toContain(plantBeat)
+    expect(llms).toContain(modelsDevBeat)
+
+    const spendQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'What do the spend numbers mean?',
+    )
 
     expect(promptQuestion?.acceptedAnswer?.text).toContain(setupWizardBeat)
     expect(envQuestion?.acceptedAnswer?.text).toContain(envWaitBeat)
+    expect(spendQuestion?.acceptedAnswer?.text).toContain(modelsDevBeat)
+    expect(spendQuestion?.acceptedAnswer?.text).toContain(softGateBeat)
 
     const dshCard =
       harnessHtml.match(
