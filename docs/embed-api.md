@@ -112,7 +112,7 @@ the whole file.
 
 ## Public API and what breaks a major
 
-Current package version: **0.6.0**. Until 1.0, minor bumps may still add fields to `Stable`
+Current package version: **0.6.1**. Until 1.0, minor bumps may still add fields to `Stable`
 types (additive, non-breaking for a host that ignores unknown fields) — a major bump is reserved
 for anything that removes or renames a field, changes a field's type, or removes an export from
 the [Supported surface](#supported-surface-stable-vs-experimental) table above.

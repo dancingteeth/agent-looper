@@ -9,11 +9,23 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
-- **Soft-gate unknown Go / Cline Pass slugs** — well-formed `opencode-go/<id>` and `cline-pass/<id>` slugs parse even when absent from the curated catalog; unpriced models warn at loop start and report `$0` cost. `maxCostUsd` rejects worker or `escalateModel` slugs with no pricing row.
-- **Model catalog from models.dev** — `pnpm sync:models` regenerates `OPENCODE_GO_LOOP_MODELS`, `CLINE_PASS_LOOP_MODELS`, and pricing from https://models.dev/api.json; weekly CI PR via `sync-models.yml`.
+## 0.6.1 — 2026-09-15
+
+Frozen-file creation guard, models.dev catalog + pricing, and soft-gated Go / Cline Pass slugs.
+
+### Headline
+
 - **Frozen files also cover creation** — a worker that *adds* a frozen basename (`setup.sh`, `RESEARCH.md`, …) that did not exist at loop start now has it removed on restore and the visit fails, closing the cross-run persistence path where a planted `setup.sh` would be auto-selected by the next `agent-loop run`.
-- **Runtime spec table** — per-runtime defaults, model-shape validation, and capability flags (`honorsReasoningEffort`, `offersEscalateModel`) live in one `RUNTIME_SPEC` table (`src/loop/runtimeSpec.ts`). Invalid-model errors now read `Invalid <field> "<slug>" for <runtimeField> "<runtime>". <hint>`; the zod issue path comes from the typed `AgentModelError.field` instead of message sniffing. Public exports from `loopAgentConfig` are unchanged.
-- **Docs** — DSH companion bash guard documented as a best-effort tripwire (not a sandbox); README states the shell-trust default is warn-and-run.
+- **Model catalog from models.dev** — `pnpm sync:models` regenerates `OPENCODE_GO_LOOP_MODELS`, `CLINE_PASS_LOOP_MODELS`, and pricing from https://models.dev/api.json; weekly CI PR via `sync-models.yml`. Go / Cline Pass `costUsd` / `maxCostUsd` follow the new rows (some list prices are higher than the old hand table).
+- **Soft-gate unknown Go / Cline Pass slugs** — well-formed `opencode-go/<id>` and `cline-pass/<id>` slugs parse even when absent from the curated catalog; unpriced models warn at loop start and report `$0` cost. `maxCostUsd` rejects worker or `escalateModel` slugs with no pricing row.
+
+### Also
+
+- Per-runtime defaults, model-shape validation, and capability flags live in one `RUNTIME_SPEC` table. Invalid-model errors now read `Invalid <field> "<slug>" for <runtimeField> "<runtime>". <hint>`; the zod issue path comes from the typed `AgentModelError.field`. Public exports from `loopAgentConfig` are unchanged.
+- DSH companion bash guard documented as a best-effort tripwire (not a sandbox); README states the shell-trust default is warn-and-run.
+- Supported line: **0.6.x**.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.6.1)
 
 ## 0.6.0 — 2026-09-11
 
