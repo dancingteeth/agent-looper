@@ -9,8 +9,17 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.6.2 — 2026-09-21
+
+Cursor loops no longer inherit OpenCode escalate from repo defaults; scaffold judges stop when the spec exists; DSH credentials `version` must be a quoted string.
+
+### Headline
+
 - **Cursor loops no longer inherit OpenCode `escalateModel`** — repo `defaults` that pin Go minmax (`opencode-go/qwen3.7-plus`) are dropped when `loop.json` sets `runtime: "cursor"`. Composer worker + another judge still uses `reviewRuntime` / `reviewModel`, not `escalateModel`. Invalid Cursor slugs now say whether the field is the worker, the hung-worker fallback, or the judge.
+- **`agent-loop-prompt` scaffold stops when the spec exists** — 10-minute wall (not 45m); abort as soon as `GOAL.md` + `verify.sh` pass freeze; prompt forbids `tsc`/`vitest`/`vite` and copying sibling loops.
 - **DSH credentials `version` must be a string** — a YAML integer `version: 1` now fails headless boot (`credentials-local`). The harness prints a one-line fix instead of the Node stack. Quote it as `version: "1"`.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.6.2)
 
 ## 0.6.1 — 2026-09-15
 

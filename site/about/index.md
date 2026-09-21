@@ -9,5 +9,5 @@ Agent Looper is made by Paul Zgordan (dancingteeth), who also writes at The Vacu
 - Product: https://looper.dancingteeth.net/
 - Source: https://github.com/dancingteeth/agent-looper
 - npm: https://www.npmjs.com/package/@dancingteeth/agent-looper
-- Changelog (0.6.1): https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md
+- Changelog (0.6.2): https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md
 - Author: https://dancingteeth.net/

@@ -699,13 +699,13 @@ describe('landing agent readiness', () => {
       expect(surface).toContain(softGateBeat)
       expect(surface).not.toContain('0.5.0')
       expect(surface).not.toMatch(/\bInk\b/i)
-      expect(surface).not.toMatch(/Current npm.*0\.6\.0/i)
+      expect(surface).not.toMatch(/Current npm.*0\.6\.1/i)
     }
 
-    expect(llms).toContain('Current npm: **0.6.1**')
+    expect(llms).toContain('Current npm: **0.6.2**')
     expect(llms).toContain('0.6.x')
     expect(llms).not.toContain('0.5.0')
-    expect(llms).not.toContain('Current npm: **0.6.0**')
+    expect(llms).not.toContain('Current npm: **0.6.1**')
     expect(llms).toContain(setupWizardBeat)
     expect(llms).toContain(plantBeat)
     expect(llms).toContain(modelsDevBeat)
