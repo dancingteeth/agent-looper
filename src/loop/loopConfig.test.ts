@@ -410,6 +410,32 @@ describe('loopConfigSchema', () => {
       }),
     ).toThrow(/banned/i)
   })
+
+  it('rejects OpenCode escalateModel on cursor as a worker fallback, not a judge', () => {
+    const result = loopConfigSchema.safeParse({
+      verify: 'true',
+      runtime: 'cursor',
+      escalateModel: 'opencode-go/qwen3.7-plus',
+    })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    const issue = result.error.issues.find((entry) => entry.path.join('.') === 'escalateModel')
+    expect(issue?.message).toMatch(/worker fallback, not the judge/)
+    expect(issue?.message).not.toMatch(/judges allow/)
+  })
+
+  it('tells Cursor judge errors to switch reviewRuntime, not escalateModel', () => {
+    const result = loopConfigSchema.safeParse({
+      verify: 'true',
+      runtime: 'cursor',
+      reviewModel: 'opencode-go/qwen3.7-plus',
+    })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    const issue = result.error.issues.find((entry) => entry.path.join('.') === 'reviewModel')
+    expect(issue?.message).toMatch(/reviewRuntime/)
+    expect(issue?.message).toMatch(/Cursor judges allow/)
+  })
 })
 
 describe('mergeLoopConfig', () => {

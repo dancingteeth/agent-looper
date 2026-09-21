@@ -80,6 +80,8 @@ export type CursorAgentRunOptions = {
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
   onAssistantText?: (chunk: string) => void
+  /** Override AGENT_LOOP_CURSOR_TIMEOUT_MS / the 45m default. */
+  timeoutMs?: number
 }
 
 function requireApiKey(): string {
@@ -101,7 +103,7 @@ export async function runCursorAgentPrompt(
 
   const apiKey = requireApiKey()
   // Fail fast on a bad timeout before Agent.create / send (avoids burning a paid run).
-  const timeoutMs = resolveCursorSessionTimeoutMs()
+  const timeoutMs = options.timeoutMs ?? resolveCursorSessionTimeoutMs()
   const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
   const phase = options.phase ?? (role === 'review' ? 'review' : 'implement')
   const storeDir = path.join(ctx.repoRoot, '.cursor', 'sdk-runs')

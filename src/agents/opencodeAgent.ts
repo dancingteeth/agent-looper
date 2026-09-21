@@ -259,6 +259,12 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
       )
 
       const turnAbort = new AbortController()
+      const onCallerAbort = () => turnAbort.abort()
+      if (options.signal?.aborted) {
+        turnAbort.abort()
+      } else {
+        options.signal?.addEventListener('abort', onCallerAbort, { once: true })
+      }
       try {
         // Subscribe + start the wait loop *before* promptAsync so we cannot miss
         // early session.idle / message events. promptAsync returns HTTP 204 immediately;
@@ -267,7 +273,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
         const turnPromise = waitForOpencodeSessionTurn({
           sessionId,
           events: events.stream,
-          timeoutMs: OPENCODE_SESSION_TIMEOUT_MS,
+          timeoutMs: options.timeoutMs ?? OPENCODE_SESSION_TIMEOUT_MS,
           collector: options.collector,
           signal: turnAbort.signal,
           onHeartbeat: ({ elapsedMs, lastEventType, phase, busy }) => {
@@ -369,6 +375,7 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
           transcriptEvents: options.collector?.events,
         }
       } finally {
+        options.signal?.removeEventListener('abort', onCallerAbort)
         turnAbort.abort()
         await client.session.abort({ path: { id: sessionId }, query: { directory } }).catch(() => undefined)
         await client.session.delete({ path: { id: sessionId }, query: { directory } }).catch(() => undefined)

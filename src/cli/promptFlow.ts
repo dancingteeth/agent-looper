@@ -27,7 +27,7 @@ import {
   formatVerifyScriptLintMessage,
   lintVerifyScript,
 } from '../loop/verifyScriptLint.js'
-import { buildScaffoldPrompt, SCAFFOLD_BUNDLE_FILES } from './promptScaffold.js'
+import { buildScaffoldPrompt, SCAFFOLD_BUNDLE_FILES, SCAFFOLD_SESSION_TIMEOUT_MS } from './promptScaffold.js'
 import type { PromptCliOptions } from './promptArgs.js'
 
 export type DraftSnapshot = {
@@ -105,6 +105,15 @@ export function assertFreezeReady(loopDir: string): void {
   }
 }
 
+export function scaffoldFreezeReady(loopDir: string): boolean {
+  try {
+    assertFreezeReady(loopDir)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function trimAssistantTail(text: string): string {
   if (text.length <= ASSISTANT_TAIL_CHARS) return text
   return `…${text.slice(-ASSISTANT_TAIL_CHARS)}`
@@ -119,6 +128,10 @@ export async function runScaffoldAgent(
     verbose?: boolean
   } = {},
 ): Promise<void> {
+  if (scaffoldFreezeReady(loopDir)) {
+    console.error('[agent-loop-prompt] spec files already freeze-ready — skipping judge')
+    return
+  }
   const ctx = resolveRepoContext({ repoRoot })
   const detection = await detectLoopRuntimes()
   const config = loadLoopConfigForPrompt(loopDir, detection)
@@ -126,7 +139,10 @@ export async function runScaffoldAgent(
   const agent = resolveReviewAgent(config)
   const collector = new StreamCollector({ phase: 'review' })
   let assistantTail = ''
-  console.error(`[agent-loop-prompt] scaffold judge=${agent.runtime}/${agent.model}`)
+  const abort = new AbortController()
+  console.error(
+    `[agent-loop-prompt] scaffold judge=${agent.runtime}/${agent.model} timeout=${Math.round(SCAFFOLD_SESSION_TIMEOUT_MS / 1000)}s`,
+  )
 
   const emit = () => {
     callbacks.onUpdate?.({
@@ -134,6 +150,10 @@ export async function runScaffoldAgent(
       toolLine: collector.events.at(-1)?.detail,
       files: listScaffoldFiles(loopDir),
     })
+    if (scaffoldFreezeReady(loopDir) && !abort.signal.aborted) {
+      console.error('[agent-loop-prompt] spec files ready — stopping scaffold judge')
+      abort.abort()
+    }
   }
 
   const poll = setInterval(emit, 500)
@@ -146,6 +166,8 @@ export async function runScaffoldAgent(
         phase: 'scaffold',
         verbose: callbacks.verbose,
         collector,
+        timeoutMs: SCAFFOLD_SESSION_TIMEOUT_MS,
+        signal: abort.signal,
         onAssistantText: (chunk) => {
           assistantTail = trimAssistantTail(assistantTail + chunk)
           emit()
@@ -153,6 +175,9 @@ export async function runScaffoldAgent(
       },
     )
     emit()
+  } catch (err) {
+    if (scaffoldFreezeReady(loopDir)) return
+    throw err
   } finally {
     clearInterval(poll)
   }

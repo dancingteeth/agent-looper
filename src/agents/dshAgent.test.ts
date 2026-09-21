@@ -6,6 +6,7 @@ import { loopConfigSchema } from '../loop/loopConfig.js'
 import {
   DSH_LOOP_PERMISSION_PRESET,
   buildDshLoopPatchYaml,
+  formatDshHeadlessFailure,
   killProcessGroup,
   nodeMeetsDshMinimum,
   spawnDshHeadless,
@@ -45,6 +46,18 @@ describe('dshAgent', () => {
     expect(nodeMeetsDshMinimum('22.14.0')).toBe(false)
     expect(nodeMeetsDshMinimum('22.15.0')).toBe(true)
     expect(nodeMeetsDshMinimum('23.0.0')).toBe(true)
+  })
+
+  it('collapses a credentials version TypeError to a one-line fix', () => {
+    expect(
+      formatDshHeadlessFailure(
+        1,
+        'dsh: plugin tree failed to load: credentials-local: the value for "version" in /Users/me/.dsh/.credentials.yaml must be a string\nTypeError: credentials-local: the value for "version" in /Users/me/.dsh/.credentials.yaml must be a string\n    at parseCredentialsDocument',
+      ),
+    ).toMatch(/version: "1"/)
+    expect(
+      formatDshHeadlessFailure(1, 'dsh: plugin tree failed to load: EPERM cordis.yml'),
+    ).toBe('DSH headless failed (exit 1): dsh: plugin tree failed to load: EPERM cordis.yml')
   })
 })
 

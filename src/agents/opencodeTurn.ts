@@ -29,6 +29,8 @@ export type OpencodeAgentRunOptions = {
   phase?: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
   onAssistantText?: (chunk: string) => void
+  timeoutMs?: number
+  signal?: AbortSignal
 }
 
 type OpencodeEvent = {

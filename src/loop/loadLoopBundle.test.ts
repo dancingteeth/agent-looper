@@ -87,6 +87,27 @@ describe('loadLoopBundle', () => {
     expect(bundle.config.runtime).toBe('cursor')
   })
 
+  it('does not inherit OpenCode escalateModel when loop.json pins Cursor', () => {
+    const loopDir = writeLoopDir({
+      loopJson: { verify: 'true', delayMs: 0, runtime: 'cursor' },
+    })
+    const bundle = loadLoopBundle(loopDir, {
+      defaults: {
+        costPreset: 'minmax',
+        runtime: 'opencode',
+        model: 'opencode-go/hy3',
+        escalateModel: 'opencode-go/qwen3.7-plus',
+        reviewRuntime: 'cursor',
+        reviewModel: 'grok-4.6',
+      },
+    })
+    expect(bundle.config.runtime).toBe('cursor')
+    expect(bundle.config.model).toBe('composer-2.5')
+    expect(bundle.config.escalateModel).toBeUndefined()
+    expect(bundle.config.reviewRuntime).toBe('cursor')
+    expect(bundle.config.reviewModel).toBe('grok-4.6')
+  })
+
   it('resolves a sparse costPreset with injected detection', () => {
     const loopDir = writeLoopDir({ loopJson: { verify: 'true', delayMs: 0, costPreset: 'minmax' } })
     const bundle = loadLoopBundle(loopDir, {

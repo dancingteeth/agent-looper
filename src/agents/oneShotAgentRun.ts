@@ -26,6 +26,9 @@ export type OneShotAgentPromptOptions = {
   verbose?: boolean
   collector?: StreamCollector
   onAssistantText?: (chunk: string) => void
+  /** Override the runtime session wall (scaffold uses a short cap). */
+  timeoutMs?: number
+  signal?: AbortSignal
 }
 
 type RuntimeRunOptions = {
@@ -35,6 +38,8 @@ type RuntimeRunOptions = {
   phase: 'implement' | 'review' | 'verify'
   collector?: StreamCollector
   onAssistantText?: (chunk: string) => void
+  timeoutMs?: number
+  signal?: AbortSignal
   providerId?: typeof LOOP_RUNTIME_CLINE_PASS | typeof LOOP_RUNTIME_CLINE
   reasoningEffort?: ResolvedLoopAgent['reasoningEffort']
 }
@@ -59,6 +64,8 @@ function baseRunOptions(
     phase: resolveRuntimePhase(options.phase),
     collector: options.collector,
     onAssistantText: options.onAssistantText,
+    timeoutMs: options.timeoutMs,
+    signal: options.signal,
     ...(agent.runtime === LOOP_RUNTIME_CLINE_PASS || agent.runtime === LOOP_RUNTIME_CLINE
       ? {
           providerId: agent.runtime,
@@ -104,6 +111,7 @@ export async function runOneShotAgentPrompt(
         phase: runOptions.phase,
         collector: runOptions.collector,
         onAssistantText: runOptions.onAssistantText,
+        timeoutMs: runOptions.timeoutMs,
       })
     case LOOP_RUNTIME_CLINE_PASS:
     case LOOP_RUNTIME_CLINE: {
@@ -131,6 +139,8 @@ export async function runOneShotAgentPrompt(
           phase: runOptions.phase,
           collector: runOptions.collector,
           onAssistantText: runOptions.onAssistantText,
+          timeoutMs: runOptions.timeoutMs,
+          signal: runOptions.signal,
         }),
       )
     }

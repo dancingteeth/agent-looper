@@ -44,6 +44,9 @@ import {
   type LoopRuntime,
 } from './modelCatalog.js'
 
+/** loop.json fields that name a model; carried on {@link AgentModelError} for zod issue paths. */
+export type AgentModelField = 'model' | 'escalateModel' | 'reviewModel' | 'reviewSecondaryModel'
+
 /**
  * One row per runtime: defaults, model-shape validation, and capability flags.
  * Every runtime-dispatch in the harness reads this table instead of branching on the id.
@@ -57,12 +60,43 @@ export type RuntimeSpec = {
   isWorkerModel: (model: string) => boolean
   /** Judge-model shape when it differs from the worker shape (Cursor allows Grok + Composer). */
   isReviewModel?: (model: string) => boolean
-  /** Appended to invalid-model errors. May specialise on the offending model. */
-  modelHint: (model: string) => string
+  /** Appended to invalid-model errors. May specialise on the offending model / field. */
+  modelHint: (model: string, field: AgentModelField) => string
   /** Whether the runner forwards `reasoningEffort` to the provider. */
   honorsReasoningEffort: boolean
   /** Whether the setup wizard offers an `escalateModel` pick (schema still accepts one). */
   offersEscalateModel: boolean
+}
+
+function cursorModelHint(model: string, field: AgentModelField): string {
+  if (model.toLowerCase().includes('fast')) {
+    return `"${model}" is banned — do not use Composer Fast in loops.`
+  }
+  switch (field) {
+    case 'escalateModel':
+      return (
+        `Cursor workers are always "${CURSOR_WORKER_MODEL}". ` +
+        `escalateModel is a worker fallback, not the judge, and Cursor has no stronger worker slug — omit it. ` +
+        `For a non-Cursor judge, set reviewRuntime + reviewModel.`
+      )
+    case 'reviewModel':
+    case 'reviewSecondaryModel': {
+      const runtimeField = field === 'reviewSecondaryModel' ? 'reviewSecondaryRuntime' : 'reviewRuntime'
+      return (
+        `Cursor judges allow ${CURSOR_REVIEW_MODELS.join(', ')}. ` +
+        `For another family, set ${runtimeField} to that runtime instead of putting its slug here.`
+      )
+    }
+    case 'model':
+      return (
+        `Cursor workers are always "${CURSOR_WORKER_MODEL}". ` +
+        `Use reviewRuntime + reviewModel for the judge (Cursor judges: ${CURSOR_REVIEW_MODELS.join(', ')}).`
+      )
+    default: {
+      const _exhaustive: never = field
+      return _exhaustive
+    }
+  }
 }
 
 const OPENCODE_SHAPE_HINT =
@@ -76,10 +110,7 @@ export const RUNTIME_SPEC: Record<LoopRuntime, RuntimeSpec> = {
       workerRuntime === LOOP_RUNTIME_CURSOR ? CURSOR_REVIEW_MODEL : CURSOR_WORKER_MODEL,
     isWorkerModel: (model) => model === CURSOR_LOOP_MODEL,
     isReviewModel: (model) => isCursorSdkModel(model) && !model.toLowerCase().includes('fast'),
-    modelHint: (model) =>
-      model.toLowerCase().includes('fast')
-        ? `"${model}" is banned — do not use Composer Fast in loops.`
-        : `Worker is always "${CURSOR_WORKER_MODEL}"; judges allow ${CURSOR_REVIEW_MODELS.join(', ')}.`,
+    modelHint: cursorModelHint,
     honorsReasoningEffort: false,
     offersEscalateModel: false,
   },
@@ -173,9 +204,6 @@ export const RUNTIME_SPEC: Record<LoopRuntime, RuntimeSpec> = {
   },
 }
 
-/** loop.json fields that name a model; carried on {@link AgentModelError} for zod issue paths. */
-export type AgentModelField = 'model' | 'escalateModel' | 'reviewModel' | 'reviewSecondaryModel'
-
 /** Thrown by {@link assertRuntimeModel}; `field` lets the schema attach the issue to the right key. */
 export class AgentModelError extends Error {
   constructor(
@@ -202,7 +230,7 @@ export function assertRuntimeModel(
   const isValid = role === 'review' ? (spec.isReviewModel ?? spec.isWorkerModel) : spec.isWorkerModel
   if (isValid(model)) return model
   throw new AgentModelError(
-    `Invalid ${field} "${model}" for ${runtimeField} "${runtime}". ${spec.modelHint(model)}`,
+    `Invalid ${field} "${model}" for ${runtimeField} "${runtime}". ${spec.modelHint(model, field)}`,
     field,
   )
 }

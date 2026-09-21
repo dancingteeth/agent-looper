@@ -124,6 +124,30 @@ describe('runOneShotAgentPrompt', () => {
     )
   })
 
+  it('forwards scaffold timeout and abort signal to OpenCode', async () => {
+    const dispose = vi.fn().mockResolvedValue(undefined)
+    const runPrompt = vi.fn().mockResolvedValue({ text: 'ok' })
+    createOpencodeLoopSession.mockResolvedValue({ runPrompt, dispose })
+    const abort = new AbortController()
+
+    await runOneShotAgentPrompt(
+      testCtx,
+      'scaffold me',
+      { runtime: 'opencode', model: 'opencode-go/qwen3.8-max' },
+      { phase: 'scaffold', timeoutMs: 10 * 60 * 1000, signal: abort.signal },
+    )
+
+    expect(runPrompt).toHaveBeenCalledWith(
+      'scaffold me',
+      expect.objectContaining({
+        phase: 'review',
+        timeoutMs: 10 * 60 * 1000,
+        signal: abort.signal,
+      }),
+    )
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
   it('disposes optional-runtime sessions after a successful prompt', async () => {
     const dispose = vi.fn().mockResolvedValue(undefined)
     const runPrompt = vi.fn().mockResolvedValue({ text: 'ok' })

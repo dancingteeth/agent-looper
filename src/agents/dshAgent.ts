@@ -33,6 +33,24 @@ export const DSH_KILL_GRACE_MS = 3000
 export const DSH_MIN_NODE_MAJOR = 22
 export const DSH_MIN_NODE_MINOR = 15
 
+/** Collapse DSH boot dumps so watch/TUI show the actual config miss, not a Node stack. */
+export function formatDshHeadlessFailure(exitCode: number, detail: string): string {
+  const prefix = `DSH headless failed (exit ${exitCode})`
+  if (/credentials\.yaml must be a string/i.test(detail)) {
+    return (
+      `${prefix}: ~/.dsh/.credentials.yaml \`version\` must be a quoted string ` +
+      `(use version: "1", not version: 1). Quote it and re-run.`
+    )
+  }
+  const compact = detail
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => /^(Error|TypeError|dsh):/i.test(line))
+  if (compact) return `${prefix}: ${compact}`
+  const clipped = detail.replace(/\s+/g, ' ').trim()
+  return `${prefix}: ${clipped.length > 280 ? `${clipped.slice(0, 277)}…` : clipped}`
+}
+
 export type DshAgentRunOptions = {
   verbose?: boolean
   modelId: string
@@ -294,7 +312,7 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
         const text = result.stdout.trim()
         if (result.exitCode !== 0) {
           const detail = result.stderr.trim() || text || `exit ${result.exitCode}`
-          throw new Error(`DSH headless failed (exit ${result.exitCode}): ${detail}`)
+          throw new Error(formatDshHeadlessFailure(result.exitCode, detail))
         }
         if (!text) {
           throw new Error('DSH headless exited 0 without assistant text on stdout')

@@ -9,6 +9,9 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+- **Cursor loops no longer inherit OpenCode `escalateModel`** — repo `defaults` that pin Go minmax (`opencode-go/qwen3.7-plus`) are dropped when `loop.json` sets `runtime: "cursor"`. Composer worker + another judge still uses `reviewRuntime` / `reviewModel`, not `escalateModel`. Invalid Cursor slugs now say whether the field is the worker, the hung-worker fallback, or the judge.
+- **DSH credentials `version` must be a string** — a YAML integer `version: 1` now fails headless boot (`credentials-local`). The harness prints a one-line fix instead of the Node stack. Quote it as `version: "1"`.
+
 ## 0.6.1 — 2026-09-15
 
 Frozen-file creation guard, models.dev catalog + pricing, and soft-gated Go / Cline Pass slugs.
