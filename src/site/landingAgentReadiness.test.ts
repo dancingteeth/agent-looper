@@ -652,7 +652,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('names 0.6.2 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, Cursor escalate, scaffold wall, DSH credentials version, and DSH 4.1 Flash opt-in', () => {
+  it('names 0.6.3 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, Cursor escalate, scaffold wall, DSH flat credentials, and DSH 4.1 Flash opt-in', () => {
     const html = readSite('index.html')
     const md = readSite('index.md')
     const llms = readSite('llms.txt')
@@ -690,7 +690,9 @@ describe('landing agent readiness', () => {
     const flashLabel = '4.1 Flash'
     const cursorEscalateBeat = 'are not applied'
     const scaffoldWallBeat = '10-minute wall'
-    const dshVersionBeat = 'version: "1"'
+    const dshFlatBeat = 'must be a flat'
+    const dshPreflightBeat = 'agent-check dsh'
+    const dshQuoteNotEnoughBeat = 'alone is not enough'
 
     const presetsQuestion = faq?.mainEntity?.find(
       (q) => q.name === 'How do Agent Looper worker and judge presets work?',
@@ -708,15 +710,19 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/\bInk\b/i)
       expect(surface).not.toMatch(/Current npm.*0\.6\.0/i)
       expect(surface).not.toMatch(/Current npm.*0\.6\.1/i)
+      expect(surface).not.toMatch(/Current npm.*0\.6\.2/i)
       expect(surface).toContain(cursorEscalateBeat)
       expect(surface).toContain(scaffoldWallBeat)
     }
 
-    expect(llms).toContain('Current npm: **0.6.2**')
+    expect(llms).toContain('Current npm: **0.6.3**')
     expect(llms).toContain('0.6.x')
     expect(llms).not.toContain('0.5.0')
+    expect(llms).not.toContain('Current npm: **0.6.2**')
     expect(llms).not.toContain('Current npm: **0.6.1**')
     expect(llms).not.toContain('Current npm: **0.6.0**')
+    expect(llms).toContain(dshPreflightBeat)
+    expect(llms).toContain(dshQuoteNotEnoughBeat)
     expect(llms).toContain(setupWizardBeat)
     expect(llms).toContain(plantBeat)
     expect(llms).toContain(modelsDevBeat)
@@ -743,13 +749,18 @@ describe('landing agent readiness', () => {
       harnessHtml.match(
         /<article class="harness-card" id="dsh">[\s\S]*?<\/article>/,
       )?.[0] ?? ''
-    expect(dshCard).toContain(dshVersionBeat)
+    expect(dshCard).toContain(dshFlatBeat)
+    expect(dshCard).toContain(dshPreflightBeat)
+    expect(dshCard).not.toContain('version: "1"')
     expect(dshCard).toContain(flashOptIn)
     expect(dshCard).toContain(flashLabel)
     expect(dshCard).toContain('deepseek-v4-flash')
     expect(harnessMd).toContain(flashOptIn)
     expect(harnessMd).toContain('deepseek-v4-flash')
-    expect(harnessMd).toContain(dshVersionBeat)
+    expect(harnessMd).toContain(dshFlatBeat)
+    expect(harnessMd).toContain(dshPreflightBeat)
+    expect(harnessMd).toContain(dshQuoteNotEnoughBeat)
+    expect(harnessMd).not.toContain('version: "1"')
   })
 
   it('every HTML page loads analytics.js', () => {
