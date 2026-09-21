@@ -652,7 +652,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('names 0.6.1 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, and DSH 4.1 Flash opt-in', () => {
+  it('names 0.6.2 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, Cursor escalate, scaffold wall, DSH credentials version, and DSH 4.1 Flash opt-in', () => {
     const html = readSite('index.html')
     const md = readSite('index.md')
     const llms = readSite('llms.txt')
@@ -688,6 +688,13 @@ describe('landing agent readiness', () => {
     const softGateBeat = 'soft-gate'
     const flashOptIn = 'deepseek-flash'
     const flashLabel = '4.1 Flash'
+    const cursorEscalateBeat = 'are not applied'
+    const scaffoldWallBeat = '10-minute wall'
+    const dshVersionBeat = 'version: "1"'
+
+    const presetsQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'How do Agent Looper worker and judge presets work?',
+    )
 
     for (const surface of [html, md] as const) {
       expect(surface).toContain(setupWizardBeat)
@@ -699,13 +706,17 @@ describe('landing agent readiness', () => {
       expect(surface).toContain(softGateBeat)
       expect(surface).not.toContain('0.5.0')
       expect(surface).not.toMatch(/\bInk\b/i)
-      expect(surface).not.toMatch(/Current npm.*0\.6\.2/i)
+      expect(surface).not.toMatch(/Current npm.*0\.6\.0/i)
+      expect(surface).not.toMatch(/Current npm.*0\.6\.1/i)
+      expect(surface).toContain(cursorEscalateBeat)
+      expect(surface).toContain(scaffoldWallBeat)
     }
 
-    expect(llms).toContain('Current npm: **0.6.3**')
+    expect(llms).toContain('Current npm: **0.6.2**')
     expect(llms).toContain('0.6.x')
     expect(llms).not.toContain('0.5.0')
-    expect(llms).not.toContain('Current npm: **0.6.2**')
+    expect(llms).not.toContain('Current npm: **0.6.1**')
+    expect(llms).not.toContain('Current npm: **0.6.0**')
     expect(llms).toContain(setupWizardBeat)
     expect(llms).toContain(plantBeat)
     expect(llms).toContain(modelsDevBeat)
@@ -715,19 +726,30 @@ describe('landing agent readiness', () => {
     )
 
     expect(promptQuestion?.acceptedAnswer?.text).toContain(setupWizardBeat)
+    expect(promptQuestion?.acceptedAnswer?.text).toContain(scaffoldWallBeat)
+    expect(presetsQuestion?.acceptedAnswer?.text).toContain('escalateModel are not applied')
     expect(envQuestion?.acceptedAnswer?.text).toContain(envWaitBeat)
     expect(spendQuestion?.acceptedAnswer?.text).toContain(modelsDevBeat)
     expect(spendQuestion?.acceptedAnswer?.text).toContain(softGateBeat)
+
+    const cursorCard =
+      harnessHtml.match(
+        /<article class="harness-card" id="cursor">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(cursorCard).toContain('reviewRuntime')
+    expect(cursorCard).toContain('escalateModel')
 
     const dshCard =
       harnessHtml.match(
         /<article class="harness-card" id="dsh">[\s\S]*?<\/article>/,
       )?.[0] ?? ''
+    expect(dshCard).toContain(dshVersionBeat)
     expect(dshCard).toContain(flashOptIn)
     expect(dshCard).toContain(flashLabel)
     expect(dshCard).toContain('deepseek-v4-flash')
     expect(harnessMd).toContain(flashOptIn)
     expect(harnessMd).toContain('deepseek-v4-flash')
+    expect(harnessMd).toContain(dshVersionBeat)
   })
 
   it('every HTML page loads analytics.js', () => {
