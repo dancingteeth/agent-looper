@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { assertDshCredentialsStore } from '../agents/dshCredentialsStore.js'
 import { OPENCODE_PROVIDER_API_KEY_ENV } from '../agents/opencodeAuth.js'
 import { assertOpencodeAgentSkillsReadable } from '../agents/opencodeSkillPreflight.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
@@ -216,6 +217,13 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       process.exit(1)
     }
 
+    try {
+      assertDshCredentialsStore()
+    } catch (error) {
+      console.error(`[agent-check] ${error instanceof Error ? error.message : String(error)}`)
+      process.exit(1)
+    }
+
     const key = process.env.DEEPSEEK_API_KEY?.trim()
     if (key) {
       console.log('[agent-check] DEEPSEEK_API_KEY present (prefix):', `${key.slice(0, 4)}…`)
@@ -224,6 +232,7 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
         '[agent-check] no DEEPSEEK_API_KEY — will rely on DSH credentials (`dsh` settings / credentials-local)',
       )
     }
+    console.log('[agent-check] DSH credentials-local: absent or flat KEY: string map')
 
     console.log('[agent-check] dsh CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
     console.log('[agent-check] shell preflight OK')

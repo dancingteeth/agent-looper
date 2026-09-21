@@ -56,7 +56,7 @@ Full Access on the **web** session does not change the headless worker patch: th
 
 **CI / no live DeepSeek spend**
 
-- `pnpm exec vitest run src/agents/dshAgent.test.ts src/agents/dshSessionUsage.test.ts` — patch YAML (including `workspace-write-never`), spawn timeout, Node floor, session-log usage parse
+- `pnpm exec vitest run src/agents/dshAgent.test.ts src/agents/dshCredentialsStore.test.ts src/agents/dshSessionUsage.test.ts` — patch YAML (including `workspace-write-never`), wrapped-store preflight, spawn timeout, Node floor, session-log usage parse
 - `pnpm exec vitest run src/agents/agentRunner.test.ts src/loop/loopAgentConfig.test.ts` — `runtime: dsh` wiring
 - In **this checkout** (package bins are not on `pnpm exec` until the package is a dependency): `node dist/cli/check.js dsh` or `pnpm agent:check:dsh`. Consumers: `pnpm exec agent-check dsh`.
 
@@ -76,6 +76,12 @@ node dist/cli/check.js dsh
 # consumer (agent-looper is a dependency):
 pnpm exec agent-check dsh
 ```
+
+## Credentials document
+
+`$DSH_HOME/.credentials.yaml` (default `~/.dsh/.credentials.yaml`) must be a **flat** `KEY: "string"` map. Current DSH `credentials-local` rejects a wrapped store (`version` / `refs` / `records`) and YAML integers (`version: 1`). Headless still parses that file even when `DEEPSEEK_API_KEY` is in the environment — quoting `version` is not enough.
+
+`agent-check dsh` and `agent-loop run` abort **before WORKER** when the document looks wrapped. Flatten it to `DEEPSEEK_API_KEY: "…"`. Do not dump the file. The harness does not rewrite it (`dsh web` may recreate the wrapped schema).
 
 ## Defaults
 

@@ -27,6 +27,7 @@ import {
   readDshSessionUsage,
 } from './dshSessionUsage.js'
 import { formatUsageRecordLog } from '../usage/loopUsage.js'
+import { assertDshCredentialsStore, DSH_CREDENTIALS_FLAT_HINT } from './dshCredentialsStore.js'
 
 export const DSH_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 export const DSH_KILL_GRACE_MS = 3000
@@ -36,11 +37,11 @@ export const DSH_MIN_NODE_MINOR = 15
 /** Collapse DSH boot dumps so watch/TUI show the actual config miss, not a Node stack. */
 export function formatDshHeadlessFailure(exitCode: number, detail: string): string {
   const prefix = `DSH headless failed (exit ${exitCode})`
-  if (/credentials\.yaml must be a string/i.test(detail)) {
-    return (
-      `${prefix}: ~/.dsh/.credentials.yaml \`version\` must be a quoted string ` +
-      `(use version: "1", not version: 1). Quote it and re-run.`
-    )
+  if (
+    /credentials\.yaml must be a string/i.test(detail) ||
+    /value for "(version|refs|records)"/i.test(detail)
+  ) {
+    return `${prefix}: ${DSH_CREDENTIALS_FLAT_HINT}`
   }
   const compact = detail
     .split('\n')
@@ -277,6 +278,7 @@ export function spawnDshHeadless(input: {
 
 export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSession> {
   await assertPosixShell()
+  assertDshCredentialsStore()
   if (!nodeMeetsDshMinimum()) {
     throw new Error(
       `Node.js ${DSH_MIN_NODE_MAJOR}.${DSH_MIN_NODE_MINOR}+ required for DSH headless ` +
@@ -287,6 +289,7 @@ export async function createDshLoopSession(ctx: RepoContext): Promise<DshLoopSes
 
   return {
     async runPrompt(prompt, options) {
+      assertDshCredentialsStore()
       const verbose = options.verbose ?? process.env.AGENT_LOOP_VERBOSE === '1'
       const task = `${systemPrompt}\n\n---\n\n${prompt}`
       const patchPath = path.join(os.tmpdir(), `agent-loop-dsh-${process.pid}-${randomUUID()}.yml`)

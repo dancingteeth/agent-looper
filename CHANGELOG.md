@@ -9,6 +9,16 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.6.3 — 2026-09-21
+
+DSH wrapped credentials abort before WORKER — quoting `version` is not enough.
+
+### Headline
+
+- **DSH wrapped credentials abort before WORKER** — `~/.dsh/.credentials.yaml` must be a flat `KEY: "string"` map. A wrapped store (`version` / `refs` / `records`) or YAML integer (`version: 1`) now fails `agent-check dsh` and `agent-loop run` before spawning headless. Quoting `version` is not enough. The harness does not rewrite that file.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.6.3)
+
 ## 0.6.2 — 2026-09-21
 
 Cursor loops no longer inherit OpenCode escalate from repo defaults; scaffold judges stop when the spec exists; DSH credentials `version` must be a quoted string.

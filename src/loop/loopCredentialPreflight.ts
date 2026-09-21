@@ -1,3 +1,4 @@
+import { assertDshCredentialsStore } from '../agents/dshCredentialsStore.js'
 import type { LoopConfig } from './loopConfig.js'
 import {
   LOOP_RUNTIME_CLINE,
@@ -103,6 +104,16 @@ export function formatMissingLoopCredentials(missing: readonly CredentialNeed[])
   ].join('\n')
 }
 
+function configUsesDsh(
+  config: Pick<LoopConfig, 'runtime' | 'reviewRuntime' | 'postQualityReview' | 'reviewSecondaryRuntime'>,
+): boolean {
+  if (config.runtime === LOOP_RUNTIME_DSH) return true
+  if (judgeWillRun(config) && (config.reviewRuntime ?? LOOP_RUNTIME_CURSOR) === LOOP_RUNTIME_DSH) {
+    return true
+  }
+  return config.reviewSecondaryRuntime === LOOP_RUNTIME_DSH
+}
+
 /** Fail fast when worker/judge API keys are missing so a green verify cannot die on the judge. */
 export function assertLoopCredentials(
   config: Pick<
@@ -112,6 +123,8 @@ export function assertLoopCredentials(
   env: NodeJS.ProcessEnv = process.env,
 ): void {
   const missing = listMissingLoopCredentials(config, env)
-  if (missing.length === 0) return
-  throw new Error(formatMissingLoopCredentials(missing))
+  if (missing.length > 0) {
+    throw new Error(formatMissingLoopCredentials(missing))
+  }
+  if (configUsesDsh(config)) assertDshCredentialsStore({ env })
 }
