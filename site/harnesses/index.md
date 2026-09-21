@@ -41,7 +41,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 - Worker: `deepseek-official/deepseek-v4-flash` (escalates to `deepseek-official/deepseek-v4-pro`) — default; opt in per loop to `deepseek-official/deepseek-flash` (DeepSeek-V41-Flash, image-capable)
 - Judge: `deepseek-official/deepseek-v4-pro` (when `reviewRuntime: dsh`)
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate`
-- In `~/.dsh/.credentials.yaml`, use `version: "1"` (quoted) — a bare YAML integer breaks headless boot; the harness prints a one-line fix.
+- `~/.dsh/.credentials.yaml` must be a flat `KEY: "string"` map — a wrapped store (`version` / `refs` / `records`) or YAML integer fails `agent-check dsh` and `agent-loop run` before spawning the worker. Quoting `version` alone is not enough; the harness does not rewrite that file.
 - DSH companion plugin guard blocks accidental foreground grinds
 
 ### Cline (`--runtime cline-pass` · `cline`)
