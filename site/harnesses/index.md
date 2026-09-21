@@ -32,7 +32,7 @@ IDE subscription via `@cursor/sdk`.
 - Judge (when worker is Cursor): Grok 4.6
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate`
 
-Export `CURSOR_API_KEY` or run under Doppler. Run `pnpm exec agent-loop-init` once. Set `costPreset: "cursor"` in `loop.json` to stay on Cursor for both worker and judge.
+Export `CURSOR_API_KEY` or run under Doppler. Run `pnpm exec agent-loop-init` once. Set `costPreset: "cursor"` in `loop.json` to stay on Cursor for both worker and judge. Repo defaults that pin OpenCode `escalateModel` are not applied on `--runtime cursor` — judge uses `reviewRuntime` / `reviewModel`.
 
 ### DSH (`--runtime dsh`)
 
@@ -41,6 +41,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 - Worker: `deepseek-official/deepseek-v4-flash` (escalates to `deepseek-official/deepseek-v4-pro`) — default; opt in per loop to `deepseek-official/deepseek-flash` (DeepSeek-V41-Flash, image-capable)
 - Judge: `deepseek-official/deepseek-v4-pro` (when `reviewRuntime: dsh`)
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate`
+- In `~/.dsh/.credentials.yaml`, use `version: "1"` (quoted) — a bare YAML integer breaks headless boot; the harness prints a one-line fix.
 - DSH companion plugin guard blocks accidental foreground grinds
 
 ### Cline (`--runtime cline-pass` · `cline`)

@@ -107,7 +107,7 @@
             "name": "How do Agent Looper worker and judge presets work?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto."
+              "text": "Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On runtime: cursor, repo defaults that pin OpenCode Go escalateModel are not applied — Composer plus another judge uses reviewRuntime / reviewModel, not escalateModel."
             }
           },
           {
@@ -155,7 +155,7 @@
             "name": "How do I start a loop from an idea?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Two paths: (1) If you see your coding agent's logo on this page — type your idea as a normal prompt, and ask it to implement the feature with Agent Looper. It sets up the loop and keeps grinding until the check is green. (2) If you like the terminal — run pnpm exec agent-loop-setup: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use pnpm exec agent-loop-prompt to type your idea and start the run. The check stays the finish line."
+              "text": "Two paths: (1) If you see your coding agent's logo on this page — type your idea as a normal prompt, and ask it to implement the feature with Agent Looper. It sets up the loop and keeps grinding until the check is green. (2) If you like the terminal — run pnpm exec agent-loop-setup: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use pnpm exec agent-loop-prompt to type your idea and start the run. The scaffold judge stops as soon as frozen GOAL.md and verify.sh pass freeze (10-minute wall, not a long grind). The check stays the finish line."
             }
           },
           {
@@ -342,7 +342,7 @@
           <article class="tui-answer tui-answer--presets">
             <h2>How do Agent Looper worker and judge presets work?</h2>
             <p>
-              Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto.
+              Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On <code>runtime: cursor</code>, repo defaults that pin OpenCode Go <code>escalateModel</code> are not applied — Composer plus another judge uses <code>reviewRuntime</code> / <code>reviewModel</code>, not <code>escalateModel</code>.
             </p>
           </article>
           <article class="tui-answer tui-answer--budget">
@@ -383,7 +383,7 @@
               <strong>If you see your coding agent's logo on this page</strong> — type your idea as a normal prompt, and ask it to implement the feature <strong>with Agent Looper</strong>. It sets up the loop and keeps grinding until the check is green.
             </p>
             <p>
-              <strong>If you like the terminal</strong> — run <code>pnpm exec agent-loop-setup</code>: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use <code>pnpm exec agent-loop-prompt</code> to type your idea and start the run. The check stays the finish line.
+              <strong>If you like the terminal</strong> — run <code>pnpm exec agent-loop-setup</code>: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use <code>pnpm exec agent-loop-prompt</code> to type your idea and start the run. The scaffold judge stops as soon as frozen <code>GOAL.md</code> and <code>verify.sh</code> pass freeze (10-minute wall, not a long grind). The check stays the finish line.
             </p>
           </article>
           <article class="tui-answer tui-answer--env">

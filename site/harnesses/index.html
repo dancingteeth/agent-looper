@@ -115,7 +115,7 @@
               <span class="harness-chip">Judge Grok 4.6</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></p>
-            <p class="harness-card__note">Export <code>CURSOR_API_KEY</code> or run under Doppler. Run <code>pnpm exec agent-loop-init</code> once. Set <code>costPreset: "cursor"</code> in <code>loop.json</code> to stay on Cursor for both worker and judge.</p>
+            <p class="harness-card__note">Export <code>CURSOR_API_KEY</code> or run under Doppler. Run <code>pnpm exec agent-loop-init</code> once. Set <code>costPreset: "cursor"</code> in <code>loop.json</code> to stay on Cursor for both worker and judge. Repo defaults that pin OpenCode <code>escalateModel</code> are not applied on <code>--runtime cursor</code> — judge uses <code>reviewRuntime</code> / <code>reviewModel</code>.</p>
           </article>
 
           <article class="harness-card" id="dsh">
@@ -133,7 +133,7 @@
               <span class="harness-chip">Judge <code>deepseek-v4-pro</code></span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate</code></p>
-            <p class="harness-card__note">Default worker stays <code>deepseek-official/deepseek-v4-flash</code>; opt in to <code>deepseek-official/deepseek-flash</code> (DeepSeek-V41-Flash, image-capable) per loop in setup. Ensure <code>dsh</code> is on PATH. DSH companion plugin guard blocks accidental foreground grinds. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">docs/dsh-plugin.md</a> and <a href="https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper">plugins/dsh-agent-looper/</a>.</p>
+            <p class="harness-card__note">Default worker stays <code>deepseek-official/deepseek-v4-flash</code>; opt in to <code>deepseek-official/deepseek-flash</code> (DeepSeek-V41-Flash, image-capable) per loop in setup. Ensure <code>dsh</code> is on PATH. In <code>~/.dsh/.credentials.yaml</code>, use <code>version: "1"</code> (quoted) — a bare YAML integer breaks headless boot; the harness prints a one-line fix. DSH companion plugin guard blocks accidental foreground grinds. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">docs/dsh-plugin.md</a> and <a href="https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper">plugins/dsh-agent-looper/</a>.</p>
           </article>
 
           <article class="harness-card" id="cline">

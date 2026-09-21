@@ -12,7 +12,7 @@ Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode
 
 ## How do Agent Looper worker and judge presets work?
 
-Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto.
+Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On `runtime: cursor`, repo defaults that pin OpenCode Go `escalateModel` are not applied — Composer plus another judge uses `reviewRuntime` / `reviewModel`, not `escalateModel`.
 
 ## How does Agent Looper keep cost down for indie builders?
 
@@ -40,7 +40,7 @@ Two paths:
 
 1. **If you see your coding agent's logo on this page** — type your idea as a normal prompt, and ask it to implement the feature **with Agent Looper**. It sets up the loop and keeps grinding until the check is green.
 
-2. **If you like the terminal** — run `pnpm exec agent-loop-setup`: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use `pnpm exec agent-loop-prompt` to type your idea and start the run.
+2. **If you like the terminal** — run `pnpm exec agent-loop-setup`: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use `pnpm exec agent-loop-prompt` to type your idea and start the run. The scaffold judge stops as soon as frozen `GOAL.md` and `verify.sh` pass freeze (10-minute wall, not a long grind).
 
 The check stays the finish line.
 
@@ -131,7 +131,7 @@ This tool is free. We keep building it when the community actually uses it and t
 - [llms.txt](https://looper.dancingteeth.net/llms.txt)
 - [Harnesses](https://looper.dancingteeth.net/harnesses/)
 - [Developer resources](https://looper.dancingteeth.net/docs/)
-- [Changelog (0.6.3)](https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md)
+- [Changelog (0.6.2)](https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md)
 - [Embed API](https://github.com/dancingteeth/agent-looper/blob/main/docs/embed-api.md)
 - [Security](https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md)
 - [GitHub](https://github.com/dancingteeth/agent-looper)
