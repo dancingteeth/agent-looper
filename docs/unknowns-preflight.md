@@ -5,15 +5,16 @@ tags:
   - planning
   - agents
 ---
-# Unknowns preflight (before freezing GOAL)
+# Unknowns preflight (before freeze, and after a run)
 
 Inspired by Claude Code practice: **plan by removing unknowns before you build** —
 discover how the system can fail, have a human read that plan, *then* freeze
-`GOAL.md` and run the loop.
+`GOAL.md` and run the loop. After a run, the same discipline applies when you are
+about to change the scoreboard: look at export packs before adding a metric.
 
 This is **not** part of the Ralph iteration. It is a human+agent step *before*
-`agent-loop run`. Do not edit `GOAL.md` or `RESEARCH.md` mid-loop to absorb new
-unknowns; stop, update the spec, re-run.
+`agent-loop run` (and *between* runs). Do not edit `GOAL.md` or `RESEARCH.md`
+mid-loop to absorb new unknowns; stop, update the spec, re-run.
 
 ## Prove in chat → freeze (Linear-style)
 
@@ -49,6 +50,8 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
    answer is only “the previous step finished.”
 3. **Failure modes** — Ask an agent (or yourself): how can this verify lie, flake,
    or miss the real bug? List unknowns (auth, clocks, network, fixture drift).
+   No traces yet: name 2–3 dimensions (task, persona, request type) and write one
+   verify case per tuple instead of one generic check.
 4. **Human read** — Read the failure-mode list yourself. Do not trust a one-shot plan.
 5. **Kill or accept** — Turn unknowns into constraints, fixtures, or out-of-scope.
    Accept residual risk only explicitly.
@@ -67,10 +70,27 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
    `RESEARCH.md`). `agent-loop-prompt` freeze lint rejects gameable greps in
    `verify.sh`. Then run.
 
-## After a run: steer the harness
+## After a run: error discovery then steer
 
-If the worker made the same mistake twice, add a **computational** check to
-`verify.sh` (or a linter) rather than another GOAL / `AGENTS.md` sentence.
+`failure-domains.ndjson` is harness telemetry (stagnation, env, HITL). It is
+**not** a product-judgment taxonomy. When a complete loop is still wrong, or you
+are about to add a `verify.sh` assertion / `REVIEWS.md` law from a theory, label
+a **diverse sample of export packs first** (`.cursor/loop-exports/`). Criteria may
+drift **between** freezes; do not edit `GOAL.md` mid-run.
+
+Skip for smokes and verify you already trust.
+
+1. Sample ~10 packs (mix `done` / `continue` / `waiting`; not only the last failure).
+2. Note what bothered you:
+   - **Actionable** — a colleague could act. Not “bad run”.
+   - **User-facing** — what was wrong in the result, not an internal RCA.
+   - **First upstream miss** only when several things failed.
+   - **Failures-only** until modes stabilize.
+3. A repeated miss becomes a **computational** check (`verify.sh`, golden, lint),
+   then freeze again — not another `AGENTS.md` sentence.
+4. Do not ask an agent to invent metrics from the folder before you have labeled
+   a sample. Meta-review may *propose* clusters; a human accepts them.
+
 What you inject into the next iteration is ranked: **correct raw verify output**
 beats a summarized “diagnosis”; missing context beats incorrect context; noise
 last. Prefer sidecar / truncated capture over an LLM rewrite of the failure.
@@ -79,7 +99,8 @@ last. Prefer sidecar / truncated capture over an LLM rewrite of the failure.
 
 Agent Looper meta probe→fix injects `failure-context.md` *after* a probe fails.
 Unknowns preflight is the *before* cousin: cheaper to discover Whisper/verify edge
-cases up front than thrash iterations.
+cases up front than thrash iterations. Error discovery on export packs is the
+*between-runs* cousin: human labels before meta-review clusters become new gates.
 
 ## Anti-patterns
 
@@ -88,3 +109,5 @@ cases up front than thrash iterations.
 - Treating a research map as a diagnosis to defend when verify disagrees
 - Treating LLM “looks done” as the finish line
 - Leaving ambient MCP / network / browser tools “just in case” without naming them
+- Adding a verify grep / `REVIEWS.md` law from a one-shot theory without looking at export packs
+- Handing `.cursor/loop-exports/` to an agent and treating its failure modes as the new scoreboard

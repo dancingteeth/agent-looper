@@ -122,6 +122,11 @@ Metric grind: if measured is worse than the recorded baseline, that is a **rever
 
 Preflight warns when GOAL.md does not mention measurable verify artifacts.
 
+After a run that was green but still wrong, label a diverse sample of
+`.cursor/loop-exports/` **before** adding a new `verify.sh` check — see
+[`unknowns-preflight.md`](./unknowns-preflight.md#after-a-run-error-discovery-then-steer).
+Do not edit `GOAL.md` mid-run to absorb that learning.
+
 ## Track B (`verifyMode: skill`)
 
 Optional harness mode — default remains **`command`** (shell only).
@@ -189,10 +194,10 @@ Cline runtimes load `@cline/sdk` via dynamic import (Cursor-only installs stay s
 
 ## Related tasks (UUIDs)
 
-| Milestone | UUID | Summary |
-| --- | --- | --- |
-| M1 | `8162dbe4-9a2d-4fc4-92d4-fd06a6e9dea6` | Impact-severity contract |
-| M2 | `b2185d70-2889-4eed-94c2-d99949954211` | Reproduce-before-report |
-| M3 | `adf66bf8-d52a-43e2-8009-756649cc32b2` | Multi-family review judge |
-| M4 | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | Verification-as-skill (this doc) |
-| M5 | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | Cross-loop meta-review CLI |
+| Milestone | UUID                                   | Summary                          |
+| --------- | -------------------------------------- | -------------------------------- |
+| M1        | `8162dbe4-9a2d-4fc4-92d4-fd06a6e9dea6` | Impact-severity contract         |
+| M2        | `b2185d70-2889-4eed-94c2-d99949954211` | Reproduce-before-report          |
+| M3        | `adf66bf8-d52a-43e2-8009-756649cc32b2` | Multi-family review judge        |
+| M4        | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | Verification-as-skill (this doc) |
+| M5        | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | Cross-loop meta-review CLI       |

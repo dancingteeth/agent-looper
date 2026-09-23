@@ -9,6 +9,10 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+### Docs
+
+- **Error discovery between runs** — label a diverse sample of `.cursor/loop-exports/` before adding a `verify.sh` / `REVIEWS.md` check. Procedure in `docs/unknowns-preflight.md`; `design-loop` and meta-review point at it. Freeze during a run is unchanged.
+
 ## 0.6.3 — 2026-09-21
 
 DSH wrapped credentials abort before WORKER — quoting `version` is not enough.

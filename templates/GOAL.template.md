@@ -66,4 +66,4 @@ Delete any arrow whose only answer is “the previous step finished.”
 
 - Related docs and tests.
 - Brownfield map: [`RESEARCH.example.md`](./RESEARCH.example.md) (optional, freeze beside this file)
-- Before freeze: [`docs/unknowns-preflight.md`](../docs/unknowns-preflight.md)
+- Before freeze / after a run: [`docs/unknowns-preflight.md`](../docs/unknowns-preflight.md)

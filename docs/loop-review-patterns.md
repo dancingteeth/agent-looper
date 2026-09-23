@@ -138,9 +138,10 @@ blueprint for building it.
   blocker fix-loop. Full build order, acceptance criteria, and Taskwarrior mapping:
   [`loop-review-roadmap.md`](./loop-review-roadmap.md).
 - **Encode misses as system improvements:** when a loop result doesn't meet
-  standard, turn the fix into a reusable skill/check (pattern 6) or a
-  `failure-domains` entry the meta-loop can learn from — don't just patch the one
-  instance.
+  standard, label a diverse sample of `.cursor/loop-exports/` first, then turn a
+  repeated miss into a reusable `verify.sh` / skill check (pattern 6) — don't
+  invent a metric from one run, and don't just patch the one instance. Procedure:
+  [`unknowns-preflight.md`](./unknowns-preflight.md#after-a-run-error-discovery-then-steer).
 
 ## Source map
 
@@ -152,3 +153,4 @@ blueprint for building it.
 - Verdent "Build a Coding Agent Loop That Stops Safely" — observable contract, review gates, exit paths.
 - Addy Osmani "Agentic Code Review" — agent-as-reviewer limits, evidence-based review.
 - Claude Code team "Getting started with AI loops" (Delba Oliveira, 2026) — loop taxonomy, verification-as-skill, model routing, proactive-loop composition.
+- Hamel Husain & Shreya Shankar, "Advanced evals" (Lenny's Newsletter, 2026) — error discovery before metrics; human labels before LLM-proposed failure modes.

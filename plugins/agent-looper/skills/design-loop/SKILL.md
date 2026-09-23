@@ -1,6 +1,6 @@
 ---
 name: design-loop
-description: Design a measurable Agent Looper cycle — frozen GOAL.md, verify.sh finish line, unknowns preflight, and scope limits. Use when creating or tightening a loop before running Agent Looper.
+description: Design a measurable Agent Looper cycle — frozen GOAL.md, verify.sh finish line, unknowns preflight, and scope limits. Use when creating or tightening a loop before running Agent Looper, or when a finished loop was still wrong and verify needs revision from export packs.
 tags:
   - agentic_ai
   - agents
@@ -73,6 +73,10 @@ Translate into restraints they will never type. Measurable ones go in `verify.sh
 **Golden** is a critic, not only `img src`. If you cannot see the attached image, do not invent a palette — ask, or freeze file facts (B&W vs color, crop chrome) instead of “just go whimsical.”
 
 **Judge:** do **not** copy `postQualityReview: false` / `reviewGate: false` from `*-smoke` or `example-fix`. Omit those keys (harness default `postQualityReview: "auto"`). Set `reviewGate: true` on this slice so leftover look can reopen the worker. Freeze the golden mood in GOAL — the harness judge is text/diff, not pixels. Load `review-gate` only if you need a `REVIEWS.md` overlay; this section is enough to turn the referee on.
+
+## After a run (error discovery)
+
+When a finished loop is still wrong, or you are about to add a `verify.sh` / `REVIEWS.md` check from a theory, label ~10 `.cursor/loop-exports/` packs first (mix `done` / `continue` / `waiting`). Freeze during a run stays; criteria may drift **between** freezes. Skip for smokes. Procedure and annotation rules: [unknowns preflight — after a run](https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md#after-a-run-error-discovery-then-steer).
 
 ## Out of scope for this skill
 

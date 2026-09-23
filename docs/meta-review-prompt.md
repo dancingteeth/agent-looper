@@ -45,6 +45,13 @@ Find **cross-loop** problems the per-loop gate cannot see:
 - Unbacked “green / done” claims across loops → `[unverified_claim]` when
   logs/verify evidence do not support the per-loop review narrative
 
+`failure-domains.ndjson` is lifecycle telemetry, not a product-judgment taxonomy.
+Before a cluster becomes a new `verify.sh` / `VERIFY.skill.md`, a human should
+have labeled a diverse sample of export packs
+([unknowns preflight — after a run](./unknowns-preflight.md#after-a-run-error-discovery-then-steer)).
+Agent-only taxonomies are proposals. HITL follow-ups: actionable, user-facing,
+first upstream miss — not an internal RCA.
+
 ## Passes (UCR-derived, truncated)
 
 0. **Change set** — which loops are in scope; what artifacts are present/missing;
