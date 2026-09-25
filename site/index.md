@@ -12,7 +12,7 @@ Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode
 
 ## How do Agent Looper worker and judge presets work?
 
-Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On `runtime: cursor`, repo defaults that pin OpenCode Go `escalateModel` are not applied — Composer plus another judge uses `reviewRuntime` / `reviewModel`, not `escalateModel`.
+Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok — default judge `grok-4.7`). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On `runtime: cursor`, repo defaults that pin OpenCode Go `escalateModel` are not applied — Composer plus another judge uses `reviewRuntime` / `reviewModel`, not `escalateModel`.
 
 ## How does Agent Looper keep cost down for indie builders?
 
@@ -50,11 +50,15 @@ When the check fails because something on your machine is missing or broken — 
 
 ## What do the spend numbers mean?
 
-Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`. OpenCode Go and Cline Pass model lists and list prices come from [models.dev](https://models.dev/api.json); unknown but well-formed slugs soft-gate — warn at loop start, show `$0` until priced. Budget caps still reject unpriced worker or escalate models.
+Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`. OpenCode Go and Cline Pass model lists and list prices come from [models.dev](https://models.dev/api.json) — sync picks up Grok 4.7, GPT-6 Luna, MiMo V2.6 Flash/Pro, and Space Bunny Free; unknown but well-formed slugs soft-gate — warn at loop start, show `$0` until priced. Budget caps still reject unpriced worker or escalate models.
+
+## How do I harden verify between runs?
+
+Before you add another line to `verify.sh` or `REVIEWS.md`, walk a diverse sample of past runs under `.cursor/loop-exports/` so the scoreboard matches real failures — not one lucky green. Procedure: [docs/unknowns-preflight.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md). Freeze during a run is unchanged.
 
 ## How it works
 
-Your agent writes `GOAL.md` and a deterministic check. Optional `setup.sh` (or `setup` in `loop.json`) runs once before the first worker — setup failure does not spawn a worker. A fresh worker loops until the check passes. After each visit the harness restores frozen specs if a worker edited them — and removes any frozen basename they planted (like `setup.sh`) so it cannot carry into the next run.
+Your agent writes `GOAL.md` and a deterministic check. Optional `setup.sh` (or `setup` in `loop.json`) runs once before the first worker — setup failure does not spawn a worker. A fresh worker loops until the check passes. After each visit the harness restores frozen specs if a worker edited them — and removes any frozen basename they planted (like `setup.sh`) so it cannot carry into the next run. Between runs, label export packs before you tighten the check ([unknowns preflight](https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md)).
 
 ## How is Agent Looper different from looping in chat?
 

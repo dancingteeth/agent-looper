@@ -652,7 +652,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('names 0.6.3 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, Cursor escalate, scaffold wall, DSH flat credentials, and DSH 4.1 Flash opt-in', () => {
+  it('names 0.7.0 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, Cursor Grok 4.7, Flash 4.1 defaults, loop-exports preflight, Cursor escalate, scaffold wall, DSH flat credentials, Codex astra, and Claude CLI aliases', () => {
     const html = readSite('index.html')
     const md = readSite('index.md')
     const llms = readSite('llms.txt')
@@ -686,8 +686,13 @@ describe('landing agent readiness', () => {
     const plantBeat = 'removes any frozen basename'
     const modelsDevBeat = 'models.dev'
     const softGateBeat = 'soft-gate'
-    const flashOptIn = 'deepseek-flash'
-    const flashLabel = '4.1 Flash'
+    const flashDefault = 'deepseek-flash'
+    const flash41Slug = 'deepseek-v4.1-flash'
+    const grok47Beat = 'grok-4.7'
+    const loopExportsBeat = '.cursor/loop-exports/'
+    const unknownsPreflightBeat = 'unknowns-preflight.md'
+    const codexAstraBeat = 'gpt-6-astra'
+    const claudeAliasBeat = 'latest-per-family'
     const cursorEscalateBeat = 'are not applied'
     const scaffoldWallBeat = '10-minute wall'
     const dshFlatBeat = 'must be a flat'
@@ -712,17 +717,23 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/Current npm.*0\.6\.1/i)
       expect(surface).not.toMatch(/Current npm.*0\.6\.2/i)
       expect(surface).not.toMatch(/Current npm.*0\.6\.3/i)
+      expect(surface).not.toMatch(/supported line \*\*0\.6\.x\*\*/i)
       expect(surface).toContain(cursorEscalateBeat)
       expect(surface).toContain(scaffoldWallBeat)
+      expect(surface).toContain(loopExportsBeat)
+      expect(surface).toContain(unknownsPreflightBeat)
     }
 
     expect(llms).toContain('Current npm: **0.7.0**')
     expect(llms).toContain('0.7.x')
     expect(llms).not.toContain('0.5.0')
     expect(llms).not.toContain('Current npm: **0.6.3**')
+    expect(llms).not.toMatch(/supported line \*\*0\.6\.x\*\*/)
     expect(llms).not.toContain('Current npm: **0.6.2**')
     expect(llms).not.toContain('Current npm: **0.6.1**')
     expect(llms).not.toContain('Current npm: **0.6.0**')
+    expect(llms).toContain(grok47Beat)
+    expect(llms).toContain(flash41Slug)
     expect(llms).toContain(dshPreflightBeat)
     expect(llms).toContain(dshQuoteNotEnoughBeat)
     expect(llms).toContain(setupWizardBeat)
@@ -746,6 +757,20 @@ describe('landing agent readiness', () => {
       )?.[0] ?? ''
     expect(cursorCard).toContain('reviewRuntime')
     expect(cursorCard).toContain('escalateModel')
+    expect(cursorCard).toContain(grok47Beat)
+
+    const codexCard =
+      harnessHtml.match(
+        /<article class="harness-card" id="codex">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(codexCard).toContain(codexAstraBeat)
+    expect(codexCard).toContain('gpt-5.6-sol')
+
+    const claudeCard =
+      harnessHtml.match(
+        /<article class="harness-card" id="claude">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(claudeCard).toContain(claudeAliasBeat)
 
     const dshCard =
       harnessHtml.match(
@@ -754,11 +779,14 @@ describe('landing agent readiness', () => {
     expect(dshCard).toContain(dshFlatBeat)
     expect(dshCard).toContain(dshPreflightBeat)
     expect(dshCard).not.toContain('version: "1"')
-    expect(dshCard).toContain(flashOptIn)
-    expect(dshCard).toContain(flashLabel)
+    expect(dshCard).toContain(flashDefault)
     expect(dshCard).toContain('deepseek-v4-flash')
-    expect(harnessMd).toContain(flashOptIn)
+    expect(harnessMd).toContain(flashDefault)
     expect(harnessMd).toContain('deepseek-v4-flash')
+    expect(harnessMd).toContain(flash41Slug)
+    expect(harnessMd).toContain(grok47Beat)
+    expect(harnessMd).toContain(codexAstraBeat)
+    expect(harnessMd).toContain(claudeAliasBeat)
     expect(harnessMd).toContain(dshFlatBeat)
     expect(harnessMd).toContain(dshPreflightBeat)
     expect(harnessMd).toContain(dshQuoteNotEnoughBeat)

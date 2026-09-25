@@ -107,7 +107,7 @@
             "name": "How do Agent Looper worker and judge presets work?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On runtime: cursor, repo defaults that pin OpenCode Go escalateModel are not applied — Composer plus another judge uses reviewRuntime / reviewModel, not escalateModel."
+              "text": "Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok — default judge grok-4.7). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On runtime: cursor, repo defaults that pin OpenCode Go escalateModel are not applied — Composer plus another judge uses reviewRuntime / reviewModel, not escalateModel."
             }
           },
           {
@@ -171,7 +171,15 @@
             "name": "What do the spend numbers mean?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Watch and the report card show two numbers when they differ: list (public API rates, including prompt-cache) and billed (what the runtime invoice says). $0 on a subscription quota is billed $0, not free. Budget caps use billed when you are on PAYG and list when the invoice is $0. OpenCode Go and Cline Pass model lists and list prices come from models.dev; unknown but well-formed slugs soft-gate — warn at loop start, show $0 until priced. Budget caps still reject unpriced worker or escalate models."
+              "text": "Watch and the report card show two numbers when they differ: list (public API rates, including prompt-cache) and billed (what the runtime invoice says). $0 on a subscription quota is billed $0, not free. Budget caps use billed when you are on PAYG and list when the invoice is $0. OpenCode Go and Cline Pass model lists and list prices come from models.dev — sync picks up Grok 4.7, GPT-6 Luna, MiMo V2.6 Flash/Pro, and Space Bunny Free; unknown but well-formed slugs soft-gate — warn at loop start, show $0 until priced. Budget caps still reject unpriced worker or escalate models."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I harden verify between runs?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Before you add another line to verify.sh or REVIEWS.md, walk a diverse sample of past runs under .cursor/loop-exports/ so the scoreboard matches real failures — not one lucky green. Procedure: docs/unknowns-preflight.md on the repo. Freeze during a run is unchanged."
             }
           }
         ]
@@ -342,7 +350,7 @@
           <article class="tui-answer tui-answer--presets">
             <h2>How do Agent Looper worker and judge presets work?</h2>
             <p>
-              Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On <code>runtime: cursor</code>, repo defaults that pin OpenCode Go <code>escalateModel</code> are not applied — Composer plus another judge uses <code>reviewRuntime</code> / <code>reviewModel</code>, not <code>escalateModel</code>.
+              Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok — default judge <code>grok-4.7</code>). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On <code>runtime: cursor</code>, repo defaults that pin OpenCode Go <code>escalateModel</code> are not applied — Composer plus another judge uses <code>reviewRuntime</code> / <code>reviewModel</code>, not <code>escalateModel</code>.
             </p>
           </article>
           <article class="tui-answer tui-answer--budget">
@@ -395,7 +403,13 @@
           <article class="tui-answer tui-answer--spend">
             <h2>What do the spend numbers mean?</h2>
             <p>
-              Watch and the report card show two numbers when they differ: <strong>list</strong> (public API rates, including prompt-cache) and <strong>billed</strong> (what the runtime invoice says). <code>$0</code> on a subscription quota is billed <code>$0</code>, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is <code>$0</code>. OpenCode Go and Cline Pass model lists and list prices come from <a href="https://models.dev/api.json">models.dev</a>; unknown but well-formed slugs soft-gate — warn at loop start, show <code>$0</code> until priced. Budget caps still reject unpriced worker or escalate models.
+              Watch and the report card show two numbers when they differ: <strong>list</strong> (public API rates, including prompt-cache) and <strong>billed</strong> (what the runtime invoice says). <code>$0</code> on a subscription quota is billed <code>$0</code>, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is <code>$0</code>. OpenCode Go and Cline Pass model lists and list prices come from <a href="https://models.dev/api.json">models.dev</a> — sync picks up Grok 4.7, GPT-6 Luna, MiMo V2.6 Flash/Pro, and Space Bunny Free; unknown but well-formed slugs soft-gate — warn at loop start, show <code>$0</code> until priced. Budget caps still reject unpriced worker or escalate models.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--exports">
+            <h2>How do I harden verify between runs?</h2>
+            <p>
+              Before you add another line to <code>verify.sh</code> or <code>REVIEWS.md</code>, walk a diverse sample of past runs under <code>.cursor/loop-exports/</code> so the scoreboard matches real failures — not one lucky green. Procedure: <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md">docs/unknowns-preflight.md</a>. Freeze during a run is unchanged.
             </p>
           </article>
         </div>
@@ -410,6 +424,7 @@
           Optional <code>setup.sh</code> (or <code>setup</code> in <code>loop.json</code>) runs once before the first worker — setup failure does not spawn a worker.
           A fresh worker loops until that check passes — optional judge / <code>reviewGate</code> only on serious findings.
           After each visit the harness restores frozen specs if a worker edited them — and removes any frozen basename they planted (like <code>setup.sh</code>) so it cannot carry into the next run.
+          Between runs, label export packs before you tighten the check (<a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md">unknowns preflight</a>).
           Progress lives in git and files, not chat memory.
         </p>
         <div class="grid two-col">

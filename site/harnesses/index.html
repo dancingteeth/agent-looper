@@ -85,7 +85,7 @@
           </p>
         </div>
         <div class="harness-operator__body">
-          <p>Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a <code>--runtime</code> enum value. Distinct from the Grok 4.7 model that Cursor uses as judge.</p>
+          <p>Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a <code>--runtime</code> enum value. Distinct from the Grok 4.7 model that Cursor uses as judge by default.</p>
           <h3>How to use</h3>
           <ol>
             <li>Freeze <code>GOAL.md</code> and <code>verify.sh</code> (or <code>pnpm exec agent-loop-prompt --out .cursor/loops/my-task</code>).</li>
@@ -113,9 +113,10 @@
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>composer-2.5</code></span>
               <span class="harness-chip">Judge Grok 4.7</span>
+              <span class="harness-chip"><code>grok-4.6</code> / <code>grok-4.5</code> ok</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></p>
-            <p class="harness-card__note">Export <code>CURSOR_API_KEY</code> or run under Doppler. Run <code>pnpm exec agent-loop-init</code> once. Set <code>costPreset: "cursor"</code> in <code>loop.json</code> to stay on Cursor for both worker and judge. Repo defaults that pin OpenCode <code>escalateModel</code> are not applied on <code>--runtime cursor</code> — judge uses <code>reviewRuntime</code> / <code>reviewModel</code>.</p>
+            <p class="harness-card__note">Export <code>CURSOR_API_KEY</code> or run under Doppler. Run <code>pnpm exec agent-loop-init</code> once. Default judge <code>reviewModel</code> is <code>grok-4.7</code> when the worker is Cursor; Composer 2.5 is the only Cursor worker. Set <code>costPreset: "cursor"</code> in <code>loop.json</code> to stay on Cursor for both worker and judge. Repo defaults that pin OpenCode <code>escalateModel</code> are not applied on <code>--runtime cursor</code> — judge uses <code>reviewRuntime</code> / <code>reviewModel</code>.</p>
           </article>
 
           <article class="harness-card" id="dsh">
@@ -200,10 +201,11 @@
             <p class="harness-card__job"><code>@openai/codex-sdk</code> and <code>codex</code> CLI — ChatGPT / OpenAI BYO.</p>
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>gpt-5.6-luna</code> → <code>gpt-5.6-terra</code></span>
+              <span class="harness-chip">Optional <code>gpt-6-astra</code></span>
               <span class="harness-chip">Judge any runtime, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate</code></p>
-            <p class="harness-card__note">Install <code>@openai/codex-sdk</code>; ensure <code>codex</code> CLI is on PATH.</p>
+            <p class="harness-card__note">Install <code>@openai/codex-sdk</code>; ensure <code>codex</code> CLI is on PATH. Codex judge default stays <code>gpt-5.6-sol</code>; <code>gpt-6-astra</code> is listed but not the default judge.</p>
           </article>
 
           <article class="harness-card" id="muse">
@@ -237,7 +239,7 @@
               <span class="harness-chip">Judge any runtime, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime claude --review-gate</code></p>
-            <p class="harness-card__note">Ensure <code>claude</code> 2.1.169+ is on PATH and <code>claude login</code> has been run. Typical mix: cheap worker + Claude as judge (default <code>opus</code>). See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md">docs/claude-runtime.md</a>.</p>
+            <p class="harness-card__note">Ensure <code>claude</code> 2.1.169+ is on PATH and <code>claude login</code> has been run. <code>opus</code> / <code>sonnet</code> / <code>fable</code> aliases track Claude Code latest-per-family. Typical mix: cheap worker + Claude as judge (default <code>opus</code>). See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md">docs/claude-runtime.md</a>.</p>
           </article>
         </div>
       </section>
