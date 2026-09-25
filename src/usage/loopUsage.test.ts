@@ -174,8 +174,8 @@ describe('loopUsage', () => {
   it('includes Anthropic cache in list so billed is not inverted above list', () => {
     const uncachedList = estimateCostUsd('sonnet', 30, 14_978)
     const withCache = estimateCostUsd('sonnet', 30, 14_978, 794_133, 50_504)
-    expect(uncachedList).toBeCloseTo(0.22476, 5)
-    expect(withCache).toBeCloseTo(0.65239, 4)
+    expect(uncachedList).toBeCloseTo(0.14984, 5)
+    expect(withCache).toBeCloseTo(0.43493, 4)
 
     const record = createUsageRecord({
       phase: 'implement',
@@ -185,10 +185,10 @@ describe('loopUsage', () => {
       outputTokens: 14_978,
       cacheReadTokens: 794_133,
       cacheWriteTokens: 50_504,
-      providerCostUsd: 0.5149696,
+      providerCostUsd: 0.3,
     })
-    expect(record.listCostUsd).toBeCloseTo(0.65239, 4)
-    expect(record.billedCostUsd).toBe(0.5149696)
+    expect(record.listCostUsd).toBeCloseTo(0.43493, 4)
+    expect(record.billedCostUsd).toBe(0.3)
     expect(record.listCostUsd!).toBeGreaterThan(record.billedCostUsd!)
   })
 

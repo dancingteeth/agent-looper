@@ -82,6 +82,7 @@ describe('agent-loop-setup', () => {
 
   it('scopes cursor judge models away from DSH slugs', () => {
     const values = judgeModelChoices('cursor', 'dsh').map((choice) => choice.value)
+    expect(values).toContain('grok-4.7')
     expect(values).toContain('grok-4.6')
     expect(values).toContain('composer-2.5')
     expect(values.some((value) => value.startsWith('deepseek-official/'))).toBe(false)

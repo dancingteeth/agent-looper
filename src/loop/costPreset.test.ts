@@ -256,7 +256,7 @@ describe('parseLoopConfig costPreset', () => {
 describe('describeCostPreset', () => {
   it('names both sides of a mixed stack', () => {
     expect(describeCostPreset('minmax', goCursor)).toMatch(/hy3/i)
-    expect(describeCostPreset('minmax', goCursor)).toMatch(/grok-4\.6/i)
+    expect(describeCostPreset('minmax', goCursor)).toMatch(/grok-4\.7/i)
     expect(describeCostPreset('minmax', goCursor)).toMatch(/opencode worker \+ cursor judge/)
   })
 })

@@ -115,7 +115,7 @@ describe('loadLoopBundle', () => {
     })
     expect(bundle.config.runtime).toBe('opencode')
     expect(bundle.config.model).toBe('opencode-go/hy3')
-    expect(bundle.config.reviewModel).toBe('grok-4.6')
+    expect(bundle.config.reviewModel).toBe('grok-4.7')
   })
 
   it('discovers profile defaults from a git repo ancestor', () => {

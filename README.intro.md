@@ -107,18 +107,18 @@ They do not have to match. A non-Cursor worker can still use a Cursor judge — 
 | `runtime` | Default worker model (escalate →) | Notes |
 | --- | --- | --- |
 | **`cursor`** | `composer-2.5` | `costPreset: "cursor"`, or Cursor-only minmax |
-| **`cline-pass`** | `cline-pass/deepseek-v4-flash` → `qwen3.7-plus` | ClinePass subscription (`@cline/sdk`) |
+| **`cline-pass`** | `cline-pass/deepseek-v4.1-flash` → `qwen3.7-plus` | ClinePass subscription (`@cline/sdk`) |
 | **`cline`** | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Cline Credits (same SDK, different billing) |
-| **`opencode`** | Go `opencode-go/deepseek-v4-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `openrouter/…:free`, `vercel/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
+| **`opencode`** | Go `opencode-go/deepseek-v4.1-flash` → `qwen3.7-plus` (or BYOK `openrouter/…`, `openrouter/…:free`, `vercel/…`, `ollama/…`) | [`docs/opencode-providers.md`](./docs/opencode-providers.md) |
 | **`pi`** | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | BYOK — [`docs/pi-runtime.md`](./docs/pi-runtime.md) |
 | **`codex`** | `gpt-5.6-luna` → `gpt-5.6-terra` | ChatGPT / OpenAI — [`docs/codex-runtime.md`](./docs/codex-runtime.md) |
-| **`dsh`** | `deepseek-official/deepseek-v4-flash` (setup also lists `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Headless DSH CLI — [`docs/dsh-runtime.md`](./docs/dsh-runtime.md). `dsh web` companion: [`docs/dsh-plugin.md`](./docs/dsh-plugin.md) |
+| **`dsh`** | `deepseek-official/deepseek-flash` (4.1; setup also lists previous `deepseek-v4-flash` and `…-flash-vision-exp`) → `deepseek-official/deepseek-v4-pro` | Headless DSH CLI — [`docs/dsh-runtime.md`](./docs/dsh-runtime.md). `dsh web` companion: [`docs/dsh-plugin.md`](./docs/dsh-plugin.md) |
 | **`muse`** | `muse-spark-1.3-contributor` (effort only; PAYG `muse-spark-1.3` is the same weights) | Muse Code — [`docs/muse-runtime.md`](./docs/muse-runtime.md). Explicit only; not minmax. |
 | **`claude`** | `sonnet` → `opus` | Claude Code CLI — [`docs/claude-runtime.md`](./docs/claude-runtime.md). Subscription login; `--safe-mode`. Explicit only; not minmax. |
 
 ### Judge defaults
 
-Unset `reviewRuntime` → **`cursor`**. Unset `reviewModel` on that Cursor judge → **`grok-4.6`** when the worker is also `cursor`, else **`composer-2.5`**.
+Unset `reviewRuntime` → **`cursor`**. Unset `reviewModel` on that Cursor judge → **`grok-4.7`** when the worker is also `cursor`, else **`composer-2.5`**. Grok 4.6 and 4.5 stay allowed. Claude `opus` / `sonnet` / `fable` follow the Claude Code CLI (currently Opus 5, Sonnet 5, Fable 5.1).
 
 To keep the judge off Cursor quota, set `reviewRuntime` to a peer you already pay for — e.g. `"reviewRuntime": "pi"`, `"opencode"` (defaults to **`opencode-go/deepseek-v4-pro`**), `"dsh"` (defaults to **`deepseek-official/deepseek-v4-pro`**), `"codex"` (defaults to **`gpt-5.6-sol`**), `"muse"` (defaults to **`muse-spark-1.3`**), or `"claude"` (defaults to **`opus`**). Presets and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). Measure a pick on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md).
 
@@ -179,7 +179,7 @@ A full snapshot (what the wizard also writes to `--out`) looks like:
 {
   "runtime": "cursor",
   "model": "composer-2.5",
-  "reviewModel": "grok-4.6",
+  "reviewModel": "grok-4.7",
   "maxIterations": 6,
   "verify": "bash .cursor/loops/my-task/verify.sh",
   "postQualityReview": "auto",

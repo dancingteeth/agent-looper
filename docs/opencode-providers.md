@@ -18,7 +18,7 @@ Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "opencod
 
 | Field | Default |
 | --- | --- |
-| `model` | `opencode-go/deepseek-v4-flash` |
+| `model` | `opencode-go/deepseek-v4.1-flash` |
 | `escalateModel` | `opencode-go/qwen3.7-plus` (after stagnation **or** a hung/timed-out worker) |
 | `reviewModel` (when `reviewRuntime: "opencode"`) | `opencode-go/deepseek-v4-pro` (not Flash) |
 
@@ -57,8 +57,8 @@ OpenCode Go worker + Cursor Grok judge (default `reviewRuntime`):
 ```json
 {
   "runtime": "opencode",
-  "model": "opencode-go/deepseek-v4-flash",
-  "reviewModel": "grok-4.6",
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "reviewModel": "grok-4.7",
   "verify": "bash .cursor/loops/my-task/verify.sh",
   "postQualityReview": "auto",
   "reviewGate": true
@@ -70,7 +70,7 @@ OpenCode Go worker + OpenCode V4 Pro judge (omit `reviewModel`):
 ```json
 {
   "runtime": "opencode",
-  "model": "opencode-go/deepseek-v4-flash",
+  "model": "opencode-go/deepseek-v4.1-flash",
   "reviewRuntime": "opencode",
   "verify": "bash .cursor/loops/my-task/verify.sh",
   "postQualityReview": "auto",

@@ -9,7 +9,7 @@ Start here:
 - README.intro.md — product spine (worker / verify / judge / human)
 - ARCHITECTURE.md — loop engine, escalation, cache-friendly prompts
 - AGENTS.md — working agreements for this repo
-- CHANGELOG.md — shipped versions (current: 0.6.3)
+- CHANGELOG.md — shipped versions (current: 0.7.0)
 - SECURITY.md — vulnerability reporting
 - docs/embed-api.md — library embed contract (stable vs experimental, frozen shapes)
 - docs/claude-runtime.md — PATH `claude -p --safe-mode` worker/judge
@@ -54,4 +54,4 @@ Worker default: composer-2.5. Judge default: grok-4.6 (`reviewModel`). `runtime:
 
 ## Package
 
-npm: `@dancingteeth/agent-looper` **0.6.3**. Layout: src/loop, src/review, src/agents, templates, .cursor/loops. Embed: docs/embed-api.md. Security: SECURITY.md.
+npm: `@dancingteeth/agent-looper` **0.7.0**. Layout: src/loop, src/review, src/agents, templates, .cursor/loops. Embed: docs/embed-api.md. Security: SECURITY.md.

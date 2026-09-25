@@ -71,6 +71,7 @@ const DEFAULT_CACHE_WRITE_MULT = 1.25
 /** Hand-maintained rates for runtimes models.dev does not cover (Cursor, Codex, DSH, Muse, Claude, BYOK). */
 const HAND_MAINTAINED_PRICING: Record<string, ModelTokenRates> = {
   'composer-2.5': { input: 0.5, output: 2.5 },
+  'grok-4.7': { input: 2.0, output: 6.0, cacheRead: 0.5 },
   'grok-4.6': { input: 2.0, output: 6.0 },
   'grok-4.5': { input: 2.0, output: 6.0 },
   'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
@@ -81,8 +82,9 @@ const HAND_MAINTAINED_PRICING: Record<string, ModelTokenRates> = {
   'gpt-5.6-luna': { input: 0.25, output: 2.0 },
   'gpt-5.6-terra': { input: 1.25, output: 10.0 },
   'gpt-5.6-sol': { input: 2.5, output: 15.0 },
+  'gpt-6-astra': { input: 10.0, output: 50.0 },
   // DSH official DeepSeek (headless agent-default-model)
-  // `deepseek-flash` is the 4.1 row (`DeepSeek-V41-Flash`); DeepSeek lists it at V4 Flash rates.
+  // `deepseek-flash` is 4.1 (`DeepSeek-V41-Flash`) and the DSH worker default. DeepSeek lists it at V4 Flash rates.
   'deepseek-official/deepseek-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash': { input: 0.14, output: 0.28 },
   'deepseek-official/deepseek-v4-flash-vision-exp': { input: 0.14, output: 0.28 },
@@ -93,12 +95,13 @@ const HAND_MAINTAINED_PRICING: Record<string, ModelTokenRates> = {
   'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
   'muse-spark-1.3': { input: 1.25, output: 4.25 },
   'muse-spark-1.3-contributor': { input: 1.25, output: 4.25 },
-  // Claude Code aliases — list-price estimates; spawn prefers subscription quota (`total_cost_usd` when present).
-  // Cache rates are Anthropic's published 5-minute prompt-cache multipliers (read 0.1× / write 1.25×).
-  sonnet: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 3.75 },
-  opus: { input: 15.0, output: 75.0, cacheRead: 1.5, cacheWrite: 18.75 },
+  // Claude Code aliases — list-price estimates for the CLI's latest_per_family
+  // (sonnet → claude-sonnet-5, opus → claude-opus-5, fable → claude-fable-5-1, haiku → claude-haiku-4-5).
+  // Spawn prefers subscription quota (`total_cost_usd` when present). Cache rates are models.dev.
+  sonnet: { input: 2.0, output: 10.0, cacheRead: 0.2, cacheWrite: 2.5 },
+  opus: { input: 5.0, output: 25.0, cacheRead: 0.5, cacheWrite: 6.25 },
   haiku: { input: 1.0, output: 5.0, cacheRead: 0.1, cacheWrite: 1.25 },
-  fable: { input: 15.0, output: 75.0, cacheRead: 1.5, cacheWrite: 18.75 },
+  fable: { input: 10.0, output: 50.0, cacheRead: 0.25, cacheWrite: 12.5 },
 }
 
 /** Official API rates (USD per 1M tokens). Go/ClinePass from models.dev via modelPricingDrift.test.ts */

@@ -711,13 +711,15 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/Current npm.*0\.6\.0/i)
       expect(surface).not.toMatch(/Current npm.*0\.6\.1/i)
       expect(surface).not.toMatch(/Current npm.*0\.6\.2/i)
+      expect(surface).not.toMatch(/Current npm.*0\.6\.3/i)
       expect(surface).toContain(cursorEscalateBeat)
       expect(surface).toContain(scaffoldWallBeat)
     }
 
-    expect(llms).toContain('Current npm: **0.6.3**')
-    expect(llms).toContain('0.6.x')
+    expect(llms).toContain('Current npm: **0.7.0**')
+    expect(llms).toContain('0.7.x')
     expect(llms).not.toContain('0.5.0')
+    expect(llms).not.toContain('Current npm: **0.6.3**')
     expect(llms).not.toContain('Current npm: **0.6.2**')
     expect(llms).not.toContain('Current npm: **0.6.1**')
     expect(llms).not.toContain('Current npm: **0.6.0**')

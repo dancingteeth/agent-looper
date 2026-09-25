@@ -4,12 +4,13 @@ import {
   CURSOR_REVIEW_MODELS,
   DEFAULT_CLINE_CREDITS_ESCALATE_MODEL,
   DEFAULT_CLINE_CREDITS_LOOP_MODEL,
+  CODEX_ASTRA_MODEL,
   DEFAULT_CODEX_ESCALATE_MODEL,
   DEFAULT_CODEX_LOOP_MODEL,
   DEFAULT_CODEX_REVIEW_MODEL,
   DEFAULT_DSH_ESCALATE_MODEL,
   DEFAULT_DSH_LOOP_MODEL,
-  DSH_41_FLASH_LOOP_MODEL,
+  DSH_V4_FLASH_LOOP_MODEL,
   DSH_VISION_LOOP_MODEL,
   DEFAULT_MUSE_LOOP_MODEL,
   DEFAULT_MUSE_REVIEW_MODEL,
@@ -282,14 +283,18 @@ function customChoice(example: string): MenuChoice {
 const MODEL_BLURBS: Record<string, string> = {
   'composer-2.5':
     'Composer 2.5 — Cursor coding model. Composer Fast is rejected.',
+  'grok-4.7':
+    'xAI Grok 4.7 — usual Cursor judge when the worker is Cursor. Also on OpenCode Go.',
   'grok-4.6':
-    'xAI Grok 4.6 — usual Cursor judge when the worker is Cursor.',
+    'xAI Grok 4.6 — previous Cursor judge. Still allowed.',
   'grok-4.5':
-    'xAI Grok 4.5 — allowed Cursor judge. Weaker than Grok 4.6 on Cursor.',
+    'xAI Grok 4.5 — older Cursor judge. Weaker than Grok 4.7.',
   'deepseek-flash':
-    'DeepSeek 4.1 Flash — current Flash row; image-capable by default, V4 Flash list price.',
+    'DeepSeek 4.1 Flash — current Flash. Default DSH worker. Image-capable by default.',
+  'deepseek-v4.1-flash':
+    'DeepSeek V4.1 Flash — current Flash on OpenCode Go and Cline Pass. Default worker there.',
   'deepseek-v4-flash':
-    'DeepSeek V4 Flash — cheap, fast implement iterations. Common worker default.',
+    'DeepSeek V4 Flash — previous Flash. Still allowed.',
   hy3: 'Tencent Hy3 — slower than Flash, often stronger coding. Large Go monthly quota.',
   'deepseek-v4-flash-vision-exp':
     'DeepSeek V4 Flash Vision (experimental) — image-capable Flash.',
@@ -299,6 +304,10 @@ const MODEL_BLURBS: Record<string, string> = {
     'Xiaomi MiMo V2.5 — high-volume cheap edits. Same cost class as Flash.',
   'mimo-v2.5-pro':
     'Xiaomi MiMo V2.5 Pro — same family as V2.5 with more headroom for harder tasks.',
+  'mimo-v2.6-flash':
+    'Xiaomi MiMo V2.6 Flash — current cheap MiMo. Same cost class as V2.5.',
+  'mimo-v2.6-pro':
+    'Xiaomi MiMo V2.6 Pro — more headroom than V2.6 Flash.',
   'minimax-m3':
     'MiniMax M3 — general-purpose coding at mid-cheap quota.',
   'qwen3.7-plus':
@@ -322,7 +331,13 @@ const MODEL_BLURBS: Record<string, string> = {
   'gpt-5.6-terra':
     'GPT 5.6 Terra — balanced escalate when Luna stalls.',
   'gpt-5.6-sol':
-    'GPT 5.6 Sol — frontier judge. Do not use as a cheap worker.',
+    'GPT 5.6 Sol — frontier agentic-coding judge. Default Codex judge. Do not use as a cheap worker.',
+  'gpt-6-luna':
+    'GPT-6 Luna — cheaper than GPT-5.6 Luna on OpenCode Go. Not the Codex worker default.',
+  'gpt-6-astra':
+    'GPT-6 Astra — most capable Codex model. Opt in; the default Codex judge stays Sol.',
+  'space-bunny-free':
+    'Space Bunny Free — $0 OpenCode Go slug. Not minmax.',
   'muse-spark-1.3-contributor':
     'Muse Spark 1.3 contributor — same model as PAYG. Discounted CLI login; content may train. Default Muse worker.',
   'muse-spark-1.3':
@@ -334,13 +349,13 @@ const MODEL_BLURBS: Record<string, string> = {
   'muse-spark-1.1':
     'Muse Spark 1.1 — earlier Spark slug. Same adapter; prefer 1.3 unless you still have quota here.',
   sonnet:
-    'Claude Sonnet — daily coding. Default Claude worker; burns Max/Pro quota, not Console tokens.',
+    'Claude Sonnet — alias for the latest Sonnet (Claude Code: Sonnet 5). Default Claude worker; burns Max/Pro quota.',
   opus:
-    'Claude Opus — stronger than Sonnet. Default Claude judge and escalate.',
+    'Claude Opus — alias for the latest Opus (Claude Code: Opus 5). Default Claude judge and escalate.',
   haiku:
-    'Claude Haiku — faster/cheaper Claude alias. Narrow fixes; weaker than Sonnet on hard diffs.',
+    'Claude Haiku — alias for the latest Haiku (Claude Code: Haiku 4.5). Narrow fixes; weaker than Sonnet.',
   fable:
-    'Claude Fable — long-horizon / hard-project judge. Same Max/Pro pool as interactive Claude Code.',
+    'Claude Fable — alias for the latest Fable (Claude Code: Fable 5.1). Long-horizon judge. Same Max/Pro pool.',
   'deepseek-chat':
     'DeepSeek Chat — cheap OpenRouter-style worker. Not a Cline Pass slug.',
   'qwen3-coder-plus':
@@ -371,7 +386,7 @@ function slugChoice(slug: string): MenuChoice {
 const WORKER_MENU: Record<LoopRuntime, { slugs: readonly string[]; custom?: string }> = {
   [LOOP_RUNTIME_CURSOR]: { slugs: [CURSOR_LOOP_MODEL] },
   [LOOP_RUNTIME_DSH]: {
-    slugs: [DEFAULT_DSH_LOOP_MODEL, DSH_41_FLASH_LOOP_MODEL, DSH_VISION_LOOP_MODEL, DEFAULT_DSH_ESCALATE_MODEL],
+    slugs: [DEFAULT_DSH_LOOP_MODEL, DSH_V4_FLASH_LOOP_MODEL, DSH_VISION_LOOP_MODEL, DEFAULT_DSH_ESCALATE_MODEL],
   },
   [LOOP_RUNTIME_CLINE_PASS]: { slugs: CLINE_PASS_LOOP_MODELS },
   [LOOP_RUNTIME_OPENCODE]: {
@@ -387,7 +402,12 @@ const WORKER_MENU: Record<LoopRuntime, { slugs: readonly string[]; custom?: stri
     custom: 'openrouter/qwen/qwen3-coder-plus',
   },
   [LOOP_RUNTIME_CODEX]: {
-    slugs: [DEFAULT_CODEX_LOOP_MODEL, DEFAULT_CODEX_ESCALATE_MODEL, DEFAULT_CODEX_REVIEW_MODEL],
+    slugs: [
+      DEFAULT_CODEX_LOOP_MODEL,
+      DEFAULT_CODEX_ESCALATE_MODEL,
+      DEFAULT_CODEX_REVIEW_MODEL,
+      CODEX_ASTRA_MODEL,
+    ],
   },
   [LOOP_RUNTIME_MUSE]: {
     slugs: [

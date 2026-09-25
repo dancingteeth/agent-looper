@@ -65,7 +65,7 @@ describe('loopConfigSchema', () => {
       runtime: 'cline-pass',
     })
     expect(parsed.runtime).toBe('cline-pass')
-    expect(resolveLoopAgent(parsed).model).toBe('cline-pass/deepseek-v4-flash')
+    expect(resolveLoopAgent(parsed).model).toBe('cline-pass/deepseek-v4.1-flash')
   })
 
   it('accepts cline (credits) runtime with default model', () => {
@@ -83,7 +83,7 @@ describe('loopConfigSchema', () => {
       runtime: 'opencode',
     })
     expect(parsed.runtime).toBe('opencode')
-    expect(resolveLoopAgent(parsed).model).toBe('opencode-go/deepseek-v4-flash')
+    expect(resolveLoopAgent(parsed).model).toBe('opencode-go/deepseek-v4.1-flash')
   })
 
   it('accepts OpenCode Go Hy3 as a worker model', () => {

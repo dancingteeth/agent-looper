@@ -13,6 +13,7 @@ export const BANNED_CURSOR_LOOP_MODELS = new Set([
   'composer-2-fast',
   'grok-4.5-fast',
   'grok-4.6-fast',
+  'grok-4.7-fast',
   'grok-fast',
 ])
 

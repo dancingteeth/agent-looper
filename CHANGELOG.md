@@ -2,6 +2,9 @@
 tags:
   - documentation
   - releasing
+  - agents
+  - agentic_ai
+  - type/app
 ---
 # Changelog
 
@@ -9,9 +12,24 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
-### Docs
+## 0.7.0 — 2026-09-25
 
+Cursor judge is Grok 4.7, DeepSeek Flash defaults are 4.1, and the Go / Cline Pass catalogs pick up the new models.dev rows.
+
+### Headline
+
+- **Cursor judge is Grok 4.7** — `reviewModel` defaults to `grok-4.7` when the worker is Cursor. `grok-4.6` and `grok-4.5` stay allowed. Composer 2.5 is still the only Cursor worker.
+- **DeepSeek Flash defaults are 4.1** — DSH worker `deepseek-official/deepseek-flash`, OpenCode Go `opencode-go/deepseek-v4.1-flash`, Cline Pass `cline-pass/deepseek-v4.1-flash`. Previous `deepseek-v4-flash` stays allowed. Go minmax stays Hy3.
+- **Claude aliases track the CLI** — `opus` / `sonnet` / `fable` follow Claude Code latest-per-family (Opus 5, Sonnet 5, Fable 5.1 on 2.1.273). List-price estimates match those ids. Opus 5.5 is on the Cursor SDK catalog; the `claude` runtime does not offer it until the CLI does.
+- **Codex lists `gpt-6-astra`** — optional, not the default judge (`gpt-5.6-sol` stays).
+
+### Also
+
+- **OpenCode Go / Cline Pass catalog** — `pnpm sync:models` picks up Grok 4.7, GPT-6 Luna, MiMo V2.6 Flash/Pro, and Space Bunny Free from models.dev.
 - **Error discovery between runs** — label a diverse sample of `.cursor/loop-exports/` before adding a `verify.sh` / `REVIEWS.md` check. Procedure in `docs/unknowns-preflight.md`; `design-loop` and meta-review point at it. Freeze during a run is unchanged.
+- Supported line: **0.7.x**.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.0)
 
 ## 0.6.3 — 2026-09-21
 

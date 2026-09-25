@@ -10,7 +10,9 @@ export const OPENCODE_GO_LOOP_MODELS = [
   'opencode-go/glm-5.3',
   'opencode-go/glm-5.3-flash',
   'opencode-go/gpt-5.6-luna',
+  'opencode-go/gpt-6-luna',
   'opencode-go/grok-4.6',
+  'opencode-go/grok-4.7',
   'opencode-go/hy3',
   'opencode-go/hy4-preview',
   'opencode-go/kimi-k2.6',
@@ -19,6 +21,8 @@ export const OPENCODE_GO_LOOP_MODELS = [
   'opencode-go/longcat-2.0',
   'opencode-go/mimo-v2.5',
   'opencode-go/mimo-v2.5-pro',
+  'opencode-go/mimo-v2.6-flash',
+  'opencode-go/mimo-v2.6-pro',
   'opencode-go/minimax-m2.7',
   'opencode-go/minimax-m3',
   'opencode-go/muse-spark-1.2-contributor',
@@ -28,6 +32,7 @@ export const OPENCODE_GO_LOOP_MODELS = [
   'opencode-go/qwen3.7-plus',
   'opencode-go/qwen3.8-flash',
   'opencode-go/qwen3.8-max',
+  'opencode-go/space-bunny-free',
 ] as const
 
 export const CLINE_PASS_LOOP_MODELS = [
@@ -42,6 +47,8 @@ export const CLINE_PASS_LOOP_MODELS = [
   'cline-pass/kimi-k3',
   'cline-pass/mimo-v2.5',
   'cline-pass/mimo-v2.5-pro',
+  'cline-pass/mimo-v2.6-flash',
+  'cline-pass/mimo-v2.6-pro',
   'cline-pass/minimax-m3',
   'cline-pass/qwen3.7-max',
   'cline-pass/qwen3.7-plus',

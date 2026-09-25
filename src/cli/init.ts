@@ -103,7 +103,7 @@ console.error(`[agent-loop-init] next: edit .cursor/agent-loop.repo.json (or age
 console.error(`  agent-loop run .cursor/loops/example-fix`)
 console.error(`  # costPreset minmax (repo default): Hy3+Grok when Go+Cursor; Composer+Grok on Cursor-only`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cursor --review-gate`)
-console.error(`  # force Composer worker + grok-4.6 judge (costPreset cursor)`)
+console.error(`  # force Composer worker + grok-4.7 judge (costPreset cursor)`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cline-pass`)
 console.error(`  # when ClinePass weekly quota is exhausted:`)
 console.error(`  agent-loop run .cursor/loops/example-fix --runtime cline`)

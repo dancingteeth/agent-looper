@@ -2,6 +2,8 @@
 tags:
   - documentation
   - agents
+  - agentic_ai
+  - type/app
 ---
 # Security Policy
 
@@ -15,8 +17,8 @@ maintain long-lived backport branches.
 
 | Version | Supported |
 | --- | --- |
-| 0.6.x | Yes |
-| < 0.6.0 | No |
+| 0.7.x | Yes |
+| < 0.7.0 | No |
 
 ## Reporting a vulnerability
 

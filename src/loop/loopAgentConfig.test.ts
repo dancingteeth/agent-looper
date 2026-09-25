@@ -101,11 +101,11 @@ describe('resolveIterationAgent reasoning effort', () => {
     })
     // iteration 1: medium, no model switch yet
     const itr1 = resolveIterationAgent(config, 1, undefined)
-    expect(itr1.model).toBe('cline-pass/deepseek-v4-flash')
+    expect(itr1.model).toBe('cline-pass/deepseek-v4.1-flash')
     expect(itr1.reasoningEffort).toBe('medium')
     // at ceiling but no stagnation signature yet → still on flash
     const itr3 = resolveIterationAgent(config, 3, undefined)
-    expect(itr3.model).toBe('cline-pass/deepseek-v4-flash')
+    expect(itr3.model).toBe('cline-pass/deepseek-v4.1-flash')
     expect(itr3.reasoningEffort).toBe('xhigh')
     // at ceiling + identical-failure stagnation → switch to qwen at its own tier
     const itr3Stuck = resolveIterationAgent(config, 3, 2)
@@ -151,9 +151,9 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(agent.reasoningEffort).toBeUndefined()
   })
 
-  it('defaults reviewModel to grok-4.6 for cursor runtime', () => {
+  it('defaults reviewModel to grok-4.7 for cursor runtime', () => {
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
-    expect(resolveReviewModel(config)).toBe('grok-4.6')
+    expect(resolveReviewModel(config)).toBe('grok-4.7')
   })
 
   it('defaults reviewModel to composer-2.5 for cline-pass runtime', () => {
@@ -180,9 +180,9 @@ describe('resolveIterationAgent reasoning effort', () => {
     ).toThrow(/reviewModel/)
   })
 
-  it('resolveReviewAgent defaults cursor judge to grok-4.6 on cursor worker', () => {
+  it('resolveReviewAgent defaults cursor judge to grok-4.7 on cursor worker', () => {
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cursor' })
-    expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'grok-4.6' })
+    expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'grok-4.7' })
   })
 
   it('resolveReviewAgent defaults cursor judge to composer-2.5 on cline-pass worker', () => {
@@ -226,14 +226,14 @@ describe('resolveIterationAgent reasoning effort', () => {
     })
   })
 
-  it('resolveLoopAgent defaults DSH worker to official Flash', () => {
+  it('resolveLoopAgent defaults DSH worker to 4.1 Flash', () => {
     const config = loopConfigSchema.parse({
       verify: 'true',
       runtime: 'dsh',
     })
     expect(resolveLoopAgent(config)).toEqual({
       runtime: 'dsh',
-      model: 'deepseek-official/deepseek-v4-flash',
+      model: 'deepseek-official/deepseek-flash',
     })
   })
 
@@ -256,7 +256,7 @@ describe('resolveIterationAgent reasoning effort', () => {
       escalateAfterStagnation: 2,
     })
     expect(resolveIterationAgent(config, 3, 2).model).toBe('deepseek-official/deepseek-v4-pro')
-    expect(resolveIterationAgent(config, 3, 1).model).toBe('deepseek-official/deepseek-v4-flash')
+    expect(resolveIterationAgent(config, 3, 1).model).toBe('deepseek-official/deepseek-flash')
   })
 
   it('resolveReviewAgent defaults Codex judge to Sol when reviewRuntime is codex', () => {
@@ -516,7 +516,7 @@ describe('resolveSecondaryReviewAgent', () => {
       resolveSecondaryReviewAgent({ reviewSecondaryRuntime: 'cline-pass' }),
     ).toEqual({
       runtime: 'cline-pass',
-      model: 'cline-pass/deepseek-v4-flash',
+      model: 'cline-pass/deepseek-v4.1-flash',
     })
   })
 
@@ -542,7 +542,7 @@ describe('resolveSecondaryReviewAgent', () => {
   it('accepts cursor and dsh secondary judges with review defaults', () => {
     expect(resolveSecondaryReviewAgent({ reviewSecondaryRuntime: 'cursor' })).toEqual({
       runtime: 'cursor',
-      model: 'grok-4.6',
+      model: 'grok-4.7',
     })
     expect(resolveSecondaryReviewAgent({ reviewSecondaryRuntime: 'dsh' })).toEqual({
       runtime: 'dsh',

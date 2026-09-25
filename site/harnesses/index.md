@@ -10,7 +10,7 @@ You say what to build and how to know it's done. It keeps a coding agent working
 
 [Add to Grok Bot](https://x.ai/bot/AETdGbRRNWfckrRGv22LD)
 
-Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a `--runtime` enum value. Distinct from the Grok 4.6 model that Cursor uses as judge.
+Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a `--runtime` enum value. Distinct from the Grok 4.7 model that Cursor uses as judge.
 
 ### How to use
 
@@ -29,7 +29,7 @@ Install once: `pnpm add -D @dancingteeth/agent-looper`, then add the SDK or CLI 
 IDE subscription via `@cursor/sdk`.
 
 - Worker: `composer-2.5`
-- Judge (when worker is Cursor): Grok 4.6
+- Judge (when worker is Cursor): Grok 4.7
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate`
 
 Export `CURSOR_API_KEY` or run under Doppler. Run `pnpm exec agent-loop-init` once. Set `costPreset: "cursor"` in `loop.json` to stay on Cursor for both worker and judge. Repo defaults that pin OpenCode `escalateModel` are not applied on `--runtime cursor` — judge uses `reviewRuntime` / `reviewModel`.
@@ -38,7 +38,7 @@ Export `CURSOR_API_KEY` or run under Doppler. Run `pnpm exec agent-loop-init` on
 
 DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` plugin for `dsh web`. See [docs/dsh-plugin.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md) and [plugins/dsh-agent-looper/](https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper).
 
-- Worker: `deepseek-official/deepseek-v4-flash` (escalates to `deepseek-official/deepseek-v4-pro`) — default; opt in per loop to `deepseek-official/deepseek-flash` (DeepSeek-V41-Flash, image-capable)
+- Worker: `deepseek-official/deepseek-flash` (4.1 Flash, escalates to `deepseek-official/deepseek-v4-pro`). Previous `deepseek-official/deepseek-v4-flash` stays allowed.
 - Judge: `deepseek-official/deepseek-v4-pro` (when `reviewRuntime: dsh`)
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate`
 - `~/.dsh/.credentials.yaml` must be a flat `KEY: "string"` map — a wrapped store (`version` / `refs` / `records`) or YAML integer fails `agent-check dsh` and `agent-loop run` before spawning the worker. Quoting `version` alone is not enough; the harness does not rewrite that file.
@@ -48,7 +48,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 `@cline/sdk` — `cline-pass` for subscription quota, `cline` for credits.
 
-- `cline-pass` worker: `cline-pass/deepseek-v4-flash` → `qwen3.7-plus`
+- `cline-pass` worker: `cline-pass/deepseek-v4.1-flash` → `qwen3.7-plus`
 - `cline` worker: `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus`
 - Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass --review-gate` (or `--runtime cline` for credits)
@@ -57,7 +57,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 `@opencode-ai/sdk` and `opencode` CLI — Go quota by default, or BYOK through OpenRouter, Vercel AI Gateway, Ollama, or another OpenAI-compatible router.
 
-- Go worker: `opencode-go/deepseek-v4-flash` → `qwen3.7-plus`
+- Go worker: `opencode-go/deepseek-v4.1-flash` → `qwen3.7-plus`
 - BYOK: `openrouter/…`, `openrouter/…:free`, `vercel/…`, `ollama/…`
 - Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode --review-gate`

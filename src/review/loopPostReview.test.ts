@@ -76,7 +76,7 @@ describe('loopPostReview', () => {
     expect(prompt).toContain('UNTRUSTED INPUT')
   })
 
-  it('defaults review judge to grok-4.6 when reviewModel omitted (cursor worker default)', async () => {
+  it('defaults review judge to grok-4.7 when reviewModel omitted (cursor worker default)', async () => {
     const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
     const ctx = {
       repoRoot: process.cwd(),
@@ -88,7 +88,7 @@ describe('loopPostReview', () => {
     expect(runReviewAgentPrompt).toHaveBeenCalledWith(
       ctx,
       expect.any(String),
-      { runtime: 'cursor', model: 'grok-4.6' },
+      { runtime: 'cursor', model: 'grok-4.7' },
       expect.objectContaining({ verbose: false }),
     )
   })
@@ -211,7 +211,7 @@ describe('loopPostReview', () => {
     expect(runReviewAgentPrompt).toHaveBeenCalledTimes(2)
     expect(runReviewAgentPrompt.mock.calls[1]![2]).toEqual({
       runtime: 'cursor',
-      model: 'grok-4.6',
+      model: 'grok-4.7',
     })
     expect(String(runReviewAgentPrompt.mock.calls[1]![1])).toContain('reproduce-before-report')
 

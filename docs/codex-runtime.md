@@ -59,8 +59,10 @@ agent-check codex
 | `escalateModel` | `gpt-5.6-terra` |
 | `reviewModel` (when `reviewRuntime: "codex"`) | `gpt-5.6-sol` |
 
+Setup also lists **`gpt-6-astra`** (most capable Codex slug). It is not the default judge — Sol stays the frontier coding judge, and Astra is several times the list price.
+
 Model ids are Codex CLI slugs (not `provider/model`). Override with any slug your Codex account accepts
-(see Codex `models.json` / `model/list`).
+(see `codex debug models`).
 
 ## Auth
 

@@ -50,15 +50,20 @@ export const CURSOR_WORKER_MODEL = CURSOR_LOOP_MODEL
  * Cursor SDK judge for post-loop / review-gate runs.
  * Confirm via `Cursor.models.list()` if your account uses a different id.
  */
-export const CURSOR_REVIEW_MODEL = 'grok-4.6' as const
+export const CURSOR_REVIEW_MODEL = 'grok-4.7' as const
 
-export const CURSOR_REVIEW_MODELS = [CURSOR_REVIEW_MODEL, 'grok-4.5', CURSOR_WORKER_MODEL] as const
+export const CURSOR_REVIEW_MODELS = [
+  CURSOR_REVIEW_MODEL,
+  'grok-4.6',
+  'grok-4.5',
+  CURSOR_WORKER_MODEL,
+] as const
 export type CursorReviewModel = (typeof CURSOR_REVIEW_MODELS)[number]
 export type CursorSdkModel = typeof CURSOR_WORKER_MODEL | CursorReviewModel
 
 export type ClinePassLoopModel = (typeof CLINE_PASS_LOOP_MODELS)[number]
 
-export const DEFAULT_CLINE_PASS_LOOP_MODEL: ClinePassLoopModel = 'cline-pass/deepseek-v4-flash'
+export const DEFAULT_CLINE_PASS_LOOP_MODEL: ClinePassLoopModel = 'cline-pass/deepseek-v4.1-flash'
 export const DEFAULT_CLINE_PASS_ESCALATE_MODEL: ClinePassLoopModel = 'cline-pass/qwen3.7-plus'
 
 /** Default OpenRouter-style id for Cline credits (usage-billing). https://docs.cline.bot/api/models */
@@ -71,9 +76,9 @@ const GO_CLINE_PASS_MODEL_ID_RE = /^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/
 
 export type OpencodeGoLoopModel = (typeof OPENCODE_GO_LOOP_MODELS)[number]
 
-export const DEFAULT_OPENCODE_GO_LOOP_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-flash'
+export const DEFAULT_OPENCODE_GO_LOOP_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4.1-flash'
 export const DEFAULT_OPENCODE_GO_ESCALATE_MODEL: OpencodeGoLoopModel = 'opencode-go/qwen3.7-plus'
-/** Default OpenCode judge — DeepSeek V4 Pro (not Flash; Grok on Go tracks models.dev, currently 4.6). */
+/** Default OpenCode judge — DeepSeek V4 Pro (not Flash; Grok on Go tracks models.dev, currently 4.7). */
 export const DEFAULT_OPENCODE_GO_REVIEW_MODEL: OpencodeGoLoopModel = 'opencode-go/deepseek-v4-pro'
 
 /**
@@ -96,14 +101,15 @@ export const DEFAULT_CODEX_LOOP_MODEL = 'gpt-5.6-luna'
 export const DEFAULT_CODEX_ESCALATE_MODEL = 'gpt-5.6-terra'
 /** Default Codex judge — Sol (frontier agentic coding). */
 export const DEFAULT_CODEX_REVIEW_MODEL = 'gpt-5.6-sol'
+/** Optional Codex model — most capable slug in the CLI catalog. Not the default judge. */
+export const CODEX_ASTRA_MODEL = 'gpt-6-astra'
 
-/** Default DSH worker — official DeepSeek Flash (headless `agent-default-model`). */
-export const DEFAULT_DSH_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash'
-/**
- * Current DeepSeek Flash — the DSH `deepseek-flash` row (`DeepSeek-V41-Flash`, image-capable by
- * default). Opt in per loop; the pinned `deepseek-v4-flash` stays the DSH worker default.
- */
-export const DSH_41_FLASH_LOOP_MODEL = 'deepseek-official/deepseek-flash'
+/** Previous DSH Flash. Still accepted; the worker default is 4.1. */
+export const DSH_V4_FLASH_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash'
+/** Default DSH worker — official DeepSeek 4.1 Flash (`DeepSeek-V41-Flash`, image-capable). */
+export const DEFAULT_DSH_LOOP_MODEL = 'deepseek-official/deepseek-flash'
+/** Alias of the DSH worker default. */
+export const DSH_41_FLASH_LOOP_MODEL = DEFAULT_DSH_LOOP_MODEL
 /** Experimental vision Flash. DSH `read_image` works once the catalog row sets `inputModalities: [text, image]`. */
 export const DSH_VISION_LOOP_MODEL = 'deepseek-official/deepseek-v4-flash-vision-exp'
 export const DEFAULT_DSH_ESCALATE_MODEL = 'deepseek-official/deepseek-v4-pro'

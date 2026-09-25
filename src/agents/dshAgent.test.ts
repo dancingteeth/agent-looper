@@ -39,7 +39,8 @@ describe('dshAgent', () => {
     expect(yaml).toContain('model: "deepseek-v4-flash-vision-exp"')
     expect(yaml).toContain('id: "deepseek-v4-flash-vision-exp"')
     expect(yaml).toContain('inputModalities: [text, image]')
-    expect(yaml).toContain('id: "deepseek-v4-flash"')
+    expect(yaml).toContain('id: "deepseek-flash"')
+    expect(yaml).toContain('name: "DeepSeek-V41-Flash"')
     expect(yaml).toContain('id: "deepseek-v4-pro"')
   })
 

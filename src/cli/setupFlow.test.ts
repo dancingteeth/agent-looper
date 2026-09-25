@@ -32,7 +32,7 @@ describe('collectSetupAnswers', () => {
     expect(answers.runtime).toBe('cursor')
     expect(answers.reviewRuntime).toBe('cursor')
     expect(answers.model).toBe('composer-2.5')
-    expect(answers.reviewModel).toBe('grok-4.6')
+    expect(answers.reviewModel).toBe('grok-4.7')
     expect(answers.verify).toBe('bash /tmp/my-task/verify.sh')
     expect(answers.maxIterations).toBe(8)
     expect(answers.notifyTelegram).toBe(true)

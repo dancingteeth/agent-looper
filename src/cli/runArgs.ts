@@ -72,7 +72,7 @@ ${printRepoRootHelp()}
 
 Cursor-only hackathon tip:
   --runtime cursor --review-gate
-  # worker = composer-2.5, judge = grok-4.6 (no Cline / 3rd-party)
+  # worker = composer-2.5, judge = grok-4.7 (no Cline / 3rd-party)
 
 Each iteration: fresh agent → shell verifier → append log.ndjson`
 }

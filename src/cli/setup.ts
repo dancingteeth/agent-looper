@@ -56,7 +56,7 @@ Cost preset: minmax (efficiency — cheap capable worker + strongest included
   Default is minmax.
 Worker runtimes: cursor | cline-pass | cline | opencode | pi | codex | dsh | muse | claude
 Judge (review): reviewRuntime (cursor | cline-pass | cline | opencode | pi | codex | dsh | muse | claude),
-  reviewModel (omit for runtime defaults: cursor grok-4.6 / composer-2.5, opencode
+  reviewModel (omit for runtime defaults: cursor grok-4.7 / composer-2.5, opencode
   opencode-go/deepseek-v4-pro, dsh deepseek-official/deepseek-v4-pro, codex gpt-5.6-sol,
   muse muse-spark-1.3, claude opus),
   reviewGate, maxReviewCycles, postQualityReview, reviewRisk,

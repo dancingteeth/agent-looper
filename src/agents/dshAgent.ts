@@ -88,6 +88,19 @@ function dshBareModelId(slug: string): string {
   return parseProviderModel(slug).modelID
 }
 
+function dshCatalogDisplayName(modelID: string): string {
+  switch (modelID) {
+    case 'deepseek-flash':
+      return 'DeepSeek-V41-Flash'
+    case 'deepseek-v4-flash':
+      return 'DeepSeek-V4-Flash'
+    case 'deepseek-v4-pro':
+      return 'DeepSeek-V4-Pro'
+    default:
+      return modelID
+  }
+}
+
 /**
  * Advisory `llm-deepseek.models` overlay. Arrays replace wholesale, so keep Flash/Pro
  * plus the selected vision id with `inputModalities: [text, image]`.
@@ -98,8 +111,8 @@ export function dshVisionCatalogPatchLines(modelID: string): string[] {
   const flash = dshBareModelId(DEFAULT_DSH_LOOP_MODEL)
   const pro = dshBareModelId(DEFAULT_DSH_ESCALATE_MODEL)
   const rows: Array<{ id: string; name: string; image: boolean }> = [
-    { id: flash, name: 'DeepSeek-V4-Flash', image: flash === modelID },
-    { id: pro, name: 'DeepSeek-V4-Pro', image: pro === modelID },
+    { id: flash, name: dshCatalogDisplayName(flash), image: flash === modelID },
+    { id: pro, name: dshCatalogDisplayName(pro), image: pro === modelID },
   ]
   if (!rows.some((row) => row.id === modelID)) {
     rows.push({ id: modelID, name: modelID, image: true })
