@@ -22,6 +22,12 @@ irrelevant blockers or declare itself done on vibes.
 | Reviewer | LLM judgment | scoped to the structural/architectural residual specs can't capture. |
 | Human | closure authority | HITL sign-off for subjective or high-stakes decisions. |
 
+Optional **typed decision layer** (System One / Jev — proposed): sits beside the
+generative reviewer, never replaces it. After green verify, a cheap decisions API
+answers fixed-schema questions (`noul` / `choice` / `score`) over fenced state;
+it does not write `review.md` or scaffold GOAL/verify. See pattern 9 and
+[`system-one-review.md`](./system-one-review.md).
+
 Key warning (Specification as Quality Gate, 2026): an LLM reviewing
 LLM-generated code is **circular** without an external reference — both share a
 training distribution and echo each other's errors. So `verify` is the real gate;
@@ -109,6 +115,34 @@ separate cross-loop reviewer design, validated. Their taxonomy also reminds us:
 **start simple, use patterns selectively** — `reviewGate` off is the right path for
 trivial tasks; the full gating stack is for high-stakes work.
 
+### 9. Typed decision layer (System One / Jev) beside generative review
+LangChain and TypeSafe have experimented with **Jev** as a judge: same rubric,
+typed outputs, and probability scores instead of free-form critique — useful for
+**consistency and cost** on repeatable residual checks. Agent Looper maps that to
+an optional layer **after verify**, not a new `reviewRuntime`:
+
+1. **Verifier** — unchanged hard gate.
+2. **Generative reviewer** — `reviewRuntime` / `reviewModel` (and optional
+   `reviewSecondaryRuntime`) still produce `review.md`, Guide packets, and
+   impact-severity blockers; `agent-loop-prompt` still uses this judge to *write*
+   GOAL + verify.
+3. **System One** — one OpenRouter decisions call (`typesafe/jev-1.13` or
+   `~typesafe/jev-latest`) with harness-fixed questions derived from REVIEWS
+   residual defaults (e.g. noul `does_pass`, score `residual_quality`, choice
+   `blocker_class`).
+
+Jev does **not** generate text. Wiring it as a chat judge would break scaffold
+and `reviewGate` prose contracts. Instead, `systemOne.gate` controls grind impact:
+`advisory` surfaces typed answers in `run-report.md` (fail open on API errors);
+`block` may reopen the loop on explicit thresholds (fail closed on API/parse
+errors). Typed layer may run parallel to or after generative review; it never
+replaces verify or human closure (`reviewGateHitl`).
+
+Maps to us: complements M3 multi-family **generative** secondary judge — secondary
+still merges markdown blockers; System One adds a calibrated sensor for ops
+metrics and optional cheap gating. Not on `costPreset` minmax. Detail:
+[`system-one-review.md`](./system-one-review.md); roadmap M11.
+
 ## The meta-loop (your "10 loops' diffs → review")
 
 Scaling to a software factory is **not** bolting more gating onto every loop. It is
@@ -132,10 +166,9 @@ blueprint for building it.
   the right line, (c) did it hallucinate a blocker. That's how the 75% false-blocker
   inflation was discovered — and the only way to know if `reviewGate` helps or
   thrashes.
-- **Highest-ROI next step:** add an **impact-severity contract** to blockers in
-  `reviewVerdict` (gate only on `error`-with-impact; downgrade the rest to advisory).
-  It is the single change the 2026 data says most directly stops the irrelevant-
-  blocker fix-loop. Full build order, acceptance criteria, and Taskwarrior mapping:
+- **Highest-ROI next step (shipped M1):** impact-severity contract in
+  `reviewVerdict`. Next optional sensor: typed System One layer (roadmap M11) —
+  not a substitute for generative `reviewGate`. Full build order:
   [`loop-review-roadmap.md`](./loop-review-roadmap.md).
 - **Encode misses as system improvements:** when a loop result doesn't meet
   standard, label a diverse sample of `.cursor/loop-exports/` first, then turn a

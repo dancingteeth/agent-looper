@@ -12,8 +12,12 @@ Concrete implementation plan for the upgrades called out in
 [`loop-review-patterns.md`](./loop-review-patterns.md). Principles stay fixed:
 
 1. **Verifier** is the hard gate (`verify` / `finalVerify`).
-2. **Reviewer** is gated judgment on top (never replaces verify).
+2. **Reviewer** is gated judgment on top (never replaces verify) — generative
+   `reviewRuntime` / `reviewModel` (+ optional `reviewSecondaryRuntime`).
 3. **Human** remains closure authority for residual / high-stakes calls (`reviewGateHitl`).
+
+Optional **typed decision layer** (`systemOne` / Jev) is documented as M11; it is
+not a fourth principle and not a `reviewRuntime` substitute.
 
 Research context and citations live in the patterns doc. This file is the
 **build order, acceptance criteria, and file touch list**.
@@ -52,6 +56,7 @@ Open Taskwarrior project for **Agent Looper** (slug **`agent-loop`**). Use **UUI
 | M3 | `adf66bf8-d52a-43e2-8009-756649cc32b2` | Multi-family secondary judge (shipped) |
 | M4 | `fe3f4076-b997-4d28-a59a-baf720c28e5d` | Verification-as-skill |
 | M5 | `06dec3c5-b35d-4e8a-bb95-c0f2a9ae4f00` | Cross-loop meta-review CLI |
+| M11 (proposed) | *(no UUID yet)* | System One / Jev typed review layer |
 
 Other Agent Looper backlog: `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` (extract review-gate) — **done**,
 `de4144f2-9e6a-4cf6-8943-81efc49d4c5c` (loopRisk profiles) — **shipped**,
@@ -69,6 +74,7 @@ Other Agent Looper backlog: `17bfc1cd-bf5d-43a7-9b8b-9bf7658aaa07` (extract revi
 | 3 | Multi-provider / multi-family review | Medium–high (bias reduction) | L | #1 useful first |
 | 4 | Verification-as-skill | High for quality, orthogonal | M | — |
 | 5 | Cross-loop meta-reviewer | Factory scale | L | #1–2 data shape helps |
+| 6 | System One / Jev typed layer | Medium (cost + consistency sensor) | M | Orthogonal to #1–3; needs generative review contract stable |
 
 Pilot rule (from patterns): tune `maxReviewCycles` / `unparseableReviewRetries` on a
 handful of real loops before locking defaults for #1–3.
@@ -342,6 +348,99 @@ much better; not a hard code dependency.
 
 ---
 
+## 6. System One / Jev typed review layer
+
+### Status
+
+**Proposed** — design + docs only; no harness implementation on the M11 doc PR.
+Taskwarrior UUID pending.
+
+### Problem
+
+Generative judges are the right tool for `review.md`, Guide packets, and
+`agent-loop-prompt` scaffold prose, but they are expensive and noisy for
+**repeatable residual rubrics** (pass/fail, quality score, blocker class). Typed
+decision models (TypeSafe Jev via OpenRouter System One) answer fixed questions
+with probabilities — useful as a **sensor**, not as a replacement for verify or
+markdown review.
+
+### Design
+
+**Not** `reviewRuntime`. Separate `loop.json` block:
+
+```json
+{
+  "reviewGate": true,
+  "reviewRuntime": "cursor",
+  "reviewModel": "grok-4.6-high",
+  "systemOne": {
+    "enabled": true,
+    "provider": "openrouter",
+    "model": "typesafe/jev-1.13",
+    "gate": "advisory"
+  }
+}
+```
+
+| `systemOne.gate` | Behavior |
+| --- | --- |
+| `off` | Disabled (default when block omitted). |
+| `advisory` | Log + `run-report.md`; API/parse errors **fail open**; do not reopen worker on typed alone unless product adds explicit thresholds. |
+| `block` | Configured thresholds may reopen fix loop; API/parse errors **fail closed** (same seriousness as `reviewGate` infrastructure failures). |
+
+**API:** OpenRouter `POST …/api/alpha/decisions` with `model`, `state`, `questions`
+— not chat completions. Models: `typesafe/jev-1.13`, alias `~typesafe/jev-latest`.
+
+**State:** fenced bundle (GOAL excerpt, diff summary, `REVIEWS.md`, optional
+truncated `review.md`).
+
+**Questions:** harness-fixed schema from residual defaults — examples: noul
+`does_pass`, score `residual_quality`, choice `blocker_class`. One call per
+review cycle after green verify.
+
+**Ordering:** after verify green; may run parallel to or after generative primary/
+secondary review. Shipped `reviewSecondaryRuntime` stays generative (markdown
+merge); System One does not author `review.md`.
+
+**Auth:** existing `OPENROUTER_API_KEY` BYOK path ([`opencode-providers.md`](./opencode-providers.md)).
+
+Full API notes: [`system-one-review.md`](./system-one-review.md). Pattern motivation:
+[`loop-review-patterns.md`](./loop-review-patterns.md) §9.
+
+### Implementation sketch
+
+| Area | Work |
+| --- | --- |
+| `loopConfig.ts` | `systemOne` zod object; default disabled |
+| `loopPostReview.ts` | Invoke decisions client after verify; respect `gate` |
+| New `src/review/systemOne*.ts` | OpenRouter decisions client, question templates, threshold eval |
+| `run-report.md` | Advisory fields + block reasons |
+| `failure-domains.ndjson` | Optional `system_one_*` reasons |
+| Catalog follow-up | Separate PR to `pnpm sync:models` when models.dev lists Jev |
+
+### Acceptance criteria
+
+- [ ] With `systemOne.enabled: false` (or unset), behavior identical to today.
+- [ ] Generative `reviewGate` + secondary merge unchanged when System One off.
+- [ ] `gate: advisory` never blocks completion on API/parse failure.
+- [ ] `gate: block` fails closed on API/parse failure.
+- [ ] No code path treats Jev as `reviewRuntime` or `agent-loop-prompt` judge.
+- [ ] Docs + dogfood loop example; model ids exactly `typesafe/jev-1.13` /
+      `~typesafe/jev-latest`.
+
+### Non-goals
+
+- `costPreset` minmax inclusion.
+- Scaffold or `review.md` authorship.
+- Chat-slug `reviewModel` for Jev.
+- Replacing impact-severity or reproduce-before-report.
+
+### Depends on
+
+Soft: stable generative review pipeline (#1–3 shipped). Hard: none.
+
+---
+
 ## Validation experiment (shared)
 
 Before declaring #1–3 “done”, run a small offline experiment (patterns doc):
@@ -370,6 +469,7 @@ PR that lands #1.
 | **M8** | Batch rubrics / Auto model (optional) | **Shipped** — batch `{path,rubric}`; computer-use templates; Auto **blocked** pending SDK (`docs/cursor-auto-router.md`) |
 | **M9** | Linear Loops governance steals | **Shipped (docs/templates)** — prove→freeze, draft discipline, run-report as audit surface, `LOOP.permissions.example.md`, tool default-deny. No harness publish-snapshot yet |
 | **M10** | Lunar graph scoreboard | **0.4.5** — docs (edge sentences + GOAL/preflight spec fields) + `run-report.md` report card (phase time, kill rate, retries, HITL, writer vs referee $). Hung-worker escalate + `check-running-loops` skill ship in the same patch |
+| **M11** | System One / Jev typed layer | **Proposed** — optional `systemOne` config; decisions API; advisory vs block gates; not `reviewRuntime` |
 | **0.5.0** | Prompt TUI, Claude runtime, spend honesty, embed | **Shipped** — `agent-loop-prompt`; `runtime: claude`; list vs billed (+ cache); `docs/embed-api.md` + `SECURITY.md`; OpenRouter `:free`; Muse Spark 1.3 default |
 
 ### M6–M8 context (2026-07 competitive session)
@@ -401,6 +501,7 @@ hung-worker escalate and the `check-running-loops` skill. Details in backlog **P
 ## Non-goals
 
 - Replacing `verify` with LLM self-assessment.
+- Wiring Jev / System One as `reviewRuntime` or chat `reviewModel` (see M11).
 - Auto-merging or auto-closing work without human policy when HITL is configured.
 - Enabling full gate stack by default on trivial loops (`reviewGate` stays opt-in).
 - Climbing to a GitHub/Linear/Slack “software factory” product (stay the harness factories compose).
