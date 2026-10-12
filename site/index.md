@@ -50,7 +50,7 @@ When the check fails because something on your machine is missing or broken — 
 
 ## What do the spend numbers mean?
 
-Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`. OpenCode Go and Cline Pass model lists and list prices come from [models.dev](https://models.dev/api.json) — sync picks up Grok 4.7, GPT-6 Luna, MiMo V2.6 Flash/Pro, and Space Bunny Free; unknown but well-formed slugs soft-gate — warn at loop start, show `$0` until priced. Budget caps still reject unpriced worker or escalate models.
+Watch and the report card show two numbers when they differ: **list** (public API rates, including prompt-cache) and **billed** (what the runtime invoice says). `$0` on a subscription quota is billed `$0`, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is `$0`. OpenCode Go and Cline Pass model lists and list prices come from [models.dev](https://models.dev/api.json) — sync picks up Claude Haiku 5.5, Space Bunny, and the hosted-$0 LongCat 2.5 / Step 5 previews; unknown but well-formed slugs soft-gate — warn at loop start, show `$0` until priced. Budget caps still reject unpriced worker or escalate models.
 
 ## How do I harden verify between runs?
 
@@ -135,7 +135,7 @@ This tool is free. We keep building it when the community actually uses it and t
 - [llms.txt](https://looper.dancingteeth.net/llms.txt)
 - [Harnesses](https://looper.dancingteeth.net/harnesses/)
 - [Developer resources](https://looper.dancingteeth.net/docs/)
-- [Changelog (0.7.0)](https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md)
+- [Changelog (0.7.1)](https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md)
 - [Embed API](https://github.com/dancingteeth/agent-looper/blob/main/docs/embed-api.md)
 - [Security](https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md)
 - [GitHub](https://github.com/dancingteeth/agent-looper)

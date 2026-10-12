@@ -74,7 +74,7 @@ minmax is **not** cheapest-cheapest: never Composer-as-judge while Grok is in th
 | **Worker** | OpenCode Go, OpenCode OpenRouter or Vercel AI Gateway, ClinePass Flash-class, or Pi | Escalate on stagnation only |
 | **Verify** | Your `verify.sh` | Hard gate; exit `0` |
 | **Judge** | Cursor (default), or same runtime as worker via `reviewRuntime` | `postQualityReview: "auto"` + `reviewGate` so nits don’t thrash |
-| **Escalate worker** | `qwen3.7-plus` / `qwen3-coder-plus` / DeepSeek Pro tier | Not frontier Opus/GPT as default worker; skip Gemini |
+| **Escalate worker** | `qwen3.7-plus` / `qwen3-coder-plus` (Cline) · `qwen3-coder-next` (OpenRouter) / DeepSeek Pro tier | Not frontier Opus/GPT as default worker; skip Gemini |
 
 Use Cursor worker when you want one bill and IDE-native dogfood; use another `runtime` when implement tokens should stay off Cursor quota.
 

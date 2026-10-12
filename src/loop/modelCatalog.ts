@@ -94,7 +94,8 @@ export const OPENROUTER_FREE_LOOP_MODELS = [
 
 /** Default Pi worker — OpenRouter DeepSeek (same shape as Cline credits). */
 export const DEFAULT_PI_LOOP_MODEL = 'openrouter/deepseek/deepseek-chat'
-export const DEFAULT_PI_ESCALATE_MODEL = 'openrouter/qwen/qwen3-coder-plus'
+/** Mid-tier escalate — OpenRouter dropped `qwen/qwen3-coder-plus`; coder-next is its successor tier. */
+export const DEFAULT_PI_ESCALATE_MODEL = 'openrouter/qwen/qwen3-coder-next'
 
 /** Default Codex worker — Luna (cheap); escalate to Terra (balanced). Catalog: openai/codex models.json */
 export const DEFAULT_CODEX_LOOP_MODEL = 'gpt-5.6-luna'
@@ -129,9 +130,13 @@ export const MUSE_SPARK_1_1_MODEL = 'muse-spark-1.1'
 /** Default Claude Code worker — latest Sonnet alias. */
 export const DEFAULT_CLAUDE_LOOP_MODEL = 'sonnet'
 export const DEFAULT_CLAUDE_ESCALATE_MODEL = 'opus'
+export const CLAUDE_SONNET_MODEL = 'sonnet'
 /** Default Claude judge — Opus (stronger than Sonnet worker). Menu also lists `fable`. */
 export const DEFAULT_CLAUDE_REVIEW_MODEL = 'opus'
 export const CLAUDE_HAIKU_MODEL = 'haiku'
+/** What the `haiku` / `sonnet` aliases still resolve to on Bedrock / Vertex (the Anthropic API moved to 5.5). */
+export const CLAUDE_HAIKU_4_5_MODEL = 'claude-haiku-4-5'
+export const CLAUDE_SONNET_4_5_MODEL = 'claude-sonnet-4-5'
 export const CLAUDE_FABLE_MODEL = 'fable'
 
 /** Codex CLI model slug (not provider/model). */

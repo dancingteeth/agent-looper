@@ -1,4 +1,10 @@
 import { GENERATED_MODEL_PRICING } from './modelPricing.generated.js'
+import {
+  CLAUDE_HAIKU_MODEL,
+  CLAUDE_HAIKU_4_5_MODEL,
+  CLAUDE_SONNET_MODEL,
+  CLAUDE_SONNET_4_5_MODEL,
+} from '../loop/modelCatalog.js'
 
 export type AgentRunPhase = 'implement' | 'review' | 'verify'
 
@@ -74,34 +80,40 @@ const HAND_MAINTAINED_PRICING: Record<string, ModelTokenRates> = {
   'grok-4.7': { input: 2.0, output: 6.0, cacheRead: 0.5 },
   'grok-4.6': { input: 2.0, output: 6.0 },
   'grok-4.5': { input: 2.0, output: 6.0 },
-  'deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
-  'openrouter/deepseek/deepseek-chat': { input: 0.14, output: 0.28 },
+  'deepseek/deepseek-chat': { input: 0.32, output: 0.89 },
+  'openrouter/deepseek/deepseek-chat': { input: 0.32, output: 0.89 },
   'qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
-  'openrouter/qwen/qwen3-coder-plus': { input: 0.2, output: 0.8 },
-  // Codex — estimates for costUsd when provider cost is absent (Luna cheap / Terra mid)
-  'gpt-5.6-luna': { input: 0.25, output: 2.0 },
-  'gpt-5.6-terra': { input: 1.25, output: 10.0 },
-  'gpt-5.6-sol': { input: 2.5, output: 15.0 },
-  'gpt-6-astra': { input: 10.0, output: 50.0 },
+  'openrouter/qwen/qwen3-coder-next': { input: 0.12, output: 0.8, cacheRead: 0.07 },
+  // Codex — estimates for costUsd when provider cost is absent (Luna cheap / Terra mid); openai rows on models.dev
+  'gpt-5.6-luna': { input: 0.2, output: 1.2, cacheRead: 0.02, cacheWrite: 0.25 },
+  'gpt-5.6-terra': { input: 2.0, output: 12.0, cacheRead: 0.2, cacheWrite: 2.5 },
+  'gpt-5.6-sol': { input: 4.0, output: 20.0, cacheRead: 0.4, cacheWrite: 5.0 },
+  'gpt-6-astra': { input: 10.0, output: 50.0, cacheRead: 1.0, cacheWrite: 12.5 },
   // DSH official DeepSeek (headless agent-default-model)
-  // `deepseek-flash` is 4.1 (`DeepSeek-V41-Flash`) and the DSH worker default. DeepSeek lists it at V4 Flash rates.
-  'deepseek-official/deepseek-flash': { input: 0.14, output: 0.28 },
-  'deepseek-official/deepseek-v4-flash': { input: 0.14, output: 0.28 },
-  'deepseek-official/deepseek-v4-flash-vision-exp': { input: 0.14, output: 0.28 },
-  'deepseek-official/deepseek-v4-pro': { input: 0.435, output: 0.87 },
+  // `deepseek-flash` is 4.1 (`DeepSeek-V41-Flash`) and the DSH worker default; models.dev lists it at its own rates.
+  'deepseek-official/deepseek-flash': { input: 0.15, output: 0.6, cacheRead: 0.003 },
+  'deepseek-official/deepseek-v4-flash': { input: 0.15, output: 0.6, cacheRead: 0.003 },
+  'deepseek-official/deepseek-v4-flash-vision-exp': { input: 0.15, output: 0.6, cacheRead: 0.003 },
+  'deepseek-official/deepseek-v4-pro': { input: 0.66, output: 1.98, cacheRead: 0.022 },
   // Muse Spark — PAYG list price (contributor login uses the same estimate)
   'muse-spark-1.1': { input: 1.25, output: 4.25 },
   'muse-spark-1.2': { input: 1.25, output: 4.25 },
   'muse-spark-1.2-contributor': { input: 1.25, output: 4.25 },
   'muse-spark-1.3': { input: 1.25, output: 4.25 },
   'muse-spark-1.3-contributor': { input: 1.25, output: 4.25 },
-  // Claude Code aliases — list-price estimates for the CLI's latest_per_family
-  // (sonnet → claude-sonnet-5, opus → claude-opus-5, fable → claude-fable-5-1, haiku → claude-haiku-4-5).
+  // Claude Code aliases — list-price estimates for the CLI's baked alias map (2.1.296):
+  // firstParty: sonnet → claude-sonnet-5-5, opus → claude-opus-5-5, fable → claude-fable-5-1, haiku → claude-haiku-5-5.
   // Spawn prefers subscription quota (`total_cost_usd` when present). Cache rates are models.dev.
-  sonnet: { input: 2.0, output: 10.0, cacheRead: 0.2, cacheWrite: 2.5 },
-  opus: { input: 5.0, output: 25.0, cacheRead: 0.5, cacheWrite: 6.25 },
-  haiku: { input: 1.0, output: 5.0, cacheRead: 0.1, cacheWrite: 1.25 },
+  // Bedrock / Vertex still resolve `haiku` and `sonnet` to their 4.5 entries — estimateCostUsd
+  // swaps the keys when CLAUDE_CODE_USE_BEDROCK / CLAUDE_CODE_USE_VERTEX is set. Haiku 5.5 also
+  // has a models.dev >100k-context tier (0.5 / 2.5); like the generator, we price base rates only.
+  sonnet: { input: 2.0, output: 10.0, cacheRead: 0.1, cacheWrite: 2.5 },
+  opus: { input: 4.0, output: 20.0, cacheRead: 0.2, cacheWrite: 5.0 },
+  haiku: { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 },
   fable: { input: 10.0, output: 50.0, cacheRead: 0.25, cacheWrite: 12.5 },
+  // Pre-5.5 family rates — priced for the Bedrock / Vertex `haiku` / `sonnet` aliases.
+  [CLAUDE_HAIKU_4_5_MODEL]: { input: 1.0, output: 5.0, cacheRead: 0.1, cacheWrite: 1.25 },
+  [CLAUDE_SONNET_4_5_MODEL]: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 3.75 },
 }
 
 /** Official API rates (USD per 1M tokens). Go/ClinePass from models.dev via modelPricingDrift.test.ts */
@@ -114,6 +126,27 @@ export function isPricedLoopModel(model: string): boolean {
   return MODEL_PRICING_PER_MILLION[model] !== undefined
 }
 
+/**
+ * Claude Code resolves the bare family aliases per endpoint (its baked catalog): on the
+ * Anthropic API they are the latest of each family (Haiku 5.5, Sonnet 5.5, Opus 5.5,
+ * Fable 5.1); on Bedrock / Vertex, `haiku` and `sonnet` still resolve to 4.5. The spawned
+ * CLI inherits the parent env, so the endpoint switches are visible to pricing (both the
+ * recorded estimate and the next-call budget prediction read this).
+ */
+function claudeCodeOnBedrockOrVertex(): boolean {
+  const enabled = (value: string | undefined): boolean =>
+    value === '1' || value?.toLowerCase() === 'true'
+  return enabled(process.env.CLAUDE_CODE_USE_BEDROCK) || enabled(process.env.CLAUDE_CODE_USE_VERTEX)
+}
+
+/** Pricing key for a model id — swaps the `haiku` / `sonnet` aliases when the CLI runs on Bedrock / Vertex. */
+export function resolvePricingModel(model: string): string {
+  if (!claudeCodeOnBedrockOrVertex()) return model
+  if (model === CLAUDE_HAIKU_MODEL) return CLAUDE_HAIKU_4_5_MODEL
+  if (model === CLAUDE_SONNET_MODEL) return CLAUDE_SONNET_4_5_MODEL
+  return model
+}
+
 const TOKENS_PER_MILLION = 1_000_000
 
 export function estimateCostUsd(
@@ -123,7 +156,7 @@ export function estimateCostUsd(
   cacheReadTokens = 0,
   cacheWriteTokens = 0,
 ): number | null {
-  const rates = MODEL_PRICING_PER_MILLION[model]
+  const rates = MODEL_PRICING_PER_MILLION[resolvePricingModel(model)]
   if (!rates) return null
   const cacheReadRate = rates.cacheRead ?? rates.input * DEFAULT_CACHE_READ_MULT
   const cacheWriteRate = rates.cacheWrite ?? rates.input * DEFAULT_CACHE_WRITE_MULT

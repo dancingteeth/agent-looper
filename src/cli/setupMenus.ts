@@ -336,8 +336,6 @@ const MODEL_BLURBS: Record<string, string> = {
     'GPT-6 Luna — cheaper than GPT-5.6 Luna on OpenCode Go. Not the Codex worker default.',
   'gpt-6-astra':
     'GPT-6 Astra — most capable Codex model. Opt in; the default Codex judge stays Sol.',
-  'space-bunny-free':
-    'Space Bunny Free — $0 OpenCode Go slug. Not minmax.',
   'muse-spark-1.3-contributor':
     'Muse Spark 1.3 contributor — same model as PAYG. Discounted CLI login; content may train. Default Muse worker.',
   'muse-spark-1.3':
@@ -349,21 +347,31 @@ const MODEL_BLURBS: Record<string, string> = {
   'muse-spark-1.1':
     'Muse Spark 1.1 — earlier Spark slug. Same adapter; prefer 1.3 unless you still have quota here.',
   sonnet:
-    'Claude Sonnet — alias for the latest Sonnet (Claude Code: Sonnet 5). Default Claude worker; burns Max/Pro quota.',
+    'Claude Sonnet — alias for the latest Sonnet (Anthropic API: Sonnet 5.5; Bedrock/Vertex: 4.5). Default Claude worker; burns Max/Pro quota.',
   opus:
-    'Claude Opus — alias for the latest Opus (Claude Code: Opus 5). Default Claude judge and escalate.',
+    'Claude Opus — alias for the latest Opus (Claude Code: Opus 5.5). Default Claude judge and escalate.',
   haiku:
-    'Claude Haiku — alias for the latest Haiku (Claude Code: Haiku 4.5). Narrow fixes; weaker than Sonnet.',
+    'Claude Haiku — alias for the latest Haiku (Anthropic API: Haiku 5.5; Bedrock/Vertex: 4.5). Narrow fixes; weaker than Sonnet.',
   fable:
     'Claude Fable — alias for the latest Fable (Claude Code: Fable 5.1). Long-horizon judge. Same Max/Pro pool.',
   'deepseek-chat':
     'DeepSeek Chat — cheap OpenRouter-style worker. Not a Cline Pass slug.',
   'qwen3-coder-plus':
-    'Qwen3 Coder Plus — usual escalate when Chat stalls.',
+    'Qwen3 Coder Plus — Cline credits escalate when Chat stalls.',
+  'qwen3-coder-next':
+    'Qwen3 Coder Next — OpenRouter escalate when Chat stalls (coder-plus was delisted).',
   'minimax-m3:free':
     'MiniMax M3 on OpenRouter :free — hosted $0 OpenCode worker. Needs OPENROUTER_API_KEY. Not minmax; may train on prompts.',
   'laguna-s-2.1:free':
     'Poolside Laguna S 2.1 on OpenRouter :free — hosted $0 OpenCode judge and escalate. Weaker residual than Grok. Skip NVIDIA :free.',
+  'claude-haiku-5-5':
+    'Claude Haiku 5.5 on OpenCode Go — cheap narrow fixes without a Claude Code login.',
+  'space-bunny':
+    'Space Bunny — replaced the $0 space-bunny-free slug (now delisted). Paid; not minmax.',
+  'longcat-2.5-preview-free':
+    'LongCat 2.5 preview on OpenCode Go :free — hosted $0. Not minmax; preview quality.',
+  'step-5-preview-free':
+    'Step 5 preview on OpenCode Go :free — hosted $0. Not minmax; preview quality.',
 }
 
 export function modelChoiceDescription(slug: string): string {
@@ -399,7 +407,7 @@ const WORKER_MENU: Record<LoopRuntime, { slugs: readonly string[]; custom?: stri
   },
   [LOOP_RUNTIME_PI]: {
     slugs: [DEFAULT_PI_LOOP_MODEL, DEFAULT_PI_ESCALATE_MODEL],
-    custom: 'openrouter/qwen/qwen3-coder-plus',
+    custom: 'openrouter/qwen/qwen3-coder-next',
   },
   [LOOP_RUNTIME_CODEX]: {
     slugs: [

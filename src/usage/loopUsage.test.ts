@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   costSourceMix,
   createUsageRecord,
@@ -8,6 +8,7 @@ import {
   lastPhaseCostUsd,
   mergeUsageSummaries,
   nextCallFitsBudget,
+  resolvePricingModel,
   summarizeUsageRecords,
 } from './loopUsage.js'
 
@@ -19,7 +20,7 @@ describe('loopUsage', () => {
 
   it('estimates DSH 4.1 Flash cost from official rates', () => {
     const cost = estimateCostUsd('deepseek-official/deepseek-flash', 1_000_000, 500_000)
-    expect(cost).toBeCloseTo(0.14 + 0.14, 5)
+    expect(cost).toBeCloseTo(0.15 + 0.3, 5)
   })
 
   it('estimates OpenCode Go Hy3 cost from Go list rates', () => {
@@ -175,7 +176,7 @@ describe('loopUsage', () => {
     const uncachedList = estimateCostUsd('sonnet', 30, 14_978)
     const withCache = estimateCostUsd('sonnet', 30, 14_978, 794_133, 50_504)
     expect(uncachedList).toBeCloseTo(0.14984, 5)
-    expect(withCache).toBeCloseTo(0.43493, 4)
+    expect(withCache).toBeCloseTo(0.35551, 4)
 
     const record = createUsageRecord({
       phase: 'implement',
@@ -187,7 +188,7 @@ describe('loopUsage', () => {
       cacheWriteTokens: 50_504,
       providerCostUsd: 0.3,
     })
-    expect(record.listCostUsd).toBeCloseTo(0.43493, 4)
+    expect(record.listCostUsd).toBeCloseTo(0.35551, 4)
     expect(record.billedCostUsd).toBe(0.3)
     expect(record.listCostUsd!).toBeGreaterThan(record.billedCostUsd!)
   })
@@ -304,5 +305,102 @@ describe('loopUsage', () => {
     ])
     expect(lastPhaseCostUsd(summary, 'implement')).toBe(0.24)
     expect(lastPhaseCostUsd(summary, 'review')).toBeUndefined()
+  })
+})
+
+describe('haiku alias pricing per endpoint', () => {
+  const ENDPOINT_ENV_KEYS = ['CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX'] as const
+
+  beforeEach(() => {
+    for (const key of ENDPOINT_ENV_KEYS) delete process.env[key]
+  })
+  afterEach(() => {
+    for (const key of ENDPOINT_ENV_KEYS) delete process.env[key]
+  })
+
+  it('prices the haiku alias at Haiku 5.5 rates on the Anthropic API', () => {
+    expect(resolvePricingModel('haiku')).toBe('haiku')
+    expect(estimateCostUsd('haiku', 1_000_000, 1_000_000)).toBeCloseTo(0.1 + 0.5, 5)
+    expect(estimateCostUsd('haiku', 30, 14_978, 794_133, 50_504)).toBeCloseTo(
+      (30 / 1_000_000) * 0.1 +
+        (14_978 / 1_000_000) * 0.5 +
+        (794_133 / 1_000_000) * 0.01 +
+        (50_504 / 1_000_000) * 0.125,
+      5,
+    )
+  })
+
+  it('keeps the haiku alias at Haiku 4.5 rates on Bedrock / Vertex', () => {
+    process.env.CLAUDE_CODE_USE_BEDROCK = '1'
+    expect(resolvePricingModel('haiku')).toBe('claude-haiku-4-5')
+    expect(estimateCostUsd('haiku', 1_000_000, 1_000_000)).toBeCloseTo(1 + 5, 5)
+
+    process.env.CLAUDE_CODE_USE_BEDROCK = '0'
+    expect(resolvePricingModel('haiku')).toBe('haiku')
+
+    process.env.CLAUDE_CODE_USE_VERTEX = 'true'
+    expect(resolvePricingModel('haiku')).toBe('claude-haiku-4-5')
+    expect(estimateCostUsd('haiku', 1_000_000, 1_000_000)).toBeCloseTo(1 + 5, 5)
+  })
+
+  it('prices the sonnet alias at Sonnet 5.5 on the Anthropic API and 4.5 on Bedrock / Vertex', () => {
+    expect(resolvePricingModel('sonnet')).toBe('sonnet')
+    expect(estimateCostUsd('sonnet', 1_000_000, 0)).toBeCloseTo(2.0, 5)
+    process.env.CLAUDE_CODE_USE_VERTEX = '1'
+    expect(resolvePricingModel('sonnet')).toBe('claude-sonnet-4-5')
+    expect(estimateCostUsd('sonnet', 1_000_000, 0)).toBeCloseTo(3.0, 5)
+  })
+
+  it('prices the opus alias at Opus 5.5 on every endpoint', () => {
+    expect(estimateCostUsd('opus', 1_000_000, 1_000_000)).toBeCloseTo(4 + 20, 5)
+    process.env.CLAUDE_CODE_USE_BEDROCK = '1'
+    expect(resolvePricingModel('opus')).toBe('opus')
+    expect(estimateCostUsd('opus', 1_000_000, 1_000_000)).toBeCloseTo(4 + 20, 5)
+  })
+
+  it('leaves other models and the pinned claude-haiku-4-5 id untouched', () => {
+    expect(resolvePricingModel('sonnet')).toBe('sonnet')
+    expect(resolvePricingModel('claude-haiku-4-5')).toBe('claude-haiku-4-5')
+    expect(estimateCostUsd('claude-haiku-4-5', 1_000_000, 0)).toBeCloseTo(1.0, 5)
+    process.env.CLAUDE_CODE_USE_VERTEX = '1'
+    expect(estimateCostUsd('claude-haiku-4-5', 1_000_000, 0)).toBeCloseTo(1.0, 5)
+  })
+
+  it('estimates claude-runtime haiku records at 5.5 list instead of 10x high', () => {
+    const record = createUsageRecord({
+      phase: 'implement',
+      runtime: 'claude',
+      model: 'haiku',
+      inputTokens: 100_000,
+      outputTokens: 5_000,
+      providerCostUsd: 0,
+    })
+    expect(record.costSource).toBe('estimated')
+    expect(record.costUsd).toBeCloseTo(0.01 + 0.0025, 6)
+  })
+
+  it('stops parking small haiku caps 10x early on the Anthropic API', () => {
+    // 40k chars → 10k input tokens: ~$0.02024 at 4.5 rates, ~$0.002024 at 5.5 rates.
+    const fit = nextCallFitsBudget({
+      maxCostUsd: 0.01,
+      spentUsd: 0,
+      model: 'haiku',
+      promptChars: 40_000,
+    })
+    expect(fit.ok).toBe(true)
+  })
+
+  it('still parks a small haiku cap at 4.5 rates on Bedrock / Vertex', () => {
+    process.env.CLAUDE_CODE_USE_BEDROCK = '1'
+    const fit = nextCallFitsBudget({
+      maxCostUsd: 0.01,
+      spentUsd: 0,
+      model: 'haiku',
+      promptChars: 40_000,
+    })
+    expect(fit.ok).toBe(false)
+    if (!fit.ok) {
+      expect(fit.predictedUsd).toBeCloseTo(0.02024, 4)
+    }
   })
 })

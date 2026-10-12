@@ -60,7 +60,7 @@ The loop does not depend on you having run that check: `runtime: claude` re-prob
 | `escalateModel` | `opus` |
 | `reviewModel` (when `reviewRuntime: "claude"`) | `opus` |
 
-Setup also lists **`fable`** (hard-project / long-horizon judge) and **`haiku`**. Full `claude-…` ids your account accepts are valid in `loop.json`. Aliases follow Claude Code’s latest-per-family map (`sonnet`, `opus`, `haiku`, `fable`). On Claude Code 2.1.273 that is Sonnet 5, Opus 5, Haiku 4.5, and Fable 5.1. Opus 5.5 is on the Cursor SDK catalog; this runtime follows the `claude` CLI, which does not list it yet.
+Setup also lists **`fable`** (hard-project / long-horizon judge) and **`haiku`**. Full `claude-…` ids your account accepts are valid in `loop.json`. Aliases follow Claude Code’s per-endpoint alias map (`sonnet`, `opus`, `haiku`, `fable`). On the Anthropic API that is currently Sonnet 5.5, Opus 5.5, Haiku 5.5, and Fable 5.1; on Bedrock / Vertex, `haiku` and `sonnet` still resolve to their 4.5 entries, and usage estimates price each endpoint accordingly. Opus 5.5 is on the Cursor SDK catalog too; this runtime follows the `claude` CLI.
 
 ## Auth
 

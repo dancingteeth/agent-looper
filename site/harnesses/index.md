@@ -66,7 +66,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 `@earendil-works/pi-coding-agent` — OpenRouter by default, or another OpenAI-compatible router you configure.
 
-- Worker: `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus`
+- Worker: `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-next`
 - Judge: any runtime, optional
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-gate`
 

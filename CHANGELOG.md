@@ -12,6 +12,19 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.7.1 — 2026-10-12
+
+Claude alias pricing tracks the CLI's per-endpoint alias map (Haiku 5.5 / Sonnet 5.5 / Opus 5.5 on the Anthropic API), DSH / Codex / OpenRouter list prices re-sync to models.dev, and the OpenCode Go catalog picks up the new rows.
+
+### Headline
+
+- **Claude alias pricing tracks the CLI per endpoint** — on the Anthropic API, `haiku` resolves to Haiku 5.5 ($0.10/$0.50), `sonnet` to Sonnet 5.5 (cache-read 0.1), and `opus` to Opus 5.5 ($4/$20). Estimates still priced the 4.5/5-era rates, so `maxCostUsd` could stop haiku loops ~10x early. On Bedrock / Vertex (`CLAUDE_CODE_USE_BEDROCK` / `CLAUDE_CODE_USE_VERTEX`), `haiku` and `sonnet` still resolve to 4.5, and estimates price them accordingly.
+- **OpenCode Go catalog re-sync (models.dev)** — Go adds `claude-haiku-5-5`, `space-bunny` (replaces the delisted `space-bunny-free`), and hosted-$0 `longcat-2.5-preview-free` / `step-5-preview-free`; drops delisted `glm-5.1`, `kimi-k2.6`, `qwen3.6-plus`, `qwen3.7-max` (`kimi-k2.6` stays on Cline Pass). Defaults unchanged — Flash 4.1 worker, `qwen3.7-plus` escalate, V4 Pro judge, minmax stays Hy3.
+- **DSH / Codex / OpenRouter list prices re-synced** — DSH `deepseek-flash` 0.15/0.6 and `deepseek-v4-pro` 0.66/1.98 (were 0.14/0.28 and 0.435/0.87); Codex Luna 0.2/1.2, Terra 2/12, Sol 4/20; OpenRouter `deepseek/deepseek-chat` 0.32/0.89 (was 0.14/0.28 — estimates ran ~2x low, so caps bit late).
+- **Pi escalate is `openrouter/qwen/qwen3-coder-next`** — OpenRouter delisted `qwen/qwen3-coder-plus`; coder-next is its successor tier. Cline-credits escalate keeps `qwen/qwen3-coder-plus`.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.1)
+
 ## 0.7.0 — 2026-09-25
 
 Cursor judge is Grok 4.7, DeepSeek Flash defaults are 4.1, and the Go / Cline Pass catalogs pick up the new models.dev rows.
