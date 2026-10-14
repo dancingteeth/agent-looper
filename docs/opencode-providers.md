@@ -24,6 +24,8 @@ Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "opencod
 
 Go slugs must appear in `OPENCODE_GO_LOOP_MODELS` (see [OpenCode Go docs](https://opencode.ai/docs/go/)). **Hy3** (`opencode-go/hy3`) is on that list — slower than Flash, large monthly quota. `costPreset: "minmax"` binds Hy3 as the Go worker (not Flash) plus a Grok judge when Cursor is installed.
 
+`EXCLUDED_MODEL_SLUGS` in `scripts/sync-model-catalog.mjs` is the escape hatch for slugs models.dev still publishes that Go does not offer (currently `opencode-go/kimi-k3`). Excluded slugs are dropped from the list **and** the pricing map, and the weekly sync cannot re-add them.
+
 ## BYOK and local models
 
 Any other OpenCode provider id is allowed in `provider/model` form, for example:

@@ -15,6 +15,19 @@ const DEFAULT_URL = 'https://models.dev/api.json'
 
 const ACTIVE_STATUSES = new Set(['active', 'stable'])
 
+/**
+ * Curated removals from the models.dev mirror: slugs upstream still publishes
+ * that the harness should not offer (plan gap, wrong provider, retired early).
+ * Keyed by full slug — Go and Cline Pass do not share ids. Excluded slugs are
+ * dropped from the catalog list *and* the pricing map, so nothing goes stale.
+ * Delete a row once upstream drops the model.
+ */
+export const EXCLUDED_MODEL_SLUGS = new Set([
+  // models.dev lists this under opencode-go, but OpenCode Go does not offer Kimi K3
+  // (Cline Pass still does — see CLINE_PASS_LOOP_MODELS).
+  'opencode-go/kimi-k3',
+])
+
 function isIncludedStatus(status) {
   if (status == null) return true
   if (typeof status !== 'string') return true
@@ -47,6 +60,7 @@ export function transformModelsDevApi(api) {
       const rates = mapCost(entry.cost)
       if (!rates) continue
       const slug = `opencode-go/${id}`
+      if (EXCLUDED_MODEL_SLUGS.has(slug)) continue
       goSlugs.push(slug)
       pricing[slug] = rates
     }
@@ -60,6 +74,7 @@ export function transformModelsDevApi(api) {
       const rates = mapCost(entry.cost)
       if (!rates) continue
       const slug = ensureClinePassSlug(key)
+      if (EXCLUDED_MODEL_SLUGS.has(slug)) continue
       clineSlugs.push(slug)
       pricing[slug] = rates
     }

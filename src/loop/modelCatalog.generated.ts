@@ -16,7 +16,6 @@ export const OPENCODE_GO_LOOP_MODELS = [
   'opencode-go/hy3',
   'opencode-go/hy4-preview',
   'opencode-go/kimi-k2.7-code',
-  'opencode-go/kimi-k3',
   'opencode-go/longcat-2.0',
   'opencode-go/longcat-2.5-preview-free',
   'opencode-go/mimo-v2.5',
