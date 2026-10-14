@@ -12,6 +12,18 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.7.3 — 2026-10-15
+
+The OpenCode Go catalog re-syncs to models.dev: the deprecated DeepSeek V4 Flash rows drop out, two new rows arrive, and `pnpm sync:models:check` goes green again.
+
+### Headline
+
+- **Go drops the deprecated Flash slugs** — models.dev now marks `opencode-go/deepseek-v4-flash` and `opencode-go/deepseek-v4-flash-vision-exp` as `deprecated`, so the sync leaves them out. Go slugs stay soft-gated by shape: a loop still pinned to either one keeps running, but the slug is unpriced (`$0` in the report) and budget caps reject it as an unpriced worker or escalate model. Move to `opencode-go/deepseek-v4.1-flash` (the default) or `opencode-go/deepseek-v4-pro`.
+- **Go adds `gemini-4-argon-contributor` and hosted-$0 `cat-jam-free`** — Gemini 4 Argon is contributor tier at $4/$20 with a 1M context; Cat Jam is text-only reasoning with tool calling at $0. Both show up in the setup wizard with prepared blurbs. Neither is a worker or judge default, and minmax still skips Gemini.
+- **`pnpm sync:models:check` is green** — it had reported drift since the last catalog commit (`cat-jam-free` / `gemini-4-argon-contributor` in, deprecated Flash slugs out).
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.3)
+
 ## 0.7.2 — 2026-10-14
 
 The OpenCode Go catalog stops offering Kimi K3, and the models.dev sync gains a curated exclusion list so the weekly re-sync cannot put the slug back.

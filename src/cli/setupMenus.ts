@@ -368,6 +368,10 @@ const MODEL_BLURBS: Record<string, string> = {
     'Claude Haiku 5.5 on OpenCode Go — cheap narrow fixes without a Claude Code login.',
   'space-bunny':
     'Space Bunny — replaced the $0 space-bunny-free slug (now delisted). Paid; not minmax.',
+  'cat-jam-free':
+    'Cat Jam on OpenCode Go :free — hosted $0, text-only reasoning with tool calling. Not minmax; free-tier throughput.',
+  'gemini-4-argon-contributor':
+    'Gemini 4 Argon contributor on OpenCode Go — 1M context Google flagship reasoning (deep SWE, long-horizon agents). Contributor tier; not a default worker — minmax skips Gemini.',
   'longcat-2.5-preview-free':
     'LongCat 2.5 preview on OpenCode Go :free — hosted $0. Not minmax; preview quality.',
   'step-5-preview-free':
