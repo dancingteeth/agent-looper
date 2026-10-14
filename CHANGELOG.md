@@ -12,6 +12,16 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.7.2 — 2026-10-14
+
+The OpenCode Go catalog stops offering Kimi K3, and the models.dev sync gains a curated exclusion list so the weekly re-sync cannot put the slug back.
+
+### Headline
+
+- **`opencode-go/kimi-k3` is off the Go catalog** — OpenCode Go does not offer Kimi K3, but models.dev still publishes it, so every `pnpm sync:models` run (and the weekly CI PR) would keep re-adding it. A new `EXCLUDED_MODEL_SLUGS` set in `scripts/sync-model-catalog.mjs` drops a slug from both the model list and the pricing map, so `agent-loop-doctor` sees no stale price row. Cline Pass keeps `cline-pass/kimi-k3`, and Go slugs stay soft-gated by shape — a loop already pinned to `opencode-go/kimi-k3` still runs, it is just no longer offered in the setup wizard.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.2)
+
 ## 0.7.1 — 2026-10-12
 
 Claude alias pricing tracks the CLI's per-endpoint alias map (Haiku 5.5 / Sonnet 5.5 / Opus 5.5 on the Anthropic API), DSH / Codex / OpenRouter list prices re-sync to models.dev, and the OpenCode Go catalog picks up the new rows.
