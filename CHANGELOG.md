@@ -12,6 +12,8 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+- **`opencode-go/kimi-k3` is back on the Go catalog** — the 0.7.2 exclusion was wrong: OpenCode Go does offer Kimi K3. The slug returns to `OPENCODE_GO_LOOP_MODELS` and the pricing map ($3/$15, cache-read $0.30), so the setup wizard offers it again and budget caps price it. `EXCLUDED_MODEL_SLUGS` stays as the escape hatch, now empty.
+
 ## 0.7.3 — 2026-10-15
 
 The OpenCode Go catalog re-syncs to models.dev: the deprecated DeepSeek V4 Flash rows drop out, two new rows arrive, and `pnpm sync:models:check` goes green again.

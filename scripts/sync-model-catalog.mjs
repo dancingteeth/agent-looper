@@ -23,9 +23,8 @@ const ACTIVE_STATUSES = new Set(['active', 'stable'])
  * Delete a row once upstream drops the model.
  */
 export const EXCLUDED_MODEL_SLUGS = new Set([
-  // models.dev lists this under opencode-go, but OpenCode Go does not offer Kimi K3
-  // (Cline Pass still does — see CLINE_PASS_LOOP_MODELS).
-  'opencode-go/kimi-k3',
+  // No curated removals right now — add a full slug here when models.dev
+  // publishes a row the harness should not offer.
 ])
 
 function isIncludedStatus(status) {

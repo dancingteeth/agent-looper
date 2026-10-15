@@ -172,11 +172,11 @@ describe('agent-loop-setup', () => {
     expect(modelChoiceDescription('deepseek-official/deepseek-flash')).toMatch(/4\.1 Flash/)
   })
 
-  it('offers Kimi K3 on Cline Pass, but not on OpenCode Go menus', () => {
+  it('offers Kimi K3 on both Cline Pass and OpenCode Go menus', () => {
     const pass = workerModelChoices('cline-pass').map((choice) => choice.value)
     const go = workerModelChoices('opencode').map((choice) => choice.value)
     expect(pass).toContain('cline-pass/kimi-k3')
-    expect(go).not.toContain('opencode-go/kimi-k3')
+    expect(go).toContain('opencode-go/kimi-k3')
     expect(go).toContain('opencode-go/hy3')
   })
 

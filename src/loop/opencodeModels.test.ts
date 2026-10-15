@@ -85,8 +85,8 @@ describe('OPENCODE_GO_LOOP_MODELS', () => {
     expect(OPENCODE_GO_LOOP_MODELS).toContain('opencode-go/qwen3.8-max')
   })
 
-  it('excludes curated removals that models.dev still lists on Go', () => {
-    expect(OPENCODE_GO_LOOP_MODELS).not.toContain('opencode-go/kimi-k3')
+  it('offers Kimi K3 on both Go and Cline Pass', () => {
+    expect(OPENCODE_GO_LOOP_MODELS).toContain('opencode-go/kimi-k3')
     expect(CLINE_PASS_LOOP_MODELS).toContain('cline-pass/kimi-k3')
   })
 })

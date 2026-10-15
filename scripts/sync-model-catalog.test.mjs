@@ -44,35 +44,6 @@ describe('transformModelsDevApi', () => {
   })
 })
 
-describe('EXCLUDED_MODEL_SLUGS', () => {
-  const excludeFixture = {
-    'opencode-go': {
-      models: {
-        'kimi-k3': { id: 'kimi-k3', status: null, cost: { input: 3, output: 15, cache_read: 0.3 } },
-        kept: { id: 'kept', status: null, cost: { input: 1, output: 2 } },
-      },
-    },
-    'cline-pass': {
-      models: {
-        'cline-pass/kimi-k3': { id: 'kimi-k3', status: null, cost: { input: 3, output: 15 } },
-        'cline-pass/kept': { id: 'kept', status: null, cost: { input: 1, output: 2 } },
-      },
-    },
-  }
-
-  it('drops curated removals from both the slug list and pricing', () => {
-    const { goSlugs, pricing } = transformModelsDevApi(excludeFixture)
-    assert.deepEqual(goSlugs, ['opencode-go/kept'])
-    assert.equal(pricing['opencode-go/kimi-k3'], undefined)
-  })
-
-  it('scopes removals per provider — Cline Pass keeps its own Kimi K3', () => {
-    const { clineSlugs, pricing } = transformModelsDevApi(excludeFixture)
-    assert.deepEqual(clineSlugs, ['cline-pass/kept', 'cline-pass/kimi-k3'])
-    assert.equal(pricing['cline-pass/kimi-k3'].output, 15)
-  })
-})
-
 describe('buildGeneratedBodies', () => {
   it('emits const arrays and pricing record', () => {
     const bodies = buildGeneratedBodies(FIXTURE)

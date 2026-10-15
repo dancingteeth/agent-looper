@@ -33,6 +33,7 @@ export const GENERATED_MODEL_PRICING: Record<string, { input: number; output: nu
   'opencode-go/hy3': { input: 0.14, output: 0.58, cacheRead: 0.035 },
   'opencode-go/hy4-preview': { input: 0.834, output: 2.501, cacheRead: 0.042 },
   'opencode-go/kimi-k2.7-code': { input: 0.95, output: 4, cacheRead: 0.19 },
+  'opencode-go/kimi-k3': { input: 3, output: 15, cacheRead: 0.3 },
   'opencode-go/longcat-2.0': { input: 0.3, output: 1.2, cacheRead: 0.006 },
   'opencode-go/longcat-2.5-preview-free': { input: 0, output: 0, cacheRead: 0 },
   'opencode-go/mimo-v2.5': { input: 0.14, output: 0.28, cacheRead: 0.0028 },
