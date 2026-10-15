@@ -99,31 +99,23 @@
             "name": "Which coding agents does Agent Looper work with?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, and Claude. It detects what's installed. You or your agent pick the model and provider. OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router."
+              "text": "Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, and Claude. Agent Looper detects what is installed and uses the subscriptions or keys you already have. OpenCode and Pi can also route through OpenRouter, Vercel, or Ollama."
             }
           },
           {
             "@type": "Question",
-            "name": "How do Agent Looper worker and judge presets work?",
+            "name": "How do worker and judge presets work?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok — default judge grok-4.7). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On runtime: cursor, repo defaults that pin OpenCode Go escalateModel are not applied — Composer plus another judge uses reviewRuntime / reviewModel, not escalateModel."
+              "text": "Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include minmax (cheap worker, strongest judge), balanced (stronger worker, same judge), and cursor (Composer with Grok grok-4.7), or you can configure any worker and judge pair in loop.json."
             }
           },
           {
             "@type": "Question",
-            "name": "How does Agent Looper keep cost down for indie builders?",
+            "name": "What happens if the worker gets stuck?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop. Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops. The check is the finish line — keep it honest. The judge is residual, not a production gate."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What happens if Agent Looper's worker is stuck?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Starts cheap. Same check keeps failing → more thinking, then a stronger model. If the worker hangs or times out, it switches right away — it does not wait for the stuck-check count. Not Auto. A planned ladder."
+              "text": "When the same check keeps failing, the harness steps up reasoning effort and then switches to a stronger model. If a worker hangs or times out, it switches right away without waiting for the stuck-check count."
             }
           },
           {
@@ -131,23 +123,7 @@
             "name": "What if the code is already broken?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Forward implements, then checks. Reverse starts from a red check and repairs. Clean-room: rebuild toward the frozen goal from tests and the public API. Don't copy the broken internals."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I know if a loop is still alive?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The IDE job list will lie. Ask your agent to use the check-running-loops skill. It looks at the harness process, not a spinner that stays green after the process died."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What do I get when a loop finishes?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "A report card, not a chat dump. How often the check sent work back, whether the worker hung, whether the judge bounced it, list and billed spend when they differ, and whether it needed you."
+              "text": "Forward loops build a feature and check it. Reverse starts from a red check and repairs the code until it passes. Clean-room mode rebuilds toward the frozen goal from your tests and public API without copying broken internals."
             }
           },
           {
@@ -155,31 +131,15 @@
             "name": "How do I start a loop from an idea?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Two paths: (1) If you see your coding agent's logo on this page — type your idea as a normal prompt, and ask it to implement the feature with Agent Looper. It sets up the loop and keeps grinding until the check is green. (2) If you like the terminal — run pnpm exec agent-loop-setup: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use pnpm exec agent-loop-prompt to type your idea and start the run. The scaffold judge stops as soon as frozen GOAL.md and verify.sh pass freeze (10-minute wall, not a long grind). The check stays the finish line."
+              "text": "If you see your coding agent's logo on this page, describe the feature as a normal prompt and ask your agent to implement it with Agent Looper. It sets up the loop and runs until the check is green. If you prefer the terminal, run pnpm exec agent-loop-setup (a one-screen setup wizard) and pnpm exec agent-loop-prompt to generate frozen GOAL.md and verify.sh from your prompt."
             }
           },
           {
             "@type": "Question",
-            "name": "What if verify fails because my environment is broken?",
+            "name": "What do I get when a loop finishes?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "When the check fails because something on your machine is missing or broken — not because the feature is wrong — the loop waits for you instead of sending another worker. Fix the environment, then resume. Real product failures still iterate."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "What do the spend numbers mean?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Watch and the report card show two numbers when they differ: list (public API rates, including prompt-cache) and billed (what the runtime invoice says). $0 on a subscription quota is billed $0, not free. Budget caps use billed when you are on PAYG and list when the invoice is $0. OpenCode Go and Cline Pass model lists and list prices come from models.dev — sync picks up Gemini 4 Argon (contributor) and the hosted-$0 Cat Jam row, and drops the deprecated DeepSeek V4 Flash slugs; unknown but well-formed slugs soft-gate — warn at loop start, show $0 until priced. Budget caps still reject unpriced worker or escalate models."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do I harden verify between runs?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Before you add another line to verify.sh or REVIEWS.md, walk a diverse sample of past runs under .cursor/loop-exports/ so the scoreboard matches real failures — not one lucky green. Procedure: docs/unknowns-preflight.md on the repo. Freeze during a run is unchanged."
+              "text": "A report card instead of a chat dump: how many times verify.sh rejected the work, whether a worker hung, what the judge flagged, and your list (public API rates, including prompt-cache) vs. billed spend so $0 subscription turns still count toward budget caps. To check a running loop, run agent-loop watch or ask your agent to use the check-running-loops skill."
             }
           }
         ]
@@ -225,7 +185,7 @@
     ]
   }
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260911-060">
+  <link rel="stylesheet" href="styles.css?v=20261015-copy">
 </head>
 <body>
   <header class="site-header">
@@ -258,17 +218,11 @@
         <p class="eyebrow">@dancingteeth/agent-looper · <code>agent-loop</code></p>
         <h1>Finally, you're not the verify step.</h1>
         <p class="definition">
-          Agent Looper is an open-source fix-until-green harness: your coding agent writes a frozen goal and a deterministic check, then a fresh worker loops until that check passes — with a budget that actually stops.
+          Agent Looper is an open-source fix-until-green harness for coding agents. Your agent freezes a goal and a deterministic shell check, then fresh workers loop until that check passes.
         </p>
         <p class="lead">
-          You heard looping beats prompting. You install Agent Looper. You tell your agent you just want the feature.
-          It writes the goal, writes a deterministic check, and runs until that check passes. No hallucinated “done.”
+          Tell your agent what to build and walk away. Progress stays in git instead of an accumulating chat thread, the model cannot grade itself “done,” and the budget cap stops the run when you say so.
         </p>
-        <ul class="promise">
-          <li>It actually works</li>
-          <li>Deterministic check</li>
-          <li>You don't babysit</li>
-        </ul>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#install">Install</a>
           <a class="btn btn-ghost" href="https://github.com/dancingteeth/agent-looper">View on GitHub</a>
@@ -301,7 +255,7 @@
           </p>
           <p class="tui-loop-line fail">fail → fresh worker</p>
           <p class="tui-loop-line pass">pass → done</p>
-          <p class="tui-beat">If it hangs, it switches. Wonder if it's alive? There's a skill. When it finishes, you get a report card.</p>
+          <p class="tui-beat">If a worker hangs, it switches. When the check passes, you get a report card.</p>
         </div>
         <div class="harness-logos" aria-label="Works with coding agent harnesses">
           <a class="harness-logo" href="harnesses/#cursor">
@@ -337,82 +291,6 @@
             <span class="harness-logo__label">Claude</span>
           </a>
         </div>
-        <div class="tui-answers" id="faq">
-          <article class="tui-answer tui-answer--agents">
-            <h2>Which coding agents does Agent Looper work with?</h2>
-            <p>
-              Agent Looper uses the coding agents you already pay for: Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, and Claude.
-              It detects what's installed. You or your agent pick the model and provider.
-              OpenCode and Pi can use OpenRouter, Vercel, Ollama, or another OpenAI-compatible router.
-              How-to and default models: <a href="harnesses/">Harnesses</a>.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--presets">
-            <h2>How do Agent Looper worker and judge presets work?</h2>
-            <p>
-              Named presets: minmax (efficiency — cheap capable worker, strongest included judge), balanced (spend more on the worker, same judge), cursor (stay on Cursor: Composer + Grok — default judge <code>grok-4.7</code>). Or you, your agent, or Looper wires a pair from what's installed. The pair stays for the whole loop. Not Auto. On <code>runtime: cursor</code>, repo defaults that pin OpenCode Go <code>escalateModel</code> are not applied — Composer plus another judge uses <code>reviewRuntime</code> / <code>reviewModel</code>, not <code>escalateModel</code>.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--budget">
-            <h2>How does Agent Looper keep cost down for indie builders?</h2>
-            <p>
-              Agent Looper is how indie builders get to handoff or production-ready without burning a frontier model on every loop.
-              Cheap harness subscriptions you already have, a worker/judge pair that minmaxes cost, and a budget that actually stops.
-              The check is the finish line — keep it honest. The judge is residual, not a production gate.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--escalation">
-            <h2>What happens if Agent Looper's worker is stuck?</h2>
-            <p>
-              Starts cheap. Same check keeps failing → more thinking, then a stronger model. If the worker hangs or times out, it switches right away — it does not wait for the stuck-check count. Not Auto. A planned ladder.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--reverse">
-            <h2>What if the code is already broken?</h2>
-            <p>
-              Forward implements, then checks. Reverse starts from a red check and repairs. Clean-room: rebuild toward the frozen goal from tests and the public API. Don't copy the broken internals.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--alive">
-            <h2>How do I know if a loop is still alive?</h2>
-            <p>
-              The IDE job list will lie. Ask your agent to use the check-running-loops skill. It looks at the harness process, not a spinner that stays green after the process died.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--report">
-            <h2>What do I get when a loop finishes?</h2>
-            <p>
-              A report card, not a chat dump. How often the check sent work back, whether the worker hung, whether the judge bounced it, <strong>list</strong> and <strong>billed</strong> spend when they differ, and whether it needed you.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--prompt">
-            <h2>How do I start a loop from an idea?</h2>
-            <p>
-              <strong>If you see your coding agent's logo on this page</strong> — type your idea as a normal prompt, and ask it to implement the feature <strong>with Agent Looper</strong>. It sets up the loop and keeps grinding until the check is green.
-            </p>
-            <p>
-              <strong>If you like the terminal</strong> — run <code>pnpm exec agent-loop-setup</code>: a one-screen setup wizard shows your recap and the current question, not a scrolling pile. Go back to change one answer without losing the rest. Then use <code>pnpm exec agent-loop-prompt</code> to type your idea and start the run. The scaffold judge stops as soon as frozen <code>GOAL.md</code> and <code>verify.sh</code> pass freeze (10-minute wall, not a long grind). The check stays the finish line.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--env">
-            <h2>What if verify fails because my environment is broken?</h2>
-            <p>
-              When the check fails because something on your machine is missing or broken — not because the feature is wrong — the loop waits for you instead of sending another worker. Fix the environment, then resume. Real product failures still iterate.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--spend">
-            <h2>What do the spend numbers mean?</h2>
-            <p>
-              Watch and the report card show two numbers when they differ: <strong>list</strong> (public API rates, including prompt-cache) and <strong>billed</strong> (what the runtime invoice says). <code>$0</code> on a subscription quota is billed <code>$0</code>, not “free.” Budget caps use billed when you are on PAYG and list when the invoice is <code>$0</code>. OpenCode Go and Cline Pass model lists and list prices come from <a href="https://models.dev/api.json">models.dev</a> — sync picks up Gemini 4 Argon (contributor) and the hosted-$0 Cat Jam row, and drops the deprecated DeepSeek V4 Flash slugs; unknown but well-formed slugs soft-gate — warn at loop start, show <code>$0</code> until priced. Budget caps still reject unpriced worker or escalate models.
-            </p>
-          </article>
-          <article class="tui-answer tui-answer--exports">
-            <h2>How do I harden verify between runs?</h2>
-            <p>
-              Before you add another line to <code>verify.sh</code> or <code>REVIEWS.md</code>, walk a diverse sample of past runs under <code>.cursor/loop-exports/</code> so the scoreboard matches real failures — not one lucky green. Procedure: <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md">docs/unknowns-preflight.md</a>. Freeze during a run is unchanged.
-            </p>
-          </article>
-        </div>
       </div>
     </section>
 
@@ -420,29 +298,24 @@
       <div class="wrap">
         <h2>How it works</h2>
         <p class="section-intro">
-          Your agent writes <code>GOAL.md</code> and a deterministic check that the feature really works.
-          Optional <code>setup.sh</code> (or <code>setup</code> in <code>loop.json</code>) runs once before the first worker — setup failure does not spawn a worker.
-          A fresh worker loops until that check passes — optional judge / <code>reviewGate</code> only on serious findings.
-          After each visit the harness restores frozen specs if a worker edited them — and removes any frozen basename they planted (like <code>setup.sh</code>) so it cannot carry into the next run.
-          Between runs, label export packs before you tighten the check (<a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/unknowns-preflight.md">unknowns preflight</a>).
-          Progress lives in git and files, not chat memory.
+          Your agent writes <code>GOAL.md</code> and <code>verify.sh</code> before the first turn. The harness freezes both files, restores them if a worker tries to edit the test, and runs fresh worker sessions until <code>verify.sh</code> exits 0.
         </p>
         <div class="grid two-col">
           <div class="card card--goal">
             <h3>Worker</h3>
-            <p>New session every iteration. Failed turns don't poison the next run, and the frozen goal stays a cached prefix so later rounds cost less. Progress is the repo — not an accumulating thread.</p>
+            <p>Starts a fresh session every iteration so failed attempts don't poison the next run. The frozen goal stays cached at the top of the prompt, and progress lives in git.</p>
           </div>
           <div class="card card--verify">
             <h3>Verifier</h3>
-            <p>A deterministic check. Green is only as good as the check you froze. The model doesn't get to hallucinate done. If your machine is broken, the loop waits — it doesn't burn another worker on a missing command. Real product failures still iterate.</p>
+            <p>Runs your shell check. Product failures go back to a fresh worker. If your local environment is broken, the loop pauses for you instead of burning tokens on a missing tool.</p>
           </div>
           <div class="card card--judge">
             <h3>Judge <span class="optional">optional</span></h3>
-            <p>After the check is green, a review skill looks for real blockers and leftover nits. Blockers come back for the next iteration. Advisory is your call. Subjective taste does not force another loop.</p>
+            <p>Runs after <code>verify.sh</code> is green (<code>--review-gate</code>). Serious bugs go back for another round, while minor notes stay advisory so subjective taste never forces a loop.</p>
           </div>
           <div class="card">
             <h3>You</h3>
-            <p>You say what you want. Your agent writes the goal, wires the check, and starts the loop. You pick when to stop and what to spend — the harness owns the grind.</p>
+            <p>Describe the feature, set a budget cap, and let the harness run. You own the finish line and the scoreboard.</p>
           </div>
         </div>
       </div>
@@ -476,38 +349,58 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" aria-label="Frequently asked questions">
       <div class="wrap">
-        <blockquote class="pull-quote">
-          You own the finish line — outcome, scoreboard, permission, budget.
-          The harness owns the grind.
-        </blockquote>
+        <div class="tui-answers" id="faq">
+          <article class="tui-answer tui-answer--agents">
+            <h2>Which coding agents does Agent Looper work with?</h2>
+            <p>
+              Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, and Claude. Agent Looper detects what is installed and uses the subscriptions or keys you already have. OpenCode and Pi can also route through OpenRouter, Vercel, or Ollama. See <a href="harnesses/">Harnesses</a> for setup and default models.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--presets">
+            <h2>How do worker and judge presets work?</h2>
+            <p>
+              Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include <code>minmax</code> (cheap worker, strongest judge), <code>balanced</code> (stronger worker, same judge), and <code>cursor</code> (Composer with Grok <code>grok-4.7</code>), or you can configure any worker and judge pair in <code>loop.json</code>.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--escalation">
+            <h2>What happens if the worker gets stuck?</h2>
+            <p>
+              When the same check keeps failing, the harness steps up reasoning effort and then switches to a stronger model. If a worker hangs or times out, it switches right away without waiting for the stuck-check count.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--reverse">
+            <h2>What if the code is already broken?</h2>
+            <p>
+              Forward loops build a feature and check it. Reverse starts from a red check and repairs the code until it passes. Clean-room mode rebuilds toward the frozen goal from your tests and public API without copying broken internals.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--prompt">
+            <h2>How do I start a loop from an idea?</h2>
+            <p>
+              <strong>If you see your coding agent's logo on this page:</strong> describe the feature as a normal prompt and ask your agent to implement it <strong>with Agent Looper</strong>. It sets up the loop and runs until the check is green.
+            </p>
+            <p>
+              <strong>If you prefer the terminal:</strong> run <code>pnpm exec agent-loop-setup</code> (a one-screen setup wizard) and <code>pnpm exec agent-loop-prompt</code> to generate frozen <code>GOAL.md</code> and <code>verify.sh</code> from your prompt.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--report">
+            <h2>What do I get when a loop finishes?</h2>
+            <p>
+              A report card instead of a chat dump: how many times <code>verify.sh</code> rejected the work, whether a worker hung, what the judge flagged, and your <strong>list</strong> (public API rates, including prompt-cache) vs. <strong>billed</strong> spend so <code>$0</code> subscription turns still count toward budget caps. To check a running loop, run <code>agent-loop watch</code> or ask your agent to use the <code>check-running-loops</code> skill.
+            </p>
+          </article>
+        </div>
       </div>
     </section>
 
-    <section class="section section-alt" id="open">
-      <div class="wrap">
-        <h2>Open spine, not rented brain</h2>
-        <p class="section-intro">
-          MIT. Inspectable. Models stay whoever you already pay — Cursor, OpenCode, OpenRouter, Codex, DSH, Muse, Claude.
-          What you own is the loop: frozen <code>GOAL.md</code>, measurable <code>verify.sh</code>,
-          sparse <code>REVIEWS.md</code> / <code>AGENTS.md</code>, and orchestration that keeps workers fresh and spend bounded.
-        </p>
-      </div>
-    </section>
-
-    <section class="section install-section" id="install">
+    <section class="section section-alt install-section" id="install">
       <div class="wrap">
         <h2>Install Agent Looper</h2>
         <p class="section-intro">
-          Node 22+, pnpm. Tell your agent to set up Agent Looper for the feature you want.
+          Requires Node 22+ and pnpm. Copy the prompt into your coding agent, or run the commands in your terminal.
         </p>
-        <ol class="howto-steps">
-          <li>Add <code>@dancingteeth/agent-looper</code> and the SDK for your coding agent (Cursor: <code>@cursor/sdk</code>).</li>
-          <li>Export an API key for your coding agent.</li>
-          <li><strong>Agent path:</strong> type your idea and ask it to implement the feature with Agent Looper. <strong>Terminal path:</strong> <code>pnpm exec agent-loop-setup</code>, then <code>pnpm exec agent-loop-prompt --out .cursor/loops/my-task</code> to type your idea and start.</li>
-          <li>Run until the check is green — or let your agent keep grinding.</li>
-        </ol>
         <div class="install-switcher">
           <input type="radio" name="install-view" id="install-view-agent" class="install-switcher__input" checked>
           <input type="radio" name="install-view" id="install-view-human" class="install-switcher__input">
@@ -521,30 +414,25 @@
                 <span>prompt</span>
                 <button type="button" class="copy-btn" data-copy="install-snippet-agent" aria-label="Copy agent install prompt">Copy</button>
               </div>
-              <pre id="install-snippet-agent"><code>Set up Agent Looper in this repo for the feature I want. I don't want to babysit the grind.
+              <pre id="install-snippet-agent"><code>Set up Agent Looper in this repo for the feature I want.
 
 Requirements: Node 22+ and pnpm.
 
-1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine. Cursor uses @cursor/sdk. If you're not sure, detect what's installed (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, Claude).
+1. Add @dancingteeth/agent-looper and the SDK for the coding agent on this machine (Cursor uses @cursor/sdk; detect Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, or Claude).
 2. Keep @dancingteeth/agent-looper in package.json even if you gitignore `.cursor/loops`. Don't only npx it.
 3. Use an API key already on this machine. Don't invent keys.
-4. Ask me what I want, then implement it with Agent Looper — set up the loop, write GOAL.md and verify.sh, and keep grinding until the check is green.
-   Or if I'm in the terminal: pnpm exec agent-loop-setup then pnpm exec agent-loop-prompt --out .cursor/loops/&lt;task&gt;.
-   Manual fallback: pnpm exec agent-loop-init and edit GOAL.md + verify.sh yourself.
+4. Ask me what I want, then implement it with Agent Looper: write GOAL.md and verify.sh, and run the loop until the check is green.
+   (Terminal alternative: pnpm exec agent-loop-setup then pnpm exec agent-loop-prompt --out .cursor/loops/&lt;task&gt;.)
 5. Start or resume the loop:
    pnpm exec agent-loop run .cursor/loops/&lt;task&gt; --runtime &lt;cursor|cline|opencode|pi|codex|dsh|muse|claude&gt; --review-gate
-6. Review skill: blockers come back for the next iteration. Advisory is my call. Don't loop on subjective taste.
+6. Review skill: blockers come back for the next iteration; advisory notes are my call. Don't loop on subjective taste.
 
-Cursor example (swap the SDK, key, and --runtime if this machine isn't Cursor):
+Cursor example:
 
 pnpm add -D @dancingteeth/agent-looper @cursor/sdk
-
 export CURSOR_API_KEY=…
-
 pnpm exec agent-loop-setup
 pnpm exec agent-loop-prompt --out .cursor/loops/my-task
-# or manually: pnpm exec agent-loop-init and edit GOAL.md + verify.sh
-
 pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</code></pre>
             </div>
           </div>
@@ -579,12 +467,12 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
       <div class="wrap">
         <h2>If this is useful</h2>
         <p class="section-intro">
-          This tool is free. We keep building it when the community actually uses it and tells us when it's broken.
+          Agent Looper is free and MIT-licensed. If it saves you time:
         </p>
         <ol class="help-list">
-          <li>Keep <code>@dancingteeth/agent-looper</code> in public <code>package.json</code> even if you gitignore the loop folder. Don't only npx it.</li>
-          <li>Open an issue or a PR when you hit a gap or a bug — <a href="https://github.com/dancingteeth/agent-looper/issues">github.com/dancingteeth/agent-looper/issues</a></li>
-          <li>Optional: <code>AGENT_LOOPER_TELEMETRY=1</code> so we see real runs, not just npm noise. Off by default. <a href="privacy/">Privacy</a>.</li>
+          <li>Keep <code>@dancingteeth/agent-looper</code> in public <code>package.json</code> even if you gitignore the loop folder.</li>
+          <li>Open an issue or a PR when you hit a gap or a bug: <a href="https://github.com/dancingteeth/agent-looper/issues">github.com/dancingteeth/agent-looper/issues</a></li>
+          <li>Optional: set <code>AGENT_LOOPER_TELEMETRY=1</code> so we see real runs, not just npm downloads (off by default; <a href="privacy/">Privacy</a>).</li>
         </ol>
         <a class="kofi-btn" href="https://ko-fi.com/dancingteeth" target="_blank" rel="noopener noreferrer">
           <span class="kofi-btn__icon" aria-hidden="true">
@@ -595,46 +483,6 @@ pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate</c
             <span class="kofi-btn__brand">Ko-fi</span>
           </span>
         </a>
-      </div>
-    </section>
-
-    <section class="section section-alt" id="runtimes">
-      <div class="wrap">
-        <h2>Workers &amp; judge</h2>
-        <p class="section-intro">
-          Worker and judge are separate — mix what you already pay for. Point the judge elsewhere if you want to save worker quota.
-        </p>
-        <ul class="runtime-list">
-          <li><strong>Cursor</strong></li>
-          <li><strong>Cline</strong> — Pass or Credits</li>
-          <li><strong>OpenCode</strong> — Go or BYOK through OpenRouter, Vercel, Ollama, and more</li>
-          <li><strong>Pi</strong> — OpenRouter by default, or another OpenAI-compatible router you configure</li>
-          <li><strong>Codex</strong> — ChatGPT / OpenAI</li>
-          <li><strong>DSH</strong> — DeepSeek Harness CLI, plus a plugin for dsh web</li>
-          <li><strong>Muse</strong> — Muse Code CLI, explicit <code>runtime: muse</code> (not minmax)</li>
-          <li><strong>Claude</strong> — Claude Code CLI, explicit <code>runtime: claude</code> (not minmax; <code>--safe-mode</code>)</li>
-        </ul>
-        <p class="docs-pointer">
-          <a href="harnesses/">Harness how-to and default models</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/opencode-providers.md">OpenCode providers</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md">Pi runtime</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">DSH plugin</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md">Muse runtime</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md">Claude runtime</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/embed-api.md">Embed API</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md">Security</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md">Changelog</a>
-          ·
-          <a href="https://github.com/dancingteeth/agent-looper/blob/main/README.md">README.md</a>
-        </p>
       </div>
     </section>
   </main>

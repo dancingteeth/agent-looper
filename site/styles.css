@@ -269,7 +269,7 @@ code {
 /* CoverFrame + SelectPrompt (setupTui / loopChrome) */
 
 .tui-section {
-  padding: 1rem 0 4rem;
+  padding: 1rem 0 2.5rem;
 }
 
 .cover-frame {
@@ -632,6 +632,10 @@ a.harness-logo:hover {
   flex-direction: column;
   gap: 2.25rem;
   margin-top: 2.5rem;
+}
+
+.section .tui-answers {
+  margin-top: 0;
 }
 
 .tui-answer {

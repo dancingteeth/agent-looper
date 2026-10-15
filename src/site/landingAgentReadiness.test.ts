@@ -242,7 +242,7 @@ describe('landing agent readiness', () => {
     }
 
     const presetsQuestion = faq?.mainEntity?.find(
-      (q) => q.name === 'How do Agent Looper worker and judge presets work?',
+      (q) => q.name === 'How do worker and judge presets work?',
     )
     const reverseQuestion = faq?.mainEntity?.find(
       (q) => q.name === 'What if the code is already broken?',
@@ -262,11 +262,11 @@ describe('landing agent readiness', () => {
       'Reverse starts from a red check',
     )
     expect(reverseQuestion?.acceptedAnswer?.text).toContain(
-      "Don't copy the broken internals",
+      'without copying broken internals',
     )
   })
 
-  it('names 0.4.5 hang switch, alive skill, and report card in HTML, markdown, and JSON-LD', () => {
+  it('names hang switch, alive skill, and report card in HTML, markdown, and JSON-LD', () => {
     const html = readSite('index.html')
     const md = readSite('index.md')
     const graph = jsonLdGraph(html)
@@ -284,17 +284,14 @@ describe('landing agent readiness', () => {
     }
 
     const stuckQuestion = faq?.mainEntity?.find(
-      (q) => q.name === "What happens if Agent Looper's worker is stuck?",
-    )
-    const aliveQuestion = faq?.mainEntity?.find(
-      (q) => q.name === 'How do I know if a loop is still alive?',
+      (q) => q.name === 'What happens if the worker gets stuck?',
     )
     const reportQuestion = faq?.mainEntity?.find(
       (q) => q.name === 'What do I get when a loop finishes?',
     )
 
     const hangSwitch =
-      'switches right away — it does not wait for the stuck-check count'
+      'switches right away without waiting for the stuck-check count'
     const aliveSkill = 'check-running-loops'
     const reportCard = 'report card'
 
@@ -305,16 +302,13 @@ describe('landing agent readiness', () => {
     }
 
     expect(stuckQuestion?.acceptedAnswer?.text).toContain(hangSwitch)
-    expect(aliveQuestion?.acceptedAnswer?.text).toContain(aliveSkill)
-    expect(aliveQuestion?.acceptedAnswer?.text).toContain('IDE job list will lie')
+    expect(reportQuestion?.acceptedAnswer?.text).toContain(aliveSkill)
     expect(reportQuestion?.acceptedAnswer?.text?.toLowerCase()).toContain(
       reportCard,
     )
 
-    expect(html).toContain('tui-answer--alive')
     expect(html).toContain('tui-answer--report')
     expect(html).toContain('tui-answer--prompt')
-    expect(html).toContain('tui-answer--spend')
   })
 
   it('ships prompt FAQ with agent + terminal paths, Claude, Muse 1.3, list/billed spend, no version pins', () => {
@@ -339,8 +333,8 @@ describe('landing agent readiness', () => {
     const promptQuestion = faq?.mainEntity?.find(
       (q) => q.name === 'How do I start a loop from an idea?',
     )
-    const spendQuestion = faq?.mainEntity?.find(
-      (q) => q.name === 'What do the spend numbers mean?',
+    const reportQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'What do I get when a loop finishes?',
     )
 
     const agentPathBeat = 'with Agent Looper'
@@ -362,9 +356,12 @@ describe('landing agent readiness', () => {
     const promptFaqSurfaces = [
       html.slice(
         html.indexOf('tui-answer--prompt'),
-        html.indexOf('tui-answer--spend'),
+        html.indexOf('tui-answer--report'),
       ),
-      md.slice(md.indexOf('## How do I start a loop from an idea?'), md.indexOf('## What do the spend numbers mean?')),
+      md.slice(
+        md.indexOf('## How do I start a loop from an idea?'),
+        md.indexOf('## What do I get when a loop finishes?'),
+      ),
       promptQuestion?.acceptedAnswer?.text ?? '',
     ]
     for (const surface of promptFaqSurfaces) {
@@ -372,7 +369,6 @@ describe('landing agent readiness', () => {
       expect(surface).toContain(agentPathBeat)
       expect(surface).toContain(setupBeat)
       expect(surface).toContain(promptBeat)
-      expect(surface).toContain('The check stays the finish line')
       expect(surface).not.toMatch(/\bInk\b/i)
       expect(surface).not.toMatch(/\bDoppler\b/i)
       expect(surface).not.toMatch(/freeze lint/i)
@@ -388,8 +384,8 @@ describe('landing agent readiness', () => {
     expect(promptCard).not.toContain('<ul>')
     expect(promptCard).toMatch(/<p>[\s\S]*<\/p>\s*<p>/)
 
-    expect(spendQuestion?.acceptedAnswer?.text).toContain('billed')
-    expect(spendQuestion?.acceptedAnswer?.text).toContain('not free')
+    expect(reportQuestion?.acceptedAnswer?.text).toContain('billed')
+    expect(reportQuestion?.acceptedAnswer?.text).toContain('$0 subscription turns')
 
     const claudeCard =
       harnessHtml.match(
@@ -652,7 +648,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('names 0.7.0 setup wizard, env-wait, harness setup, frozen restore, plant block, models.dev soft-gate, Cursor Grok 4.7, Flash 4.1 defaults, loop-exports preflight, Cursor escalate, scaffold wall, DSH flat credentials, Codex astra, and Claude CLI aliases', () => {
+  it('keeps homepage copy concise while llms.txt and harnesses carry technical runtime details', () => {
     const html = readSite('index.html')
     const md = readSite('index.md')
     const llms = readSite('llms.txt')
@@ -675,42 +671,26 @@ describe('landing agent readiness', () => {
     const promptQuestion = faq?.mainEntity?.find(
       (q) => q.name === 'How do I start a loop from an idea?',
     )
-    const envQuestion = faq?.mainEntity?.find(
-      (q) => q.name === 'What if verify fails because my environment is broken?',
-    )
 
     const setupWizardBeat = 'one-screen setup wizard'
-    const envWaitBeat = 'waits for you instead of sending another worker'
-    const setupBeat = 'setup.sh'
-    const frozenBeat = 'restores frozen specs'
     const plantBeat = 'removes any frozen basename'
     const modelsDevBeat = 'models.dev'
-    const softGateBeat = 'soft-gate'
     const flashDefault = 'deepseek-flash'
     const flash41Slug = 'deepseek-v4.1-flash'
     const grok47Beat = 'grok-4.7'
-    const loopExportsBeat = '.cursor/loop-exports/'
-    const unknownsPreflightBeat = 'unknowns-preflight.md'
     const codexAstraBeat = 'gpt-6-astra'
     const claudeAliasBeat = 'latest-per-family'
-    const cursorEscalateBeat = 'are not applied'
-    const scaffoldWallBeat = '10-minute wall'
     const dshFlatBeat = 'must be a flat'
     const dshPreflightBeat = 'agent-check dsh'
     const dshQuoteNotEnoughBeat = 'alone is not enough'
 
     const presetsQuestion = faq?.mainEntity?.find(
-      (q) => q.name === 'How do Agent Looper worker and judge presets work?',
+      (q) => q.name === 'How do worker and judge presets work?',
     )
 
     for (const surface of [html, md] as const) {
       expect(surface).toContain(setupWizardBeat)
-      expect(surface).toContain(envWaitBeat)
-      expect(surface).toContain(setupBeat)
-      expect(surface).toContain(frozenBeat)
-      expect(surface).toContain(plantBeat)
-      expect(surface).toContain(modelsDevBeat)
-      expect(surface).toContain(softGateBeat)
+      expect(surface).toContain(grok47Beat)
       expect(surface).not.toContain('0.5.0')
       expect(surface).not.toMatch(/\bInk\b/i)
       expect(surface).not.toMatch(/Current npm.*0\.6\.0/i)
@@ -721,10 +701,6 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/Current npm.*0\.7\.1/i)
       expect(surface).not.toMatch(/Current npm.*0\.7\.2/i)
       expect(surface).not.toMatch(/supported line \*\*0\.6\.x\*\*/i)
-      expect(surface).toContain(cursorEscalateBeat)
-      expect(surface).toContain(scaffoldWallBeat)
-      expect(surface).toContain(loopExportsBeat)
-      expect(surface).toContain(unknownsPreflightBeat)
     }
 
     expect(llms).toContain('Current npm: **0.7.3**')
@@ -746,16 +722,8 @@ describe('landing agent readiness', () => {
     expect(llms).toContain(plantBeat)
     expect(llms).toContain(modelsDevBeat)
 
-    const spendQuestion = faq?.mainEntity?.find(
-      (q) => q.name === 'What do the spend numbers mean?',
-    )
-
     expect(promptQuestion?.acceptedAnswer?.text).toContain(setupWizardBeat)
-    expect(promptQuestion?.acceptedAnswer?.text).toContain(scaffoldWallBeat)
-    expect(presetsQuestion?.acceptedAnswer?.text).toContain('escalateModel are not applied')
-    expect(envQuestion?.acceptedAnswer?.text).toContain(envWaitBeat)
-    expect(spendQuestion?.acceptedAnswer?.text).toContain(modelsDevBeat)
-    expect(spendQuestion?.acceptedAnswer?.text).toContain(softGateBeat)
+    expect(presetsQuestion?.acceptedAnswer?.text).toContain(grok47Beat)
 
     const cursorCard =
       harnessHtml.match(
