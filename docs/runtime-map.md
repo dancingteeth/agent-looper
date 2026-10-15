@@ -34,6 +34,10 @@ n≥3, change one of `runtime` / `model`).
 
 Primary judge is independent: unset `reviewRuntime` → Cursor SDK. Set `reviewRuntime` + `reviewModel` to any worker runtime to keep review off Cursor quota.
 
+**Typed review (proposed):** optional `systemOne` / Jev (`typesafe/jev-1.13`) uses the
+OpenRouter **decisions** API — not a row in this runtime table and not
+`reviewRuntime`. See [`system-one-review.md`](./system-one-review.md).
+
 ## `costPreset` (detect-bound, not Auto)
 
 Named stacks so you pick **economics** instead of a model encyclopedia. Detection chooses which catalog row that means on this machine; it does not swap models mid-loop. Explicit `runtime` / `model` win.
