@@ -1,0 +1,6 @@
+dist/
+node_modules/
+# Synced from ../agent-looper/skills by scripts/sync-skills.mjs (single source of truth).
+skills/design-loop/
+skills/review-gate/
+skills/check-running-loops/

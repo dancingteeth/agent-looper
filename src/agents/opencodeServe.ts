@@ -115,6 +115,9 @@ export function parseServeUrl(line: string): string | undefined {
   return match?.[1]
 }
 
+/** Set on every harness-spawned `opencode serve`; companion plugins read it to stay worker-safe. */
+export const AGENT_LOOP_WORKER_ENV = 'AGENT_LOOP_WORKER'
+
 export async function startOpencodeServe(input: {
   hostname: string
   port: number
@@ -136,6 +139,8 @@ export async function startOpencodeServe(input: {
     cwd: input.cwd,
     env: {
       ...input.env,
+      // Lets @dancingteeth/opencode-agent-looper hide loop-start tools inside harness workers.
+      [AGENT_LOOP_WORKER_ENV]: '1',
       OPENCODE_CONFIG_CONTENT: JSON.stringify(input.config),
       ...(input.password ? { OPENCODE_PASSWORD: input.password } : {}),
     },

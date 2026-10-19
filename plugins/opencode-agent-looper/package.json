@@ -1,0 +1,47 @@
+{
+  "name": "@dancingteeth/opencode-agent-looper",
+  "version": "0.1.0",
+  "description": "OpenCode companion — teaches, scaffolds, and starts Agent Looper (GOAL.md + verify.sh + agent-loop CLI)",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "homepage": "https://looper.dancingteeth.net/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dancingteeth/agent-looper.git",
+    "directory": "plugins/opencode-agent-looper"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "sync-skills": "node scripts/sync-skills.mjs",
+    "build": "node scripts/sync-skills.mjs && tsc -p tsconfig.json",
+    "prepare": "node scripts/sync-skills.mjs && tsc -p tsconfig.json"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "agent-looper",
+    "agentic-ai",
+    "loops"
+  ],
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.19.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}

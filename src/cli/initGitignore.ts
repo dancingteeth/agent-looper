@@ -18,6 +18,8 @@ const LOOP_GITIGNORE_LINES: readonly string[] = [
   '.cursor/loops/**/prompt-run.log',
   '.cursor/loops/**/verify-logs/',
   '.cursor/loops/**/setup.log',
+  '.cursor/loops/**/opencode-grind.log',
+  '.cursor/loops/**/opencode-grind.pid',
 ]
 
 /**

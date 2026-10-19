@@ -67,7 +67,7 @@ describe('startOpencodeServe', () => {
     child.stdout = new PassThrough()
     child.stderr = new PassThrough()
 
-    let spawnOpts: { detached?: boolean } | undefined
+    let spawnOpts: { detached?: boolean; env?: NodeJS.ProcessEnv } | undefined
     const started = startOpencodeServe({
       hostname: '127.0.0.1',
       port: 4096,
@@ -87,6 +87,7 @@ describe('startOpencodeServe', () => {
     expect(server.url).toBe('http://127.0.0.1:4096')
     expect(server.pid).toBe(4242)
     expect(spawnOpts?.detached).toBe(true)
+    expect(spawnOpts?.env?.AGENT_LOOP_WORKER).toBe('1')
   })
 
   it('rejects when the process exits before listen', async () => {

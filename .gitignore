@@ -25,6 +25,8 @@ coverage/
 .cursor/loops/dsh-smoke/probe.txt
 .cursor/loops/**/verify-logs/
 .cursor/loops/**/setup.log
+.cursor/loops/**/opencode-grind.log
+.cursor/loops/**/opencode-grind.pid
 
 # Local-only smoke / planning (not shipped)
 scripts/check-steal-backlog.sh
