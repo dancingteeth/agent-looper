@@ -12,6 +12,18 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.7.7 — 2026-10-20
+
+A run that dies before the worker now opens its HITL checkpoint instead of throwing. The OpenCode plugin (0.1.3) can start loops whose keys live in Doppler.
+
+### Headline
+
+- **Fatal runs open their HITL task again** — the fatal path put the full multi-line error (for example `Missing credentials …`) in the Taskwarrior title, and the 500-character `hitlCheck` limit threw `ZodError: too_big`, so no checkpoint was created at all. HITL titles are now folded to one line and cut to fit. Task creation and task lookup share the same formatting, so they still match. `hitlCheck` in `loop.json` keeps its 500-character limit.
+- **OpenCode plugin 0.1.3: `agent_loop_start` works with Doppler-style keys** — the grind inherits the OpenCode server environment, which rarely holds `CURSOR_API_KEY`, so loops died at preflight. The tool now launches via the `launchPrefix` plugin option, else the repo's `agent:loop` package script through the repo's package manager (the usual home of `doppler run -- agent-loop run`), else plain `agent-loop run`.
+- **OpenCode plugin 0.1.3: background shell runs are allowed on 2.x** — the guard now only blocks foreground `agent-loop run`. A 2.x `background: true` shell job outlives the tool timeout, so it no longer counts as a mistake.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.7)
+
 ## 0.7.6 — 2026-10-19
 
 Docs and package metadata only. No runtime changes.
