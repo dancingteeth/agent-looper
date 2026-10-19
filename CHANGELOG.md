@@ -12,7 +12,18 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.7.4 — 2026-10-19
+
+`runtime: opencode` works with the OpenCode 2.x CLI. A repo without a local `opencode-ai` pin used to fall back to a 2.x `opencode` on PATH and time out at server start.
+
+### Headline
+
+- **OpenCode 2.x support** — the harness runs `opencode --version` on the resolved binary (repo `node_modules/opencode-ai` first, then PATH) and talks to a 2.x server through `@opencode/client`; 1.x keeps `@opencode-ai/sdk` unchanged. 2.x replaced the server API (Basic auth, new routes, `session.execution.*` instead of `session.idle`), so the 1.x SDK cannot drive it. With a 2.x CLI, add `pnpm add -D @opencode/client`; without it the loop fails with that install hint instead of a 30s timeout.
+- **2.x provider keys use OpenCode's credential store** — OpenCode migrates v1 `auth.json` on first boot; `OPENCODE_API_KEY` / `OPENROUTER_API_KEY` / `AI_GATEWAY_API_KEY` are added once, not on every run.
+- **`agent-check opencode` does a real serve handshake** — it starts a throwaway server and makes one authenticated call with the matching client, so an SDK/CLI mismatch fails the check instead of the first loop. It used to pass on `opencode --version` alone.
 - **`opencode-go/kimi-k3` is back on the Go catalog** — the 0.7.2 exclusion was wrong: OpenCode Go does offer Kimi K3. The slug returns to `OPENCODE_GO_LOOP_MODELS` and the pricing map ($3/$15, cache-read $0.30), so the setup wizard offers it again and budget caps price it. `EXCLUDED_MODEL_SLUGS` stays as the escape hatch, now empty.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.4)
 
 ## 0.7.3 — 2026-10-15
 
