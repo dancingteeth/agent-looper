@@ -12,6 +12,17 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.8.1 — 2026-10-20
+
+Two fixes from a live OpenCode run.
+
+### Headline
+
+- **`check-running-loops` sees package-bin grinds** — the heartbeat only searched for the text `agent-loop run`, but a grind started through a package bin (`pnpm exec`, an `agent:loop` script, the OpenCode plugin's `agent_loop_start`) shows up as `node …/@dancingteeth/agent-looper/dist/cli/run.js`. So it reported `processes: NONE` for a live loop. It now matches that path too and lists each PID once. Repos that copied the skill with `agent-loop-init` keep the old script under `.cursor/skills/` and `.agents/skills/` until init runs again. OpenCode plugin 0.1.5 bundles the fixed script.
+- **`agent-loop --version`, and unknown flags are errors** — any unrecognised `--flag` used to be folded into the loop dir, so `agent-loop --version` tried to load a bundle named `--version`, and a typo like `--max-iteration 3` did the same. `--version` now prints the package version, and other unknown options fail with `Unknown option …` plus the usage text.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.8.1)
+
 ## 0.8.0 — 2026-10-20
 
 **Breaking:** with `reviewRuntime` unset, the judge now runs on the worker's own runtime. There is no Cursor default judge any more.
