@@ -36,7 +36,7 @@ type OpencodeV2Client = ReturnType<typeof import('@opencode/client').OpenCode.ma
  * `event.subscribe` is lazy: the SSE request only goes out on the first `next()`.
  * Wait for `server.connected` before prompting so a fast turn cannot finish unseen.
  */
-async function subscribeConnected(
+export async function subscribeConnected(
   client: OpencodeV2Client,
   signal: AbortSignal,
 ): Promise<AsyncIterable<OpencodeV2Event>> {
@@ -66,7 +66,7 @@ async function subscribeConnected(
 }
 
 /** Auto-approve 2.x permission asks for the life of the server (config already allows most). */
-function autoApproveV2Permissions(client: OpencodeV2Client, signal: AbortSignal): void {
+export function autoApproveV2Permissions(client: OpencodeV2Client, signal: AbortSignal): void {
   ;(async () => {
     for await (const event of client.event.subscribe({ signal })) {
       if (event.type !== 'permission.asked') continue
