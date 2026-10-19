@@ -2,7 +2,6 @@ import { EventEmitter } from 'node:events'
 import type { ChildProcess } from 'node:child_process'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it } from 'vitest'
-import { vi } from 'vitest'
 import {
   parseOpencodeMajorVersion,
   parseServeUrl,
