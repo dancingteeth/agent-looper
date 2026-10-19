@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'node:fs'
 import path from 'node:path'
 import { resolveRepoContext } from '../context/repoContext.js'
 import {
@@ -41,6 +42,11 @@ if (rawArgv[0] === 'watch') {
 const parsedArgs = parseRunArgs(rawArgv)
 if (parsedArgs.kind === 'help') {
   console.log(parsedArgs.text)
+  process.exit(0)
+}
+if (parsedArgs.kind === 'version') {
+  const pkg = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }
+  console.log(pkg.version)
   process.exit(0)
 }
 if (parsedArgs.kind === 'error') {

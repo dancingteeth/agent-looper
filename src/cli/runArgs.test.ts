@@ -157,6 +157,16 @@ describe('parseRunArgs', () => {
     }
   })
 
+  it('prints the version instead of treating --version as a loop dir', () => {
+    expect(parseRunArgs(['--version'])).toEqual({ kind: 'version' })
+  })
+
+  it('rejects unknown flags instead of folding them into the loop dir', () => {
+    const result = parseRunArgs(['.cursor/loops/demo', '--max-iteration', '3'])
+    expect(result.kind).toBe('error')
+    expect(result.kind === 'error' && result.message).toMatch(/^Unknown option --max-iteration/)
+  })
+
   it('errors with usage when no loop dir is given', () => {
     expect(parseRunArgs([])).toEqual({ kind: 'error', message: runUsage() })
   })

@@ -35,6 +35,7 @@ export type RunCliOptions = {
 export type ParseRunArgsResult =
   | { kind: 'run'; options: RunCliOptions }
   | { kind: 'help'; text: string }
+  | { kind: 'version' }
   | { kind: 'error'; message: string }
 
 export function runUsage(): string {
@@ -44,6 +45,7 @@ export function runUsage(): string {
 
 Options:
   --verbose, -v                   Tool args/results on stderr
+  --version                       Print the package version
 ${printRepoRootHelp()}
   --max-iterations <n>            Override loop.json maxIterations
   --max-cost <n>                  Dollar cap (billed if >$0, else API list); stop waiting when crossed
@@ -252,6 +254,13 @@ export function parseRunArgs(argv: string[]): ParseRunArgsResult {
     }
     if (arg === '--help' || arg === '-h') {
       return { kind: 'help', text: runUsage() }
+    }
+    if (arg === '--version') {
+      return { kind: 'version' }
+    }
+    // An unknown flag used to fall through into the loop dir (`agent-loop --version` → bundle "--version").
+    if (arg.startsWith('-')) {
+      return { kind: 'error', message: `Unknown option ${arg}\n\n${runUsage()}` }
     }
     positional.push(arg)
   }

@@ -178,16 +178,18 @@ echo "terminals=$TERM_DIR"
 echo "--- processes ---"
 
 found_proc=0
+seen_pids=" "
 # PID only — do not print full command lines (API keys sometimes leak there).
-for pat in 'agent-loop-batch' 'agent-loop run'; do
+# Package-bin launches (pnpm/npm exec, `agent:loop` scripts, agent_loop_start) run as
+# `node …/@dancingteeth/agent-looper/dist/cli/run.js`, which never contains "agent-loop run".
+for pat in 'agent-loop-batch' 'agent-loop run' 'agent-looper/dist/cli/run'; do
   pids=$(pgrep -f "$pat" 2>/dev/null || true)
-  if [ -n "$pids" ]; then
+  for p in $pids; do
+    case "$seen_pids" in *" $p "*) continue ;; esac
+    seen_pids="$seen_pids$p "
     found_proc=1
-    echo "$pids" | while IFS= read -r p; do
-      [ -n "$p" ] || continue
-      echo "ALIVE pid=$p etime=$(pid_etime "$p") match=$pat"
-    done
-  fi
+    echo "ALIVE pid=$p etime=$(pid_etime "$p") match=$pat"
+  done
 done
 if [ "$found_proc" -eq 0 ]; then
   echo "NONE (no agent-loop-batch / agent-loop run in process table)"

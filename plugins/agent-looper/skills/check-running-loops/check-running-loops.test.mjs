@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -66,6 +66,24 @@ describe('check-running-loops.sh', () => {
       const out = run(root, { CURSOR_TERMINALS_DIR: terms, STALE_SECS: '180', HUNG_SECS: '600' })
       assert.match(out, /file=9\.txt verdict=DONE pid=999999999 ps=DEAD/)
     } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('finds a grind started through a package bin (node …/agent-looper/dist/cli/run.js)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'check-loops-bin-'))
+    const terms = join(root, 'terminals')
+    mkdirSync(terms)
+    const bin = join(root, 'node_modules/@dancingteeth/agent-looper/dist/cli/run.js')
+    mkdirSync(dirname(bin), { recursive: true })
+    writeFileSync(bin, 'setInterval(() => {}, 1000)\n')
+    const child = spawn(process.execPath, [bin, 'run', join(root, '.cursor/loops/demo')], { stdio: 'ignore' })
+    try {
+      const out = run(root, { CURSOR_TERMINALS_DIR: terms })
+      assert.match(out, new RegExp(`ALIVE pid=${child.pid} etime=\\S* match=agent-looper/dist/cli/run`))
+      assert.equal(out.match(new RegExp(`ALIVE pid=${child.pid} `, 'g'))?.length, 1)
+    } finally {
+      child.kill()
       rmSync(root, { recursive: true, force: true })
     }
   })
