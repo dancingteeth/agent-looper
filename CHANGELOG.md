@@ -12,6 +12,18 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.7.5 — 2026-10-19
+
+OpenCode gets a companion plugin, and harness workers can tell it apart from your own sessions.
+
+### Headline
+
+- **OpenCode companion plugin** — new package [`@dancingteeth/opencode-agent-looper`](https://www.npmjs.com/package/@dancingteeth/opencode-agent-looper) (`plugins/opencode-agent-looper/`), for OpenCode 1.x and 2.x from one default export. Add it to `opencode.json` `plugin`. It ships the `design-loop` / `review-gate` / `check-running-loops` / `run-loop-in-opencode` skills, `agent_loop_start` (runs `agent-loop run` detached so the shell timeout cannot kill it), `agent_loop_status` (reads the `AGENT_LOOP_DONE` JSON, so a capped or failed run is not reported as complete), and a guard that rejects a foreground `agent-loop run` in the shell tool.
+- **`AGENT_LOOP_WORKER=1` on harness-spawned `opencode serve`** — with the plugin installed globally, a `runtime: opencode` worker or judge keeps only the guard. It is not given tools to start nested grinds.
+- **`agent-loop-init` ignores `opencode-grind.log` / `opencode-grind.pid`** — the plugin writes them in the loop dir. Repos initialised before 0.7.5 keep their existing ignore block; add the two lines by hand.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.5)
+
 ## 0.7.4 — 2026-10-19
 
 `runtime: opencode` works with the OpenCode 2.x CLI. A repo without a local `opencode-ai` pin used to fall back to a 2.x `opencode` on PATH and time out at server start.
