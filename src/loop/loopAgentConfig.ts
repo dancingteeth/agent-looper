@@ -107,17 +107,25 @@ export type ReviewAgentFieldLabels = {
 }
 
 /**
+ * Judge runtime when `reviewRuntime` is unset: the worker's own runtime (there is no Cursor
+ * default judge). Each runtime's spec supplies a judge model, e.g. OpenCode → V4 Pro, Claude → opus.
+ */
+export function effectiveReviewRuntime(config: { runtime?: LoopRuntime; reviewRuntime?: LoopRuntime }): LoopRuntime {
+  return config.reviewRuntime ?? config.runtime ?? LOOP_RUNTIME_CURSOR
+}
+
+/**
  * Resolve the primary judge agent (reviewRuntime + reviewModel).
- * Default reviewRuntime is cursor. OpenCode/Codex judges default to V4 Pro/Sol, not the cheap worker.
+ * Unset reviewRuntime follows the worker. OpenCode/Codex judges default to V4 Pro/Sol, not the cheap worker.
  */
 export function resolveReviewAgent(
-  config: Pick<LoopConfig, 'runtime' | 'reviewRuntime' | 'reviewModel'>,
+  config: Pick<LoopConfig, 'reviewRuntime' | 'reviewModel'> & { runtime?: LoopRuntime },
   labels: ReviewAgentFieldLabels = {},
 ): ResolvedReviewAgent {
   const modelField = labels.modelField ?? 'reviewModel'
   const runtimeField = labels.runtimeField ?? 'reviewRuntime'
   const workerRuntime = config.runtime ?? LOOP_RUNTIME_CURSOR
-  const reviewRuntime = config.reviewRuntime ?? LOOP_RUNTIME_CURSOR
+  const reviewRuntime = effectiveReviewRuntime(config)
   const model = assertRuntimeModel(
     reviewRuntime,
     config.reviewModel ?? defaultReviewModel(reviewRuntime, workerRuntime),

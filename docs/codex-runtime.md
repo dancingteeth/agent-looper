@@ -13,7 +13,7 @@ tags:
 memory across implement turns. Harness system instructions are **prepended** to the user prompt
 (Codex has no first-class system channel in the SDK).
 
-Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "codex"` to judge with Codex too.
+With `reviewRuntime` unset the judge is Codex too (default `gpt-5.6-sol`). Set `reviewRuntime` to judge elsewhere.
 
 Frozen against SDK **0.147.x** (see [`codex-runtime-roadmap.md`](./codex-runtime-roadmap.md)).
 

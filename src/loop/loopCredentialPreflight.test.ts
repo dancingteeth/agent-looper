@@ -70,6 +70,16 @@ describe('loopCredentialPreflight', () => {
     expect(requiredCredentialNeed('cline-pass', { CLINE_API_KEY: 'x' })).toBeUndefined()
   })
 
+  it('unset reviewRuntime follows the worker: no phantom Cursor judge key for an OpenCode or Claude loop', () => {
+    for (const runtime of ['opencode', 'claude'] as const) {
+      expect(listMissingLoopCredentials({ runtime, postQualityReview: 'auto' }, {})).toEqual([])
+    }
+    expect(listMissingLoopCredentials({ runtime: 'cursor', postQualityReview: 'auto' }, {})).toEqual([
+      { role: 'worker', runtime: 'cursor', need: 'CURSOR_API_KEY' },
+      { role: 'judge', runtime: 'cursor', need: 'CURSOR_API_KEY' },
+    ])
+  })
+
   it('does not require env keys for OpenCode / DSH / Codex / Muse', () => {
     expect(requiredCredentialNeed('opencode', {})).toBeUndefined()
     expect(requiredCredentialNeed('dsh', {})).toBeUndefined()

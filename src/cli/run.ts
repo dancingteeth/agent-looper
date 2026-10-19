@@ -6,7 +6,7 @@ import {
   validateRepoProfile,
 } from '../context/repoProfileDoctor.js'
 import { runAgentLoop } from '../loop/agentLoop.js'
-import type { LoopRuntime } from '../loop/loopAgentConfig.js'
+import { effectiveReviewRuntime, type LoopRuntime } from '../loop/loopAgentConfig.js'
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
 import { resolveLoopSetupCommand } from '../loop/loopSetup.js'
 import { detectLoopRuntimes } from './detectRuntimes.js'
@@ -224,7 +224,7 @@ try {
 
   assertLoopCredentials(bundle.config)
   console.error(
-    `[agent-loop] credentials ok worker=${bundle.config.runtime} judge=${bundle.config.reviewRuntime ?? 'cursor'}`,
+    `[agent-loop] credentials ok worker=${bundle.config.runtime} judge=${effectiveReviewRuntime(bundle.config)}`,
   )
 
   const profileCheck = validateRepoProfile(ctx, { detection })

@@ -19,14 +19,14 @@ Related: [Why open](../README.intro.md#why-open) in `README.intro.md`, shipped r
 | `runtime` | SDK / CLI | Worker default (escalate →) | Judge (typical) | Cost angle |
 | --- | --- | --- | --- | --- |
 | `cursor` | `@cursor/sdk` | `composer-2.5` | Grok 4.7 when worker is `cursor`, else Composer 2.5 | IDE subscription; `costPreset: "cursor"` |
-| `cline-pass` | `@cline/sdk` | `cline-pass/deepseek-v4.1-flash` → `qwen3.7-plus` | Cursor Composer 2.5 (unless `reviewRuntime` set) | Quota / subscription implement loops |
+| `cline-pass` | `@cline/sdk` | `cline-pass/deepseek-v4.1-flash` → `qwen3.7-plus` | Cline Pass (same model unless `reviewModel` set); set `reviewRuntime: cursor` for Composer 2.5 | Quota / subscription implement loops |
 | `cline` | `@cline/sdk` | `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus` | Same | Credits when Pass quota is gone |
-| `opencode` | `opencode` CLI + `@opencode-ai/sdk` (1.x) or `@opencode/client` (2.x) | Go `opencode-go/deepseek-v4.1-flash` → `qwen3.7-plus`; **or** BYOK e.g. `openrouter/…`, `vercel/…`, `ollama/…` | Cursor judge, or `reviewRuntime: opencode` | [OpenCode Go](https://opencode.ai/go) **and** OpenRouter / Vercel AI Gateway / other providers — [`opencode-providers.md`](./opencode-providers.md) |
-| `pi` | `@earendil-works/pi-coding-agent` | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | Cursor judge, or `reviewRuntime: pi` | BYOK OpenRouter-class — [`pi-runtime.md`](./pi-runtime.md) |
-| `codex` | `@openai/codex-sdk` + `codex` CLI | `gpt-5.6-luna` → `gpt-5.6-terra` | Cursor judge, or `reviewRuntime: codex` (default judge `gpt-5.6-sol`; optional `gpt-6-astra`) | ChatGPT / OpenAI BYO — [`codex-runtime.md`](./codex-runtime.md) |
-| `dsh` | `dsh` CLI (`--profile headless`) | `deepseek-official/deepseek-flash` (4.1; previous `deepseek-v4-flash` and `…-flash-vision-exp` still allowed) → `deepseek-official/deepseek-v4-pro` | Cursor judge, or `reviewRuntime: dsh` (default judge V4 Pro) | DeepSeek official — [`dsh-runtime.md`](./dsh-runtime.md); `dsh web` companion [`dsh-plugin.md`](./dsh-plugin.md) |
-| `muse` | `@muse-code/sdk` + `muse` CLI | `muse-spark-1.3-contributor` (climb `reasoningEffort`; no stronger Spark slug) | Cursor judge, or `reviewRuntime: muse` (default judge PAYG `muse-spark-1.3` — same model, different billing) | Meta Muse Code — [`muse-runtime.md`](./muse-runtime.md). **Not** on minmax. |
-| `claude` | PATH `claude` (`-p` + `--safe-mode`) | `sonnet` → `opus` | Cursor judge, or `reviewRuntime: claude` (default judge `opus`) | Claude Code subscription — [`claude-runtime.md`](./claude-runtime.md). **Not** on minmax. |
+| `opencode` | `opencode` CLI + `@opencode-ai/sdk` (1.x) or `@opencode/client` (2.x) | Go `opencode-go/deepseek-v4.1-flash` → `qwen3.7-plus`; **or** BYOK e.g. `openrouter/…`, `vercel/…`, `ollama/…` | OpenCode Go V4 Pro by default; any `reviewRuntime` | [OpenCode Go](https://opencode.ai/go) **and** OpenRouter / Vercel AI Gateway / other providers — [`opencode-providers.md`](./opencode-providers.md) |
+| `pi` | `@earendil-works/pi-coding-agent` | `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-plus` | Pi by default; any `reviewRuntime` | BYOK OpenRouter-class — [`pi-runtime.md`](./pi-runtime.md) |
+| `codex` | `@openai/codex-sdk` + `codex` CLI | `gpt-5.6-luna` → `gpt-5.6-terra` | Codex `gpt-5.6-sol` by default (optional `gpt-6-astra`); any `reviewRuntime` | ChatGPT / OpenAI BYO — [`codex-runtime.md`](./codex-runtime.md) |
+| `dsh` | `dsh` CLI (`--profile headless`) | `deepseek-official/deepseek-flash` (4.1; previous `deepseek-v4-flash` and `…-flash-vision-exp` still allowed) → `deepseek-official/deepseek-v4-pro` | DSH V4 Pro by default; any `reviewRuntime` | DeepSeek official — [`dsh-runtime.md`](./dsh-runtime.md); `dsh web` companion [`dsh-plugin.md`](./dsh-plugin.md) |
+| `muse` | `@muse-code/sdk` + `muse` CLI | `muse-spark-1.3-contributor` (climb `reasoningEffort`; no stronger Spark slug) | Muse PAYG `muse-spark-1.3` by default (same model, different billing); any `reviewRuntime` | Meta Muse Code — [`muse-runtime.md`](./muse-runtime.md). **Not** on minmax. |
+| `claude` | PATH `claude` (`-p` + `--safe-mode`) | `sonnet` → `opus` | Claude `opus` by default; any `reviewRuntime` | Claude Code subscription — [`claude-runtime.md`](./claude-runtime.md). **Not** on minmax. |
 
 Philosophy: **cheap worker iterations, selective judge, never LLM-as-verify.** To
 *measure* that, use [`runtime-cost-bench.md`](./runtime-cost-bench.md) (frozen GOAL,
@@ -53,15 +53,15 @@ minmax is **not** cheapest-cheapest: never Composer-as-judge while Grok is in th
 | **Dogfood minmax** | `costPreset: minmax` (omit `runtime`) | Hy3 + Grok when Go+Cursor; Composer + Grok on Cursor-only |
 | **Cursor IDE** | `costPreset: cursor` or `runtime: cursor` | Composer worker, Grok judge |
 | **Cheap Pi + Pi** | `runtime: pi`, `reviewRuntime: pi`, same `openrouter/…` model | Minimize judge + worker cost on BYOK |
-| **Pi worker + Cursor judge** | `runtime: pi`, omit `reviewRuntime` (defaults to cursor) | Cheap implement; Cursor subscription for review |
-| **OpenCode Go + Cursor** | `runtime: opencode` (Go model), default judge | Go worker quota; familiar Cursor judge |
-| **OpenCode Go + OpenCode judge** | `runtime: opencode`, `reviewRuntime: opencode` (omit `reviewModel`) | Go worker Flash; Go judge **DeepSeek V4 Pro** |
+| **Pi worker + Cursor judge** | `runtime: pi`, `reviewRuntime: cursor` | Cheap implement; Cursor subscription for review |
+| **OpenCode Go + Cursor** | `runtime: opencode` (Go model), `reviewRuntime: cursor` | Go worker quota; familiar Cursor judge |
+| **OpenCode Go + OpenCode judge** | `runtime: opencode` (omit `reviewRuntime` / `reviewModel`) | Go worker Flash; Go judge **DeepSeek V4 Pro** |
 | **OpenCode OpenRouter + OpenCode judge** | `runtime: opencode`, `model: openrouter/…`, `reviewRuntime: opencode`, explicit `reviewModel` | Full BYOK off Cursor — same OpenRouter key for worker and judge |
 | **OpenRouter `:free`** | `costPreset: or-free` (profile) or pin M3 :free worker → Laguna S 2.1 :free escalate **and** judge (`reviewRuntime: opencode`) | Hosted $0 OpenCode stack; no Cursor. Not minmax. [`opencode-providers.md`](./opencode-providers.md) |
 | **OpenCode Vercel + OpenCode judge** | `runtime: opencode`, `model: vercel/…`, `reviewRuntime: opencode` | Full BYOK off Cursor — Vercel AI Gateway (`AI_GATEWAY_API_KEY`, list price) |
 | **OpenCode Go + Pi judge** | `runtime: opencode`, `reviewRuntime: pi` | Mix Go implement with Pi BYOK review |
 | **Codex + Codex** | `runtime: codex`, `reviewRuntime: codex` (judge defaults to Sol) | ChatGPT / OpenAI stack; cheap Luna worker, frontier Sol judge |
-| **Codex worker + Cursor judge** | `runtime: codex`, omit `reviewRuntime` | Codex implement; Cursor subscription for review |
+| **Codex worker + Cursor judge** | `runtime: codex`, `reviewRuntime: cursor` | Codex implement; Cursor subscription for review |
 | **DSH Flash + DSH Pro** | `runtime: dsh`, `reviewRuntime: dsh` (omit `reviewModel`) | Stay on DeepSeek official; Flash worker / Pro judge |
 | **Muse + Muse** | `runtime: muse`, `reviewRuntime: muse` (set `reasoningEffort` / `escalateReasoningEffort`; omit `escalateModel`) | Same Spark weights; contributor vs PAYG is billing/privacy, not a capability step |
 | **Hy3 worker + Claude judge** | `runtime: opencode`, `reviewRuntime: claude` (omit `reviewModel` → opus) | Cheap implement; Max/Pro quota for residual review |

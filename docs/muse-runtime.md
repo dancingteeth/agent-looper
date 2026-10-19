@@ -16,7 +16,7 @@ already SIGTERMs that group; the harness also tracks the serve pid, SIGKILLs lef
 starts a parent-death reaper so Cursor Agent Shell SIGKILL of Node cannot leave `muse` + MCP
 under PID 1.
 
-Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "muse"` to judge with Muse too.
+With `reviewRuntime` unset the judge is Muse too. Set `reviewRuntime` to judge elsewhere.
 
 Not on `costPreset` minmax — Spark is not Flash-class cheap. Use an explicit `runtime: muse`.
 

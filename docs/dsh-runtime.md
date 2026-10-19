@@ -12,7 +12,7 @@ tags:
 
 The DSH **companion plugin** (`plugins/dsh-agent-looper/`) freezes GOAL + verify, then starts `agent-loop run` as **background bash** (`run_in_background: true`). Foreground grind is still blocked. Each iteration still spawns `dsh --profile headless`. From `dsh web`, switch the session to **Full Access** (or start that bash with `sandbox_permissions: danger-full-access`) so headless can write `~/.dsh/profiles/headless/` — see [Web session Full Access](#web-session-full-access).
 
-Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "dsh"` to judge with headless DSH too.
+With `reviewRuntime` unset the judge is headless DSH too (default V4 Pro). Set `reviewRuntime` to judge elsewhere.
 
 ## Call shape
 

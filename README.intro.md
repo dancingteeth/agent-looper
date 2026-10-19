@@ -100,7 +100,7 @@ Two independent knobs:
 | **Worker** | `runtime` + `model` | Edit the repo until verify is green |
 | **Judge** | `reviewRuntime` + `reviewModel` | After verify, write `review.md` (optional `reviewGate`) |
 
-They do not have to match. A non-Cursor worker can still use a Cursor judge — and that is the default if you leave `reviewRuntime` unset (so you still need `@cursor/sdk` unless you point the judge elsewhere).
+They do not have to match. Leave `reviewRuntime` unset and the judge runs on the worker's runtime with that runtime's judge model (OpenCode → DeepSeek V4 Pro, Claude → Opus, Codex → Sol). Set it to pair runtimes, e.g. an OpenCode worker with a Claude or Cursor judge.
 
 ### Worker defaults
 

@@ -1056,14 +1056,14 @@ describe('runAgentLoop', () => {
     )
   })
 
-  it('forwards composer-2.5 reviewModel for cline-pass review-gate', async () => {
+  it('forwards composer-2.5 reviewModel for an explicit Cursor judge on a cline-pass review-gate', async () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
 
     await runAgentLoop({
       ctx: makeCtx(),
-      bundle: makeBundle({ runtime: 'cline-pass', reviewGate: true, maxReviewCycles: 1 }),
+      bundle: makeBundle({ runtime: 'cline-pass', reviewRuntime: 'cursor', reviewGate: true, maxReviewCycles: 1 }),
     })
 
     expect(runPostLoopQualityReview).toHaveBeenCalledWith(

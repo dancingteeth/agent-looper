@@ -16,7 +16,7 @@ Each spawn uses `--safe-mode` (Claude Code **2.1.169+**) so `CLAUDE.md`, hooks, 
 
 The child **unsets `ANTHROPIC_API_KEY`** so print mode uses Claude Code login (Pro/Max/Team Premium), not Console pay-per-token. Do not set that key in the grind shell if you want subscription quota.
 
-Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "claude"` to judge with Claude too (default **`opus`**). Typical mix: cheap worker (OpenCode Hy3 / DSH Flash) + Claude judge.
+With `reviewRuntime` unset the judge is Claude too (default **`opus`**). Set `reviewRuntime` to judge elsewhere. Typical mix: cheap worker (OpenCode Hy3 / DSH Flash) + Claude judge.
 
 Not on `costPreset` minmax — Sonnet/Opus are not Flash-class cheap. Use an explicit `runtime` / `reviewRuntime`.
 

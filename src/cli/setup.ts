@@ -447,7 +447,7 @@ export function runWizard(
 
   console.error(
     `[agent-loop-setup] configured runtime=${parsed.runtime} ` +
-      `reviewRuntime=${parsed.reviewRuntime ?? '(unset → cursor)'} ` +
+      `reviewRuntime=${parsed.reviewRuntime ?? `(unset → ${parsed.runtime ?? 'worker runtime'})`} ` +
       `maxIterations=${parsed.maxIterations}`,
   )
   printNextSteps(config, outDir, repoRoot, profile !== undefined)

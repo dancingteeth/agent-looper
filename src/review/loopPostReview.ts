@@ -96,7 +96,7 @@ export type PostLoopReviewOptions = {
   reviewCycle?: number
   /** Worker runtime — used to resolve default judge model when reviewAgent is omitted. */
   workerRuntime?: LoopRuntime
-  /** Primary judge runtime. Unset → cursor. */
+  /** Primary judge runtime. Unset → the worker `runtime`. */
   reviewRuntime?: LoopRuntime
   /** Judge model id for the primary review runtime. */
   reviewModel?: string

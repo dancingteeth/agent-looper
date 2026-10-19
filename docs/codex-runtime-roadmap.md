@@ -85,7 +85,7 @@ Discover before coding (see [`unknowns-preflight.md`](./unknowns-preflight.md)):
 ### Acceptance
 
 - [x] `reviewRuntime: "codex"` wired in `reviewAgentRun` / meta-review / verify skill
-- [x] Default judge remains Cursor when `reviewRuntime` unset
+- [x] Unset `reviewRuntime` judges on Codex (follows the worker; was Cursor before 0.8.0)
 
 ## Phase 3 — Docs + npm release
 

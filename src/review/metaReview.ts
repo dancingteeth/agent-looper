@@ -8,11 +8,8 @@ import {
 } from '../loop/loopReport.js'
 import { createHitlCheckpoint, hitlLoopOverridesFrom } from '../integrations/hitlCheckpoint.js'
 import { readLoopExportPackArtifacts } from '../integrations/loopExportPack.js'
-import {
-  LOOP_RUNTIME_CURSOR,
-  resolveReviewAgent,
-  type LoopRuntime,
-} from '../loop/loopAgentConfig.js'
+import { resolveReviewAgent, type LoopRuntime } from '../loop/loopAgentConfig.js'
+import { parseLoopRuntimeCli } from '../loop/loopConfig.js'
 import { gitDiffStatSinceBranchBase } from './loopPostReview.js'
 import { buildMetaReviewPrompt, type CollectedLoopArtifacts } from './metaReviewPrompt.js'
 import { parseReviewMarkdown } from './reviewVerdict.js'
@@ -200,7 +197,7 @@ export type MetaReviewOptions = {
   outputPath?: string
   hitl?: boolean
   taskwarriorProject?: string
-  /** Primary judge runtime (default cursor). */
+  /** Primary judge runtime (default: repo `defaults.reviewRuntime`, else `defaults.runtime`). */
   reviewRuntime?: LoopRuntime
   reviewModel?: string
   verbose?: boolean
@@ -221,6 +218,11 @@ export function resolveMetaReviewOutputPath(options: {
   if (options.outputPath) return path.resolve(options.outputPath)
   const outDir = path.resolve(options.outDir ?? process.cwd())
   return path.join(outDir, 'meta-review.md')
+}
+
+/** Repo `defaults` are untyped; only a valid runtime name counts. */
+function profileRuntime(value: unknown): LoopRuntime | undefined {
+  return typeof value === 'string' ? parseLoopRuntimeCli(value) : undefined
 }
 
 export async function runMetaReview(options: MetaReviewOptions): Promise<MetaReviewResult> {
@@ -247,8 +249,8 @@ export async function runMetaReview(options: MetaReviewOptions): Promise<MetaRev
 
   const prompt = buildMetaReviewPrompt(ctx, bundles)
   const reviewAgent = resolveReviewAgent({
-    runtime: LOOP_RUNTIME_CURSOR,
-    reviewRuntime: options.reviewRuntime ?? LOOP_RUNTIME_CURSOR,
+    runtime: profileRuntime(ctx.profile.defaults?.runtime),
+    reviewRuntime: options.reviewRuntime ?? profileRuntime(ctx.profile.defaults?.reviewRuntime),
     reviewModel: options.reviewModel,
   })
   console.error(

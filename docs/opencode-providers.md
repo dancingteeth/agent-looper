@@ -12,7 +12,7 @@ tags:
 
 `runtime: opencode` uses the `opencode` CLI with `@opencode-ai/sdk` (CLI 1.x) or `@opencode/client` (CLI 2.x). The harness runs `opencode --version` on the resolved binary (repo `node_modules/opencode-ai` first, then PATH) and picks the matching client — 2.x replaced the server API (Basic auth via `OPENCODE_PASSWORD`, new routes, `session.execution.*` events instead of `session.idle`), so the 1.x SDK cannot talk to it. Under 2.x, provider keys live in OpenCode's credential store (v1 `auth.json` is migrated on first boot); env keys are added there once, not per run. `agent:check:opencode` starts a throwaway serve and makes one authenticated call, so an SDK/CLI mismatch fails the check instead of the first loop. The harness starts a **local OpenCode server per loop session** by spawning `opencode.exe` (not the pnpm shell shim). Dispose SIGTERMs the serve **process tree** (MCP children included), SIGKILLs leftovers, and a parent-death reaper cleans up if the harness Node process is SIGKILL’d. SDK `server.close()` alone is not enough: it only kills the shim, which orphaned `opencode.exe` + Toolport/githits MCP processes under PID 1.
 
-Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "opencode"` to judge on Go (defaults to **`opencode-go/deepseek-v4-pro`**, not Flash). BYOK OpenCode judges still need an explicit `reviewModel`.
+With `reviewRuntime` unset the judge is OpenCode too, on Go **`opencode-go/deepseek-v4-pro`** (not Flash). Set `reviewRuntime` to judge elsewhere. BYOK OpenCode judges still need an explicit `reviewModel`.
 
 ## Defaults (cost-minmax)
 

@@ -12,7 +12,7 @@ tags:
 
 `runtime: pi` embeds [@earendil-works/pi-coding-agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent): read/bash/edit/write tools, fresh in-memory session per worker iteration. Harness instructions are appended via Pi’s `DefaultResourceLoader.appendSystemPrompt` (not stuffed into the user message).
 
-Default judge stays Cursor (`reviewRuntime` unset). Set `reviewRuntime: "pi"` to use Pi for review too.
+With `reviewRuntime` unset the judge is Pi too, on the same model as the worker unless you set `reviewModel`. Set `reviewRuntime` to judge elsewhere.
 
 ## Install
 

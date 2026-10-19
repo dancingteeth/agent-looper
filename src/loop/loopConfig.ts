@@ -8,6 +8,7 @@ import {
   LOOP_REASONING_EFFORTS,
   clearIncompatibleAgentFieldsOnRuntimeSwitch,
   clearIncompatibleReviewFieldsOnRuntimeSwitch,
+  effectiveReviewRuntime,
   validateLoopAgentConfig,
   type LoopRuntime,
 } from './loopAgentConfig.js'
@@ -80,7 +81,7 @@ export const loopConfigSchema = loopExtensionFieldsSchema
      */
     costPreset: z.string().optional(),
     model: z.string().optional(),
-    /** Primary judge runtime. Unset → cursor (backward compatible). */
+    /** Primary judge runtime. Unset → the worker `runtime` (see effectiveReviewRuntime). */
     reviewRuntime: loopRuntimeSchema.optional(),
     /** Judge model for quality review / review-gate. Unset → resolveReviewAgent(). */
     reviewModel: z.string().optional(),
@@ -350,8 +351,8 @@ export function mergeLoopConfig(base: LoopConfig, overrides: Partial<LoopConfig>
   })
 
   const review = clearIncompatibleReviewFieldsOnRuntimeSwitch({
-    previousReviewRuntime: base.reviewRuntime ?? LOOP_RUNTIME_CURSOR,
-    nextReviewRuntime: next.reviewRuntime ?? LOOP_RUNTIME_CURSOR,
+    previousReviewRuntime: effectiveReviewRuntime(base),
+    nextReviewRuntime: effectiveReviewRuntime(next),
     reviewModel: next.reviewModel,
     reviewModelOverridden: cleanedOverrides.reviewModel !== undefined,
   })

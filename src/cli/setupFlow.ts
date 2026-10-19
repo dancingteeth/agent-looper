@@ -171,7 +171,7 @@ export async function collectSetupAnswers(
       'Judge runtime (reviewRuntime)',
       'Who writes residual review.md after verify. Independent of the worker.',
       annotateDetection(JUDGE_RUNTIME_CHOICES, detection),
-      LOOP_RUNTIME_CURSOR,
+      runtime,
     )) as LoopRuntime
     const reviewModel = await askOptionalSlug(
       'Judge model (reviewModel)',

@@ -10,6 +10,7 @@ import {
   LOOP_RUNTIME_CLAUDE,
   LOOP_RUNTIME_OPENCODE,
   LOOP_RUNTIME_PI,
+  effectiveReviewRuntime,
   type LoopRuntime,
 } from './loopAgentConfig.js'
 
@@ -76,7 +77,7 @@ export function listMissingLoopCredentials(
   }
   if (!judgeWillRun(config)) return missing
 
-  const reviewRuntime = config.reviewRuntime ?? LOOP_RUNTIME_CURSOR
+  const reviewRuntime = effectiveReviewRuntime(config)
   const judgeNeed = requiredCredentialNeed(reviewRuntime, env)
   if (judgeNeed !== undefined) {
     missing.push({ role: 'judge', runtime: reviewRuntime, need: judgeNeed })
@@ -108,7 +109,7 @@ function configUsesDsh(
   config: Pick<LoopConfig, 'runtime' | 'reviewRuntime' | 'postQualityReview' | 'reviewSecondaryRuntime'>,
 ): boolean {
   if (config.runtime === LOOP_RUNTIME_DSH) return true
-  if (judgeWillRun(config) && (config.reviewRuntime ?? LOOP_RUNTIME_CURSOR) === LOOP_RUNTIME_DSH) {
+  if (judgeWillRun(config) && effectiveReviewRuntime(config) === LOOP_RUNTIME_DSH) {
     return true
   }
   return config.reviewSecondaryRuntime === LOOP_RUNTIME_DSH

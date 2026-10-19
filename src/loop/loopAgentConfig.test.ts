@@ -156,8 +156,13 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(resolveReviewModel(config)).toBe('grok-4.7')
   })
 
-  it('defaults reviewModel to composer-2.5 for cline-pass runtime', () => {
+  it('resolveReviewModel (Cursor-only) refuses an unset judge on a cline-pass worker, which now judges on cline-pass', () => {
     const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline-pass' })
+    expect(() => resolveReviewModel(config)).toThrow(/got "cline-pass"\). Use resolveReviewAgent/)
+  })
+
+  it('an explicit Cursor judge on a cline-pass worker still defaults to composer-2.5', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline-pass', reviewRuntime: 'cursor' })
     expect(resolveReviewModel(config)).toBe('composer-2.5')
   })
 
@@ -185,8 +190,16 @@ describe('resolveIterationAgent reasoning effort', () => {
     expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'grok-4.7' })
   })
 
-  it('resolveReviewAgent defaults cursor judge to composer-2.5 on cline-pass worker', () => {
-    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline-pass' })
+  it('resolveReviewAgent: unset reviewRuntime judges on the worker runtime, never a Cursor default', () => {
+    const judge = (runtime: string) => resolveReviewAgent(loopConfigSchema.parse({ verify: 'true', runtime }))
+    expect(judge('cline-pass')).toEqual({ runtime: 'cline-pass', model: 'cline-pass/deepseek-v4.1-flash' })
+    expect(judge('opencode')).toEqual({ runtime: 'opencode', model: 'opencode-go/deepseek-v4-pro' })
+    expect(judge('claude')).toEqual({ runtime: 'claude', model: 'opus' })
+    expect(judge('cursor').runtime).toBe('cursor')
+  })
+
+  it('resolveReviewAgent keeps an explicit Cursor judge on a cline-pass worker at composer-2.5', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', runtime: 'cline-pass', reviewRuntime: 'cursor' })
     expect(resolveReviewAgent(config)).toEqual({ runtime: 'cursor', model: 'composer-2.5' })
   })
 
