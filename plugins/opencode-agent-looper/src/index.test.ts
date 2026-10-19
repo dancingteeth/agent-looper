@@ -7,7 +7,7 @@ import * as entry from './index.js'
 import { FOREGROUND_RUN_DENIAL, foregroundRunReason } from './guard.js'
 import { createAgentLooperHooks } from './plugin.js'
 import { formatLoopCompletionSignalLine } from '../../../src/integrations/loopCompletionSignal.js'
-import { describeDone, GRIND_LOG, GRIND_PID, grindStatus, startGrind, type SpawnFn } from './run.js'
+import { describeDone, detectPackageManager, GRIND_LOG, GRIND_PID, grindStatus, resolveLaunch, startGrind, type SpawnFn } from './run.js'
 import { defaultSkillsDir, discoverSkills, parseSkillFile } from './skills.js'
 import { setupV2, type V2Context } from './v2.js'
 
@@ -112,6 +112,12 @@ describe('foregroundRunReason', () => {
     expect(foregroundRunReason('shell', { command: 'agent-loop run x' })).toBe(FOREGROUND_RUN_DENIAL)
   })
 
+  it('allows 2.x background shell jobs (they outlive the tool timeout)', () => {
+    const command = 'doppler run --project p --config dev -- pnpm exec agent-loop run .cursor/loops/x'
+    expect(foregroundRunReason('shell', { command, background: true })).toBeUndefined()
+    expect(foregroundRunReason('shell', { command, background: false })).toBe(FOREGROUND_RUN_DENIAL)
+  })
+
   it('allows help, other subcommands, and non-bash tools', () => {
     expect(foregroundRunReason('bash', { command: 'pnpm exec agent-loop run --help' })).toBeUndefined()
     expect(foregroundRunReason('bash', { command: 'pnpm exec agent-loop watch --snapshot x' })).toBeUndefined()
@@ -154,6 +160,42 @@ describe('startGrind / grindStatus', () => {
     const again = startGrind({ directory: repo, worktree: repo, loopDir: '.cursor/loops/demo', spawnImpl: fakeSpawn(2, calls) })
     expect(again).toMatchObject({ ok: false })
     expect(calls).toHaveLength(1)
+  })
+
+  it('resolves the launch: launchPrefix > agent:loop script (repo package manager) > binary', () => {
+    const { repo, loopDir } = loopBundle()
+    expect(resolveLaunch({ worktree: repo, loopDir })).toEqual({ command: 'agent-loop', args: ['run', loopDir], via: 'binary' })
+
+    fs.writeFileSync(
+      path.join(repo, 'package.json'),
+      JSON.stringify({ packageManager: 'pnpm@10.28.0', scripts: { 'agent:loop': 'doppler run -- agent-loop run' } }),
+    )
+    expect(resolveLaunch({ worktree: repo, loopDir, extraArgs: ['--max-iterations', '2'] })).toEqual({
+      command: 'pnpm',
+      args: ['run', 'agent:loop', loopDir, '--max-iterations', '2'],
+      via: 'agent:loop script',
+    })
+
+    fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ scripts: { 'agent:loop': 'agent-loop run' } }))
+    expect(resolveLaunch({ worktree: repo, loopDir }).args).toEqual(['run', 'agent:loop', '--', loopDir])
+
+    // An explicit agentLoopBinary opts out of the script; launchPrefix wraps whichever binary applies.
+    expect(resolveLaunch({ worktree: repo, loopDir, binary: '/opt/agent-loop' }).command).toBe('/opt/agent-loop')
+    expect(
+      resolveLaunch({ worktree: repo, loopDir, launchPrefix: ['doppler', 'run', '--project', 'p', '--'] }),
+    ).toEqual({
+      command: 'doppler',
+      args: ['run', '--project', 'p', '--', 'agent-loop', 'run', loopDir],
+      via: 'launchPrefix',
+    })
+  })
+
+  it('detects the package manager from packageManager, then lockfiles', () => {
+    const { repo } = loopBundle()
+    expect(detectPackageManager(repo, {})).toBe('npm')
+    fs.writeFileSync(path.join(repo, 'yarn.lock'), '')
+    expect(detectPackageManager(repo, {})).toBe('yarn')
+    expect(detectPackageManager(repo, { packageManager: 'pnpm@9.15.0' })).toBe('pnpm')
   })
 
   it('reports a missing binary instead of crashing', () => {

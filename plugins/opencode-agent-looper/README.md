@@ -47,8 +47,13 @@ Options (1.x: `["@dancingteeth/opencode-agent-looper", { ... }]`):
 | Option | Default | |
 | --- | --- | --- |
 | `agentLoopBinary` | `node_modules/.bin/agent-loop`, else `agent-loop` on PATH | Binary `agent_loop_start` runs |
+| `launchPrefix` | none | Command words put before `agent-loop run`, e.g. `["doppler","run","--project","p","--config","dev","--"]` |
 | `blockNestedRun` | `true` | Shell guard |
 | `skillsDir` | bundled `skills/` | Relative to the package root |
+
+### Runtime keys
+
+`agent_loop_start` inherits the **OpenCode server** environment, not your shell, so keys like `CURSOR_API_KEY` are usually not there. It launches, in order: `launchPrefix` if set; else the repo's **`agent:loop`** package script through the repo's package manager (the usual place for `doppler run -- agent-loop run`); else plain `agent-loop run`. An explicit `agentLoopBinary` skips the script.
 
 ## Local development
 

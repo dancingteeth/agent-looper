@@ -1,7 +1,7 @@
 export const FOREGROUND_RUN_DENIAL = [
-  'Blocked: do not start `agent-loop run` / `agent-loop-batch` in the OpenCode shell tool.',
+  'Blocked: do not start `agent-loop run` / `agent-loop-batch` in the foreground OpenCode shell tool.',
   'The shell tool times out long before a grind finishes and kills it.',
-  'Call the `agent_loop_start` tool with the loop dir instead, then `agent_loop_status` when asked.',
+  'Call the `agent_loop_start` tool with the loop dir instead (on OpenCode 2.x a `background: true` shell job also works), then `agent_loop_status` when asked.',
   '`--help` is still allowed.',
 ].join(' ')
 
@@ -18,6 +18,8 @@ export function foregroundRunReason(tool: string, args: unknown): string | undef
   if (args === null || typeof args !== 'object') return undefined
   const command = (args as { command?: unknown }).command
   if (typeof command !== 'string') return undefined
+  // 2.x shell jobs with `background: true` outlive the tool timeout, like DSH `run_in_background`.
+  if ((args as { background?: unknown }).background === true) return undefined
   if (!GRIND_RE.test(command)) return undefined
   if (/(?:^|\s)(?:--help|-h)(?:\s|$)/.test(command)) return undefined
   return FOREGROUND_RUN_DENIAL

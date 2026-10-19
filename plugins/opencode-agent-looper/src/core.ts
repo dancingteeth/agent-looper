@@ -5,6 +5,8 @@ import { defaultSkillsDir, discoverSkills, pluginRoot, type ParsedSkill } from '
 export type AgentLooperOptions = {
   skillsDir?: string
   agentLoopBinary?: string
+  /** Command words placed before `agent-loop run`, e.g. ["doppler","run","--project","x","--config","dev","--"]. */
+  launchPrefix?: string[]
   /** Default true: deny foreground `agent-loop run` in the bash / shell tool. */
   blockNestedRun: boolean
 }
@@ -14,6 +16,10 @@ export function readOptions(options: Readonly<Record<string, unknown>> | undefin
   return {
     skillsDir: typeof raw.skillsDir === 'string' ? raw.skillsDir : undefined,
     agentLoopBinary: typeof raw.agentLoopBinary === 'string' ? raw.agentLoopBinary : undefined,
+    launchPrefix:
+      Array.isArray(raw.launchPrefix) && raw.launchPrefix.every((w) => typeof w === 'string')
+        ? (raw.launchPrefix as string[])
+        : undefined,
     blockNestedRun: raw.blockNestedRun !== false,
   }
 }
@@ -26,7 +32,7 @@ export function isHarnessWorker(env: NodeJS.ProcessEnv): boolean {
 export const TOOL_DESCRIPTIONS = {
   skill: (skills: ParsedSkill[]) => `Load Agent Looper guidance. Skills: ${skills.map((s) => s.name).join(', ')}.`,
   start:
-    'Start `agent-loop run <loopDir>` detached (survives shell timeouts). Returns pid and log path immediately. Only after the bundle is frozen and the user asked to run it.',
+    'Start the Agent Looper grind for <loopDir> detached (survives shell timeouts); returns pid and log path immediately. Launches via the plugin `launchPrefix` option, else the repo `agent:loop` package script (how repos inject keys, e.g. `doppler run -- agent-loop run`), else `agent-loop run`. The process inherits the OpenCode server env, not your shell: a missing runtime key means wire `agent:loop` or `launchPrefix`, not a retry. Only after the bundle is frozen and the user asked to run it.',
   status: 'Report whether an Agent Looper grind is running, dead, or done, with the log tail and the runtime-agnostic heartbeat.',
   loopDir: 'Loop bundle dir, e.g. .cursor/loops/my-task',
   extraArgs: 'Extra CLI flags, e.g. ["--max-iterations","5"]',
@@ -48,9 +54,14 @@ export function createLooperCore(options: AgentLooperOptions, deps: { spawnImpl?
     },
 
     startText(input: { directory: string; worktree: string; loopDir: string; extraArgs?: string[] }): string {
-      const result = startGrind({ ...input, binary: options.agentLoopBinary, spawnImpl: deps.spawnImpl })
+      const result = startGrind({
+        ...input,
+        binary: options.agentLoopBinary,
+        launchPrefix: options.launchPrefix,
+        spawnImpl: deps.spawnImpl,
+      })
       if (!result.ok) return result.error
-      return `Started: ${result.command}\npid: ${result.pid}\nlog: ${result.logPath}\nCheck later with agent_loop_status; do not busy-poll.`
+      return `Started (${result.via}): ${result.command}\npid: ${result.pid}\nlog: ${result.logPath}\nCheck later with agent_loop_status; do not busy-poll.`
     },
 
     async statusText(input: { directory: string; worktree: string; loopDir: string }): Promise<string> {

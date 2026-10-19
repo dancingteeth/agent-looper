@@ -8,7 +8,9 @@ const DONE_PREFIX = 'AGENT_LOOP_DONE '
 const RUN_REPORT = 'run-report.md'
 const LOG_TAIL_LINES = 40
 
-export type StartResult = { ok: true; pid: number; logPath: string; command: string } | { ok: false; error: string }
+export type StartResult =
+  | { ok: true; pid: number; logPath: string; command: string; via: Launch['via'] }
+  | { ok: false; error: string }
 
 export type SpawnFn = typeof spawn
 
@@ -38,6 +40,71 @@ export function resolveAgentLoopBinary(worktree: string, configured?: string): s
   return fs.existsSync(local) ? local : 'agent-loop'
 }
 
+export type Launch = { command: string; args: string[]; via: 'launchPrefix' | 'agent:loop script' | 'binary' }
+
+export const AGENT_LOOP_SCRIPT = 'agent:loop'
+
+/** `packageManager` field first, then lockfiles; npm when nothing says otherwise. */
+export function detectPackageManager(worktree: string, pkg: { packageManager?: unknown }): string {
+  if (typeof pkg.packageManager === 'string') {
+    const name = pkg.packageManager.split('@')[0]
+    if (name) return name
+  }
+  for (const [lock, pm] of [
+    ['pnpm-lock.yaml', 'pnpm'],
+    ['yarn.lock', 'yarn'],
+    ['bun.lock', 'bun'],
+    ['bun.lockb', 'bun'],
+  ] as const) {
+    if (fs.existsSync(path.join(worktree, lock))) return pm
+  }
+  return 'npm'
+}
+
+function readScript(worktree: string): { pm: string } | undefined {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(worktree, 'package.json'), 'utf8')) as {
+      scripts?: Record<string, unknown>
+      packageManager?: unknown
+    }
+    if (typeof pkg.scripts?.[AGENT_LOOP_SCRIPT] !== 'string') return undefined
+    return { pm: detectPackageManager(worktree, pkg) }
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * How `agent_loop_start` runs the grind. The spawn inherits the OpenCode server env, which rarely
+ * holds runtime keys, so prefer a launcher that brings its own: an explicit `launchPrefix`
+ * (e.g. `doppler run --project x --config dev --`), else the repo's `agent:loop` script (the
+ * CONSUMERS.md convention, often `doppler run -- agent-loop run`), else the bare binary.
+ */
+export function resolveLaunch(input: {
+  worktree: string
+  loopDir: string
+  extraArgs?: string[]
+  binary?: string
+  launchPrefix?: string[]
+}): Launch {
+  const loopArgs = [input.loopDir, ...(input.extraArgs ?? [])]
+  if (input.launchPrefix?.length) {
+    const [command, ...prefixArgs] = input.launchPrefix
+    return {
+      command,
+      args: [...prefixArgs, resolveAgentLoopBinary(input.worktree, input.binary), 'run', ...loopArgs],
+      via: 'launchPrefix',
+    }
+  }
+  const script = input.binary ? undefined : readScript(input.worktree)
+  if (script) {
+    // npm needs `--` to forward args to the script; pnpm / yarn / bun forward them as-is.
+    const forward = script.pm === 'npm' ? ['--', ...loopArgs] : loopArgs
+    return { command: script.pm, args: ['run', AGENT_LOOP_SCRIPT, ...forward], via: 'agent:loop script' }
+  }
+  return { command: resolveAgentLoopBinary(input.worktree, input.binary), args: ['run', ...loopArgs], via: 'binary' }
+}
+
 export function resolveLoopDir(directory: string, loopDir: string): string {
   return path.resolve(directory, loopDir)
 }
@@ -48,6 +115,7 @@ export function startGrind(input: {
   loopDir: string
   extraArgs?: string[]
   binary?: string
+  launchPrefix?: string[]
   spawnImpl?: SpawnFn
 }): StartResult {
   const loopDir = resolveLoopDir(input.directory, input.loopDir)
@@ -65,12 +133,11 @@ export function startGrind(input: {
     }
   }
 
-  const binary = resolveAgentLoopBinary(input.worktree, input.binary)
-  const args = ['run', loopDir, ...(input.extraArgs ?? [])]
+  const launch = resolveLaunch({ ...input, loopDir })
   const logPath = path.join(loopDir, GRIND_LOG)
   const logFd = fs.openSync(logPath, 'w')
   try {
-    const child = (input.spawnImpl ?? spawn)(binary, args, {
+    const child = (input.spawnImpl ?? spawn)(launch.command, launch.args, {
       cwd: input.worktree,
       detached: true,
       stdio: ['ignore', logFd, logFd],
@@ -79,11 +146,14 @@ export function startGrind(input: {
     // ENOENT surfaces as an async 'error' event; without a listener it would crash the OpenCode host.
     child.on('error', () => undefined)
     if (child.pid === undefined) {
-      return { ok: false, error: `Could not start ${binary}. Install @dancingteeth/agent-looper (skill run-loop-in-opencode).` }
+      return {
+        ok: false,
+        error: `Could not start ${launch.command} (${launch.via}). Install @dancingteeth/agent-looper (skill run-loop-in-opencode).`,
+      }
     }
     child.unref()
     fs.writeFileSync(path.join(loopDir, GRIND_PID), `${child.pid}\n`)
-    return { ok: true, pid: child.pid, logPath, command: [binary, ...args].join(' ') }
+    return { ok: true, pid: child.pid, logPath, command: [launch.command, ...launch.args].join(' '), via: launch.via }
   } finally {
     fs.closeSync(logFd)
   }
