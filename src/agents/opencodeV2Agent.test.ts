@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { repoProfileSchema } from '../context/repoProfile.js'
 import { StreamCollector } from '../stream/streamCollect.js'
 
@@ -48,11 +48,13 @@ vi.mock('@opencode/client', () => ({
 }))
 
 import { createOpencodeV2LoopSession } from './opencodeV2Agent.js'
+import type { OpencodeLoopSession } from './opencodeAgent.js'
 import { startOpencodeServe } from './opencodeServe.js'
 
 function buildMockClient(overrides: {
   events?: Array<{ type: string; data?: Record<string, unknown> }>
   promptReject?: Error
+  permissionReplyReject?: Error
   assistantMessage?: {
     type: string
     content: Array<{ type: string; text?: string }>
@@ -95,7 +97,9 @@ function buildMockClient(overrides: {
     }
   })
 
-  const permissionReply = vi.fn().mockResolvedValue(undefined)
+  const permissionReply = overrides.permissionReplyReject
+    ? vi.fn().mockRejectedValue(overrides.permissionReplyReject)
+    : vi.fn().mockResolvedValue(undefined)
   const sessionCreate = vi.fn().mockResolvedValue({ id: 'ses_test' })
   const instructionsPut = vi.fn().mockResolvedValue(undefined)
   const sessionPrompt = overrides.promptReject
@@ -142,14 +146,26 @@ function buildMockClient(overrides: {
   }
 }
 
-const baseInput = {
-  command: '/bin/opencode',
-  servePath: '/bin',
-  serveConfig: { autoupdate: false },
-  restorePath: vi.fn(),
+function makeBaseInput() {
+  return {
+    command: '/bin/opencode',
+    servePath: '/bin',
+    serveConfig: { autoupdate: false },
+    restorePath: vi.fn(),
+  }
 }
 
 describe('createOpencodeV2LoopSession', () => {
+  const openSessions: OpencodeLoopSession[] = []
+
+  async function openSession(
+    ...args: Parameters<typeof createOpencodeV2LoopSession>
+  ): Promise<OpencodeLoopSession> {
+    const session = await createOpencodeV2LoopSession(...args)
+    openSessions.push(session)
+    return session
+  }
+
   beforeEach(() => {
     closeServe.mockClear()
     untrack.mockClear()
@@ -165,7 +181,16 @@ describe('createOpencodeV2LoopSession', () => {
     vi.stubEnv('OPENCODE_API_KEY', 'test-go-key')
   })
 
+  afterEach(async () => {
+    while (openSessions.length > 0) {
+      const session = openSessions.pop()
+      await session?.dispose().catch(() => undefined)
+    }
+    vi.unstubAllEnvs()
+  })
+
   it('releases serve when the server fails to start', async () => {
+    const baseInput = makeBaseInput()
     vi.mocked(startOpencodeServe).mockRejectedValueOnce(new Error('spawn ENOENT'))
     await expect(
       createOpencodeV2LoopSession(
@@ -177,8 +202,9 @@ describe('createOpencodeV2LoopSession', () => {
   })
 
   it('runs a prompt through the 2.x client and returns usage', async () => {
+    const baseInput = makeBaseInput()
     const mocks = buildMockClient()
-    const session = await createOpencodeV2LoopSession(
+    const session = await openSession(
       { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
       baseInput,
     )
@@ -198,28 +224,40 @@ describe('createOpencodeV2LoopSession', () => {
       expect.objectContaining({ key: 'agent-loop', value: 'loop-system' }),
     )
     await session.dispose()
+    openSessions.pop()
     expect(reaperClose).toHaveBeenCalled()
     expect(closeServe).toHaveBeenCalled()
     expect(baseInput.restorePath).toHaveBeenCalled()
   })
 
   it('auto-approves permission.asked events on the background subscription', async () => {
+    const baseInput = makeBaseInput()
     const mocks = buildMockClient()
-    await createOpencodeV2LoopSession(
-      { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
-      baseInput,
-    )
-    await new Promise((r) => setTimeout(r, 20))
-    expect(mocks.permissionReply).toHaveBeenCalledWith({
-      sessionID: 'ses_perm',
-      requestID: 'perm-1',
-      decision: 'always',
+    await openSession({ repoRoot: '/repo', profile: repoProfileSchema.parse({}) }, baseInput)
+    await vi.waitFor(() => {
+      expect(mocks.permissionReply).toHaveBeenCalledWith({
+        sessionID: 'ses_perm',
+        requestID: 'perm-1',
+        decision: 'always',
+      })
     })
   })
 
+  it('logs and continues when permission reply fails', async () => {
+    const baseInput = makeBaseInput()
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
+    buildMockClient({ permissionReplyReject: new Error('permission API 500') })
+    await openSession({ repoRoot: '/repo', profile: repoProfileSchema.parse({}) }, baseInput)
+    await vi.waitFor(() => {
+      expect(stderr.mock.calls.some((c) => String(c[0]).includes('permission reply failed'))).toBe(true)
+    })
+    stderr.mockRestore()
+  })
+
   it('wraps prompt failures with provider context', async () => {
+    const baseInput = makeBaseInput()
     buildMockClient({ promptReject: new Error('provider down') })
-    const session = await createOpencodeV2LoopSession(
+    const session = await openSession(
       { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
       baseInput,
     )
@@ -229,6 +267,7 @@ describe('createOpencodeV2LoopSession', () => {
   })
 
   it('surfaces turn errors from session.execution', async () => {
+    const baseInput = makeBaseInput()
     buildMockClient({
       events: [
         { type: 'server.connected' },
@@ -241,7 +280,7 @@ describe('createOpencodeV2LoopSession', () => {
         },
       ],
     })
-    const session = await createOpencodeV2LoopSession(
+    const session = await openSession(
       { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
       baseInput,
     )
@@ -251,9 +290,10 @@ describe('createOpencodeV2LoopSession', () => {
   })
 
   it('throws when no assistant message is returned', async () => {
+    const baseInput = makeBaseInput()
     const mocks = buildMockClient()
     mocks.messageList.mockResolvedValue({ data: [] })
-    const session = await createOpencodeV2LoopSession(
+    const session = await openSession(
       { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
       baseInput,
     )
@@ -263,6 +303,7 @@ describe('createOpencodeV2LoopSession', () => {
   })
 
   it('throws when the assistant row carries an error', async () => {
+    const baseInput = makeBaseInput()
     buildMockClient({
       assistantMessage: {
         type: 'assistant',
@@ -270,7 +311,7 @@ describe('createOpencodeV2LoopSession', () => {
         error: { type: 'ToolError', message: 'skill missing' },
       },
     })
-    const session = await createOpencodeV2LoopSession(
+    const session = await openSession(
       { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
       baseInput,
     )
@@ -280,10 +321,11 @@ describe('createOpencodeV2LoopSession', () => {
   })
 
   it('throws when assistant text is empty', async () => {
+    const baseInput = makeBaseInput()
     buildMockClient({
       assistantMessage: { type: 'assistant', content: [{ type: 'text', text: '   ' }] },
     })
-    const session = await createOpencodeV2LoopSession(
+    const session = await openSession(
       { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
       baseInput,
     )

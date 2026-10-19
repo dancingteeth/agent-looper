@@ -4,16 +4,14 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'site/**'
-      - '**/*.md'
+      - 'CHANGELOG.md'
   pull_request:
     paths-ignore:
-      - 'site/**'
-      - '**/*.md'
+      - 'CHANGELOG.md'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
