@@ -1,5 +1,7 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
+import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { killProcessTree } from './processTree.js'
@@ -74,8 +76,41 @@ export function resolveOpencodeExecutable(input: {
   return 'opencode'
 }
 
-function parseServeUrl(line: string): string | undefined {
-  if (!line.startsWith('opencode server listening')) return undefined
+export async function reserveFreePort(): Promise<number> {
+  return await new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        server.close()
+        reject(new Error('Failed to reserve a free port for OpenCode server'))
+        return
+      }
+      const { port } = address
+      server.close((err) => {
+        if (err) reject(err)
+        else resolve(port)
+      })
+    })
+    server.on('error', reject)
+  })
+}
+
+/** Major version of an `opencode` binary (`opencode v2.0.32` / `1.18.15`), or undefined. */
+export function parseOpencodeMajorVersion(output: string): number | undefined {
+  const match = output.match(/(\d+)\.\d+\.\d+/)
+  return match ? Number(match[1]) : undefined
+}
+
+export function detectOpencodeMajorVersion(command: string, env?: NodeJS.ProcessEnv): number | undefined {
+  const result = spawnSync(command, ['--version'], { encoding: 'utf8', env, timeout: 15_000 })
+  if (result.error || result.status !== 0) return undefined
+  return parseOpencodeMajorVersion(`${result.stdout ?? ''}${result.stderr ?? ''}`)
+}
+
+/** v1 prints `opencode server listening on …`; v2 prints `server listening on …`. */
+export function parseServeUrl(line: string): string | undefined {
+  if (!/^(opencode )?server listening/.test(line)) return undefined
   const match = line.match(/on\s+(https?:\/\/[^\s]+)/)
   return match?.[1]
 }
@@ -88,6 +123,8 @@ export async function startOpencodeServe(input: {
   cwd: string
   env?: NodeJS.ProcessEnv
   command?: string
+  /** v2 only: Basic-auth password (username `opencode`) instead of a random one printed to stdout. */
+  password?: string
   spawnImpl?: SpawnOpencodeServeFn
   killTree?: (pid: number | undefined) => Promise<void>
 }): Promise<StartedOpencodeServe> {
@@ -100,6 +137,7 @@ export async function startOpencodeServe(input: {
     env: {
       ...input.env,
       OPENCODE_CONFIG_CONTENT: JSON.stringify(input.config),
+      ...(input.password ? { OPENCODE_PASSWORD: input.password } : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
@@ -164,5 +202,47 @@ export async function startOpencodeServe(input: {
     close: async () => {
       await killTree(proc.pid)
     },
+  }
+}
+
+/**
+ * Start a throwaway serve and make one authenticated API call with the client that matches the
+ * CLI major. `--version` alone passes even when the SDK and server speak different APIs.
+ */
+export async function probeOpencodeServeHandshake(input: {
+  command: string
+  major: number
+  cwd: string
+  env: NodeJS.ProcessEnv
+}): Promise<void> {
+  const port = await reserveFreePort()
+  const password = input.major >= 2 ? randomBytes(24).toString('base64url') : undefined
+  const server = await startOpencodeServe({
+    hostname: '127.0.0.1',
+    port,
+    timeoutMs: 30_000,
+    config: { autoupdate: false },
+    cwd: input.cwd,
+    env: input.env,
+    command: input.command,
+    password,
+  })
+  try {
+    if (input.major >= 2) {
+      const { OpenCode } = await import('@opencode/client')
+      const client = OpenCode.make({
+        baseUrl: server.url,
+        headers: { authorization: `Basic ${Buffer.from(`opencode:${password}`).toString('base64')}` },
+      })
+      await client.server.info()
+    } else {
+      const { createOpencodeClient } = await import('@opencode-ai/sdk')
+      const result = await createOpencodeClient({ baseUrl: server.url, directory: input.cwd }).session.list()
+      if (result.error) throw new Error(`session.list failed: ${JSON.stringify(result.error)}`)
+    }
+  } finally {
+    // killProcessTree polls with unref'd timers; in a short-lived CLI nothing else holds the loop.
+    const keepAlive = setInterval(() => undefined, 1_000)
+    await server.close().finally(() => clearInterval(keepAlive))
   }
 }

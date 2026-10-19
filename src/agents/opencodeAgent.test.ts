@@ -6,6 +6,8 @@ const closeServe = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const untrack = vi.hoisted(() => vi.fn())
 const reaperClose = vi.hoisted(() => vi.fn())
 const bootstrapOpencodeProviderAuth = vi.hoisted(() => vi.fn())
+const detectOpencodeMajorVersion = vi.hoisted(() => vi.fn(() => 1 as number | undefined))
+const createOpencodeV2LoopSession = vi.hoisted(() => vi.fn())
 
 vi.mock('./shellPreflight.js', () => ({
   assertPosixShell: vi.fn(async () => undefined),
@@ -22,6 +24,9 @@ vi.mock('./loopSystemPrompt.js', () => ({
 
 vi.mock('./opencodeServe.js', () => ({
   pathWithLocalOpencodeBins: () => '/bin',
+  resolveOpencodeExecutable: () => '/bin/opencode',
+  reserveFreePort: async () => 4096,
+  detectOpencodeMajorVersion,
   startOpencodeServe: vi.fn(async () => ({
     url: 'http://127.0.0.1:4096',
     pid: 42,
@@ -41,6 +46,8 @@ vi.mock('./opencodeAuth.js', async (importOriginal) => {
     bootstrapOpencodeProviderAuth,
   }
 })
+
+vi.mock('./opencodeV2Agent.js', () => ({ createOpencodeV2LoopSession }))
 
 vi.mock('@opencode-ai/sdk', () => ({
   createOpencodeClient: () => ({
@@ -85,6 +92,24 @@ describe('createOpencodeLoopSession', () => {
     untrack.mockClear()
     reaperClose.mockClear()
     bootstrapOpencodeProviderAuth.mockReset()
+    detectOpencodeMajorVersion.mockReturnValue(1)
+    createOpencodeV2LoopSession.mockReset()
+  })
+
+  it('routes a 2.x CLI to the @opencode/client session', async () => {
+    detectOpencodeMajorVersion.mockReturnValue(2)
+    const v2Session = { runPrompt: vi.fn(), dispose: vi.fn() }
+    createOpencodeV2LoopSession.mockResolvedValue(v2Session)
+    const session = await createOpencodeLoopSession({
+      repoRoot: '/repo',
+      profile: repoProfileSchema.parse({}),
+    })
+    expect(session).toBe(v2Session)
+    expect(createOpencodeV2LoopSession).toHaveBeenCalledWith(
+      expect.objectContaining({ repoRoot: '/repo' }),
+      expect.objectContaining({ command: '/bin/opencode', servePath: '/bin' }),
+    )
+    expect(bootstrapOpencodeProviderAuth).not.toHaveBeenCalled()
   })
 
   it('releases the detached serve when auth bootstrap throws', async () => {

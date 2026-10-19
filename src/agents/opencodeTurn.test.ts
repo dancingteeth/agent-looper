@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { StreamCollector } from '../stream/streamCollect.js'
 import {
+  adaptOpencodeV2Events,
   isOpencodeToolProgressEvent,
   opencodeToolRecordFromEvent,
   pickLatestAssistantMessage,
@@ -330,5 +331,73 @@ describe('waitForOpencodeSessionTurn collector', () => {
     })
     expect(result).toEqual({ kind: 'idle' })
     expect(collector.toolSummary).toEqual({ edit: 1 })
+  })
+})
+
+async function* v2EventsFrom(items: Array<{ type: string; data?: Record<string, unknown> }>) {
+  for (const item of items) yield item
+}
+
+describe('adaptOpencodeV2Events', () => {
+  it('runs a 2.x turn through the shared waiter: tools counted, execution.succeeded is idle', async () => {
+    const collector = new StreamCollector()
+    const result = await waitForOpencodeSessionTurn({
+      sessionId: 'ses_a',
+      collector,
+      events: adaptOpencodeV2Events(
+        v2EventsFrom([
+          { type: 'session.execution.started', data: { sessionID: 'ses_a' } },
+          { type: 'session.tool.input.started', data: { sessionID: 'ses_a', id: 'c1', name: 'shell' } },
+          { type: 'session.tool.called', data: { sessionID: 'ses_a', id: 'c1', input: { command: 'ls' } } },
+          { type: 'session.tool.success', data: { sessionID: 'ses_a', id: 'c1' } },
+          { type: 'session.execution.succeeded', data: { sessionID: 'ses_b' } },
+          { type: 'session.execution.succeeded', data: { sessionID: 'ses_a' } },
+        ]),
+      ),
+      heartbeatMs: 60_000,
+      stallMs: 60_000,
+      timeoutMs: 60_000,
+    })
+    expect(result).toEqual({ kind: 'idle' })
+    expect(collector.toolSummary).toEqual({ shell: 1 })
+  })
+
+  it('maps execution.failed to a session error carrying the 2.x error type', async () => {
+    const result = await waitForOpencodeSessionTurn({
+      sessionId: 'ses_a',
+      events: adaptOpencodeV2Events(
+        v2EventsFrom([
+          {
+            type: 'session.execution.failed',
+            data: {
+              sessionID: 'ses_a',
+              error: { type: 'provider.no-route', message: 'Model unavailable: opencode-go/x' },
+            },
+          },
+        ]),
+      ),
+      heartbeatMs: 60_000,
+      stallMs: 60_000,
+      timeoutMs: 60_000,
+    })
+    expect(result).toEqual({
+      kind: 'error',
+      message: 'OpenCode session.error (provider.no-route): Model unavailable: opencode-go/x',
+    })
+  })
+
+  it('treats text deltas as activity but not tool progress', async () => {
+    const out = []
+    for await (const event of adaptOpencodeV2Events(
+      v2EventsFrom([
+        { type: 'session.text.delta', data: { sessionID: 'ses_a', delta: 'hi' } },
+        { type: 'permission.asked', data: { sessionID: 'ses_a', id: 'per_1' } },
+      ]),
+    )) {
+      out.push(event)
+    }
+    expect(resolveOpencodeEventSessionId(out[0]!)).toBe('ses_a')
+    expect(isOpencodeToolProgressEvent(out[0]!)).toBe(false)
+    expect(isOpencodeToolProgressEvent(out[1]!)).toBe(true)
   })
 })

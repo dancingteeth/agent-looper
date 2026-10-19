@@ -63,7 +63,8 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk
 
 # Optional workers
 pnpm add -D @cline/sdk                                    # Cline Pass / Credits
-pnpm add -D @opencode-ai/sdk opencode-ai                  # OpenCode Go / BYOK
+pnpm add -D @opencode-ai/sdk opencode-ai                  # OpenCode Go / BYOK (CLI 1.x)
+pnpm add -D @opencode/client                              # …or with an OpenCode 2.x CLI on PATH
 pnpm add -D @earendil-works/pi-coding-agent               # Pi BYOK
 pnpm add -D @openai/codex-sdk                             # Codex (ChatGPT / OpenAI)
 pnpm add -D @muse-code/sdk                                # Muse Code (PATH `muse`)

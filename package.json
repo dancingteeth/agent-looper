@@ -75,10 +75,11 @@
     "@cline/sdk": ">=0.0.55",
     "@cursor/sdk": ">=1.0.18",
     "@earendil-works/pi-coding-agent": ">=0.84.0",
-    "@openai/codex-sdk": ">=0.147.0",
     "@muse-code/sdk": ">=0.1.1",
+    "@openai/codex-sdk": ">=0.147.0",
     "@opencode-ai/sdk": ">=1.18.0",
-    "opencode-ai": ">=1.18.0"
+    "opencode-ai": ">=1.18.0",
+    "@opencode/client": ">=2.0.0"
   },
   "peerDependenciesMeta": {
     "@cline/sdk": {
@@ -101,6 +102,9 @@
     },
     "@muse-code/sdk": {
       "optional": true
+    },
+    "@opencode/client": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -111,6 +115,7 @@
     "@muse-code/sdk": "0.1.1",
     "@openai/codex-sdk": "^0.147.0",
     "@opencode-ai/sdk": "^1.18.15",
+    "@opencode/client": "^2.0.32",
     "@types/node": "^22.15.0",
     "@types/react": "^19.2.18",
     "@vitest/coverage-v8": "^4.1.9",

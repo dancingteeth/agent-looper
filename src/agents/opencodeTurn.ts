@@ -416,3 +416,85 @@ export function pickLatestAssistantMessage<
   }
   return undefined
 }
+
+/** OpenCode 2.x server event: payload lives under `data`, not `properties`. */
+export type OpencodeV2Event = {
+  type: string
+  data?: Record<string, unknown>
+}
+
+/**
+ * Re-shape the 2.x event stream into the 1.x events `waitForOpencodeSessionTurn` understands.
+ * 2.x never emits `session.idle`; `session.execution.{succeeded,failed,interrupted}` end the turn.
+ * Tool lifecycle (`session.tool.*`) becomes `message.part.updated` tool parts so the stall and
+ * collector logic stay shared. Stateful: tool names only arrive on `session.tool.input.started`.
+ */
+export async function* adaptOpencodeV2Events(
+  events: AsyncIterable<OpencodeV2Event>,
+): AsyncIterable<OpencodeEvent> {
+  const toolNames = new Map<string, string>()
+  for await (const event of events) {
+    const data = event.data ?? {}
+    const sessionID = typeof data.sessionID === 'string' ? data.sessionID : undefined
+    const toolId = typeof data.id === 'string' ? data.id : undefined
+    const toolPart = (status: string, extra: Record<string, unknown> = {}): OpencodeEvent => ({
+      type: 'message.part.updated',
+      properties: {
+        sessionID,
+        part: {
+          type: 'tool',
+          id: toolId,
+          tool: (toolId && toolNames.get(toolId)) ?? 'tool',
+          state: { status, ...extra },
+        },
+      },
+    })
+
+    switch (event.type) {
+      case 'session.execution.succeeded':
+        yield { type: 'session.idle', properties: { sessionID } }
+        break
+      case 'session.execution.failed': {
+        const error = data.error as { type?: string; message?: string } | undefined
+        yield {
+          type: 'session.error',
+          properties: { sessionID, error: { name: error?.type, message: error?.message } },
+        }
+        break
+      }
+      case 'session.execution.interrupted':
+        yield {
+          type: 'session.error',
+          properties: {
+            sessionID,
+            error: { name: 'Interrupted', message: `interrupted (${String(data.reason ?? 'unknown')})` },
+          },
+        }
+        break
+      case 'session.tool.input.started':
+        if (toolId && typeof data.name === 'string') toolNames.set(toolId, data.name)
+        yield { type: event.type, properties: data }
+        break
+      case 'session.tool.called':
+        yield toolPart('running', { input: data.input })
+        break
+      case 'session.tool.success':
+        yield toolPart('completed')
+        break
+      case 'session.tool.failed':
+        yield toolPart('error')
+        break
+      case 'session.text.delta':
+        yield { type: 'message.part.updated', properties: { sessionID, part: { type: 'text' } } }
+        break
+      case 'session.reasoning.delta':
+        yield { type: 'message.part.updated', properties: { sessionID, part: { type: 'reasoning' } } }
+        break
+      case 'permission.asked':
+        yield { type: 'permission.updated', properties: data }
+        break
+      default:
+        yield { type: event.type, properties: data }
+    }
+  }
+}

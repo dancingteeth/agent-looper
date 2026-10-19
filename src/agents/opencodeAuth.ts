@@ -75,6 +75,57 @@ export async function bootstrapOpencodeProviderAuth(
   return wired
 }
 
+type OpencodeV2CredentialEntry = {
+  integrationID: string
+  active?: boolean
+  value?: { type?: string; key?: string }
+}
+
+export type OpencodeV2CredentialClient = {
+  credential: {
+    list: () => Promise<readonly OpencodeV2CredentialEntry[]>
+    create: (input: {
+      integrationID: string
+      label?: string
+      value: { type: 'key'; key: string }
+      activate?: boolean
+    }) => Promise<unknown>
+  }
+}
+
+/**
+ * OpenCode 2.x keeps keys in its credential store (v1 `auth.json` is migrated on first boot),
+ * which persists across servers. Only add an env key that is not stored yet, so repeated loops
+ * do not pile up duplicates. Returns every harness provider with an active credential.
+ */
+export async function bootstrapOpencodeV2ProviderAuth(
+  client: OpencodeV2CredentialClient,
+): Promise<string[]> {
+  const existing = await client.credential.list()
+  const ready = new Set(existing.filter((entry) => entry.active !== false).map((entry) => entry.integrationID))
+  for (const [providerId, envName] of Object.entries(OPENCODE_PROVIDER_API_KEY_ENV)) {
+    const key = process.env[envName]?.trim()
+    if (!key) continue
+    const stored = existing.some(
+      (entry) => entry.integrationID === providerId && entry.active !== false && entry.value?.key === key,
+    )
+    if (stored) continue
+    try {
+      await client.credential.create({
+        integrationID: providerId,
+        label: `agent-loop ${envName}`,
+        value: { type: 'key', key },
+        activate: true,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      throw new Error(`OpenCode credential.create(${providerId}) failed: ${message}`)
+    }
+    ready.add(providerId)
+  }
+  return Object.keys(OPENCODE_PROVIDER_API_KEY_ENV).filter((providerId) => ready.has(providerId))
+}
+
 export function formatOpencodeAuthHint(): string {
   const parts = Object.entries(OPENCODE_PROVIDER_API_KEY_ENV).map(
     ([provider, env]) => `${env} (${provider})`,

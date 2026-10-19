@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 import { assertDshCredentialsStore } from '../agents/dshCredentialsStore.js'
 import { OPENCODE_PROVIDER_API_KEY_ENV } from '../agents/opencodeAuth.js'
+import {
+  detectOpencodeMajorVersion,
+  pathWithLocalOpencodeBins,
+  probeOpencodeServeHandshake,
+  resolveOpencodeExecutable,
+} from '../agents/opencodeServe.js'
 import { assertOpencodeAgentSkillsReadable } from '../agents/opencodeSkillPreflight.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
@@ -54,7 +60,7 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     const nodeMajor = Number(process.versions.node.split('.')[0] ?? 0)
     if (nodeMajor < 22) {
       console.error(
-        `[agent-check] Node.js 22+ required for @opencode-ai/sdk (current: ${process.versions.node})`,
+        `[agent-check] Node.js 22+ required for the OpenCode runtime (current: ${process.versions.node})`,
       )
       process.exit(1)
     }
@@ -72,11 +78,22 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       process.exit(1)
     }
 
-    let createOpencode: unknown
+    const servePath = pathWithLocalOpencodeBins(process.cwd())
+    const command = resolveOpencodeExecutable({ repoRoot: process.cwd(), pathEnv: servePath })
+    const serveEnv = { ...process.env, PATH: servePath }
+    const major = detectOpencodeMajorVersion(command, serveEnv)
+    if (major === undefined) {
+      console.error(
+        `[agent-check] \`opencode\` CLI not runnable (${command}). Install with: pnpm add -D opencode-ai\n` +
+          '  If pnpm skipped scripts: node node_modules/opencode-ai/postinstall.mjs',
+      )
+      process.exit(1)
+    }
+    const clientPackage = major >= 2 ? '@opencode/client' : '@opencode-ai/sdk'
     try {
-      ;({ createOpencode } = await import('@opencode-ai/sdk'))
+      await import(clientPackage)
     } catch {
-      console.error('[agent-check] @opencode-ai/sdk is not installed (pnpm add -D @opencode-ai/sdk)')
+      console.error(`[agent-check] opencode ${major}.x needs ${clientPackage} (pnpm add -D ${clientPackage})`)
       process.exit(1)
     }
 
@@ -88,18 +105,15 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
       process.exit(1)
     }
 
-    const { spawnSync } = await import('node:child_process')
-    const which = spawnSync('opencode', ['--version'], { encoding: 'utf8' })
-    if (which.error || which.status !== 0) {
-      console.error(
-        '[agent-check] `opencode` CLI not on PATH. Install with: pnpm add -D opencode-ai\n' +
-          '  If pnpm skipped scripts: node node_modules/opencode-ai/postinstall.mjs',
-      )
+    try {
+      await probeOpencodeServeHandshake({ command, major, cwd: process.cwd(), env: serveEnv })
+    } catch (err) {
+      console.error('[agent-check] opencode serve handshake failed:', err instanceof Error ? err.message : err)
       process.exit(1)
     }
 
-    console.log('[agent-check] @opencode-ai/sdk OK — createOpencode:', typeof createOpencode)
-    console.log('[agent-check] opencode CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
+    console.log(`[agent-check] opencode ${major}.x CLI: ${command}`)
+    console.log(`[agent-check] ${clientPackage} OK — serve handshake OK`)
     for (const { envName, key } of presentKeys) {
       console.log(`[agent-check] ${envName} present (prefix):`, `${key.slice(0, 4)}…`)
     }

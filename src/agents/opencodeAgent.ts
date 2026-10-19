@@ -1,4 +1,3 @@
-import net from 'node:net'
 import type { RepoContext } from '../context/repoContext.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
@@ -21,7 +20,10 @@ import {
 import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import { emitAssistantText } from '../stream/assistantStream.js'
 import {
+  detectOpencodeMajorVersion,
   pathWithLocalOpencodeBins,
+  reserveFreePort,
+  resolveOpencodeExecutable,
   startOpencodeServe,
 } from './opencodeServe.js'
 import { spawnParentDeathReaper, trackSpawnedRoot } from './processTree.js'
@@ -50,26 +52,6 @@ export async function releaseOpencodeServe(input: {
   input.untrack()
   await input.close()
   input.restorePath()
-}
-
-async function reserveFreePort(): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const server = net.createServer()
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address()
-      if (!address || typeof address === 'string') {
-        server.close()
-        reject(new Error('Failed to reserve a free port for OpenCode server'))
-        return
-      }
-      const { port } = address
-      server.close((err) => {
-        if (err) reject(err)
-        else resolve(port)
-      })
-    })
-    server.on('error', reject)
-  })
 }
 
 function extractTextFromParts(parts: ReadonlyArray<{ type?: string; text?: string }> | undefined): string {
@@ -148,7 +130,7 @@ async function autoApprovePermissions(
   })().catch(() => undefined)
 }
 
-function wrapOpencodePromptError(
+export function wrapOpencodePromptError(
   err: unknown,
   ctx: { providerID: string; modelId: string; sessionId: string },
 ): Error {
@@ -170,11 +152,12 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const directory = ctx.repoRoot
 
-  const { createOpencodeClient } = await import('@opencode-ai/sdk')
-  const port = await reserveFreePort()
   const previousPath = process.env.PATH
   const servePath = pathWithLocalOpencodeBins(directory)
   process.env.PATH = servePath
+  const restorePath = () => {
+    process.env.PATH = previousPath
+  }
 
   const serveConfig = {
     autoupdate: false,
@@ -188,6 +171,23 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
     },
   }
 
+  // 2.x replaced the server API (new routes, Basic auth, `server listening` line), so it
+  // needs @opencode/client instead of @opencode-ai/sdk.
+  const command = resolveOpencodeExecutable({ repoRoot: directory, pathEnv: servePath })
+  if ((detectOpencodeMajorVersion(command, { ...process.env, PATH: servePath }) ?? 1) >= 2) {
+    const { createOpencodeV2LoopSession } = await import('./opencodeV2Agent.js')
+    return await createOpencodeV2LoopSession(ctx, { command, servePath, serveConfig, restorePath })
+  }
+
+  let createOpencodeClient: typeof import('@opencode-ai/sdk').createOpencodeClient
+  try {
+    ;({ createOpencodeClient } = await import('@opencode-ai/sdk'))
+  } catch (err) {
+    restorePath()
+    throw err
+  }
+  const port = await reserveFreePort()
+
   let server: { url: string; pid: number | undefined; close(): Promise<void> }
   try {
     server = await startOpencodeServe({
@@ -197,9 +197,10 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
       config: serveConfig,
       cwd: directory,
       env: { ...process.env, PATH: servePath },
+      command,
     })
   } catch (err) {
-    process.env.PATH = previousPath
+    restorePath()
     const message = err instanceof Error ? err.message : String(err)
     throw new Error(
       `Failed to start OpenCode server (${message}). Install the CLI: pnpm add -D opencode-ai ` +
@@ -212,9 +213,6 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
     parentPid: process.pid,
     rootPid: server.pid ?? 0,
   })
-  const restorePath = () => {
-    process.env.PATH = previousPath
-  }
   const releaseServe = () =>
     releaseOpencodeServe({
       reaper: parentDeathReaper,

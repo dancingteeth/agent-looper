@@ -2,7 +2,28 @@ import { EventEmitter } from 'node:events'
 import type { ChildProcess } from 'node:child_process'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it } from 'vitest'
-import { resolveOpencodeExecutable, startOpencodeServe } from './opencodeServe.js'
+import {
+  parseOpencodeMajorVersion,
+  parseServeUrl,
+  resolveOpencodeExecutable,
+  startOpencodeServe,
+} from './opencodeServe.js'
+
+describe('parseServeUrl', () => {
+  it('accepts the 1.x and 2.x ready lines', () => {
+    expect(parseServeUrl('opencode server listening on http://127.0.0.1:4096')).toBe('http://127.0.0.1:4096')
+    expect(parseServeUrl('server listening on http://127.0.0.1:41777')).toBe('http://127.0.0.1:41777')
+    expect(parseServeUrl('server password abc')).toBeUndefined()
+  })
+})
+
+describe('parseOpencodeMajorVersion', () => {
+  it('reads the major from 1.x and 2.x --version output', () => {
+    expect(parseOpencodeMajorVersion('1.18.15\n')).toBe(1)
+    expect(parseOpencodeMajorVersion('opencode v2.0.32\n')).toBe(2)
+    expect(parseOpencodeMajorVersion('garbage')).toBeUndefined()
+  })
+})
 
 describe('resolveOpencodeExecutable', () => {
   it('prefers repo opencode.exe over the PATH shim', () => {
