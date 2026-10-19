@@ -5,25 +5,26 @@ tags:
 ---
 # Agent Looper (`@dancingteeth/agent-looper`)
 
-**If you already loop in Cursor:** you start Composer, it says done, CI is still red, you paste the log, you open a new chat. You are the verify step.
+**Fix-until-green for coding agents.** Give it a frozen goal and a `verify.sh` you already trust. It runs a fresh worker agent each round until the check exits 0, with an optional judge that reviews the result and can send the worker back.
 
-This package is that loop without you in the middle. Fresh Cursor worker each round. A `verify.sh` you already trust. Stop when it exits 0.
+**Works with** Cursor, Claude Code, Codex, OpenCode, Cline, Pi, DeepSeek Harness (DSH), and Muse, as the worker, the judge, or both. Mix them: a cheap worker with a stronger judge is the usual setup.
+
+**If you already loop by hand:** the agent says done, CI is still red, you paste the log, you open a new chat. You are the verify step. This package is that loop without you in the middle.
 
 **Landing page:** [looper.dancingteeth.net](https://looper.dancingteeth.net/) (static site in [`site/`](./site/)).
 
 ```bash
-pnpm add -D @dancingteeth/agent-looper @cursor/sdk
-export CURSOR_API_KEY=…   # or doppler run -- …
-
+pnpm add -D @dancingteeth/agent-looper
 pnpm exec agent-loop-init
-# or: pnpm exec agent-loop-prompt --out .cursor/loops/my-task
+pnpm exec agent-loop-setup    # pick worker + judge runtimes (one-screen wizard)
+# or draft a loop from an idea: pnpm exec agent-loop-prompt --out .cursor/loops/my-task
 # edit GOAL.md
 # put the check you keep re-running in verify.sh
 
-pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor
+pnpm exec agent-loop run .cursor/loops/my-task
 ```
 
-Other workers, judges, and flags are below. You do not need them for a first green run.
+Each runtime also needs its own SDK or CLI and key, e.g. `@cursor/sdk` + `CURSOR_API_KEY` for Cursor, `claude` on PATH for Claude Code, `opencode` for OpenCode. [`docs/runtime-map.md`](./docs/runtime-map.md) lists them all; `pnpm exec agent-check <runtime>` confirms one is wired. Flags and the rest are below. You do not need them for a first green run.
 
 How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md). What shipped: [`CHANGELOG.md`](./CHANGELOG.md) (current **0.7.5**). Embedding this package as a library dependency in another ADE: [`docs/embed-api.md`](./docs/embed-api.md). Reporting a vulnerability: [`SECURITY.md`](./SECURITY.md).
 

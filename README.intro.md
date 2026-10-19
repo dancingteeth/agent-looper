@@ -16,7 +16,7 @@ See [`templates/GOAL.template.md`](./templates/GOAL.template.md). The harness ow
 the grind; you own the finish line. (Models will keep changing; this system
 compounds across them.)
 
-If you’ve heard “stop prompting, start looping” and you’re hunting GitHub for a non-theater implementation — this is that: **small, measurable, opt-in complexity**, default path is Cursor-only and relatively cheap.
+If you’ve heard “stop prompting, start looping” and you’re hunting GitHub for a non-theater implementation — this is that: **small, measurable, opt-in complexity**. Bring whichever coding agent you already pay for (Cursor, Claude Code, Codex, OpenCode, Cline, Pi, DSH, or Muse); the default pairing is a cheap worker with a stronger judge.
 
 > Full reference (every flag, threat model, consumer wiring): [`README.md`](./README.md)  
 > Deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md)  
