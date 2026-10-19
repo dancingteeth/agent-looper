@@ -21,6 +21,20 @@ describe('formatHitlCheckTaskDescription', () => {
       'HITL Check: affiliate hub ref',
     )
   })
+
+  it('fits a long multi-line runtime error instead of throwing (fatal-path HITL)', () => {
+    const fatal = [
+      'Missing credentials — aborting before WORKER.',
+      '  worker (cursor): CURSOR_API_KEY is not set. Run via doppler or agent-check cursor',
+      '  judge (cursor): CURSOR_API_KEY is not set. Run via doppler or agent-check cursor',
+      'x'.repeat(600),
+    ].join('\n')
+    const formatted = formatHitlCheckTaskDescription(fatal)
+    expect(formatted.length).toBeLessThanOrEqual(500)
+    expect(formatted).toMatch(/^HITL Check: Missing credentials — aborting before WORKER\. worker \(cursor\)/)
+    expect(formatted).not.toContain('\n')
+    expect(formatted.endsWith('...')).toBe(true)
+  })
 })
 
 describe('buildHitlCheckTaskArgs', () => {

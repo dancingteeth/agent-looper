@@ -3,6 +3,7 @@ import {
   createHitlCheckpoint,
   hitlLoopOverridesFrom,
 } from '../integrations/hitlCheckpoint.js'
+import { fitHitlCheckDescription } from '../integrations/taskwarrior.js'
 import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
 import type { ResolvedReviewAgent } from '../loop/loopAgentConfig.js'
 import type { LoopConfig } from '../loop/loopConfig.js'
@@ -80,9 +81,7 @@ export function reviewGateHitlDescription(parsed: ParsedReview, reviewCycle: num
     .slice(0, 4)
     .map((b) => b.replace(/\s+/g, ' ').trim())
   const body = items.length ? `: ${items.join('; ')}` : ''
-  const text = `${leading}${body}`
-  // hitlCheckDescriptionSchema caps at 500 chars; keep headroom for the "HITL Check: " prefix.
-  return text.length > 480 ? `${text.slice(0, 477)}...` : text
+  return fitHitlCheckDescription(`${leading}${body}`)
 }
 
 async function buildReviewGateStopOutcome(input: {

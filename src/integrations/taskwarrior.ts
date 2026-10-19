@@ -16,8 +16,19 @@ export const hitlCheckDescriptionSchema = z.string().trim().min(1).max(500)
 
 export const HITL_CHECK_TASK_PREFIX = 'HITL Check: '
 
+const HITL_DESCRIPTION_FIT = 480
+
+/**
+ * One line, at most 480 chars (headroom under the 500 cap for the prefix). Runtime text such as
+ * a multi-line fatal error lands here, so fit it instead of letting the schema throw.
+ */
+export function fitHitlCheckDescription(text: string): string {
+  const line = text.replace(/\s+/g, ' ').trim()
+  return line.length > HITL_DESCRIPTION_FIT ? `${line.slice(0, HITL_DESCRIPTION_FIT - 3)}...` : line
+}
+
 export function formatHitlCheckTaskDescription(description: string): string {
-  return `${HITL_CHECK_TASK_PREFIX}${hitlCheckDescriptionSchema.parse(description)}`
+  return `${HITL_CHECK_TASK_PREFIX}${hitlCheckDescriptionSchema.parse(fitHitlCheckDescription(description))}`
 }
 
 export function buildHitlCheckTaskArgs(
