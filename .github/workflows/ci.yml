@@ -10,7 +10,9 @@ on:
       - 'CHANGELOG.md'
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Push: one group per commit so a queued main run is not dropped when another lands.
+  # PR: group by ref and cancel superseded runs.
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

@@ -7,6 +7,7 @@ const untrack = vi.hoisted(() => vi.fn())
 const reaperClose = vi.hoisted(() => vi.fn())
 const bootstrapOpencodeV2ProviderAuth = vi.hoisted(() => vi.fn(async () => ['opencode-go'] as string[]))
 const openCodeMake = vi.hoisted(() => vi.fn())
+const opencodeClientInstall = vi.hoisted(() => ({ missing: false }))
 
 vi.mock('./shellPreflight.js', () => ({
   assertPosixShell: vi.fn(async () => undefined),
@@ -44,10 +45,19 @@ vi.mock('./opencodeAuth.js', async (importOriginal) => {
 })
 
 vi.mock('@opencode/client', () => ({
-  OpenCode: { make: (...args: unknown[]) => openCodeMake(...args) },
+  get OpenCode() {
+    if (opencodeClientInstall.missing) {
+      throw new Error('Cannot find package @opencode/client')
+    }
+    return { make: (...args: unknown[]) => openCodeMake(...args) }
+  },
 }))
 
-import { createOpencodeV2LoopSession } from './opencodeV2Agent.js'
+import {
+  autoApproveV2Permissions,
+  createOpencodeV2LoopSession,
+  subscribeConnected,
+} from './opencodeV2Agent.js'
 import type { OpencodeLoopSession } from './opencodeAgent.js'
 import { startOpencodeServe } from './opencodeServe.js'
 
@@ -157,6 +167,7 @@ function makeBaseInput() {
 
 describe('createOpencodeV2LoopSession', () => {
   const openSessions: OpencodeLoopSession[] = []
+  let stderrSpy: ReturnType<typeof vi.spyOn> | undefined
 
   async function openSession(
     ...args: Parameters<typeof createOpencodeV2LoopSession>
@@ -167,6 +178,7 @@ describe('createOpencodeV2LoopSession', () => {
   }
 
   beforeEach(() => {
+    opencodeClientInstall.missing = false
     closeServe.mockClear()
     untrack.mockClear()
     reaperClose.mockClear()
@@ -186,7 +198,10 @@ describe('createOpencodeV2LoopSession', () => {
       const session = openSessions.pop()
       await session?.dispose().catch(() => undefined)
     }
+    stderrSpy?.mockRestore()
+    stderrSpy = undefined
     vi.unstubAllEnvs()
+    vi.useRealTimers()
   })
 
   it('releases serve when the server fails to start', async () => {
@@ -245,13 +260,121 @@ describe('createOpencodeV2LoopSession', () => {
 
   it('logs and continues when permission reply fails', async () => {
     const baseInput = makeBaseInput()
-    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {})
+    stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     buildMockClient({ permissionReplyReject: new Error('permission API 500') })
     await openSession({ repoRoot: '/repo', profile: repoProfileSchema.parse({}) }, baseInput)
     await vi.waitFor(() => {
-      expect(stderr.mock.calls.some((c) => String(c[0]).includes('permission reply failed'))).toBe(true)
+      expect(
+        stderrSpy!.mock.calls.some((c: unknown[]) => String(c[0]).includes('permission reply failed')),
+      ).toBe(
+        true,
+      )
     })
-    stderr.mockRestore()
+  })
+
+  it('throws when @opencode/client is not installed', async () => {
+    const baseInput = makeBaseInput()
+    opencodeClientInstall.missing = true
+    await expect(
+      createOpencodeV2LoopSession({ repoRoot: '/repo', profile: repoProfileSchema.parse({}) }, baseInput),
+    ).rejects.toThrow(/@opencode\/client is not installed/)
+    expect(baseInput.restorePath).toHaveBeenCalled()
+    opencodeClientInstall.missing = false
+  })
+
+  it('releases serve when provider auth bootstrap fails after connect', async () => {
+    const baseInput = makeBaseInput()
+    bootstrapOpencodeV2ProviderAuth.mockRejectedValueOnce(new Error('credential store down'))
+    buildMockClient()
+    await expect(
+      createOpencodeV2LoopSession({ repoRoot: '/repo', profile: repoProfileSchema.parse({}) }, baseInput),
+    ).rejects.toThrow(/credential store down/)
+    expect(reaperClose).toHaveBeenCalled()
+    expect(closeServe).toHaveBeenCalled()
+  })
+
+  it('forwards a non-server.connected first event into the turn stream', async () => {
+    const baseInput = makeBaseInput()
+    buildMockClient({
+      events: [
+        { type: 'session.status', data: { sessionID: 'ses_test', status: { type: 'busy' } } },
+        { type: 'session.execution.succeeded', data: { sessionID: 'ses_test' } },
+      ],
+    })
+    const session = await openSession(
+      { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
+      baseInput,
+    )
+    const result = await session.runPrompt('x', { modelId: 'opencode-go/kimi-k3', phase: 'implement' })
+    expect(result.text).toBe('done')
+  })
+
+  it('logs heartbeats while waiting for session.execution', async () => {
+    vi.useFakeTimers()
+    const baseInput = makeBaseInput()
+    let releaseExec: (() => void) | undefined
+    const execGate = new Promise<void>((resolve) => {
+      releaseExec = resolve
+    })
+    const turnEvents = [
+      { type: 'server.connected' as const },
+      { type: 'session.execution.succeeded' as const, data: { sessionID: 'ses_test' } },
+    ]
+    let subscribeCall = 0
+    openCodeMake.mockReturnValue({
+      event: {
+        subscribe: () => {
+          subscribeCall += 1
+          const isPermission = subscribeCall === 1
+          if (isPermission) {
+            return {
+              async *[Symbol.asyncIterator]() {
+                yield { type: 'permission.asked', data: { id: 'p1', sessionID: 's1' } }
+                await new Promise(() => undefined)
+              },
+            }
+          }
+          return {
+            async *[Symbol.asyncIterator]() {
+              yield turnEvents[0]
+              await execGate
+              yield turnEvents[1]
+            },
+          }
+        },
+      },
+      permission: { reply: vi.fn().mockResolvedValue(undefined) },
+      session: {
+        create: vi.fn().mockResolvedValue({ id: 'ses_test' }),
+        prompt: vi.fn().mockResolvedValue(undefined),
+        interrupt: vi.fn().mockResolvedValue(undefined),
+        remove: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue({
+          tokens: { input: 1, output: 1, cache: { read: 0, write: 0 } },
+          cost: 0,
+        }),
+        instructions: { entry: { put: vi.fn().mockResolvedValue(undefined) } },
+      },
+      message: {
+        list: vi.fn().mockResolvedValue({
+          data: [{ type: 'assistant', content: [{ type: 'text', text: 'ok' }] }],
+        }),
+      },
+    })
+    stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const session = await openSession(
+      { repoRoot: '/repo', profile: repoProfileSchema.parse({}) },
+      baseInput,
+    )
+    const pending = session.runPrompt('x', { modelId: 'opencode-go/kimi-k3', phase: 'implement' })
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(
+      stderrSpy!.mock.calls.some((c: unknown[]) => String(c[0]).includes('still working session=ses_test')),
+    ).toBe(
+      true,
+    )
+    releaseExec?.()
+    await pending
   })
 
   it('wraps prompt failures with provider context', async () => {
@@ -332,5 +455,82 @@ describe('createOpencodeV2LoopSession', () => {
     await expect(
       session.runPrompt('x', { modelId: 'opencode-go/kimi-k3', phase: 'implement' }),
     ).rejects.toThrow(/without assistant text/)
+  })
+})
+
+describe('subscribeConnected', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('yields events after a non-server.connected first frame', async () => {
+    const client = {
+      event: {
+        subscribe: () => ({
+          [Symbol.asyncIterator]: () => {
+            const frames = [
+              { type: 'session.status', data: { sessionID: 's1' } },
+              { type: 'server.connected' },
+            ]
+            return {
+              async next() {
+                const value = frames.shift()
+                if (!value) return { done: true, value: undefined }
+                return { done: false, value }
+              },
+            }
+          },
+        }),
+      },
+    }
+    const events = []
+    for await (const event of await subscribeConnected(client as never, new AbortController().signal)) {
+      events.push(event)
+    }
+    expect(events.map((e) => e.type)).toEqual(['session.status', 'server.connected'])
+  })
+
+  it('returns immediately when the stream ends before the first event', async () => {
+    const client = {
+      event: {
+        subscribe: () => ({
+          [Symbol.asyncIterator]: () => ({
+            next: async () => ({ done: true, value: undefined }),
+          }),
+        }),
+      },
+    }
+    const events = []
+    for await (const event of await subscribeConnected(client as never, new AbortController().signal)) {
+      events.push(event)
+    }
+    expect(events).toEqual([])
+  })
+})
+
+describe('autoApproveV2Permissions', () => {
+  it('ignores non-permission events and approves permission.asked', async () => {
+    const reply = vi.fn().mockResolvedValue(undefined)
+    const client = {
+      event: {
+        subscribe: () => ({
+          async *[Symbol.asyncIterator]() {
+            yield { type: 'server.connected' }
+            yield { type: 'permission.asked', data: { id: 'perm-9', sessionID: 'ses-9' } }
+          },
+        }),
+      },
+      permission: { reply },
+    }
+    const abort = new AbortController()
+    autoApproveV2Permissions(client as never, abort.signal)
+    await vi.waitFor(() => {
+      expect(reply).toHaveBeenCalledWith({
+        sessionID: 'ses-9',
+        requestID: 'perm-9',
+        decision: 'always',
+      })
+    })
+    abort.abort()
   })
 })
