@@ -24,6 +24,7 @@ import {
   reviewModelCompatibleWithRuntime,
   runtimeHonorsReasoningEffort,
   runtimeOffersEscalateModel,
+  RUNTIME_SPEC,
 } from './runtimeSpec.js'
 
 describe('runtimeSpec', () => {
@@ -53,13 +54,12 @@ describe('runtimeSpec', () => {
     expect(() =>
       assertRuntimeModel(LOOP_RUNTIME_CURSOR, 'composer-2.5-fast', 'worker', 'model'),
     ).toThrow(AgentModelError)
-    try {
-      assertRuntimeModel(LOOP_RUNTIME_CURSOR, 'composer-2.5-fast', 'worker', 'model')
-    } catch (err) {
-      expect(err).toBeInstanceOf(AgentModelError)
-      expect((err as AgentModelError).field).toBe('model')
-      expect(String(err)).toMatch(/banned/)
-    }
+    expect(() =>
+      assertRuntimeModel(LOOP_RUNTIME_CURSOR, 'composer-2.5-fast', 'worker', 'model'),
+    ).toThrow(expect.objectContaining({ field: 'model' }))
+    expect(() =>
+      assertRuntimeModel(LOOP_RUNTIME_CURSOR, 'composer-2.5-fast', 'worker', 'model'),
+    ).toThrow(/banned/)
 
     expect(() =>
       assertRuntimeModel(LOOP_RUNTIME_CURSOR, 'openai/gpt-4', 'review', 'reviewModel'),
@@ -96,6 +96,11 @@ describe('runtimeSpec', () => {
         AgentModelError,
       )
     }
+  })
+
+  it('RUNTIME_SPEC exposes default escalate models where offered', () => {
+    expect(RUNTIME_SPEC[LOOP_RUNTIME_CODEX].defaultEscalateModel).toBeDefined()
+    expect(RUNTIME_SPEC[LOOP_RUNTIME_MUSE].defaultEscalateModel).toBeUndefined()
   })
 
   it('reviewModelCompatibleWithRuntime allows Cursor judge slugs only', () => {
