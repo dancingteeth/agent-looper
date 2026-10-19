@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import {
   assertOpencodeProviderAuthReady,
+  bootstrapOpencodeProviderAuth,
   bootstrapOpencodeV2ProviderAuth,
   formatOpencodeAuthHint,
   hasOpencodeAuthJsonProvider,
@@ -98,6 +99,34 @@ describe('opencodeAuth', () => {
       if (prev === undefined) delete process.env.AI_GATEWAY_API_KEY
       else process.env.AI_GATEWAY_API_KEY = prev
     }
+  })
+})
+
+describe('bootstrapOpencodeProviderAuth', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('wires env keys through auth.set and reports providers', async () => {
+    vi.stubEnv('OPENCODE_API_KEY', 'go')
+    vi.stubEnv('OPENROUTER_API_KEY', '')
+    vi.stubEnv('AI_GATEWAY_API_KEY', '')
+    const set = vi.fn().mockResolvedValue({ data: true })
+    const wired = await bootstrapOpencodeProviderAuth({ auth: { set } } as never, '/repo')
+    expect(wired).toEqual(['opencode-go'])
+    expect(set).toHaveBeenCalledWith({
+      path: { id: 'opencode-go' },
+      body: { type: 'api', key: 'go' },
+      query: { directory: '/repo' },
+    })
+  })
+
+  it('throws when auth.set returns an error', async () => {
+    vi.stubEnv('OPENCODE_API_KEY', 'go')
+    const set = vi.fn().mockResolvedValue({ error: { message: 'nope' } })
+    await expect(
+      bootstrapOpencodeProviderAuth({ auth: { set } } as never, '/repo'),
+    ).rejects.toThrow(/auth\.set\(opencode-go\) failed/)
   })
 })
 
