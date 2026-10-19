@@ -703,8 +703,9 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/supported line \*\*0\.6\.x\*\*/i)
     }
 
-    expect(llms).toContain('Current npm: **0.7.7**')
-    expect(llms).toContain('0.7.x')
+    expect(llms).toContain('Current npm: **0.8.0**')
+    expect(llms).toContain('0.8.x')
+    expect(llms).not.toContain('Current npm: **0.7.7**')
     expect(llms).not.toContain('0.5.0')
     expect(llms).not.toContain('Current npm: **0.7.2**')
     expect(llms).not.toContain('Current npm: **0.7.1**')

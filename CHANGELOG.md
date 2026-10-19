@@ -12,6 +12,26 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-20
+
+**Breaking:** with `reviewRuntime` unset, the judge now runs on the worker's own runtime. There is no Cursor default judge any more.
+
+### Headline
+
+- **The judge follows the worker** — leave `reviewRuntime` unset and the judge uses the worker's runtime with that runtime's judge model: OpenCode → `opencode-go/deepseek-v4-pro`, Claude → `opus`, Codex → `gpt-5.6-sol`, DSH → V4 Pro, Muse → PAYG Spark, Cursor → `grok-4.7`. Cline and Pi judge with the same model as the worker unless you set `reviewModel`. Before, an unset judge silently meant Cursor, so an OpenCode, Claude, or Codex loop with no Cursor key died at preflight on `CURSOR_API_KEY` for a judge nobody had picked. The rule lives in one helper, `effectiveReviewRuntime`, used by the resolver, the credential preflight, config merging, meta-review, and the run log.
+- **Setup wizard** — the judge question now pre-selects the worker's runtime, not Cursor.
+- **Meta-review** — without `--review-runtime`, it judges on the repo's `defaults.reviewRuntime`, else `defaults.runtime`.
+
+### Migrating
+
+- **To keep a Cursor judge, say so:** add `"reviewRuntime": "cursor"` to `loop.json` or to `.cursor/agent-loop.repo.json` `defaults`. This matters for non-Cursor workers whose `reviewRuntime` was unset. A Cline Pass worker used to get Composer 2.5 this way, and an explicit Cursor judge on Cline still defaults to Composer 2.5.
+- **Embed API:** `resolveReviewAgent` follows the same rule. `resolveReviewModel` stays Cursor-only, so it now throws for a non-Cursor worker without `reviewRuntime: "cursor"`. Use `resolveReviewAgent` instead.
+- **Supported line is 0.8.x** (`SECURITY.md`).
+
+OpenCode plugin 0.1.4 ships the updated `review-gate` skill wording.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.8.0)
+
 ## 0.7.7 — 2026-10-20
 
 A run that dies before the worker now opens its HITL checkpoint instead of throwing. The OpenCode plugin (0.1.3) can start loops whose keys live in Doppler.

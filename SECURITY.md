@@ -17,8 +17,8 @@ maintain long-lived backport branches.
 
 | Version | Supported |
 | --- | --- |
-| 0.7.x | Yes |
-| < 0.7.0 | No |
+| 0.8.x | Yes |
+| < 0.8.0 | No |
 
 ## Reporting a vulnerability
 
