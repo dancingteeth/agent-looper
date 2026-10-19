@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import {
   parseOpencodeMajorVersion,
   parseServeUrl,
+  reserveFreePort,
   resolveOpencodeExecutable,
   startOpencodeServe,
 } from './opencodeServe.js'
@@ -14,6 +15,14 @@ describe('parseServeUrl', () => {
     expect(parseServeUrl('opencode server listening on http://127.0.0.1:4096')).toBe('http://127.0.0.1:4096')
     expect(parseServeUrl('server listening on http://127.0.0.1:41777')).toBe('http://127.0.0.1:41777')
     expect(parseServeUrl('server password abc')).toBeUndefined()
+  })
+})
+
+describe('reserveFreePort', () => {
+  it('returns an ephemeral localhost port', async () => {
+    const port = await reserveFreePort()
+    expect(port).toBeGreaterThan(0)
+    expect(port).toBeLessThan(65536)
   })
 })
 
@@ -134,3 +143,4 @@ describe('startOpencodeServe', () => {
     expect(order).toEqual(['killed', 'rejected'])
   })
 })
+
