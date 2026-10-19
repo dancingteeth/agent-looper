@@ -18,6 +18,16 @@ Inside a harness worker (`runtime: opencode`, where the harness sets `AGENT_LOOP
 
 ## Install
 
+OpenCode **2.x**:
+
+```bash
+opencode plugin add @dancingteeth/opencode-agent-looper
+```
+
+That writes `"plugins": ["@dancingteeth/opencode-agent-looper"]` to your global `opencode.json`.
+
+OpenCode **1.x** (the key is singular there, and 2.x ignores it):
+
 ```jsonc
 // opencode.json
 {
