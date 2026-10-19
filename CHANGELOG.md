@@ -12,6 +12,17 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.7.6 — 2026-10-19
+
+Docs and package metadata only. No runtime changes.
+
+### Headline
+
+- **The README no longer reads as Cursor-only** — the hero (also the npm page) led with "If you already loop in Cursor" and an `@cursor/sdk` quickstart, kept from launch. It now leads with what the harness does and every supported runtime (Cursor, Claude Code, Codex, OpenCode, Cline, Pi, DSH, Muse). The quickstart picks worker and judge with `agent-loop-setup` and names each runtime's SDK or CLI.
+- **npm description and keywords** — the description matches the new hero, and the package has keywords for the first time, so it shows up in npm search for `claude-code`, `codex`, `opencode`, and similar.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.7.6)
+
 ## 0.7.5 — 2026-10-19
 
 OpenCode gets a companion plugin, and harness workers can tell it apart from your own sessions.
