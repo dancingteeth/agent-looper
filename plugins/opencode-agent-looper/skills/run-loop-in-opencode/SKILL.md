@@ -24,7 +24,7 @@ Humans pick runtime/models with `pnpm exec agent-loop-setup` (TUI — do not run
 ## Start a grind
 
 1. Confirm the bundle is frozen at `.cursor/loops/<name>/` (`GOAL.md`, `verify.sh`, `loop.json`). Load `design-loop` if it is not.
-2. Call **`agent_loop_start`** with `loopDir` (on OpenCode 2.x, through `execute`: `tools.agent_loop_start({ loopDir })`). It spawns the grind detached, writes `opencode-grind.log` + `opencode-grind.pid` in the loop dir, and returns immediately.
+2. Call **`agent_loop_start`** with `loopDir` (on OpenCode 2.x, through `execute`: `tools.agent_loop_start({ loopDir })`). It spawns the grind detached, writes `opencode-grind.log` + `opencode-grind.pid` in the loop dir, and returns immediately. Inside `execute`, only plugin tools like `tools.agent_loop_start` / `tools.agent_loop_status` exist; there is no `tools.shell`, so run commands with the shell tool itself.
 3. Tell the user the PID and log path. Do not busy-poll.
 4. When asked how it is going, call **`agent_loop_status`**. `done: complete` / `done: NOT complete` come from the harness `AGENT_LOOP_DONE` line.
 5. One grind per loop dir. `agent_loop_start` refuses while the previous PID is alive.

@@ -21,6 +21,7 @@ function scanLoopConfigWarnings(
   defaults: Record<string, unknown> | undefined,
   detection?: DetectionResult,
   costPresets?: UserCostPresetMap,
+  onlyLoop?: string,
 ): string[] {
   const loopsDir = path.join(repoRoot, '.cursor', 'loops')
   const warnings: string[] = []
@@ -30,6 +31,7 @@ function scanLoopConfigWarnings(
     entries = fs.readdirSync(loopsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
+      .filter((name) => onlyLoop === undefined || name === onlyLoop)
   } catch {
     return warnings
   }
@@ -71,15 +73,30 @@ function scanLoopConfigWarnings(
 
 export function validateRepoProfile(
   ctx: RepoContext,
-  options?: { detection?: DetectionResult },
+  options?: {
+    detection?: DetectionResult
+    /**
+     * `agent-loop run`: lint only this bundle's loop.json / verify.sh, and leave Telegram to the
+     * run's own preflight. Omit (doctor) to scan every loop under `.cursor/loops/`.
+     */
+    loopDir?: string
+  },
 ): RepoProfileCheck {
   const errors: string[] = []
+  const loopsDir = path.join(ctx.repoRoot, '.cursor', 'loops')
+  const onlyLoop =
+    options?.loopDir === undefined
+      ? undefined
+      : path.dirname(path.resolve(options.loopDir)) === loopsDir
+        ? path.basename(options.loopDir)
+        : ''
   const warnings: string[] = [
     ...scanLoopConfigWarnings(
       ctx.repoRoot,
       ctx.profile.defaults,
       options?.detection,
       ctx.profile.costPresets,
+      onlyLoop,
     ),
   ]
 
@@ -90,7 +107,7 @@ export function validateRepoProfile(
     )
   }
 
-  if (ctx.profile.telegramNotify && !resolveTelegramCredentials(ctx.profile)) {
+  if (options?.loopDir === undefined && ctx.profile.telegramNotify && !resolveTelegramCredentials(ctx.profile)) {
     warnings.push(
       'telegramNotify is enabled but bot token or chat id is missing — loop completion reports will not be sent (set AGENT_LOOP_TELEGRAM_* env or telegramNotify.chatId).',
     )

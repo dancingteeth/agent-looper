@@ -233,7 +233,7 @@ try {
     `[agent-loop] credentials ok worker=${bundle.config.runtime} judge=${effectiveReviewRuntime(bundle.config)}`,
   )
 
-  const profileCheck = validateRepoProfile(ctx, { detection })
+  const profileCheck = validateRepoProfile(ctx, { detection, loopDir })
   if (!profileCheck.ok) {
     console.error('[agent-loop] repo profile errors:')
     console.error(formatRepoProfileCheck({ ...profileCheck, warnings: [] }))
