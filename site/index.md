@@ -27,7 +27,7 @@ Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, and Claude. Agent Looper detects 
 
 ## How do worker and judge presets work?
 
-Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include `minmax` (cheap worker, strongest judge), `balanced` (stronger worker, same judge), and `cursor` (Composer with Grok `grok-4.7`), or you can configure any worker and judge pair in `loop.json`.
+Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include `minmax`, `balanced`, and `cursor` (Composer with Grok `grok-4.7` on Cursor). Leave `reviewRuntime` unset and the optional judge runs on the worker's own runtime—not Cursor by default. Set `reviewRuntime` to `cursor` for a Cursor judge, or configure any worker and judge pair in `loop.json`.
 
 ## What happens if the worker gets stuck?
 

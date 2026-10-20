@@ -10,7 +10,7 @@ You say what to build and how to know it's done. It keeps a coding agent working
 
 [Add to Grok Bot](https://x.ai/bot/AETdGbRRNWfckrRGv22LD)
 
-Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a `--runtime` enum value. Distinct from the Grok 4.7 model that Cursor uses as judge by default.
+Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a `--runtime` enum value. The optional judge still defaults to the worker's runtime from `loop.json` — not Grok `grok-4.7` unless the worker is Cursor.
 
 ### How to use
 
@@ -22,6 +22,8 @@ The harness still owns the deterministic check and a fresh worker each iteration
 
 ## Runtimes
 
+Leave `reviewRuntime` unset and the optional judge runs on the worker's own runtime (not Cursor by default). Set `reviewRuntime` to `cursor` for a Cursor judge.
+
 Install once: `pnpm add -D @dancingteeth/agent-looper`, then add the SDK or CLI named on each card.
 
 ### Cursor (`--runtime cursor`)
@@ -29,17 +31,17 @@ Install once: `pnpm add -D @dancingteeth/agent-looper`, then add the SDK or CLI 
 IDE subscription via `@cursor/sdk`.
 
 - Worker: `composer-2.5`
-- Judge (when worker is Cursor): `grok-4.7` (`grok-4.6` / `grok-4.5` still allowed)
+- Judge (optional, on Cursor): `grok-4.7` (`grok-4.6` / `grok-4.5` still allowed); override any runtime via `reviewRuntime`
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime cursor --review-gate`
 
-Export `CURSOR_API_KEY` or run under Doppler. Run `pnpm exec agent-loop-init` once. Set `costPreset: "cursor"` in `loop.json` to stay on Cursor for both worker and judge. Repo defaults that pin OpenCode `escalateModel` are not applied on `--runtime cursor` — judge uses `reviewRuntime` / `reviewModel`.
+Export `CURSOR_API_KEY` or run under Doppler. Run `pnpm exec agent-loop-init` once. Set `costPreset: "cursor"` in `loop.json` to stay on Cursor for both worker and judge. Repo defaults that pin OpenCode `escalateModel` are not applied on `--runtime cursor`.
 
 ### DSH (`--runtime dsh`)
 
 DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` plugin for `dsh web`. See [docs/dsh-plugin.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md) and [plugins/dsh-agent-looper/](https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper).
 
 - Worker: `deepseek-official/deepseek-flash` (4.1 Flash, escalates to `deepseek-official/deepseek-v4-pro`). Previous `deepseek-official/deepseek-v4-flash` stays allowed.
-- Judge: `deepseek-official/deepseek-v4-pro` (when `reviewRuntime: dsh`)
+- Judge (optional): same runtime by default (V4 Pro), override any
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate`
 - `~/.dsh/.credentials.yaml` must be a flat `KEY: "string"` map — a wrapped store (`version` / `refs` / `records`) or YAML integer fails `agent-check dsh` and `agent-loop run` before spawning the worker. Quoting `version` alone is not enough; the harness does not rewrite that file.
 - DSH companion plugin guard blocks accidental foreground grinds
@@ -50,16 +52,18 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 - `cline-pass` worker: `cline-pass/deepseek-v4.1-flash` → `qwen3.7-plus` (`deepseek-v4-flash` still allowed)
 - `cline` worker: `deepseek/deepseek-chat` → `qwen/qwen3-coder-plus`
-- Judge: any runtime, optional
+- Judge (optional): worker model by default, override any; set `reviewModel` to pick a different model on the same runtime
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass --review-gate` (or `--runtime cline` for credits)
 
 ### OpenCode (`--runtime opencode`)
 
-`@opencode-ai/sdk` and `opencode` CLI — Go quota by default, or BYOK through OpenRouter, Vercel AI Gateway, Ollama, or another OpenAI-compatible router.
+`opencode` CLI 1.x or 2.x — Go quota by default, or BYOK through OpenRouter, Vercel AI Gateway, Ollama, or another OpenAI-compatible router.
 
-- Go worker: `opencode-go/deepseek-v4.1-flash` → `qwen3.7-plus` (`deepseek-v4-flash` still allowed)
+- Go worker: `opencode-go/deepseek-v4.1-flash` → `qwen3.7-plus` (`deepseek-v4-flash` still allowed); setup also offers priced `opencode-go/kimi-k3`
 - BYOK: `openrouter/…`, `openrouter/…:free`, `vercel/…`, `ollama/…`
-- Judge: any runtime, optional
+- Judge (optional): same runtime by default (`opencode-go/deepseek-v4-pro`), override any
+- 1.x: `@opencode-ai/sdk` plus `opencode` on PATH. 2.x: also `pnpm add -D @opencode/client` — without it the loop fails fast with an install hint instead of timing out. `agent-check opencode` handshakes the server so a client/CLI mismatch fails the check, not the first loop. 2.x provider keys go in OpenCode’s credential store (add once).
+- Companion plugin [`@dancingteeth/opencode-agent-looper`](https://www.npmjs.com/package/@dancingteeth/opencode-agent-looper) (0.1.6; OpenCode 1.x and 2.x): teaches Agent Looper skills; `agent_loop_start` / `agent_loop_status` start loops in the background so a shell timeout can’t kill them, and `agent_loop_start` can launch through the repo’s `agent:loop` script or a `launchPrefix` when keys live in a secrets wrapper. 2.x: `opencode plugin add @dancingteeth/opencode-agent-looper`; 1.x: `"plugin": ["@dancingteeth/opencode-agent-looper"]` in `opencode.json`. Works alongside the CLI — does not replace it.
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode --review-gate`
 
 ### Pi (`--runtime pi`)
@@ -67,7 +71,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 `@earendil-works/pi-coding-agent` — OpenRouter by default, or another OpenAI-compatible router you configure.
 
 - Worker: `openrouter/deepseek/deepseek-chat` → `openrouter/qwen/qwen3-coder-next`
-- Judge: any runtime, optional
+- Judge (optional): worker model by default, override any; set `reviewModel` to pick a different model on the same runtime
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-gate`
 
 ### Codex (`--runtime codex`)
@@ -76,7 +80,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 
 - Worker: `gpt-5.6-luna` → `gpt-5.6-terra`
 - Optional: `gpt-6-astra` (listed; not the default judge)
-- Judge: any runtime, optional (Codex-native judge defaults to `gpt-5.6-sol`, not `gpt-6-astra`)
+- Judge (optional): same runtime by default (`gpt-5.6-sol`), override any
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate`
 
 ### Muse (`--runtime muse`)
@@ -84,7 +88,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 `@muse-code/sdk` and `muse` CLI — Meta Muse Code. Not on `costPreset` minmax. See [docs/muse-runtime.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md).
 
 - Worker: `muse-spark-1.3-contributor` (climb `reasoningEffort`; no stronger Spark slug)
-- Judge: any runtime, optional
+- Judge (optional): same runtime by default (PAYG Spark), override any
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate`
 
 ### Claude (`--runtime claude`)
@@ -92,5 +96,5 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 PATH `claude` CLI — Claude Code subscription. `--safe-mode` so the harness prompt is the only instruction source (strips project hooks and auto-memory). Not on `costPreset` minmax. `opus` / `sonnet` / `fable` aliases track Claude Code latest-per-family. See [docs/claude-runtime.md](https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md).
 
 - Worker: `sonnet` → `opus`
-- Judge: any runtime, optional
+- Judge (optional): same runtime by default (`opus`), override any
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime claude --review-gate`

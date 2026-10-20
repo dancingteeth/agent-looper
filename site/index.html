@@ -107,7 +107,7 @@
             "name": "How do worker and judge presets work?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include minmax (cheap worker, strongest judge), balanced (stronger worker, same judge), and cursor (Composer with Grok grok-4.7), or you can configure any worker and judge pair in loop.json."
+              "text": "Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include minmax, balanced, and cursor (Composer with Grok grok-4.7 on Cursor). Leave reviewRuntime unset and the optional judge runs on the worker's own runtime—not Cursor by default. Set reviewRuntime to cursor for a Cursor judge, or configure any worker and judge pair in loop.json."
             }
           },
           {
@@ -361,7 +361,7 @@
           <article class="tui-answer tui-answer--presets">
             <h2>How do worker and judge presets work?</h2>
             <p>
-              Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include <code>minmax</code> (cheap worker, strongest judge), <code>balanced</code> (stronger worker, same judge), and <code>cursor</code> (Composer with Grok <code>grok-4.7</code>), or you can configure any worker and judge pair in <code>loop.json</code>.
+              Pair a cheap, fast worker with a stronger judge instead of burning a frontier model on every turn. Built-in presets include <code>minmax</code>, <code>balanced</code>, and <code>cursor</code> (Composer with Grok <code>grok-4.7</code> on Cursor). Leave <code>reviewRuntime</code> unset and the optional judge runs on the worker's own runtime—not Cursor by default. Set <code>reviewRuntime</code> to <code>cursor</code> for a Cursor judge, or configure any worker and judge pair in <code>loop.json</code>.
             </p>
           </article>
           <article class="tui-answer tui-answer--escalation">

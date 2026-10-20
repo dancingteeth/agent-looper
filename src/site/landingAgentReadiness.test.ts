@@ -85,6 +85,27 @@ describe('landing agent readiness', () => {
     }
   })
 
+  it('site version labels say 0.8.2 current with no stale 0.7.x as current', () => {
+    const versionPaths = [
+      'about/index.html',
+      'about/index.md',
+      'docs/index.html',
+      'docs/index.md',
+      'index.md',
+      'llms.txt',
+    ]
+    for (const file of versionPaths) {
+      const body = readSite(file)
+      expect(body, file).toContain('0.8.2')
+      expect(body, file).not.toMatch(/Current npm: \*\*0\.7\./)
+    }
+    const llms = readSite('llms.txt')
+    expect(llms).toContain('Current npm: **0.8.2**')
+    expect(llms).toContain('supported line **0.8.x**')
+    expect(llms).not.toContain('supported line **0.7.x**')
+    expect(llms).toMatch(/Changelog.*0\.8\.2/)
+  })
+
   it('llms.txt follows llmstxt.org v2 and includes when-to-use guidance', () => {
     const text = readSite('llms.txt')
     expect(text.startsWith('# Agent Looper\n')).toBe(true)
@@ -420,14 +441,14 @@ describe('landing agent readiness', () => {
     const html = readSite('harnesses/index.html')
     const clineCard =
       html.match(/<article class="harness-card" id="claude">[\s\S]*?<\/article>/)?.[0] ?? ''
-    expect(clineCard).toMatch(/any runtime/i)
     expect(clineCard).toMatch(/optional/i)
+    expect(clineCard).toContain('opus')
     expect(clineCard).not.toMatch(/\bMCP\b/i)
 
     const md = readSite('harnesses/index.md')
     const claudeSection = md.slice(md.indexOf('### Claude'))
-    expect(claudeSection).toMatch(/any runtime/i)
     expect(claudeSection).toMatch(/optional/i)
+    expect(claudeSection).toContain('opus')
     expect(claudeSection).not.toMatch(/\bMCP\b/i)
   })
 
@@ -531,56 +552,130 @@ describe('landing agent readiness', () => {
     expect(md).toContain('looper-bot.png')
   })
 
-  it('Cline runtime card describes judge as optional, not a Cursor default', () => {
-    const html = readSite('harnesses/index.html')
-    const clineCard =
-      html.match(/<article class="harness-card" id="cline">[\s\S]*?<\/article>/)?.[0] ?? ''
-    expect(clineCard).toMatch(/any runtime/i)
-    expect(clineCard).toMatch(/optional/i)
-    expect(clineCard).not.toMatch(/Composer/i)
-    expect(clineCard).not.toMatch(/Judge Cursor/)
-    expect(clineCard).not.toMatch(/reviewRuntime:\s*cline/i)
-
-    const md = readSite('harnesses/index.md')
-    const clineSection = md.slice(
-      md.indexOf('### Cline'),
-      md.indexOf('### OpenCode'),
-    )
-    expect(clineSection).toMatch(/any runtime/i)
-    expect(clineSection).toMatch(/optional/i)
-    expect(clineSection).not.toMatch(/Composer/i)
-    expect(clineSection).not.toMatch(/Judge: Cursor/)
-    expect(clineSection).not.toMatch(/reviewRuntime:\s*cline/i)
-  })
-
-  it('OpenCode, Pi, and Codex runtime cards describe judge as optional, not a Cursor default', () => {
+  it('runtime cards describe judge-on-worker defaults, not a Cursor default', () => {
     const html = readSite('harnesses/index.html')
     const md = readSite('harnesses/index.md')
     const cases = [
-      { id: 'opencode', mdHeading: '### OpenCode', mdEnd: '### Pi' },
-      { id: 'pi', mdHeading: '### Pi', mdEnd: '### Codex' },
-      { id: 'codex', mdHeading: '### Codex', mdEnd: '### Muse' },
-      { id: 'muse', mdHeading: '### Muse', mdEnd: '### Claude' },
-      { id: 'claude', mdHeading: '### Claude', mdEnd: undefined },
+      {
+        id: 'cline',
+        chip: /worker model by default, override any/i,
+        mdHeading: '### Cline',
+        mdEnd: '### OpenCode',
+        mdNeedle: /worker model by default, override any/i,
+      },
+      {
+        id: 'opencode',
+        chip: /same runtime by default.*opencode-go\/deepseek-v4-pro/i,
+        mdHeading: '### OpenCode',
+        mdEnd: '### Pi',
+        mdNeedle: /same runtime by default.*opencode-go\/deepseek-v4-pro/i,
+      },
+      {
+        id: 'pi',
+        chip: /worker model by default, override any/i,
+        mdHeading: '### Pi',
+        mdEnd: '### Codex',
+        mdNeedle: /worker model by default, override any/i,
+      },
+      {
+        id: 'codex',
+        chip: /same runtime by default.*gpt-5\.6-sol/i,
+        mdHeading: '### Codex',
+        mdEnd: '### Muse',
+        mdNeedle: /same runtime by default.*gpt-5\.6-sol/i,
+      },
+      {
+        id: 'muse',
+        chip: /same runtime by default.*PAYG Spark/i,
+        mdHeading: '### Muse',
+        mdEnd: '### Claude',
+        mdNeedle: /same runtime by default.*PAYG Spark/i,
+      },
+      {
+        id: 'claude',
+        chip: /same runtime by default.*opus/i,
+        mdHeading: '### Claude',
+        mdEnd: undefined,
+        mdNeedle: /same runtime by default.*`opus`/i,
+      },
     ] as const
 
-    for (const { id, mdHeading, mdEnd } of cases) {
+    for (const { id, chip, mdHeading, mdEnd, mdNeedle } of cases) {
       const card =
         html.match(
           new RegExp(`<article class="harness-card" id="${id}">[\\s\\S]*?<\\/article>`),
         )?.[0] ?? ''
-      expect(card, id).toMatch(/any runtime/i)
       expect(card, id).toMatch(/optional/i)
-      expect(card, id).not.toMatch(/Judge Cursor/)
-      expect(card, id).not.toMatch(new RegExp(`reviewRuntime:\\s*${id}`, 'i'))
+      expect(card, id).toMatch(/override any/i)
+      expect(card, id).not.toMatch(/Judge Cursor/i)
+      expect(card, id).not.toMatch(/Judge: Cursor/i)
+      expect(card, id).not.toMatch(/any runtime, optional/i)
+      expect(card, id).toMatch(chip)
 
       const mdStart = md.indexOf(mdHeading)
       const mdSlice = mdEnd ? md.slice(mdStart, md.indexOf(mdEnd)) : md.slice(mdStart)
-      expect(mdSlice, id).toMatch(/any runtime/i)
       expect(mdSlice, id).toMatch(/optional/i)
-      expect(mdSlice, id).not.toMatch(/Judge: Cursor/)
-      expect(mdSlice, id).not.toMatch(new RegExp(`reviewRuntime:\\s*${id}`, 'i'))
+      expect(mdSlice, id).not.toMatch(/Judge: Cursor/i)
+      expect(mdSlice, id).toMatch(mdNeedle)
     }
+
+    const cursorCard =
+      html.match(
+        /<article class="harness-card" id="cursor">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(cursorCard).toContain('grok-4.7')
+    expect(cursorCard).toMatch(/optional/i)
+
+    const grokBot = html.slice(
+      html.indexOf('id="grok-bot"'),
+      html.indexOf('id="harness-runtimes-heading"'),
+    )
+    expect(grokBot).toMatch(/defaults to the worker's runtime/i)
+    expect(grokBot).not.toMatch(/judge by default/i)
+
+    const opencodeCard =
+      html.match(
+        /<article class="harness-card" id="opencode">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(opencodeCard).toContain('@dancingteeth/opencode-agent-looper')
+    expect(opencodeCard).toContain('agent:loop')
+    expect(opencodeCard).toContain('launchPrefix')
+    expect(opencodeCard).toContain(
+      'opencode plugin add @dancingteeth/opencode-agent-looper',
+    )
+    expect(opencodeCard).toContain(
+      '"plugin": ["@dancingteeth/opencode-agent-looper"]',
+    )
+  })
+
+  it('homepage and llms do not claim a Cursor default judge for non-Cursor workers', () => {
+    const llms = readSite('llms.txt')
+    expect(llms).toMatch(/no Cursor default judge/i)
+    expect(llms).toMatch(/reviewRuntime.*cursor/i)
+
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    for (const surface of [html, md] as const) {
+      expect(surface).toMatch(/Leave [`<code>]*reviewRuntime[`<\/code>]* unset/i)
+      expect(surface).toMatch(/not Cursor by default/i)
+      expect(surface).not.toMatch(/default judge.*grok-4\.7.*opencode/i)
+    }
+    const graph = jsonLdGraph(html)
+    const faq = graph.find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as {
+      mainEntity?: Array<{
+        name?: string
+        acceptedAnswer?: { text?: string }
+      }>
+    }
+    const presetsQuestion = faq?.mainEntity?.find(
+      (q) => q.name === 'How do worker and judge presets work?',
+    )
+    expect(presetsQuestion?.acceptedAnswer?.text).toMatch(/not Cursor by default/i)
   })
 
   it('help section leads with dep, issues, optional telemetry, and Ko-fi', () => {
@@ -700,12 +795,21 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/Current npm.*0\.7\.0/i)
       expect(surface).not.toMatch(/Current npm.*0\.7\.1/i)
       expect(surface).not.toMatch(/Current npm.*0\.7\.2/i)
+      expect(surface).not.toMatch(/Current npm.*0\.7\.[3-9]/i)
       expect(surface).not.toMatch(/supported line \*\*0\.6\.x\*\*/i)
+      expect(surface).not.toMatch(/supported line \*\*0\.7\.x\*\*/i)
     }
 
     expect(llms).toContain('Current npm: **0.8.2**')
     expect(llms).toContain('0.8.x')
     expect(llms).not.toContain('Current npm: **0.8.1**')
+    expect(llms).not.toContain('Current npm: **0.7.')
+    expect(llms).toContain('@dancingteeth/opencode-agent-looper')
+    expect(llms).toMatch(/no Cursor default judge/i)
+    expect(llms).toContain('agent-loop --version')
+    expect(llms).toMatch(/unknown flags fail/i)
+    expect(llms).not.toMatch(/package.bin/i)
+    expect(llms).not.toMatch(/lints only its own loop/i)
     expect(llms).not.toContain('0.5.0')
     expect(llms).not.toContain('Current npm: **0.7.2**')
     expect(llms).not.toContain('Current npm: **0.7.1**')
@@ -730,9 +834,8 @@ describe('landing agent readiness', () => {
       harnessHtml.match(
         /<article class="harness-card" id="cursor">[\s\S]*?<\/article>/,
       )?.[0] ?? ''
-    expect(cursorCard).toContain('reviewRuntime')
-    expect(cursorCard).toContain('escalateModel')
     expect(cursorCard).toContain(grok47Beat)
+    expect(cursorCard).toMatch(/optional/i)
 
     const codexCard =
       harnessHtml.match(
@@ -756,6 +859,7 @@ describe('landing agent readiness', () => {
     expect(dshCard).not.toContain('version: "1"')
     expect(dshCard).toContain(flashDefault)
     expect(dshCard).toContain('deepseek-v4-flash')
+    expect(dshCard).toMatch(/same runtime by default.*V4 Pro/i)
     expect(harnessMd).toContain(flashDefault)
     expect(harnessMd).toContain('deepseek-v4-flash')
     expect(harnessMd).toContain(flash41Slug)
@@ -766,6 +870,22 @@ describe('landing agent readiness', () => {
     expect(harnessMd).toContain(dshPreflightBeat)
     expect(harnessMd).toContain(dshQuoteNotEnoughBeat)
     expect(harnessMd).not.toContain('version: "1"')
+  })
+
+  it('docs pages link the OpenCode companion plugin next to providers', () => {
+    const docsHtml = readSite('docs/index.html')
+    const docsMd = readSite('docs/index.md')
+    const pluginUrl =
+      'https://www.npmjs.com/package/@dancingteeth/opencode-agent-looper'
+    for (const body of [docsHtml, docsMd]) {
+      expect(body).toContain(pluginUrl)
+      expect(body).toContain('@dancingteeth/opencode-agent-looper')
+      expect(body).toContain('opencode-providers')
+      expect(body).toContain('agent-loop --version')
+      expect(body).toMatch(/unknown flags/i)
+      expect(body).not.toMatch(/package-bin/i)
+      expect(body).not.toMatch(/lints only its own loop/i)
+    }
   })
 
   it('every HTML page loads analytics.js', () => {
