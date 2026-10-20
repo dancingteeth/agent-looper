@@ -558,45 +558,45 @@ describe('landing agent readiness', () => {
     const cases = [
       {
         id: 'cline',
-        chip: /worker model/i,
+        chip: /worker model by default, override any/i,
         mdHeading: '### Cline',
         mdEnd: '### OpenCode',
-        mdNeedle: /same model as the worker/i,
+        mdNeedle: /worker model by default, override any/i,
       },
       {
         id: 'opencode',
-        chip: 'opencode-go/deepseek-v4-pro',
+        chip: /same runtime by default.*opencode-go\/deepseek-v4-pro/i,
         mdHeading: '### OpenCode',
         mdEnd: '### Pi',
-        mdNeedle: 'opencode-go/deepseek-v4-pro',
+        mdNeedle: /same runtime by default.*opencode-go\/deepseek-v4-pro/i,
       },
       {
         id: 'pi',
-        chip: /worker model/i,
+        chip: /worker model by default, override any/i,
         mdHeading: '### Pi',
         mdEnd: '### Codex',
-        mdNeedle: /same model as the worker/i,
+        mdNeedle: /worker model by default, override any/i,
       },
       {
         id: 'codex',
-        chip: 'gpt-5.6-sol',
+        chip: /same runtime by default.*gpt-5\.6-sol/i,
         mdHeading: '### Codex',
         mdEnd: '### Muse',
-        mdNeedle: 'gpt-5.6-sol',
+        mdNeedle: /same runtime by default.*gpt-5\.6-sol/i,
       },
       {
         id: 'muse',
-        chip: /PAYG Spark/i,
+        chip: /same runtime by default.*PAYG Spark/i,
         mdHeading: '### Muse',
         mdEnd: '### Claude',
-        mdNeedle: /PAYG Spark/i,
+        mdNeedle: /same runtime by default.*PAYG Spark/i,
       },
       {
         id: 'claude',
-        chip: 'opus',
+        chip: /same runtime by default.*opus/i,
         mdHeading: '### Claude',
         mdEnd: undefined,
-        mdNeedle: '`opus`',
+        mdNeedle: /same runtime by default.*`opus`/i,
       },
     ] as const
 
@@ -606,19 +606,32 @@ describe('landing agent readiness', () => {
           new RegExp(`<article class="harness-card" id="${id}">[\\s\\S]*?<\\/article>`),
         )?.[0] ?? ''
       expect(card, id).toMatch(/optional/i)
+      expect(card, id).toMatch(/override any/i)
       expect(card, id).not.toMatch(/Judge Cursor/i)
       expect(card, id).not.toMatch(/Judge: Cursor/i)
-      expect(card, id).not.toMatch(/any runtime/i)
-      if (typeof chip === 'string') expect(card, id).toContain(chip)
-      else expect(card, id).toMatch(chip)
+      expect(card, id).not.toMatch(/any runtime, optional/i)
+      expect(card, id).toMatch(chip)
 
       const mdStart = md.indexOf(mdHeading)
       const mdSlice = mdEnd ? md.slice(mdStart, md.indexOf(mdEnd)) : md.slice(mdStart)
       expect(mdSlice, id).toMatch(/optional/i)
       expect(mdSlice, id).not.toMatch(/Judge: Cursor/i)
-      if (mdNeedle instanceof RegExp) expect(mdSlice, id).toMatch(mdNeedle)
-      else expect(mdSlice, id).toContain(mdNeedle)
+      expect(mdSlice, id).toMatch(mdNeedle)
     }
+
+    const cursorCard =
+      html.match(
+        /<article class="harness-card" id="cursor">[\s\S]*?<\/article>/,
+      )?.[0] ?? ''
+    expect(cursorCard).toContain('grok-4.7')
+    expect(cursorCard).toMatch(/optional/i)
+
+    const grokBot = html.slice(
+      html.indexOf('id="grok-bot"'),
+      html.indexOf('id="harness-runtimes-heading"'),
+    )
+    expect(grokBot).toMatch(/defaults to the worker's runtime/i)
+    expect(grokBot).not.toMatch(/judge by default/i)
 
     const opencodeCard =
       html.match(
@@ -794,6 +807,9 @@ describe('landing agent readiness', () => {
     expect(llms).toContain('@dancingteeth/opencode-agent-looper')
     expect(llms).toMatch(/no Cursor default judge/i)
     expect(llms).toContain('agent-loop --version')
+    expect(llms).toMatch(/unknown flags fail/i)
+    expect(llms).not.toMatch(/package.bin/i)
+    expect(llms).not.toMatch(/lints only its own loop/i)
     expect(llms).not.toContain('0.5.0')
     expect(llms).not.toContain('Current npm: **0.7.2**')
     expect(llms).not.toContain('Current npm: **0.7.1**')
@@ -843,7 +859,7 @@ describe('landing agent readiness', () => {
     expect(dshCard).not.toContain('version: "1"')
     expect(dshCard).toContain(flashDefault)
     expect(dshCard).toContain('deepseek-v4-flash')
-    expect(dshCard).toMatch(/V4 Pro/i)
+    expect(dshCard).toMatch(/same runtime by default.*V4 Pro/i)
     expect(harnessMd).toContain(flashDefault)
     expect(harnessMd).toContain('deepseek-v4-flash')
     expect(harnessMd).toContain(flash41Slug)
@@ -866,6 +882,9 @@ describe('landing agent readiness', () => {
       expect(body).toContain('@dancingteeth/opencode-agent-looper')
       expect(body).toContain('opencode-providers')
       expect(body).toContain('agent-loop --version')
+      expect(body).toMatch(/unknown flags/i)
+      expect(body).not.toMatch(/package-bin/i)
+      expect(body).not.toMatch(/lints only its own loop/i)
     }
   })
 

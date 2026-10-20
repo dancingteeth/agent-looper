@@ -85,7 +85,7 @@
           </p>
         </div>
         <div class="harness-operator__body">
-          <p>Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a <code>--runtime</code> enum value. Distinct from Grok <code>grok-4.7</code> as Cursor’s own runtime judge.</p>
+          <p>Grok Bot is the Grok operator that runs Agent Looper on the user's computer. It is not a <code>--runtime</code> enum value. The optional judge still defaults to the worker's runtime from <code>loop.json</code> — not Grok <code>grok-4.7</code> unless the worker is Cursor.</p>
           <h3>How to use</h3>
           <ol>
             <li>Freeze <code>GOAL.md</code> and <code>verify.sh</code> (or <code>pnpm exec agent-loop-prompt --out .cursor/loops/my-task</code>).</li>
@@ -131,7 +131,7 @@
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>deepseek-flash</code> (4.1 Flash) → <code>v4-pro</code></span>
               <span class="harness-chip">Previous <code>deepseek-v4-flash</code></span>
-              <span class="harness-chip">Judge V4 Pro, optional</span>
+              <span class="harness-chip">Judge: same runtime by default (V4 Pro), override any, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate</code></p>
             <p class="harness-card__note">Default worker is <code>deepseek-official/deepseek-flash</code> (DeepSeek-V41-Flash, image-capable). Previous <code>deepseek-official/deepseek-v4-flash</code> stays allowed. Ensure <code>dsh</code> is on PATH. <code>~/.dsh/.credentials.yaml</code> must be a flat <code>KEY: "string"</code> map — a wrapped store (<code>version</code> / <code>refs</code> / <code>records</code>) or YAML integer fails <code>agent-check dsh</code> and <code>agent-loop run</code> before spawning the worker. Quoting <code>version</code> alone is not enough; the harness does not rewrite that file. DSH companion plugin guard blocks accidental foreground grinds. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md">docs/dsh-plugin.md</a> and <a href="https://github.com/dancingteeth/agent-looper/tree/main/plugins/dsh-agent-looper">plugins/dsh-agent-looper/</a>.</p>
@@ -149,7 +149,7 @@
             <p class="harness-card__chips">
               <span class="harness-chip">Pass <code>deepseek-v4.1-flash</code> → <code>qwen3.7-plus</code></span>
               <span class="harness-chip">Credits <code>deepseek-chat</code> → <code>qwen3-coder-plus</code></span>
-              <span class="harness-chip">Judge worker model, optional</span>
+              <span class="harness-chip">Judge: worker model by default, override any, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime cline-pass --review-gate</code></p>
             <p class="harness-card__note">Install <code>@cline/sdk</code>. Use <code>--runtime cline</code> for credits.</p>
@@ -169,7 +169,7 @@
               <span class="harness-chip">Go <code>opencode-go/kimi-k3</code></span>
               <span class="harness-chip">BYOK <code>openrouter/…</code> <code>:free</code></span>
               <span class="harness-chip">Plugin <code>@dancingteeth/opencode-agent-looper</code></span>
-              <span class="harness-chip">Judge <code>opencode-go/deepseek-v4-pro</code>, optional</span>
+              <span class="harness-chip">Judge: same runtime by default (<code>opencode-go/deepseek-v4-pro</code>), override any, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime opencode --review-gate</code></p>
             <p class="harness-card__note">1.x: <code>@opencode-ai/sdk</code> plus <code>opencode</code> on PATH. 2.x: also <code>pnpm add -D @opencode/client</code> — without it the loop fails fast with an install hint instead of timing out. <code>agent-check opencode</code> handshakes the server so a client/CLI mismatch fails the check, not the first loop. 2.x provider keys go in OpenCode’s credential store (add once).</p>
@@ -187,7 +187,7 @@
             <p class="harness-card__job"><code>@earendil-works/pi-coding-agent</code> — OpenRouter by default or another OpenAI-compatible router you configure.</p>
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>openrouter/deepseek-chat</code> → <code>qwen3-coder-plus</code></span>
-              <span class="harness-chip">Judge worker model, optional</span>
+              <span class="harness-chip">Judge: worker model by default, override any, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime pi --review-gate</code></p>
             <p class="harness-card__note">Install <code>@earendil-works/pi-coding-agent</code>.</p>
@@ -205,7 +205,7 @@
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>gpt-5.6-luna</code> → <code>gpt-5.6-terra</code></span>
               <span class="harness-chip">Optional <code>gpt-6-astra</code></span>
-              <span class="harness-chip">Judge <code>gpt-5.6-sol</code>, optional</span>
+              <span class="harness-chip">Judge: same runtime by default (<code>gpt-5.6-sol</code>), override any, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime codex --review-gate</code></p>
             <p class="harness-card__note">Install <code>@openai/codex-sdk</code>; ensure <code>codex</code> CLI is on PATH. <code>gpt-6-astra</code> is listed but not the default judge.</p>
@@ -222,7 +222,7 @@
             <p class="harness-card__job"><code>@muse-code/sdk</code> and <code>muse</code> CLI — Meta Muse Code. Not on <code>costPreset</code> minmax.</p>
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>muse-spark-1.3-contributor</code></span>
-              <span class="harness-chip">Judge PAYG Spark, optional</span>
+              <span class="harness-chip">Judge: same runtime by default (PAYG Spark), override any, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime muse --review-gate</code></p>
             <p class="harness-card__note">Install <code>@muse-code/sdk</code>; ensure <code>muse</code> is on PATH. Climb <code>reasoningEffort</code> — there is no stronger Spark slug. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md">docs/muse-runtime.md</a>.</p>
@@ -239,7 +239,7 @@
             <p class="harness-card__job">PATH <code>claude</code> CLI — Claude Code subscription. <code>--safe-mode</code> so the harness prompt is the only instruction source (strips project hooks and auto-memory). Not on <code>costPreset</code> minmax.</p>
             <p class="harness-card__chips">
               <span class="harness-chip">Worker <code>sonnet</code> → <code>opus</code></span>
-              <span class="harness-chip">Judge <code>opus</code>, optional</span>
+              <span class="harness-chip">Judge: same runtime by default (<code>opus</code>), override any, optional</span>
             </p>
             <p class="harness-card__run"><code>pnpm exec agent-loop run .cursor/loops/my-task --runtime claude --review-gate</code></p>
             <p class="harness-card__note">Ensure <code>claude</code> 2.1.169+ is on PATH and <code>claude login</code> has been run. <code>opus</code> / <code>sonnet</code> / <code>fable</code> aliases track Claude Code latest-per-family. See <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/claude-runtime.md">docs/claude-runtime.md</a>.</p>
