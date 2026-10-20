@@ -8,6 +8,8 @@ Agent Looper is the npm package `@dancingteeth/agent-looper` and the CLI `agent-
 - Agent Looper GitHub: https://github.com/dancingteeth/agent-looper
 - Harnesses (worker runtimes, Grok Bot operator, published models): https://looper.dancingteeth.net/harnesses/index.md
 - OpenCode providers (OpenRouter, Vercel, Ollama): https://github.com/dancingteeth/agent-looper/blob/main/docs/opencode-providers.md
+- OpenCode Agent Looper plugin (0.1.6): https://www.npmjs.com/package/@dancingteeth/opencode-agent-looper
+- CLI: `agent-loop --version`; unknown flags error; `check-running-loops` sees package-bin grinds; `agent-loop run` lints only its own loop
 - Pi runtime: https://github.com/dancingteeth/agent-looper/blob/main/docs/pi-runtime.md
 - DSH plugin (DeepSeek Harness): https://github.com/dancingteeth/agent-looper/blob/main/docs/dsh-plugin.md
 - Muse runtime (Muse Code): https://github.com/dancingteeth/agent-looper/blob/main/docs/muse-runtime.md
