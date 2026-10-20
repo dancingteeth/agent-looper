@@ -12,6 +12,18 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+## 0.8.2 — 2026-10-20
+
+Quieter `agent-loop run` startup.
+
+### Headline
+
+- **`run` lints only its own loop** — every run used to re-lint every `verify.sh` under `.cursor/loops/`, so unrelated old loops printed "scoreboard looks gameable" warnings on each start. `run` now checks only the bundle it is running. `agent-loop-doctor` still scans every loop.
+- **One Telegram warning, not two** — a missing bot token showed up both as a repo-profile warning and as the run's own preflight failure. `run` now reports it once, from the preflight. `doctor` still shows the profile warning.
+- **OpenCode plugin 0.1.6** — the run skill tells the model that `execute` code on 2.x can call plugin tools but has no `tools.shell`.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.8.2)
+
 ## 0.8.1 — 2026-10-20
 
 Two fixes from a live OpenCode run.
