@@ -461,6 +461,79 @@ describe('runAgentLoop', () => {
     vi.useRealTimers()
   })
 
+  it.each([
+    'OpenCode session timed out after 1000ms',
+    'OpenCode session made no tool progress after 1000ms',
+  ])(
+    'routes a worker fault during a deliverable nudge through the outer iteration (%s)',
+    async (faultMessage) => {
+      const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-nudge-fault-'))
+      const recycle = vi.fn().mockResolvedValue(undefined)
+      let calls = 0
+      const runIterationPrompt = vi.fn().mockImplementation(async () => {
+        calls += 1
+        // Odd calls are the primary worker, even calls the deliverable nudge.
+        if (calls % 2 === 0) {
+          throw new Error(
+            `OpenCode session.prompt failed (provider=opencode-go model=x session=ses_x): ${faultMessage}`,
+          )
+        }
+        return { text: 'primary ok' }
+      })
+      mockSession(runIterationPrompt, { recycle })
+      mockedRunVerify.mockReturnValue(passVerify())
+
+      const result = await runAgentLoop({
+        ctx: { repoRoot, profile: repoProfileSchema.parse({}) },
+        bundle: makeBundle({
+          runtime: 'opencode',
+          model: 'opencode-go/deepseek-v4-flash',
+          escalateModel: 'opencode-go/qwen3.7-plus',
+          maxIterations: 3,
+          deliverables: ['out/never.md'],
+        }),
+      })
+
+      expect(result.complete).toBe(false)
+      expect(result.iterations).toBe(3)
+      // Bounded: one primary + one faulting nudge per iteration, no inner-loop spin.
+      expect(runIterationPrompt).toHaveBeenCalledTimes(6)
+      // The fault escalated the next iteration's worker like a primary-worker fault does.
+      expect(runIterationPrompt.mock.calls[2]?.[1]).toEqual(
+        expect.objectContaining({ model: 'opencode-go/qwen3.7-plus' }),
+      )
+      expect(mockedRunVerify).not.toHaveBeenCalled()
+      expect(recycle).toHaveBeenCalled()
+      fs.rmSync(repoRoot, { recursive: true, force: true })
+    },
+  )
+
+  it('keeps a plain-text tool-call warning from an earlier nudge reply in the iteration', async () => {
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-nudge-warn-'))
+    const prompts: string[] = []
+    let calls = 0
+    const runIterationPrompt = vi.fn().mockImplementation(async (prompt: string) => {
+      prompts.push(prompt)
+      calls += 1
+      if (calls === 1) return { text: '<tool_call>{"name":"write"}</tool_call>' }
+      fs.mkdirSync(path.join(repoRoot, 'out'), { recursive: true })
+      fs.writeFileSync(path.join(repoRoot, 'out/report.md'), '# report\n')
+      return { text: 'clean reply' }
+    })
+    mockSession(runIterationPrompt)
+    mockedRunVerify.mockReturnValueOnce(failVerify()).mockReturnValue(passVerify())
+
+    const result = await runAgentLoop({
+      ctx: { repoRoot, profile: repoProfileSchema.parse({}) },
+      bundle: makeBundle({ maxIterations: 2, deliverables: ['out/report.md'] }),
+    })
+
+    expect(result.complete).toBe(true)
+    expect(prompts).toHaveLength(3)
+    expect(prompts[2]).toContain('## Plain-text tool calls are not executed')
+    fs.rmSync(repoRoot, { recursive: true, force: true })
+  })
+
   it('continues onto escalateModel after a worker timeout instead of aborting', async () => {
     const recycle = vi.fn().mockResolvedValue(undefined)
     const runIterationPrompt = vi

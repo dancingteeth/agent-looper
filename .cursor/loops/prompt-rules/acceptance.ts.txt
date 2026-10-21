@@ -1,0 +1,236 @@
+/**
+ * FROZEN acceptance spec — loop `.cursor/loops/prompt-rules`.
+ *
+ * verify.sh copies this file to `src/loop/__acceptance__/promptRules.acceptance.test.ts`,
+ * typechecks it with the repo, runs it with vitest, then deletes the copy.
+ * Its sha256 is pinned in verify.sh. Do not edit it; make the code satisfy it.
+ */
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { repoProfileSchema } from '../../context/repoProfile.js'
+import { buildLoopSystemPrompt } from '../../agents/loopSystemPrompt.js'
+import { runAgentLoop } from '../agentLoop.js'
+import { loopConfigSchema } from '../loopConfig.js'
+import { buildDeliverableNudgeSection, missingDeliverables } from '../loopDeliverables.js'
+import { buildAgentLoopPrompt } from '../loopPrompt.js'
+import { LOOP_SAFETY_RULES, renderLoopPromptRulesSection } from '../loopSafetyRules.js'
+import { PLAIN_TEXT_TOOL_CALL_HEADING, detectPlainTextToolCalls } from '../loopToolCallText.js'
+import { runVerifyCommand, type VerifyResult } from '../loopVerify.js'
+
+vi.mock('../loopVerify.js', () => ({ runVerifyCommand: vi.fn() }))
+vi.mock('../loopGit.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../loopGit.js')>()
+  return {
+    ...actual,
+    captureGitWorkspaceSnapshot: vi.fn(() => ({
+      branch: 'main',
+      shortSha: 'abc1234',
+      diffStat: '',
+      statusPorcelain: '',
+    })),
+  }
+})
+
+const mockedVerify = vi.mocked(runVerifyCommand)
+const VERIFY_CMD = 'bash .cursor/loops/acc-rules/verify.sh'
+const git = { branch: 'main', shortSha: 'abc1234', diffStat: '', statusPorcelain: '' }
+
+let loopDir: string
+let repoRoot: string
+
+function pass(): VerifyResult {
+  return { complete: true, command: VERIFY_CMD, exitCode: 0, stdout: 'ok', stderr: '', reason: 'Verifier passed (exit 0).' }
+}
+function fail(stdout = 'FAIL x'): VerifyResult {
+  return { complete: false, command: VERIFY_CMD, exitCode: 1, stdout, stderr: '', reason: 'Verifier failed (exit 1).' }
+}
+
+function bundle(overrides: Record<string, unknown> = {}) {
+  return {
+    loopDir,
+    goal: 'Acceptance goal for prompt-rules.',
+    config: loopConfigSchema.parse({
+      verify: VERIFY_CMD,
+      maxIterations: 2,
+      delayMs: 0,
+      postQualityReview: false,
+      reviewGate: false,
+      syncOnSuccess: false,
+      stagnationThreshold: 0,
+      exportPack: false,
+      exportRunReport: false,
+      exportTranscript: false,
+      ...overrides,
+    }),
+    logPath: path.join(loopDir, 'log.ndjson'),
+  }
+}
+
+function ctx() {
+  return { repoRoot, profile: repoProfileSchema.parse({ syncCommand: null }) }
+}
+
+function recordingSession(texts: string[] = [], onCall?: (n: number) => void) {
+  const prompts: string[] = []
+  const runIterationPrompt = vi.fn(async (prompt: string) => {
+    prompts.push(prompt)
+    onCall?.(prompts.length)
+    return { text: texts[prompts.length - 1] ?? 'edited files, ran tests' }
+  })
+  return { prompts, runIterationPrompt, workerSession: { runIterationPrompt, dispose: vi.fn(async () => undefined) } }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'acc-rules-loop-'))
+  repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'acc-rules-repo-'))
+})
+
+describe('prompt-rules: facts stated directly', () => {
+  it('puts the exact verifier command and deliverables in a Facts section in the stable head', () => {
+    const prompt = buildAgentLoopPrompt({
+      goal: 'g',
+      iteration: 1,
+      maxIterations: 3,
+      git,
+      lastVerify: null,
+      priorFailures: [],
+      verifyCommand: VERIFY_CMD,
+      deliverables: ['docs/report.md', 'src/new.ts'],
+    })
+    const facts = prompt.indexOf('## Facts')
+    expect(facts).toBeGreaterThan(-1)
+    expect(facts).toBeLessThan(prompt.indexOf('## Workspace (git)'))
+    const head = prompt.slice(facts, prompt.indexOf('## Workspace (git)'))
+    expect(head).toContain(VERIFY_CMD)
+    expect(head).toContain('docs/report.md')
+    expect(head).toContain('src/new.ts')
+  })
+
+  it('keeps the head byte-identical across iterations when facts are present', () => {
+    const build = (iteration: number) =>
+      buildAgentLoopPrompt({ goal: 'g', iteration, maxIterations: 5, git, lastVerify: null, priorFailures: [], verifyCommand: VERIFY_CMD })
+    const head = (p: string) => p.slice(0, p.indexOf('## Workspace (git)'))
+    expect(head(build(1))).toBe(head(build(4)))
+  })
+
+  it('runAgentLoop gives the worker the loop verify command verbatim', async () => {
+    mockedVerify.mockReturnValue(pass())
+    const { prompts, workerSession } = recordingSession()
+    await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession })
+    expect(prompts[0]).toContain(VERIFY_CMD)
+  })
+})
+
+describe('prompt-rules: never write tool calls as plain text', () => {
+  it('teaches the rule in the loop prompt rules, the safety list and the system prompt', () => {
+    const rules = renderLoopPromptRulesSection('AGENTS.md').toLowerCase()
+    expect(rules).toContain('plain text')
+    expect(rules).toContain('tool call')
+    expect(LOOP_SAFETY_RULES.some((r) => /plain text/i.test(r) && /tool call/i.test(r))).toBe(true)
+    const numbered = renderLoopPromptRulesSection('AGENTS.md').split('\n').filter((l) => /^\d+\. /.test(l))
+    expect(numbered).toHaveLength(LOOP_SAFETY_RULES.length)
+    const system = buildLoopSystemPrompt(ctx()).toLowerCase()
+    expect(system).toContain('plain text')
+  })
+
+  it.each([
+    '<tool_call>{"name": "edit_file", "arguments": {"path": "a.ts"}}</tool_call>',
+    'I will now run it.\n<function=bash>\n<parameter=command>pnpm test</parameter>\n</function>',
+    '{"name": "bash", "arguments": {"command": "ls"}}',
+    '```tool_code\nprint(default_api.read_file(path="a.ts"))\n```',
+    '[TOOL_CALLS] [{"name": "read", "arguments": {"path": "a.ts"}}]',
+    'Calling the tool: {"tool": "write_file", "parameters": {"path": "x"}}',
+  ])('flags pseudo tool call #%#', (text) => {
+    expect(detectPlainTextToolCalls(text)).toBe(true)
+  })
+
+  it.each([
+    '',
+    'Updated src/a.ts to export parseDate and ran the tests; 3 still fail.',
+    '```ts\nconst cfg = { name: "a", arguments: [] as string[] }\n```',
+    'The tool call failed with ENOENT, so I created the directory first.',
+    '```json\n{"name": "@dancingteeth/agent-looper", "version": "0.8.2"}\n```',
+  ])('does not flag normal worker output #%#', (text) => {
+    expect(detectPlainTextToolCalls(text)).toBe(false)
+  })
+
+  it('warns the next worker when the previous one wrote tool calls as text', async () => {
+    mockedVerify.mockReturnValue(fail())
+    const { prompts, workerSession } = recordingSession(['<tool_call>{"name":"bash","arguments":{"command":"ls"}}</tool_call>'])
+    await runAgentLoop({ ctx: ctx(), bundle: bundle({ maxIterations: 2 }), workerSession })
+    expect(prompts).toHaveLength(2)
+    expect(PLAIN_TEXT_TOOL_CALL_HEADING.startsWith('## ')).toBe(true)
+    expect(prompts[0]).not.toContain(PLAIN_TEXT_TOOL_CALL_HEADING)
+    expect(prompts[1]).toContain(PLAIN_TEXT_TOOL_CALL_HEADING)
+  })
+
+  it('does not warn after a normal worker reply', async () => {
+    mockedVerify.mockReturnValue(fail())
+    const { prompts, workerSession } = recordingSession(['Edited src/a.ts.'])
+    await runAgentLoop({ ctx: ctx(), bundle: bundle({ maxIterations: 2 }), workerSession })
+    expect(prompts[1]).not.toContain(PLAIN_TEXT_TOOL_CALL_HEADING)
+  })
+})
+
+describe('prompt-rules: deliverable guard (no exit before the deliverable exists)', () => {
+  it('lists missing repo-relative deliverables', () => {
+    fs.mkdirSync(path.join(repoRoot, 'docs'), { recursive: true })
+    fs.writeFileSync(path.join(repoRoot, 'docs/here.md'), 'x')
+    expect(missingDeliverables(repoRoot, ['docs/here.md', 'docs/missing.md'])).toEqual(['docs/missing.md'])
+    expect(missingDeliverables(repoRoot, [])).toEqual([])
+    const section = buildDeliverableNudgeSection(['docs/missing.md'])
+    expect(section).toContain('## Deliverables missing')
+    expect(section).toContain('docs/missing.md')
+  })
+
+  it('treats an empty file as missing', () => {
+    fs.writeFileSync(path.join(repoRoot, 'empty.md'), '')
+    expect(missingDeliverables(repoRoot, ['empty.md'])).toEqual(['empty.md'])
+  })
+
+  it('re-prompts the worker before verify until the deliverable exists', async () => {
+    mockedVerify.mockReturnValue(pass())
+    const { prompts, workerSession } = recordingSession([], (n) => {
+      if (n === 2) {
+        fs.mkdirSync(path.join(repoRoot, 'out'), { recursive: true })
+        fs.writeFileSync(path.join(repoRoot, 'out/report.md'), '# report\n')
+      }
+    })
+    const result = await runAgentLoop({
+      ctx: ctx(),
+      bundle: bundle({ maxIterations: 1, deliverables: ['out/report.md'] }),
+      workerSession,
+    })
+    expect(result.complete).toBe(true)
+    expect(prompts).toHaveLength(2)
+    expect(prompts[0]).not.toContain('## Deliverables missing')
+    expect(prompts[1]).toContain('## Deliverables missing')
+    expect(prompts[1]).toContain('out/report.md')
+    expect(mockedVerify).toHaveBeenCalledTimes(1)
+  })
+
+  it('caps nudges at deliverableNudges and then lets the verifier decide', async () => {
+    mockedVerify.mockReturnValue(fail('FAIL report missing'))
+    const { prompts, workerSession } = recordingSession()
+    const result = await runAgentLoop({
+      ctx: ctx(),
+      bundle: bundle({ maxIterations: 1, deliverables: ['out/never.md'], deliverableNudges: 1 }),
+      workerSession,
+    })
+    expect(result.complete).toBe(false)
+    expect(prompts).toHaveLength(2)
+    expect(mockedVerify).toHaveBeenCalledTimes(1)
+  })
+
+  it('defaults to 2 nudges and changes nothing when no deliverables are configured', async () => {
+    expect(loopConfigSchema.parse({ verify: 'true' }).deliverableNudges).toBe(2)
+    mockedVerify.mockReturnValue(fail())
+    const { prompts, workerSession } = recordingSession()
+    await runAgentLoop({ ctx: ctx(), bundle: bundle({ maxIterations: 2 }), workerSession })
+    expect(prompts).toHaveLength(2)
+    for (const p of prompts) expect(p).not.toContain('## Deliverables missing')
+  })
+})

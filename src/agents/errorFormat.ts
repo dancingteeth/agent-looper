@@ -56,10 +56,13 @@ export function formatErrorChain(err: unknown, maxDepth = 6): string {
 }
 
 /** Provider/transport failures (vs auth, validation, or long agent timeouts). */
-const HTTP2_STREAM_TRANSPORT_PATTERN = /NGHTTP2_[A-Z_]+|ERR_HTTP2_STREAM_ERROR/i
+// Connect-node reports an HTTP/2 RST_STREAM as e.g.
+// `[canceled] http/2 stream closed with error code CANCEL (0x8)` (no NGHTTP2_ text).
+const HTTP2_STREAM_TRANSPORT_PATTERN =
+  /NGHTTP2_[A-Z_]+|ERR_HTTP2_STREAM_ERROR|http\/2 stream closed with error code [A-Z_]+/i
 
 const TRANSPORT_ERROR_PATTERN =
-  /\bfetch failed\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|\bUND_ERR_|\bECONNREFUSED\b|\bENOTFOUND\b|\bCERT_|\bSSL\b|\[layer=transport\]|\bstalled after\b|NGHTTP2_[A-Z_]+|ERR_HTTP2_STREAM_ERROR/i
+  /\bfetch failed\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|socket hang up|\bUND_ERR_|\bECONNREFUSED\b|\bENOTFOUND\b|\bCERT_|\bSSL\b|\[layer=transport\]|\bstalled after\b|NGHTTP2_[A-Z_]+|ERR_HTTP2_STREAM_ERROR|http\/2 stream closed with error code [A-Z_]+/i
 
 export function isTransportErrorMessage(message: string): boolean {
   return TRANSPORT_ERROR_PATTERN.test(message)

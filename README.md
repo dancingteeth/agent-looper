@@ -236,6 +236,8 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
 | `pauseAfterIteration` | `false` | Wait for Enter after each iteration (TTY only) |
 | `injectFailureContext` | `false` | Read `failure-context.md` into the prompt (meta-loop fix rounds) |
+| `deliverables` | — | Repo-relative files the worker must create (absolute or `..` paths are rejected); harness re-prompts before verify when missing or empty |
+| `deliverableNudges` | `2` | Max extra worker calls per iteration when `deliverables` are still missing (`0`–`5`) |
 | `syncOnSuccess` | `true` | Run repo profile `syncCommand` after success |
 | `notifyTelegram` | `true` | Send completion report when Telegram env + profile are configured |
 | `telegramAttachReview` | `true` | Attach `review.md` as a second Telegram message |

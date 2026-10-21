@@ -1,0 +1,12 @@
+{
+  "verify": "bash .cursor/loops/lessons-file/verify.sh",
+  "runtime": "cursor",
+  "escalateAfterStagnation": 2,
+  "reviewRuntime": "cursor",
+  "reviewGate": true,
+  "maxReviewCycles": 2,
+  "maxIterations": 8,
+  "stagnationThreshold": 3,
+  "mode": "forward",
+  "costPreset": "cursor"
+}

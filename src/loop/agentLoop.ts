@@ -18,6 +18,8 @@ import {
   logFailureDomainFromAgentError,
 } from './loopFailureDomain.js'
 import { readFailureContext } from './loopFailureContext.js'
+import { buildDeliverableNudgeSection, missingDeliverables } from './loopDeliverables.js'
+import { detectPlainTextToolCalls } from './loopToolCallText.js'
 import { pauseForContinue } from './loopPause.js'
 import { createHitlCheckpoint, hitlLoopOverridesFrom } from '../integrations/hitlCheckpoint.js'
 import { markTaskwarriorDoneByUuid, runTaskwarriorSync } from '../integrations/taskwarrior.js'
@@ -275,6 +277,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let usageSummary = emptyUsageSummary()
   const transcriptEvents: TranscriptEvent[] = []
   const stagnationThreshold = config.stagnationThreshold
+  let previousWorkerPlainTextToolCalls = false
 
   const emitPhase = (phase: AgentLoopPhase, iteration: number): void => {
     if (phase === 'WORKER' || phase === 'JUDGE') {
@@ -449,7 +452,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
     let consecutiveTransientAgentErrors = 0
 
-    for (let i = 1; i <= config.maxIterations; i++) {
+    iterationLoop: for (let i = 1; i <= config.maxIterations; i++) {
       iterations = i
       options.onIterationStart?.(i)
 
@@ -484,35 +487,26 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         batchRubric: options.batchRubric,
         mode: config.mode,
         failureContext,
+        verifyCommand: config.verify,
+        deliverables: config.deliverables,
+        plainTextToolCallWarning: previousWorkerPlainTextToolCalls,
       })
 
       console.error(
         `[agent-loop] iteration ${i}/${config.maxIterations} — ${iterationAgent.runtime} ${iterationAgent.model} (fresh context)`,
       )
-      const budgetRefuse = await refuseIfNextWorkerExceedsBudget(
-        iterationAgent.model,
-        prompt.length,
-        i,
-      )
-      if (budgetRefuse) return budgetRefuse
-      emitPhase('WORKER', i)
-      const collector = config.exportTranscript
-        ? new StreamCollector({ phase: 'implement', iteration: i })
-        : undefined
-      const workerStartedAt = Date.now()
-      let assistantRun: AgentRunResult
-      try {
-        assistantRun = await runIterationWithRetry(
-          session,
-          prompt,
-          iterationAgent,
-          {
-            verbose,
-            assistantOutput: 'none',
-            collector,
-          },
-        )
-      } catch (err) {
+
+      /**
+       * Single owner for a worker fault — primary call, deliverable nudge, or stall probe.
+       * Fatal → log the iteration and rethrow (the run ends). Recoverable → log, count the
+       * transient, recycle the session; returns a park/budget result to return, or
+       * `undefined` when the caller should move on to the next outer iteration.
+       */
+      const handleWorkerFault = async (
+        err: unknown,
+        workerStartedAt: number,
+        label: string,
+      ): Promise<AgentLoopResult | undefined> => {
         const escalate = shouldEscalateAfterWorkerFault(err, config, iterationAgent, i)
         const message = formatErrorChain(err)
         const partialRun = extractPartialWorkerRun(err)
@@ -605,12 +599,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         }
         if (escalate) {
           console.error(
-            `[agent-loop] worker fault during iteration ${i} — switching to ${config.escalateModel} next: ${message}`,
+            `[agent-loop] worker fault during ${label} — switching to ${config.escalateModel} next: ${message}`,
           )
           workerFaults += 1
         } else {
           console.error(
-            `[agent-loop] transient worker agent error during iteration ${i} — continuing after backoff: ${message}`,
+            `[agent-loop] transient worker agent error during ${label} — continuing after backoff: ${message}`,
           )
         }
         const budgetStopAfterFault = await stopOnBudget(i)
@@ -620,28 +614,112 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           await sleep(TRANSIENT_AGENT_ITERATION_BACKOFF_MS)
         }
         await maybePauseAfterIteration(config, i)
+        return undefined
+      }
+      const budgetRefuse = await refuseIfNextWorkerExceedsBudget(
+        iterationAgent.model,
+        prompt.length,
+        i,
+      )
+      if (budgetRefuse) return budgetRefuse
+      emitPhase('WORKER', i)
+      const collector = config.exportTranscript
+        ? new StreamCollector({ phase: 'implement', iteration: i })
+        : undefined
+      const workerStartedAt = Date.now()
+      let assistantRun: AgentRunResult
+      try {
+        assistantRun = await runIterationWithRetry(
+          session,
+          prompt,
+          iterationAgent,
+          {
+            verbose,
+            assistantOutput: 'none',
+            collector,
+          },
+        )
+      } catch (err) {
+        const faultResult = await handleWorkerFault(err, workerStartedAt, `iteration ${i}`)
+        if (faultResult) return faultResult
         continue
       }
       consecutiveTransientAgentErrors = 0
       usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+
+      const deliverables = config.deliverables ?? []
+      let workerPrompt = prompt
+      let nudgeCount = 0
+      // Every worker call this iteration (primary + nudges): transcripts, tool-error
+      // stats and the plain-text tool-call warning look at all of them, not only the last.
+      const workerRuns: AgentRunResult[] = [assistantRun]
+      while (deliverables.length > 0 && nudgeCount < config.deliverableNudges) {
+        const missing = missingDeliverables(repoRoot, deliverables)
+        if (missing.length === 0) break
+        workerPrompt = `${prompt}\n\n${buildDeliverableNudgeSection(missing)}`
+        console.error(
+          `[agent-loop] deliverables missing (${missing.join(', ')}) — nudge ${nudgeCount + 1}/${config.deliverableNudges}`,
+        )
+        const nudgeBudgetRefuse = await refuseIfNextWorkerExceedsBudget(
+          iterationAgent.model,
+          workerPrompt.length,
+          i,
+        )
+        if (nudgeBudgetRefuse) return nudgeBudgetRefuse
+        const nudgeStartedAt = Date.now()
+        try {
+          assistantRun = await runIterationWithRetry(
+            session,
+            workerPrompt,
+            iterationAgent,
+            {
+              verbose,
+              assistantOutput: 'none',
+              collector,
+            },
+          )
+        } catch (err) {
+          // Same path as the primary worker: the attempt counts, the session is
+          // recycled, and the run moves to the next outer iteration (escalation,
+          // maxIterations, the transient cap and the budget all apply).
+          const faultResult = await handleWorkerFault(
+            err,
+            nudgeStartedAt,
+            `deliverable nudge ${nudgeCount + 1} of iteration ${i}`,
+          )
+          if (faultResult) return faultResult
+          continue iterationLoop
+        }
+        usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+        workerRuns.push(assistantRun)
+        nudgeCount += 1
+        const nudgeBudgetStop = await stopOnBudget(i)
+        if (nudgeBudgetStop) return nudgeBudgetStop
+      }
+
       const budgetStop = await stopOnBudget(i)
       if (budgetStop) return budgetStop
       const assistantText = assistantRun.text
+      previousWorkerPlainTextToolCalls = workerRuns.some((run) =>
+        detectPlainTextToolCalls(run.text),
+      )
       const innerAgent = assistantRun.innerAgent
-      if (assistantRun.transcriptEvents?.length) {
-        transcriptEvents.push(...assistantRun.transcriptEvents)
+      const iterationWorkerEvents = workerRuns.flatMap((run) => run.transcriptEvents ?? [])
+      if (iterationWorkerEvents.length) {
+        transcriptEvents.push(...iterationWorkerEvents)
       }
       const workerToolErrors = summarizeSessionToolErrors({
         role: 'worker',
         runtime: config.runtime,
         model: iterationAgent.model,
-        transcriptEvents: assistantRun.transcriptEvents,
+        transcriptEvents: iterationWorkerEvents,
       })
       const workerLogFields = {
         workerSession: assistantRun.sessionRef,
         toolSummary: assistantRun.toolSummary,
         ...(workerToolErrors ? { toolErrorStats: [workerToolErrors] } : {}),
       }
+      // Measured after the nudge loop, so durationsMs.worker covers every nudge call too.
       const workerMs = elapsedMs(workerStartedAt)
 
       if (innerAgent && !innerAgent.complete) {

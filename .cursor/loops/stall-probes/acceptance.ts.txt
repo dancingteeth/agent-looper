@@ -1,0 +1,302 @@
+/**
+ * FROZEN acceptance spec — loop `.cursor/loops/stall-probes`.
+ *
+ * verify.sh copies this file to `src/loop/__acceptance__/stallProbes.acceptance.test.ts`,
+ * typechecks it with the repo, runs it with vitest, then deletes the copy.
+ * Its sha256 is pinned in verify.sh. Do not edit it; make the code satisfy it.
+ */
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { repoProfileSchema } from '../../context/repoProfile.js'
+import { runAgentLoop } from '../agentLoop.js'
+import { loopConfigSchema } from '../loopConfig.js'
+import { resolveStagnationPolicy } from '../loopStagnationPolicy.js'
+import {
+  STALL_PROBE_VARIANTS,
+  buildStallProbePromptSection,
+  createGitWorkspacePort,
+  pickStallProbeWinner,
+  type WorkspacePort,
+} from '../loopStallProbes.js'
+import { runVerifyCommand, type VerifyResult } from '../loopVerify.js'
+
+vi.mock('../loopVerify.js', () => ({ runVerifyCommand: vi.fn() }))
+vi.mock('../loopGit.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../loopGit.js')>()
+  return {
+    ...actual,
+    captureGitWorkspaceSnapshot: vi.fn(() => ({
+      branch: 'main',
+      shortSha: 'abc1234',
+      diffStat: ' src/stuck.ts | 4 ++--',
+      statusPorcelain: ' M src/stuck.ts',
+    })),
+  }
+})
+
+const mockedVerify = vi.mocked(runVerifyCommand)
+const VERIFY_CMD = 'bash .cursor/loops/acc-stall/verify.sh'
+const PROCEDURE = '## Stall probe: procedure hints'
+const FACTS = '## Stall probe: repo facts'
+
+let loopDir: string
+let repoRoot: string
+
+function pass(): VerifyResult {
+  return { complete: true, command: VERIFY_CMD, exitCode: 0, stdout: 'ok', stderr: '', reason: 'Verifier passed (exit 0).' }
+}
+function fail(stdout = 'FAIL src/stuck.test.ts > same failure'): VerifyResult {
+  return { complete: false, command: VERIFY_CMD, exitCode: 1, stdout, stderr: '', reason: 'Verifier failed (exit 1).' }
+}
+
+function bundle(overrides: Record<string, unknown> = {}) {
+  return {
+    loopDir,
+    goal: 'Acceptance goal for stall-probes.',
+    config: loopConfigSchema.parse({
+      verify: VERIFY_CMD,
+      maxIterations: 4,
+      delayMs: 0,
+      postQualityReview: false,
+      reviewGate: false,
+      syncOnSuccess: false,
+      stagnationThreshold: 5,
+      escalateAfterStagnation: 2,
+      exportPack: false,
+      exportRunReport: false,
+      exportTranscript: false,
+      stallProbes: true,
+      ...overrides,
+    }),
+    logPath: path.join(loopDir, 'log.ndjson'),
+  }
+}
+
+function ctx() {
+  return { repoRoot, profile: repoProfileSchema.parse({ syncCommand: null }) }
+}
+
+type Op = { kind: 'worker'; prompt: string } | { kind: 'snapshot'; id: number } | { kind: 'restore'; id: number }
+
+function harness() {
+  const ops: Op[] = []
+  let next = 0
+  const port: WorkspacePort<{ id: number }> = {
+    snapshot: () => {
+      next += 1
+      ops.push({ kind: 'snapshot', id: next })
+      return { id: next }
+    },
+    restore: (snap) => {
+      ops.push({ kind: 'restore', id: snap.id })
+    },
+  }
+  const runIterationPrompt = vi.fn(async (prompt: string) => {
+    ops.push({ kind: 'worker', prompt })
+    return { text: 'edited' }
+  })
+  const workers = () => ops.filter((o): o is Extract<Op, { kind: 'worker' }> => o.kind === 'worker')
+  return { ops, port, workers, workerSession: { runIterationPrompt, dispose: vi.fn(async () => undefined) } }
+}
+
+function opsBetween(ops: Op[], fromWorker: number, toWorker: number): Op[] {
+  const idx: number[] = []
+  ops.forEach((o, i) => { if (o.kind === 'worker') idx.push(i) })
+  return ops.slice(idx[fromWorker]! + 1, toWorker < idx.length ? idx[toWorker] : ops.length)
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'acc-stall-loop-'))
+  repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'acc-stall-repo-'))
+})
+
+describe('stall-probes: policy', () => {
+  it('stallProbes defaults to false and the old policy is unchanged', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', escalateAfterStagnation: 2 })
+    expect(config.stallProbes).toBe(false)
+    const policy = resolveStagnationPolicy(config, 2)
+    expect(policy.escalationRepeatCount).toBe(2)
+    expect(policy.probeRepeatCount).toBeUndefined()
+  })
+
+  it('probes first, escalates the model only after probes were used', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', escalateAfterStagnation: 2, stallProbes: true })
+    expect(resolveStagnationPolicy(config, 1).probeRepeatCount).toBeUndefined()
+    const first = resolveStagnationPolicy(config, 2)
+    expect(first.probeRepeatCount).toBe(2)
+    expect(first.escalationRepeatCount).toBeUndefined()
+    const after = resolveStagnationPolicy(config, 3, true)
+    expect(after.probeRepeatCount).toBeUndefined()
+    expect(after.escalationRepeatCount).toBe(3)
+  })
+
+  it('stagnationThreshold 0 disables probes too', () => {
+    const config = loopConfigSchema.parse({ verify: 'true', stagnationThreshold: 0, stallProbes: true })
+    expect(resolveStagnationPolicy(config, 4).probeRepeatCount).toBeUndefined()
+  })
+})
+
+describe('stall-probes: prompt sections and winner', () => {
+  it('has exactly two variants with distinct guidance', () => {
+    expect([...STALL_PROBE_VARIANTS]).toEqual(['procedure', 'facts'])
+    const input = { verifyCommand: VERIFY_CMD, lastVerify: fail('\nFAIL src/stuck.test.ts > first line\nmore'), diffStat: ' src/stuck.ts | 4 ++--' }
+    const procedure = buildStallProbePromptSection('procedure', input)
+    const facts = buildStallProbePromptSection('facts', input)
+    expect(procedure).toContain(PROCEDURE)
+    expect(facts).toContain(FACTS)
+    expect(procedure).not.toContain(FACTS)
+    expect(facts).not.toContain(PROCEDURE)
+    expect(procedure).toContain(VERIFY_CMD)
+    expect(facts).toContain(VERIFY_CMD)
+    expect(facts).toContain('src/stuck.ts')
+    expect(facts).toContain('FAIL src/stuck.test.ts > first line')
+  })
+
+  it('green beats moved beats stalled; ties go to the earlier variant; nothing moved → undefined', () => {
+    const stalled = fail()
+    const moved = fail('FAIL src/stuck.test.ts > a different failure')
+    expect(pickStallProbeWinner(stalled, [{ variant: 'procedure', verify: stalled }, { variant: 'facts', verify: pass() }])).toBe('facts')
+    expect(pickStallProbeWinner(stalled, [{ variant: 'procedure', verify: moved }, { variant: 'facts', verify: pass() }])).toBe('facts')
+    expect(pickStallProbeWinner(stalled, [{ variant: 'procedure', verify: moved }, { variant: 'facts', verify: stalled }])).toBe('procedure')
+    expect(pickStallProbeWinner(stalled, [{ variant: 'procedure', verify: moved }, { variant: 'facts', verify: moved }])).toBe('procedure')
+    expect(pickStallProbeWinner(stalled, [{ variant: 'procedure', verify: stalled }, { variant: 'facts', verify: stalled }])).toBeUndefined()
+  })
+})
+
+describe('stall-probes: git workspace port', () => {
+  function sh(cwd: string, ...args: string[]): string {
+    return execFileSync('git', args, { cwd, encoding: 'utf8' })
+  }
+
+  it('restores tracked edits and untracked files, leaves ignored files and HEAD alone, leaves no stash', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'acc-stall-git-'))
+    sh(dir, 'init', '-q')
+    sh(dir, 'config', 'user.email', 'acc@example.com')
+    sh(dir, 'config', 'user.name', 'acc')
+    fs.writeFileSync(path.join(dir, '.gitignore'), 'ignored.log\n')
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'v1\n')
+    sh(dir, 'add', '.')
+    sh(dir, 'commit', '-qm', 'init')
+    const head = sh(dir, 'rev-parse', 'HEAD').trim()
+
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'v2\n')
+    fs.writeFileSync(path.join(dir, 'b.txt'), 'new\n')
+    const port = createGitWorkspacePort(dir)
+    const snap = await port.snapshot()
+
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'v3\n')
+    fs.rmSync(path.join(dir, 'b.txt'))
+    fs.writeFileSync(path.join(dir, 'c.txt'), 'probe junk\n')
+    fs.writeFileSync(path.join(dir, 'ignored.log'), 'keep me\n')
+    await port.restore(snap)
+
+    expect(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8')).toBe('v2\n')
+    expect(fs.readFileSync(path.join(dir, 'b.txt'), 'utf8')).toBe('new\n')
+    expect(fs.existsSync(path.join(dir, 'c.txt'))).toBe(false)
+    expect(fs.readFileSync(path.join(dir, 'ignored.log'), 'utf8')).toBe('keep me\n')
+    expect(sh(dir, 'rev-parse', 'HEAD').trim()).toBe(head)
+    expect(sh(dir, 'stash', 'list').trim()).toBe('')
+  })
+})
+
+describe('stall-probes: wired into runAgentLoop', () => {
+  it('runs procedure then facts on a stall, restores between them, and keeps a green facts probe', async () => {
+    mockedVerify
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(pass())
+    const h = harness()
+    const result = await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession: h.workerSession, workspacePort: h.port })
+    expect(result.complete).toBe(true)
+    const workers = h.workers()
+    expect(workers).toHaveLength(4)
+    expect(workers[0]!.prompt).not.toContain('## Stall probe')
+    expect(workers[1]!.prompt).not.toContain('## Stall probe')
+    expect(workers[2]!.prompt).toContain(PROCEDURE)
+    expect(workers[3]!.prompt).toContain(FACTS)
+    const beforeA = opsBetween(h.ops, 1, 2)
+    expect(beforeA.some((o) => o.kind === 'snapshot')).toBe(true)
+    const s0 = beforeA.filter((o) => o.kind === 'snapshot')[0] as { id: number }
+    const betweenAandB = opsBetween(h.ops, 2, 3)
+    const restores = betweenAandB.filter((o) => o.kind === 'restore') as Array<{ id: number }>
+    expect(restores.map((r) => r.id)).toContain(s0.id)
+    const afterB = opsBetween(h.ops, 3, 4)
+    expect(afterB.filter((o) => o.kind === 'restore')).toHaveLength(0)
+  })
+
+  it('stops after a green procedure probe without running the facts probe', async () => {
+    mockedVerify.mockReturnValueOnce(fail()).mockReturnValueOnce(fail()).mockReturnValueOnce(pass())
+    const h = harness()
+    const result = await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession: h.workerSession, workspacePort: h.port })
+    expect(result.complete).toBe(true)
+    expect(h.workers()).toHaveLength(3)
+    expect(h.workers()[2]!.prompt).toContain(PROCEDURE)
+  })
+
+  it('keeps the procedure workspace when only procedure moved the failure', async () => {
+    mockedVerify
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(fail('FAIL src/stuck.test.ts > moved on'))
+      .mockReturnValueOnce(fail())
+      .mockReturnValue(fail('FAIL src/stuck.test.ts > moved on'))
+    const h = harness()
+    await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession: h.workerSession, workspacePort: h.port })
+    const workers = h.workers()
+    expect(workers).toHaveLength(5)
+    const s0 = opsBetween(h.ops, 1, 2).filter((o) => o.kind === 'snapshot')[0] as { id: number }
+    const afterB = opsBetween(h.ops, 3, 4)
+    const lastRestore = afterB.filter((o) => o.kind === 'restore').pop() as { id: number } | undefined
+    expect(lastRestore).toBeDefined()
+    expect(lastRestore!.id).not.toBe(s0.id)
+    expect(workers[4]!.prompt).not.toContain('## Stall probe')
+    expect(workers[4]!.prompt).toContain('moved on')
+  })
+
+  it('restores the pre-probe workspace when neither probe moved, then never probes again in the run', async () => {
+    mockedVerify.mockReturnValue(fail())
+    const h = harness()
+    const result = await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession: h.workerSession, workspacePort: h.port })
+    expect(result.complete).toBe(false)
+    const workers = h.workers()
+    expect(workers).toHaveLength(5)
+    const s0 = opsBetween(h.ops, 1, 2).filter((o) => o.kind === 'snapshot')[0] as { id: number }
+    const lastRestore = opsBetween(h.ops, 3, 4).filter((o) => o.kind === 'restore').pop() as { id: number } | undefined
+    expect(lastRestore?.id).toBe(s0.id)
+    expect(workers[4]!.prompt).not.toContain('## Stall probe')
+  })
+
+  it('logs one iteration line per probe with its variant and whether it was kept', async () => {
+    mockedVerify
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(fail())
+      .mockReturnValueOnce(pass())
+    const h = harness()
+    await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession: h.workerSession, workspacePort: h.port })
+    const lines = fs
+      .readFileSync(path.join(loopDir, 'log.ndjson'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as { probe?: { variant: string; kept: boolean } })
+    const probes = lines.filter((l) => l.probe).map((l) => l.probe!)
+    expect(probes).toEqual([
+      { variant: 'procedure', kept: false },
+      { variant: 'facts', kept: true },
+    ])
+  })
+
+  it('does nothing new when stallProbes is off', async () => {
+    mockedVerify.mockReturnValue(fail())
+    const h = harness()
+    await runAgentLoop({ ctx: ctx(), bundle: bundle({ stallProbes: false }), workerSession: h.workerSession, workspacePort: h.port })
+    expect(h.workers()).toHaveLength(4)
+    for (const w of h.workers()) expect(w.prompt).not.toContain('## Stall probe')
+    expect(h.ops.filter((o) => o.kind !== 'worker')).toHaveLength(0)
+  })
+})

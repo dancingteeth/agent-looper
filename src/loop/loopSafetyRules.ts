@@ -11,6 +11,7 @@ export const LOOP_SAFETY_RULES = [
   'Do not expand scope beyond the goal.',
   'Prefer fixing root causes shown in verifier output over disabling tests.',
   `Do not edit ${FROZEN_FILES_PLAIN} — the harness restores them and fails the visit if you do.`,
+  'Never write a tool call as plain text; invoke tools through the tool interface.',
 ] as const
 
 export function renderLoopPromptRulesSection(agentsFile: string): string {
@@ -21,6 +22,7 @@ export function renderLoopPromptRulesSection(agentsFile: string): string {
     `4. Do **not** expand scope beyond the goal.`,
     `5. Prefer fixing root causes shown in verifier output over disabling tests.`,
     `6. Do **not** edit ${FROZEN_FILES_MARKDOWN} — the harness restores them and fails the visit if you do.`,
+    `7. Never write a tool call as **plain text**; invoke tools through the tool interface.`,
   ]
   return `## Rules\n\n${rules.join('\n')}`
 }
@@ -41,5 +43,6 @@ export function renderLoopSystemPromptSafetyLines(
     'Do not expand scope beyond the goal.',
     'Prefer fixing root causes shown in verifier output over disabling tests.',
     `Do not edit ${FROZEN_FILES_PLAIN} during the loop run.`,
+    'Never write a tool call as plain text; invoke tools through the tool interface.',
   ]
 }

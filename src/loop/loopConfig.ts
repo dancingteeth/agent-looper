@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
+import { isConfinedDeliverablePath } from './loopDeliverables.js'
 import {
   AgentModelError,
   LOOP_RUNTIME_CURSOR,
@@ -63,6 +64,16 @@ export const loopConfigSchema = loopExtensionFieldsSchema
      */
     maxCostUsd: z.number().positive().optional(),
     verify: z.string().min(1),
+    /** Repo-relative files the worker must create before verify (optional deliverable guard). */
+    deliverables: z
+      .array(
+        z.string().min(1).refine(isConfinedDeliverablePath, {
+          message: 'deliverables must be repo-relative paths inside the repo (no absolute paths or ..)',
+        }),
+      )
+      .optional(),
+    /** Extra worker calls when deliverables are missing or empty (0–5). */
+    deliverableNudges: z.number().int().min(0).max(5).default(2),
     /**
      * Harness-owned bootstrap shell, run once before the first worker.
      * When unset, `setup.sh` beside GOAL.md is used if that file exists.
