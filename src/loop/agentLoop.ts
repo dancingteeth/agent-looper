@@ -276,8 +276,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   }
 
   const priorFailures: VerifyResult[] = []
-  const lessonsForPrompt =
-    config.lessons !== false ? readLessons(bundle.loopDir) : undefined
+  const lessonsForPrompt = config.lessons ? readLessons(bundle.loopDir) : undefined
   let lastVerify: VerifyResult | null = null
   let setupResult: VerifyResult | undefined
   let frozenSnapshot: FrozenFileSnapshot[] = []
@@ -1269,7 +1268,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           })
         }
         maybeRunSync(ctx, config.syncOnSuccess)
-        if (config.lessons !== false) {
+        if (config.lessons) {
           recordGreenRunLessons(bundle.loopDir, {
             verifyCommand: config.verify,
             iterations: i,
