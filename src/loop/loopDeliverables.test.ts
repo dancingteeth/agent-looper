@@ -2,7 +2,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { buildDeliverableNudgeSection, missingDeliverables } from './loopDeliverables.js'
+import { loopConfigSchema } from './loopConfig.js'
+import {
+  buildDeliverableNudgeSection,
+  isConfinedDeliverablePath,
+  missingDeliverables,
+} from './loopDeliverables.js'
 
 describe('missingDeliverables', () => {
   it('returns missing paths in order and treats empty files as missing', () => {
@@ -16,6 +21,45 @@ describe('missingDeliverables', () => {
     ])
     expect(missingDeliverables(repoRoot, ['empty.md'])).toEqual(['empty.md'])
     expect(missingDeliverables(repoRoot, [])).toEqual([])
+  })
+
+  it('never reports (or nudges for) absolute paths or paths that leave the repo', () => {
+    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'loop-deliverables-'))
+    const outside = path.join(os.tmpdir(), 'loop-deliverables-outside-never.md')
+    expect(
+      missingDeliverables(repoRoot, [
+        outside,
+        '../escape.md',
+        'docs/../../escape.md',
+        'docs/inside.md',
+      ]),
+    ).toEqual(['docs/inside.md'])
+  })
+})
+
+describe('isConfinedDeliverablePath', () => {
+  it('accepts repo-relative paths and rejects absolute or escaping ones', () => {
+    expect(isConfinedDeliverablePath('docs/out.md')).toBe(true)
+    expect(isConfinedDeliverablePath('./docs/out.md')).toBe(true)
+    expect(isConfinedDeliverablePath('docs/../out.md')).toBe(true)
+    expect(isConfinedDeliverablePath('/etc/passwd')).toBe(false)
+    expect(isConfinedDeliverablePath('C:\\temp\\out.md')).toBe(false)
+    expect(isConfinedDeliverablePath('../out.md')).toBe(false)
+    expect(isConfinedDeliverablePath('docs/../../out.md')).toBe(false)
+    expect(isConfinedDeliverablePath('..\\out.md')).toBe(false)
+    expect(isConfinedDeliverablePath('.')).toBe(false)
+  })
+
+  it('loop.json parse rejects deliverables outside the repo', () => {
+    expect(() => loopConfigSchema.parse({ verify: 'true', deliverables: ['/tmp/x.md'] })).toThrow(
+      /repo-relative/,
+    )
+    expect(() => loopConfigSchema.parse({ verify: 'true', deliverables: ['../x.md'] })).toThrow(
+      /repo-relative/,
+    )
+    expect(loopConfigSchema.parse({ verify: 'true', deliverables: ['out/x.md'] }).deliverables).toEqual([
+      'out/x.md',
+    ])
   })
 })
 
