@@ -46,6 +46,17 @@ describe('installHttp2UnhandledRejectionGuard', () => {
     releases.length = 0
   })
 
+  it('ignores a detached Connect-node CANCEL stream close instead of crashing', () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    releases.push(installHttp2UnhandledRejectionGuard())
+    const err = Object.assign(
+      new Error('[unknown] [canceled] http/2 stream closed with error code CANCEL (0x8)'),
+      { name: 'ConnectError', rawMessage: '[canceled] http/2 stream closed with error code CANCEL (0x8)' },
+    )
+    expect(() => latestUnhandled()(err)).not.toThrow()
+    expect(errSpy.mock.calls.join(' ')).toMatch(/ignored detached HTTP\/2/)
+  })
+
   it('no-ops a second release of the same guard', () => {
     const before = process.listeners('unhandledRejection').length
     const release = installHttp2UnhandledRejectionGuard()

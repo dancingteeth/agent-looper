@@ -46,6 +46,28 @@ describe('isTransportAgentError', () => {
     expect(isHttp2StreamTransportError(new Error('Invalid API key'))).toBe(false)
   })
 
+  it('matches Connect-node HTTP/2 RST_STREAM CANCEL from a detached team-repo RPC', () => {
+    // Shape seen from @cursor/sdk 1.0.23 (getTeamReposOrEmptyIfNotInTeam → shouldBlockRead)
+    // during a judge run: exit 1 via unhandled rejection before this pattern existed.
+    const cause = Object.assign(new Error('http/2 stream closed with error code CANCEL (0x8)'), {
+      name: 'ConnectError',
+      rawMessage: 'http/2 stream closed with error code CANCEL (0x8)',
+      code: 1,
+    })
+    const err = Object.assign(
+      new Error('[unknown] [canceled] http/2 stream closed with error code CANCEL (0x8)'),
+      {
+        name: 'ConnectError',
+        rawMessage: '[canceled] http/2 stream closed with error code CANCEL (0x8)',
+        code: 2,
+        cause,
+      },
+    )
+    expect(isHttp2StreamTransportError(err)).toBe(true)
+    expect(isTransportAgentError(err)).toBe(true)
+    expect(isHttp2StreamTransportError(new Error('http/2 is great'))).toBe(false)
+  })
+
   it('matches Connect-ES errors that only put NGHTTP2 on rawMessage', () => {
     const cause = Object.assign(new Error('Stream closed with error code NGHTTP2_REFUSED_STREAM'), {
       code: 'ERR_HTTP2_STREAM_ERROR',
