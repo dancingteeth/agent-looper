@@ -7,7 +7,7 @@ import { describe, it } from 'node:test'
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-const MARKER = /^(<<<<<<<|=======|>>>>>>>)/m
+const MARKER_LINE = /^(<<<<<<<|=======|>>>>>>>)(?:\s|$)/
 
 function listTrackedFiles() {
   const out = execFileSync('git', ['ls-files', '-z'], { cwd: packageRoot, encoding: 'utf8' })
@@ -16,9 +16,12 @@ function listTrackedFiles() {
 
 function scanFile(absPath) {
   const text = readFileSync(absPath, 'utf8')
-  if (MARKER.test(text)) {
-    const rel = absPath.slice(packageRoot.length + 1)
-    return rel
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    if (MARKER_LINE.test(lines[i])) {
+      const rel = absPath.slice(packageRoot.length + 1)
+      return `${rel}:${i + 1}`
+    }
   }
   return null
 }

@@ -274,7 +274,7 @@ export async function createLoopAgentSession(
   // Dynamic import: @cline/sdk is an optional peer. Cursor-only consumers must not
   // load clineAgent (and thus @cline/sdk) at module evaluation time.
   const { createClineLoopSession } = await import('./clineAgent.js')
-  const cline = await createClineLoopSession(ctx)
+  const cline = await createClineLoopSession(ctx, runtime)
   const runner = createClineRunner(cline)
   return {
     runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),

@@ -47,7 +47,7 @@ vi.mock('./opencodeAuth.js', async (importOriginal) => {
 vi.mock('@opencode/client', () => ({
   get OpenCode() {
     if (opencodeClientInstall.missing) {
-      throw new Error('Cannot find package @opencode/client')
+      throw new Error("Cannot find package '@opencode/client'")
     }
     return { make: (...args: unknown[]) => openCodeMake(...args) }
   },

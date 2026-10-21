@@ -163,14 +163,17 @@ export type ClineLoopSession = {
   dispose(): Promise<void>
 }
 
-export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoopSession> {
+export async function createClineLoopSession(
+  ctx: RepoContext,
+  runtimeLabel: ClineProviderId = LOOP_RUNTIME_CLINE_PASS,
+): Promise<ClineLoopSession> {
   await assertPosixShell()
   const apiKey = requireClineApiKey()
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const clientName = ctx.profile.clientName
   const { ClineCore } = await importOptionalPeer<typeof import('@cline/sdk')>(
     '@cline/sdk',
-    'cline',
+    runtimeLabel,
     '@cline/sdk',
   )
 
@@ -280,7 +283,10 @@ export async function runClineAgentPrompt(
   prompt: string,
   options: ClineAgentRunOptions,
 ): Promise<AgentRunResult> {
-  const session = await createClineLoopSession(ctx)
+  const session = await createClineLoopSession(
+    ctx,
+    resolveClineProviderId(options.providerId),
+  )
   try {
     return await session.runPrompt(prompt, options)
   } finally {

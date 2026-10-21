@@ -3,6 +3,7 @@ import {
   importOptionalPeer,
   isOptionalPeerModuleNotFound,
   missingOptionalPeerMessage,
+  optionalPeerBasePackage,
 } from './optionalPeer.js'
 
 describe('optionalPeer', () => {
@@ -18,7 +19,20 @@ describe('optionalPeer', () => {
     )
   })
 
-  it('requires the peer specifier in the error message when provided', () => {
+  it('strips subpath export specifiers to the base package name', () => {
+    expect(optionalPeerBasePackage('@earendil-works/pi-ai/compat')).toBe(
+      '@earendil-works/pi-ai',
+    )
+    expect(optionalPeerBasePackage('@cursor/sdk')).toBe('@cursor/sdk')
+  })
+
+  it('matches Node quoted missing-package errors to the peer base, not substrings', () => {
+    expect(
+      isOptionalPeerModuleNotFound(
+        new Error("Cannot find package 'some-transitive-dep' imported from /x/y.js"),
+        '@cursor/sdk',
+      ),
+    ).toBe(false)
     expect(
       isOptionalPeerModuleNotFound(
         Object.assign(new Error('Cannot find package some-transitive-dep'), {
@@ -36,6 +50,17 @@ describe('optionalPeer', () => {
     expect(isOptionalPeerModuleNotFound({ code: 'ERR_MODULE_NOT_FOUND' }, '@cursor/sdk')).toBe(
       false,
     )
+  })
+
+  it('treats a missing Pi peer as the base package when importing a subpath', () => {
+    expect(
+      isOptionalPeerModuleNotFound(
+        new Error(
+          "Cannot find package '@earendil-works/pi-ai' imported from /x/piAgent.js",
+        ),
+        '@earendil-works/pi-ai/compat',
+      ),
+    ).toBe(true)
   })
 
   it('rethrows importOptionalPeer with a friendly message', async () => {

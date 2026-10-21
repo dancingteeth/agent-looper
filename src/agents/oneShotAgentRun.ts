@@ -117,7 +117,7 @@ export async function runOneShotAgentPrompt(
     case LOOP_RUNTIME_CLINE_PASS:
     case LOOP_RUNTIME_CLINE: {
       const { createClineLoopSession } = await import('./clineAgent.js')
-      return withDisposableSession(createClineLoopSession(ctx), (cline) =>
+      return withDisposableSession(createClineLoopSession(ctx, agent.runtime), (cline) =>
         cline.runPrompt(prompt, {
           verbose: runOptions.verbose,
           modelId: runOptions.modelId,
