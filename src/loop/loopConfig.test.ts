@@ -20,7 +20,7 @@ describe('loopConfigSchema', () => {
     const parsed = loopConfigSchema.parse({ verify: 'true' })
     expect(parsed.maxIterations).toBe(8)
     expect(parsed.delayMs).toBe(1500)
-    expect(parsed.verifyLogMode).toBe('inline')
+    expect(parsed.verifyLogMode).toBe('sidecar')
     expect(parsed.skillDisclosure).toBe('index')
     expect(parsed.research).toBeUndefined()
   })

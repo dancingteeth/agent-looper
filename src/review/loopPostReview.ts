@@ -26,6 +26,7 @@ import {
   formatSecondaryMergeFooter,
   mergePrimarySecondaryReviews,
 } from './reviewReproduce.js'
+import { summarizeSessionToolErrors, type ToolErrorStatRow } from '../loop/loopToolErrors.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
 function requireMergeBase(ctx: RepoContext): string {
@@ -144,6 +145,7 @@ export type PostLoopReviewResult = {
   parsed: ParsedReview
   outPath: string
   usage?: LoopUsageRecord
+  toolErrorStats?: ToolErrorStatRow[]
   /** Blockers downgraded by deterministic reproduce filter (when enabled). */
   reproduceDroppedCount?: number
   /** Blockers dropped by the fresh reproduce agent (when enabled). */
@@ -371,6 +373,12 @@ export async function runPostLoopQualityReview(
   const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
   })
+  const judgeToolErrors = summarizeSessionToolErrors({
+    role: 'judge',
+    runtime: reviewAgent.runtime,
+    model: reviewAgent.model,
+    transcriptEvents: run.transcriptEvents,
+  })
   const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
     run.text,
@@ -404,6 +412,7 @@ export async function runPostLoopQualityReview(
     reproduceAgentDroppedCount: piped.reproduceAgentDroppedCount,
     secondaryOnlyBlockersCount: piped.secondaryOnlyCount,
     secondaryReviewSkippedReason: piped.secondaryReviewSkippedReason,
+    ...(judgeToolErrors ? { toolErrorStats: [judgeToolErrors] } : {}),
   }
 }
 
@@ -424,6 +433,12 @@ export async function runPostLoopBlockerRecheck(
   const prompt = buildBlockerRecheckPrompt(ctx, goal, blockers)
   const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
+  })
+  const judgeToolErrors = summarizeSessionToolErrors({
+    role: 'judge',
+    runtime: reviewAgent.runtime,
+    model: reviewAgent.model,
+    transcriptEvents: run.transcriptEvents,
   })
   const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
@@ -458,5 +473,6 @@ export async function runPostLoopBlockerRecheck(
     reproduceAgentDroppedCount: piped.reproduceAgentDroppedCount,
     secondaryOnlyBlockersCount: piped.secondaryOnlyCount,
     secondaryReviewSkippedReason: piped.secondaryReviewSkippedReason,
+    ...(judgeToolErrors ? { toolErrorStats: [judgeToolErrors] } : {}),
   }
 }

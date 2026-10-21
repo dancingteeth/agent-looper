@@ -24,6 +24,7 @@ import {
 import { formatToolSummary, type TranscriptEvent } from '../stream/streamCollect.js'
 import { loopRuntimeLabel } from '../agents/agentRunner.js'
 import { buildLoopRunScoreboard, formatScoreboardMarkdown, readLoopLogEntries } from './loopRunScoreboard.js'
+import { aggregateToolErrorsFromLog, formatToolErrorStatsMarkdown } from './loopToolErrors.js'
 
 function formatRunReportUsageMoney(usage: LoopUsageRecord): string {
   if (
@@ -202,6 +203,7 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
         usage: input.result.usage,
       }),
     ),
+    ...formatToolErrorStatsMarkdown(aggregateToolErrorsFromLog(entries)),
     '## Models',
     '',
     `| Role | Runtime | Model |`,
