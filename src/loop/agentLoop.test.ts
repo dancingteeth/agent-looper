@@ -278,6 +278,124 @@ describe('runAgentLoop', () => {
     expect(runIterationPrompt).toHaveBeenCalledTimes(3)
   })
 
+  it('runs finalVerify after a green stall probe passes the inner verifier', async () => {
+    mockSession()
+    mockedRunVerify
+      .mockReturnValueOnce(failVerify('FAIL same'))
+      .mockReturnValueOnce(failVerify('FAIL same'))
+      .mockReturnValueOnce(passVerify('inner'))
+      .mockReturnValueOnce(passVerify('final'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        maxIterations: 4,
+        stagnationThreshold: 5,
+        escalateAfterStagnation: 2,
+        stallProbes: true,
+        finalVerify: 'pnpm test',
+      }),
+      workspacePort: { snapshot: async () => ({}), restore: async () => undefined },
+    })
+
+    expect(result.complete).toBe(true)
+    expect(mockedRunVerify).toHaveBeenCalledWith('pnpm test', process.cwd())
+  })
+
+  it('escalates after a probe round instead of stopping at the default stagnation threshold', async () => {
+    const { runIterationPrompt } = mockSession()
+    mockedRunVerify.mockReturnValue(failVerify('FAIL same signature'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        maxIterations: 6,
+        stagnationThreshold: 3,
+        escalateAfterStagnation: 2,
+        stallProbes: true,
+      }),
+      workspacePort: { snapshot: async () => ({}), restore: async () => undefined },
+    })
+
+    expect(result.iterations).toBeGreaterThan(3)
+    expect(runIterationPrompt.mock.calls.length).toBeGreaterThan(3)
+  })
+
+  it('restores the pre-probe snapshot when the procedure probe worker throws', async () => {
+    const ops: string[] = []
+    let snaps = 0
+    const port = {
+      snapshot: async () => {
+        snaps += 1
+        ops.push(`snapshot:${snaps}`)
+        return { id: snaps }
+      },
+      restore: async (snap: { id: number }) => {
+        ops.push(`restore:${snap.id}`)
+      },
+    }
+    let calls = 0
+    const runIterationPrompt = vi.fn().mockImplementation(async (prompt: string) => {
+      calls += 1
+      ops.push(`worker:${calls}`)
+      if (prompt.includes('## Stall probe: procedure hints')) {
+        throw new Error('Cursor agent run failed (status=error)')
+      }
+      return { text: 'ok' }
+    })
+    mockSession(runIterationPrompt)
+    mockedRunVerify.mockReturnValue(failVerify('FAIL same'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        maxIterations: 4,
+        stagnationThreshold: 5,
+        escalateAfterStagnation: 2,
+        stallProbes: true,
+      }),
+      workspacePort: port,
+    })
+
+    expect(result.complete).toBe(false)
+    // worker 3 is the procedure probe; s0 is restored right after it throws.
+    expect(ops.slice(ops.indexOf('worker:3'))).toEqual(
+      expect.arrayContaining(['worker:3', 'restore:1', 'worker:4']),
+    )
+    expect(ops.indexOf('restore:1')).toBeLessThan(ops.indexOf('worker:4'))
+    // Probes are spent for the run; the next worker is a normal one.
+    expect(runIterationPrompt.mock.calls[3]?.[0]).not.toContain('## Stall probe')
+  })
+
+  it('writes a single iteration line for a green kept probe', async () => {
+    mockSession()
+    mockedRunVerify
+      .mockReturnValueOnce(failVerify('FAIL same'))
+      .mockReturnValueOnce(failVerify('FAIL same'))
+      .mockReturnValueOnce(passVerify())
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        maxIterations: 4,
+        stagnationThreshold: 5,
+        escalateAfterStagnation: 2,
+        stallProbes: true,
+      }),
+      workspacePort: { snapshot: async () => ({}), restore: async () => undefined },
+    })
+
+    expect(result.complete).toBe(true)
+    const lines = fs
+      .readFileSync(path.join(tmpLoopDir, 'log.ndjson'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as { iteration: number; probe?: { variant: string; kept: boolean } })
+    const third = lines.filter((l) => l.iteration === 3)
+    expect(third).toHaveLength(1)
+    expect(third[0]!.probe).toEqual({ variant: 'procedure', kept: true })
+  })
+
   it('returns incomplete when max iterations are exhausted', async () => {
     mockSession()
     mockedRunVerify.mockReturnValue(failVerify('FAIL always'))
