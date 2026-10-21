@@ -9,6 +9,7 @@ import {
 import { printRunStream } from '../stream/streamRun.js'
 import { StreamCollector } from '../stream/streamCollect.js'
 import { assertCursorSdkModelAllowed } from '../usage/modelPolicy.js'
+import { AgentRunFailedError } from './agentRunFailed.js'
 import { createUsageRecord } from '../usage/loopUsage.js'
 import { installHttp2UnhandledRejectionGuard } from './http2RejectionGuard.js'
 
@@ -137,19 +138,6 @@ export async function runCursorAgentPrompt(
       await run.cancel()
     })
 
-    if (result.status === 'error') {
-      throw new Error('Cursor agent run failed (status=error)')
-    }
-    if (result.status === 'cancelled') {
-      throw new Error('Cursor agent run cancelled')
-    }
-
-    const text = result.result?.trim()
-    if (!text) {
-      throw new Error('Cursor agent returned empty result')
-    }
-
-    // RunResult.usage is TokenUsage when the runtime reported it (no USD field).
     const usage = result.usage
       ? createUsageRecord({
           phase,
@@ -162,10 +150,30 @@ export async function runCursorAgentPrompt(
         })
       : undefined
 
+    const partial = {
+      usage,
+      sessionRef: { provider: 'cursor' as const, runId: run.id, agentId: run.agentId },
+      toolSummary: options.collector?.toolSummary,
+      transcriptEvents: options.collector?.events,
+      text: result.result?.trim() ?? '',
+    }
+
+    if (result.status === 'error') {
+      throw new AgentRunFailedError('Cursor agent run failed (status=error)', partial)
+    }
+    if (result.status === 'cancelled') {
+      throw new AgentRunFailedError('Cursor agent run cancelled', partial)
+    }
+
+    const text = result.result?.trim()
+    if (!text) {
+      throw new AgentRunFailedError('Cursor agent returned empty result', partial)
+    }
+
     return {
       text,
       usage,
-      sessionRef: { provider: 'cursor', runId: run.id, agentId: run.agentId },
+      sessionRef: partial.sessionRef,
       toolSummary: options.collector?.toolSummary,
       transcriptEvents: options.collector?.events,
     }

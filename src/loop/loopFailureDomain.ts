@@ -15,6 +15,7 @@ export type FailureDomainReason =
   | 'review_gate'
   | 'review_gate_hitl'
   | 'review_judge_failed'
+  | 'agent_transient_exhausted'
   | 'meta_probe_failed'
   | 'agent_error'
   | 'verify_env'
@@ -68,6 +69,7 @@ export function isHitlWaitingFailureDomain(entry: FailureDomainEntry | null): bo
   return (
     entry.reason === 'review_gate_hitl' ||
     entry.reason === 'review_judge_failed' ||
+    entry.reason === 'agent_transient_exhausted' ||
     entry.reason === 'verify_env' ||
     entry.reason === 'setup' ||
     entry.status === 'waiting'
@@ -94,6 +96,8 @@ function suggestionForReason(reason: FailureDomainReason, repeatCount?: number):
       return 'Review BLOCKERS / unparseable verdict persisted — a HITL task was created for human sign-off.'
     case 'review_judge_failed':
       return 'Primary and fallback judges both errored — fix judge credentials/model or re-run; verify already passed.'
+    case 'agent_transient_exhausted':
+      return 'Too many consecutive transient worker agent errors — fix network/provider or re-run; working tree kept as-is.'
     case 'meta_probe_failed':
       return 'Meta-loop probe still failing after fix cycle — inspect failure-context.md and failure-domains.ndjson.'
     case 'agent_error':

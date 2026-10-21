@@ -10,7 +10,7 @@ import {
   runTaskwarriorSync,
 } from '../integrations/taskwarrior.js'
 import { captureGitWorkspaceSnapshot } from './loopGit.js'
-import { runAgentLoop } from './agentLoop.js'
+import { resolveLoopCliExitCode, runAgentLoop } from './agentLoop.js'
 import { isTransientAgentError, isRecoverableWorkerFault } from './loopWorkerRetry.js'
 import { loopConfigSchema } from './loopConfig.js'
 import { runVerifyCommand, type VerifyResult } from './loopVerify.js'
@@ -24,6 +24,14 @@ vi.mock('../agents/agentRunner.js', () => ({
   createLoopAgentSession: vi.fn(),
   loopRuntimeLabel: vi.fn(() => 'cursor'),
 }))
+
+vi.mock('./loopWorkerRetry.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./loopWorkerRetry.js')>()
+  return {
+    ...actual,
+    sleep: vi.fn().mockResolvedValue(undefined),
+  }
+})
 
 vi.mock('./loopVerify.js', () => ({
   runVerifyCommand: vi.fn(),
@@ -488,60 +496,89 @@ describe('runAgentLoop', () => {
     expect(recycle).toHaveBeenCalledOnce()
   })
 
-  it('aborts a worker timeout when escalateModel is unset', async () => {
+  it('continues after a transient worker error then completes on the next iteration', async () => {
     const runIterationPrompt = vi
       .fn()
-      .mockRejectedValue(new Error('OpenCode session timed out after 1000ms'))
+      .mockRejectedValueOnce(new Error('Cursor agent run failed (status=error)'))
+      .mockResolvedValueOnce({
+        text: 'fixed',
+        usage: {
+          phase: 'implement',
+          runtime: 'cursor',
+          model: 'composer-2.5',
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+          costUsd: 0.01,
+          costSource: 'estimated',
+        },
+      })
     mockSession(runIterationPrompt)
+    mockedRunVerify.mockReturnValue(passVerify())
+    vi.mocked(runPostLoopQualityReview).mockResolvedValue(reviewResult('PASS'))
 
     const result = await runAgentLoop({
       ctx: makeCtx(),
       bundle: makeBundle({
-        runtime: 'opencode',
-        model: 'opencode-go/deepseek-v4-flash',
+        runtime: 'cursor',
+        model: 'composer-2.5',
         maxIterations: 3,
       }),
     })
 
-    expect(result.complete).toBe(false)
-    expect(result.completionReason).toMatch(/Agent SDK error during iteration 1/)
-    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
-    const abortLog = JSON.parse(fs.readFileSync(path.join(tmpLoopDir, 'log.ndjson'), 'utf8'))
-    expect(abortLog.verify.command).toBe('(agent SDK)')
-    expect(abortLog.iteration).toBe(1)
-  })
-
-  it('aborts when the escalated model also times out', async () => {
-    const runIterationPrompt = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('OpenCode session made no tool progress after 480000ms'))
-      .mockRejectedValueOnce(new Error('OpenCode session timed out after 2700000ms'))
-    mockSession(runIterationPrompt)
-
-    const result = await runAgentLoop({
-      ctx: makeCtx(),
-      bundle: makeBundle({
-        runtime: 'opencode',
-        model: 'opencode-go/deepseek-v4-flash',
-        escalateModel: 'opencode-go/qwen3.7-plus',
-        maxIterations: 3,
-      }),
-    })
-
-    expect(result.complete).toBe(false)
-    expect(result.completionReason).toMatch(/Agent SDK error during iteration 2/)
+    expect(result.complete).toBe(true)
     expect(runIterationPrompt).toHaveBeenCalledTimes(2)
-    expect(runIterationPrompt.mock.calls[1]?.[1]).toEqual(
-      expect.objectContaining({ model: 'opencode-go/qwen3.7-plus' }),
-    )
     const lines = fs
       .readFileSync(path.join(tmpLoopDir, 'log.ndjson'), 'utf8')
       .trim()
       .split('\n')
-    expect(lines).toHaveLength(2)
-    const last = JSON.parse(lines[1]!) as { iteration: number; verify: { command: string } }
-    expect(last.iteration).toBe(2)
-    expect(last.verify.command).toBe('(agent SDK)')
+    expect(lines.length).toBeGreaterThanOrEqual(2)
+    expect(result.usage.records.length).toBeGreaterThan(0)
+  })
+
+  it('parks after consecutive transient worker errors hit the cap', async () => {
+    const runIterationPrompt = vi
+      .fn()
+      .mockRejectedValue(new Error('Connection stalled repeatedly'))
+    mockSession(runIterationPrompt)
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        maxConsecutiveTransientAgentErrors: 2,
+        maxIterations: 5,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.status).toBe('waiting')
+    expect(result.completionReason).toMatch(/consecutive transient error/)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(2)
+    expect(resolveLoopCliExitCode(result)).toBe(3)
+  })
+
+  it('stops immediately on a fatal worker agent error', async () => {
+    const runIterationPrompt = vi
+      .fn()
+      .mockRejectedValue(new Error('CURSOR_API_KEY is not set. Run via doppler'))
+    mockSession(runIterationPrompt)
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        maxIterations: 3,
+      }),
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.completionReason).toMatch(/fatal/)
+    expect(runIterationPrompt).toHaveBeenCalledTimes(1)
+    expect(resolveLoopCliExitCode(result)).toBe(2)
   })
 
   it('marks taskwarrior done, creates HITL check, and runs sync on success', async () => {
