@@ -74,11 +74,11 @@ commit numeric ID alone in `loop.json`.
 
 ### Verify log mode (optional)
 
-Default is **`inline`**: the next worker prompt includes the captured verify stdout/stderr. Omit the field unless you need the other mode.
+Default is **`sidecar`**: full stdout/stderr land under `<loop-dir>/verify-logs/iter-N.{verify,final}.{stdout,stderr}.txt`, and the next worker prompt gets a **tail-biased** preview (~600 characters) plus the path. The worker can `Read` the file when the preview is not enough.
 
-Set `"verifyLogMode": "sidecar"` when verify is noisy (full-suite dumps, Playwright traces, compiler walls). The harness writes `<loop-dir>/verify-logs/iter-N.{verify,final}.{stdout,stderr}.txt` and puts a ~600-character preview plus path in the prompt. The worker can `Read` the file if the preview is not enough. Sidecar does not change pass/fail; the shell capture is still capped (~64KB) before write.
+Set `"verifyLogMode": "inline"` when verify is always a few lines and you do not want the file hop. Inline mode still uses head+tail capture when output exceeds ~64KB in memory.
 
-Keep `inline` when `verify.sh` prints a few lines — then the extra file hop is only friction.
+Sidecar does not change pass/fail; the shell capture is capped (~64KB, head+tail) before write.
 
 ## Authoring verify.sh
 

@@ -12,6 +12,13 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+### Headline
+
+- **Verify sidecar by default** — `verifyLogMode` defaults to `sidecar`. Full verify output is written under `verify-logs/`; the worker prompt gets a tail-biased preview plus path. Opt into `inline` to paste capture only. In-memory capture uses head+tail with a middle elision marker (not head-only truncation).
+- **Billing token breakdown on green runs** — run log and `run-report.md` sum uncached input, output, and cache read/write across worker and judge sessions, with per-role rows. List vs billed cost semantics unchanged. Cursor SDK runs mark cache splits as **unknown** (not zero).
+- **Judge failures park the run** — when the review gate is on and the primary judge errors, the harness classifies the fault, retries once, then tries `reviewSecondary`. If both fail, the run parks (`status: waiting`, CLI exit `0`, failure domain `review_judge_failed`) instead of hard-failing like a verify miss.
+- **Expected tool-error stats** — `log.ndjson` and `run-report.md` aggregate `tool_end` errors and plain-text tool-call stalls per runtime/model for workers and judges.
+
 ## 0.8.2 — 2026-10-20
 
 Quieter `agent-loop run` startup.

@@ -15,7 +15,11 @@ export {
   loadLoopDefaultsForDir,
 } from './context/repoProfile.js'
 
-export { runAgentLoop, deriveLoopRunStatus } from './loop/agentLoop.js'
+export {
+  runAgentLoop,
+  deriveLoopRunStatus,
+  resolveLoopCliExitCode,
+} from './loop/agentLoop.js'
 export type {
   AgentLoopResult,
   AgentLoopOptions,

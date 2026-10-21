@@ -56,7 +56,7 @@ Agent Looper owns the grind; the human (or this chat) owns the finish line.
 - If no repo defaults yet: `runtime` / `model` for the worker (`runtime: dsh` = PATH `dsh --profile headless`; `runtime: claude` = PATH `claude -p --safe-mode`); optional `reviewRuntime` / `reviewModel` for the judge (`reviewRuntime: opencode` defaults the judge to Go DeepSeek V4 Pro; `reviewRuntime: dsh` defaults to official V4 Pro; `reviewRuntime: claude` defaults to `opus` — omit `reviewModel` unless BYOK)
 - `reviewGate: true` when leftover taste or impact should reopen the worker after verify is green (not for smokes)
 - Optional `plugins: ["…"]` for Agent Plugins skill packages (indexed in the prompt by default; `"skillDisclosure": "inline"` pastes full SKILL.md)
-- Optional `verifyLogMode: "sidecar"` when verify dumps are large; default is `inline` (paste into the next prompt). See README / `docs/verification-as-skill.md`.
+- Default `verifyLogMode: "sidecar"` (full logs under `verify-logs/`, tail preview in prompt). Use `"inline"` only for short verify. See README / `docs/verification-as-skill.md`.
 
 ## Taste / visual loops (decide — not always-on)
 

@@ -215,9 +215,9 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 | `verifyMode` | `command` | `command` = shell only. `skill` = verify agent reads `verifySkill`, emits `VERIFY_RESULT: PASS/FAIL`, then runs shell `verify` on PASS. Skill-verify uses the same iteration agent as the worker (reasoning ladder / `escalateModel` apply). |
 | `verifySkill` | — | Path to `VERIFY.skill.md` (required when `verifyMode` is `skill`). |
 | `finalVerify` | — | Stricter outer check after inner `verify` passes. |
-| `verifyLogMode` | `inline` | How verify stdout/stderr reach the next worker. `inline` pastes the capture. `sidecar` is **optional**: write `<loop-dir>/verify-logs/` and put a ~600-character preview + path in the prompt. Leave unset / `inline` when verify is short. |
+| `verifyLogMode` | `sidecar` | How verify stdout/stderr reach the next worker. **`sidecar`** (default) writes `<loop-dir>/verify-logs/` and puts a tail-biased preview + path in the prompt. **`inline`** pastes the in-memory capture only (head+tail when long). |
 
-Default stays **`inline`**. Use `"verifyLogMode": "sidecar"` only when verify dumps are large (full vitest / Playwright / compiler walls) and would otherwise repeat in every later prompt. Sidecar does not change the verifier; capture is still capped (~64KB) before anything is written to disk.
+Default is **`sidecar`** so failures at the end of vitest/Playwright walls stay visible without bloating every prompt. Set `"verifyLogMode": "inline"` when verify is always short. In-memory capture is capped (~64KB, head+tail) before sidecar write.
 
 Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
