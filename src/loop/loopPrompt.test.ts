@@ -261,6 +261,40 @@ describe('buildAgentLoopPrompt', () => {
     expect(without).not.toContain('## Research (index)')
   })
 
+  it('puts lessons in the stable head and omits them when absent', () => {
+    const git = {
+      branch: 'feat/x',
+      shortSha: 'abc1234',
+      diffStat: '',
+      statusPorcelain: '',
+    }
+    const withLessons = (iteration: number) =>
+      buildAgentLoopPrompt({
+        goal: 'Ship feature X',
+        iteration,
+        maxIterations: 5,
+        git,
+        lastVerify: null,
+        priorFailures: [],
+        lessons: '# Lessons\n\n- PRIOR-1',
+      })
+    const head = (prompt: string) => prompt.slice(0, prompt.indexOf('## Workspace (git)'))
+    expect(head(withLessons(1))).toBe(head(withLessons(3)))
+    expect(head(withLessons(1))).toContain('## Lessons from earlier green runs')
+    expect(withLessons(1).indexOf('## Lessons from earlier green runs')).toBeLessThan(
+      withLessons(1).indexOf('## Workspace (git)'),
+    )
+    const without = buildAgentLoopPrompt({
+      goal: 'Ship feature X',
+      iteration: 1,
+      maxIterations: 5,
+      git,
+      lastVerify: null,
+      priorFailures: [],
+    })
+    expect(without).not.toContain('## Lessons from earlier green runs')
+  })
+
   it('puts verify command and deliverables in Facts before Workspace', () => {
     const prompt = buildAgentLoopPrompt({
       goal: 'g',
@@ -286,20 +320,22 @@ describe('buildAgentLoopPrompt', () => {
     expect(factsBlock).toContain('docs/out.md')
   })
 
-  it('starts Facts and Workspace headings on their own line after a blank line', () => {
+  it('starts lessons, Facts and Workspace headings on their own line after a blank line', () => {
     const git = { branch: 'main', shortSha: 'abc', diffStat: '', statusPorcelain: '' }
     const base = { goal: 'g', iteration: 1, maxIterations: 3, git, lastVerify: null, priorFailures: [] }
     const variants = [
       buildAgentLoopPrompt(base),
+      buildAgentLoopPrompt({ ...base, lessons: '- PRIOR-1' }),
       buildAgentLoopPrompt({ ...base, verifyCommand: 'bash verify.sh' }),
-      buildAgentLoopPrompt({ ...base, verifyCommand: 'bash verify.sh', deliverables: ['a.md'] }),
+      buildAgentLoopPrompt({ ...base, lessons: '- PRIOR-1', verifyCommand: 'bash verify.sh', deliverables: ['a.md'] }),
     ]
     for (const prompt of variants) {
       expect(prompt).toMatch(/[^\n]\n\n## Workspace \(git\)\n/)
       expect(prompt).not.toMatch(/\n{3,}## /)
     }
-    expect(variants[1]).toMatch(/[^\n]\n\n## Facts\n/)
+    expect(variants[1]).toMatch(/[^\n]\n\n## Lessons from earlier green runs\n/)
     expect(variants[2]).toMatch(/[^\n]\n\n## Facts\n/)
+    expect(variants[3]).toMatch(/[^\n]\n\n## Lessons from earlier green runs\n[\s\S]*[^\n]\n\n## Facts\n/)
     // No extras: the rules block is followed directly by a blank line and the workspace.
     expect(variants[0]).toMatch(/through the tool interface\.\n\n## Workspace \(git\)/)
   })

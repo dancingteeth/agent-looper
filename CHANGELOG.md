@@ -25,6 +25,7 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ### Harness² ideas
 
+- **`lessons.md`** — after a green verifier run, the harness writes deduped verify gotchas to the loop bundle; the next run injects them before `## Workspace (git)`. Disabled with `"lessons": false`. Workers cannot edit the file (frozen).
 - **`deliverables`** — optional repo-relative paths in `loop.json`; worker prompts state them in `## Facts`, and the harness nudges the worker before verify when files are missing or empty (`deliverableNudges`, default `2`).
 
 ## 0.8.2 — 2026-10-20

@@ -18,6 +18,7 @@ import {
   logFailureDomainFromAgentError,
 } from './loopFailureDomain.js'
 import { readFailureContext } from './loopFailureContext.js'
+import { readLessons, recordGreenRunLessons } from './loopLessons.js'
 import { buildDeliverableNudgeSection, missingDeliverables } from './loopDeliverables.js'
 import { detectPlainTextToolCalls } from './loopToolCallText.js'
 import { pauseForContinue } from './loopPause.js'
@@ -265,6 +266,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   }
 
   const priorFailures: VerifyResult[] = []
+  const lessonsForPrompt =
+    config.lessons !== false ? readLessons(bundle.loopDir) : undefined
   let lastVerify: VerifyResult | null = null
   let setupResult: VerifyResult | undefined
   let frozenSnapshot: FrozenFileSnapshot[] = []
@@ -487,6 +490,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         batchRubric: options.batchRubric,
         mode: config.mode,
         failureContext,
+        lessons: lessonsForPrompt,
         verifyCommand: config.verify,
         deliverables: config.deliverables,
         plainTextToolCallWarning: previousWorkerPlainTextToolCalls,
@@ -918,6 +922,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           })
         }
         maybeRunSync(ctx, config.syncOnSuccess)
+        if (config.lessons !== false) {
+          recordGreenRunLessons(bundle.loopDir, {
+            verifyCommand: config.verify,
+            iterations: i,
+            failuresOvercome: priorFailures,
+          })
+        }
         return finish({
           complete: true,
           iterations: i,

@@ -167,6 +167,8 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     pauseAfterIteration: z.boolean().default(false),
     /** Read failure-context.md written by a meta-loop probe into the prompt. */
     injectFailureContext: z.boolean().default(false),
+    /** Read/write lessons.md from prior green runs (verify gotchas). */
+    lessons: z.boolean().default(true),
     /** Send completion report to Telegram when repo profile + env are configured. */
     notifyTelegram: z.boolean().default(true),
     /**

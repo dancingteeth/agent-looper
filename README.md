@@ -206,6 +206,7 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
   verify-logs/             # optional — sidecar verify stdout/stderr (`verifyLogMode`)
   failure-domains.ndjson   # optional — stagnation / max iterations / gate exhaust
   failure-context.md       # optional — written by meta-loop probe for fix loop
+  lessons.md               # optional — verify gotchas from prior green runs (harness-owned)
 ```
 
 ### Verification (`verify` / `verifyMode`)
@@ -236,6 +237,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
 | `pauseAfterIteration` | `false` | Wait for Enter after each iteration (TTY only) |
 | `injectFailureContext` | `false` | Read `failure-context.md` into the prompt (meta-loop fix rounds) |
+| `lessons` | `true` | Read/write `lessons.md` — bounded gotchas from earlier green runs in the stable prompt head |
 | `deliverables` | — | Repo-relative files the worker must create (absolute or `..` paths are rejected); harness re-prompts before verify when missing or empty |
 | `deliverableNudges` | `2` | Max extra worker calls per iteration when `deliverables` are still missing (`0`–`5`) |
 | `syncOnSuccess` | `true` | Run repo profile `syncCommand` after success |

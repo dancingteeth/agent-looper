@@ -13,6 +13,7 @@ export const FROZEN_LOOP_BASENAMES = [
   'RESEARCH.md',
   'PERMISSIONS.md',
   'setup.sh',
+  'lessons.md',
 ] as const
 
 /** Frozen spec file as it stood when the loop started. `contents: null` = did not exist. */
