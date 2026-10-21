@@ -362,7 +362,7 @@ describe('runPostSuccessReviewPhase', () => {
     )
   })
 
-  it('stops without iteration log when gated review throws', async () => {
+  it('retries once then parks when gated review keeps throwing', async () => {
     vi.mocked(runPostLoopQualityReview).mockRejectedValue(new Error('Cursor SDK unavailable'))
 
     const result = await runPostSuccessReviewPhase({
@@ -377,10 +377,33 @@ describe('runPostSuccessReviewPhase', () => {
       reasoningEffort: 'default',
     })
 
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
     expect(result.outcome).toMatchObject({
       action: 'stop',
-      completionReason: /quality review failed/,
+      failureDomainReason: 'review_judge_failed',
+      parkWaiting: true,
       skipIterationLog: true,
     })
+  })
+
+  it('succeeds after a single judge retry', async () => {
+    vi.mocked(runPostLoopQualityReview)
+      .mockRejectedValueOnce(new Error('Cursor agent run timed out after 480000ms'))
+      .mockResolvedValueOnce(reviewResult('PASS'))
+
+    const result = await runPostSuccessReviewPhase({
+      config: baseConfig(),
+      goal: 'Goal text',
+      ctx: { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) },
+      loopDir: '/tmp/loop',
+      reviewBlockers: undefined,
+      reviewCyclesUsed: 0,
+      reviewAgent: cursorJudge(),
+      usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
+      reasoningEffort: 'default',
+    })
+
+    expect(result.outcome.action).toBe('success')
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
   })
 })

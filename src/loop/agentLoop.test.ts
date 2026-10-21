@@ -818,7 +818,7 @@ describe('runAgentLoop', () => {
     expect(runPostLoopBlockerRecheck).toHaveBeenCalledTimes(1)
   })
 
-  it('exits incomplete when review gate is on and quality review throws', async () => {
+  it('parks waiting when review gate is on and judges keep throwing', async () => {
     mockSession()
     mockedRunVerify.mockReturnValue(passVerify())
     vi.mocked(runPostLoopQualityReview).mockRejectedValue(new Error('Cursor SDK unavailable'))
@@ -833,7 +833,8 @@ describe('runAgentLoop', () => {
     })
 
     expect(result.complete).toBe(false)
-    expect(result.completionReason).toMatch(/Review gate: quality review failed/)
+    expect(result.status).toBe('waiting')
+    expect(result.completionReason).toMatch(/judges unavailable/)
     expect(markTaskwarriorDoneByUuid).not.toHaveBeenCalled()
   })
 

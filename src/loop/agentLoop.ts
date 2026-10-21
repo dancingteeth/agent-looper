@@ -51,6 +51,11 @@ import {
 } from './loopBudgetGuard.js'
 import { buildIterationLog, persistVerifyResultsForLog, type LoopIterationLog } from './loopIterationLog.js'
 import {
+  mergeToolErrorStatRows,
+  summarizeSessionToolErrors,
+  type ToolErrorStatRow,
+} from './loopToolErrors.js'
+import {
   recycleWorkerSession,
   runIterationWithRetry,
   shouldEscalateAfterWorkerFault,
@@ -87,6 +92,15 @@ export type AgentLoopResult = {
   reviewEscalatedToHitl?: boolean
   /** Harness bootstrap result when `setup` / `setup.sh` ran. */
   setup?: VerifyResult
+}
+
+/** CLI exit: waiting parks (budget, env, judge down) exit 0; incomplete loops exit 2. */
+export function resolveLoopCliExitCode(
+  result: Pick<AgentLoopResult, 'complete' | 'status'>,
+): 0 | 2 {
+  if (result.complete) return 0
+  if (result.status === 'waiting') return 0
+  return 2
 }
 
 export function deriveLoopRunStatus(
@@ -476,6 +490,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         )
         lastVerify = workerFaultVerify
         priorFailures.push(workerFaultVerify)
+        const faultToolErrors = summarizeSessionToolErrors({
+          role: 'worker',
+          runtime: config.runtime,
+          model: iterationAgent.model,
+          agentErrorMessage: message,
+        })
         appendJsonlLine(
           logPath,
           buildIterationLog({
@@ -486,6 +506,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             model: iterationAgent.model,
             reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
             durationsMs: { worker: elapsedMs(workerStartedAt) },
+            ...(faultToolErrors ? { toolErrorStats: [faultToolErrors] } : {}),
           }),
         )
         if (!escalate) throw err
@@ -506,9 +527,16 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       if (assistantRun.transcriptEvents?.length) {
         transcriptEvents.push(...assistantRun.transcriptEvents)
       }
+      const workerToolErrors = summarizeSessionToolErrors({
+        role: 'worker',
+        runtime: config.runtime,
+        model: iterationAgent.model,
+        transcriptEvents: assistantRun.transcriptEvents,
+      })
       const workerLogFields = {
         workerSession: assistantRun.sessionRef,
         toolSummary: assistantRun.toolSummary,
+        ...(workerToolErrors ? { toolErrorStats: [workerToolErrors] } : {}),
       }
       const workerMs = elapsedMs(workerStartedAt)
 
@@ -582,9 +610,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       let reviewLog: LoopIterationLog['review'] | undefined
       let judgeMs: number | undefined
+      let reviewPhaseToolErrors: ToolErrorStatRow[] | undefined
 
       // Every iteration-log call site below shares these fields; only `review` varies.
       const appendCurrentIterationLog = (review?: LoopIterationLog['review']): void => {
+        const toolErrorStats = mergeToolErrorStatRows([
+          ...(workerLogFields.toolErrorStats ?? []),
+          ...(reviewPhaseToolErrors ?? []),
+        ])
         appendJsonlLine(
           logPath,
           buildIterationLog({
@@ -607,6 +640,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               ...(judgeMs != null ? { judge: judgeMs } : {}),
             },
             ...workerLogFields,
+            ...(toolErrorStats.length > 0 ? { toolErrorStats } : {}),
           }),
         )
       }
@@ -639,6 +673,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         judgeMs = elapsedMs(judgeStartedAt)
         usageSummary = reviewPhase.usageSummary
         reviewLog = reviewPhase.reviewLog
+        reviewPhaseToolErrors = reviewPhase.toolErrorStats
 
         const reviewBudgetStop = await stopOnBudget(i)
         if (reviewBudgetStop) return reviewBudgetStop
@@ -653,6 +688,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               iteration: i,
               verify: finalVerify ?? verify,
               failureDomainReason: reviewPhase.outcome.failureDomainReason,
+              reviewJudgeErrorClass: reviewPhase.outcome.reviewJudgeErrorClass,
             })
           }
           return finish({
@@ -661,6 +697,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             completionReason: reviewPhase.outcome.completionReason,
             lastVerify,
             logPath,
+            ...(reviewPhase.outcome.parkWaiting ? { status: 'waiting' } : {}),
             ...(reviewPhase.outcome.hitlCheckTaskUuid
               ? { hitlCheckTaskUuid: reviewPhase.outcome.hitlCheckTaskUuid }
               : {}),

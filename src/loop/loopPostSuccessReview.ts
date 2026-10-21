@@ -5,7 +5,7 @@ import {
 } from '../integrations/hitlCheckpoint.js'
 import { fitHitlCheckDescription } from '../integrations/taskwarrior.js'
 import { logFailureDomainFromVerify } from '../loop/loopFailureDomain.js'
-import type { ResolvedReviewAgent } from '../loop/loopAgentConfig.js'
+import { resolveSecondaryReviewAgent, type ResolvedReviewAgent } from '../loop/loopAgentConfig.js'
 import type { LoopConfig } from '../loop/loopConfig.js'
 import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
 import { resolveLoopRiskKeywords } from '../loop/loopRiskProfile.js'
@@ -19,6 +19,12 @@ import {
   reviewGateBlocksCompletion,
 } from '../review/reviewVerdict.js'
 import { addUsageRecord, type LoopUsageSummary } from '../usage/loopUsage.js'
+import {
+  classifyReviewJudgeError,
+  formatReviewJudgeErrorClass,
+  type ReviewJudgeErrorClass,
+} from '../review/reviewJudgeError.js'
+import { mergeToolErrorStatRows, type ToolErrorStatRow } from './loopToolErrors.js'
 
 export type PostSuccessReviewLog = {
   verdict: ReviewVerdict
@@ -34,7 +40,10 @@ export type PostSuccessReviewOutcome =
       completionReason: string
       hitlCheckTaskUuid?: string
       reviewEscalatedToHitl?: boolean
-      failureDomainReason?: 'review_gate' | 'review_gate_hitl'
+      failureDomainReason?: 'review_gate' | 'review_gate_hitl' | 'review_judge_failed'
+      /** Park for human when judges fail after verify passed. */
+      parkWaiting?: boolean
+      reviewJudgeErrorClass?: ReviewJudgeErrorClass
       /** When true, the iteration log was already emitted or should not be written. */
       skipIterationLog?: boolean
     }
@@ -70,6 +79,7 @@ export type PostSuccessReviewResult = {
   reviewLog?: PostSuccessReviewLog
   parsedReview?: ParsedReview
   reviewCycle: number
+  toolErrorStats?: ToolErrorStatRow[]
 }
 
 export function reviewGateHitlDescription(parsed: ParsedReview, reviewCycle: number): string {
@@ -259,51 +269,94 @@ export async function runPostSuccessReviewPhase(
   let reviewCycle = 0
   let parsedReview: ParsedReview | undefined
   let reviewLog: PostSuccessReviewLog | undefined
+  const judgeToolErrorRows: ToolErrorStatRow[] = []
+
+  const baseReviewOptions = {
+    verbose,
+    workerRuntime: config.runtime,
+    reviewReproduce: config.reviewReproduce,
+    reviewReproduceAgent: config.reviewReproduceAgent,
+    reviewSecondaryRuntime: config.reviewSecondaryRuntime,
+    reviewSecondaryModel: config.reviewSecondaryModel,
+    reviewGate: config.reviewGate,
+  }
+
+  async function invokeReview(agent: ResolvedReviewAgent, cycle: number) {
+    const shared = { ...baseReviewOptions, reviewCycle: cycle, reviewAgent: agent }
+    return useRecheck
+      ? await runPostLoopBlockerRecheck(loopDir, goal, ctx, reviewBlockers!, shared)
+      : await runPostLoopQualityReview(loopDir, goal, ctx, shared)
+  }
 
   for (;;) {
     reviewCycle++
-    try {
-      const reviewResult = useRecheck
-        ? await runPostLoopBlockerRecheck(loopDir, goal, ctx, reviewBlockers!, {
-            verbose,
-            reviewCycle,
-            reviewAgent,
-            workerRuntime: config.runtime,
-            reviewReproduce: config.reviewReproduce,
-            reviewReproduceAgent: config.reviewReproduceAgent,
-            reviewSecondaryRuntime: config.reviewSecondaryRuntime,
-            reviewSecondaryModel: config.reviewSecondaryModel,
-            reviewGate: config.reviewGate,
-          })
-        : await runPostLoopQualityReview(loopDir, goal, ctx, {
-            verbose,
-            reviewCycle,
-            reviewAgent,
-            workerRuntime: config.runtime,
-            reviewReproduce: config.reviewReproduce,
-            reviewReproduceAgent: config.reviewReproduceAgent,
-            reviewSecondaryRuntime: config.reviewSecondaryRuntime,
-            reviewSecondaryModel: config.reviewSecondaryModel,
-            reviewGate: config.reviewGate,
-          })
-      usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
-      parsedReview = reviewResult.parsed
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      if (config.reviewGate) {
-        console.error(`[agent-loop] review gate: quality review failed — stopping: ${message}`)
+    let reviewErrorClass: ReviewJudgeErrorClass | undefined
+    let reviewSucceeded = false
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const reviewResult = await invokeReview(reviewAgent, reviewCycle)
+        usageSummary = addUsageRecord(usageSummary, reviewResult.usage)
+        if (reviewResult.toolErrorStats?.length) {
+          judgeToolErrorRows.push(...reviewResult.toolErrorStats)
+        }
+        parsedReview = reviewResult.parsed
+        reviewSucceeded = true
+        break
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        reviewErrorClass = classifyReviewJudgeError(message)
+        if (!config.reviewGate) {
+          console.error(`[agent-loop] quality review failed (non-blocking): ${message}`)
+          return { outcome: { action: 'success' }, usageSummary, reviewCycle }
+        }
+        if (attempt === 0) {
+          console.error(
+            `[agent-loop] review gate: judge error (${formatReviewJudgeErrorClass(reviewErrorClass)}) — retrying once: ${message}`,
+          )
+          continue
+        }
+        const secondary = resolveSecondaryReviewAgent(config)
+        if (secondary) {
+          console.error(
+            `[agent-loop] review gate: primary judge failed (${formatReviewJudgeErrorClass(reviewErrorClass)}) — falling back to secondary ${secondary.runtime}/${secondary.model}`,
+          )
+          try {
+            const fallback = await invokeReview(secondary, reviewCycle)
+            usageSummary = addUsageRecord(usageSummary, fallback.usage)
+            if (fallback.toolErrorStats?.length) {
+              judgeToolErrorRows.push(...fallback.toolErrorStats)
+            }
+            parsedReview = fallback.parsed
+            reviewSucceeded = true
+            break
+          } catch (fallbackErr) {
+            const fallbackMessage =
+              fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+            reviewErrorClass = classifyReviewJudgeError(fallbackMessage)
+            console.error(
+              `[agent-loop] review gate: secondary judge failed (${formatReviewJudgeErrorClass(reviewErrorClass)}): ${fallbackMessage}`,
+            )
+          }
+        }
+        console.error(
+          `[agent-loop] review gate: judges unavailable (${formatReviewJudgeErrorClass(reviewErrorClass ?? 'other')}) — parking run`,
+        )
         return {
           outcome: {
             action: 'stop',
-            completionReason: `Review gate: quality review failed: ${message}`,
+            completionReason: `Review gate: judges unavailable (${formatReviewJudgeErrorClass(reviewErrorClass ?? 'other')}). Verify passed; re-run after fixing the judge stack.`,
             skipIterationLog: true,
+            failureDomainReason: 'review_judge_failed',
+            parkWaiting: true,
+            reviewJudgeErrorClass: reviewErrorClass,
           },
           usageSummary,
           reviewCycle,
         }
       }
-      console.error(`[agent-loop] quality review failed (non-blocking): ${message}`)
-      return { outcome: { action: 'success' }, usageSummary, reviewCycle }
+    }
+    if (!reviewSucceeded || !parsedReview) {
+      break
     }
     reviewLog = {
       verdict: parsedReview.verdict,
@@ -342,6 +395,9 @@ export async function runPostSuccessReviewPhase(
     reviewLog,
     parsedReview,
     reviewCycle,
+    ...(judgeToolErrorRows.length > 0
+      ? { toolErrorStats: mergeToolErrorStatRows(judgeToolErrorRows) }
+      : {}),
   }
 }
 
@@ -349,12 +405,21 @@ export function logReviewGateFailureDomain(input: {
   loopDir: string
   iteration: number
   verify: { complete: boolean; reason: string; command: string; exitCode: number | null; stdout: string; stderr: string }
-  failureDomainReason: 'review_gate' | 'review_gate_hitl'
+  failureDomainReason: 'review_gate' | 'review_gate_hitl' | 'review_judge_failed'
+  reviewJudgeErrorClass?: ReviewJudgeErrorClass
 }): void {
+  const waiting =
+    input.failureDomainReason === 'review_gate_hitl' ||
+    input.failureDomainReason === 'review_judge_failed'
   logFailureDomainFromVerify(input.loopDir, {
     iteration: input.iteration,
     reason: input.failureDomainReason,
     verify: input.verify,
-    status: input.failureDomainReason === 'review_gate_hitl' ? 'waiting' : undefined,
+    ...(waiting ? { status: 'waiting' } : {}),
+    ...(input.reviewJudgeErrorClass
+      ? {
+          suggestion: `Judge error (${formatReviewJudgeErrorClass(input.reviewJudgeErrorClass)}) — verify passed. Fix judge credentials/model or re-run.`,
+        }
+      : {}),
   })
 }
