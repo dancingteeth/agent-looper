@@ -50,6 +50,72 @@ export type LoopUsageSummary = {
 export const USAGE_LIST_PRICE_NOTE =
   'List $ is public API list price (uncached input + output + cache read/write). Billed is the runtime invoice — $0 on included subscription quota, PAYG otherwise. maxCostUsd uses billed when it is > $0, otherwise list so a quota run can still stop.'
 
+/** Cursor `@cursor/sdk` usage may omit cache read/write splits — do not report them as zero. */
+export const CURSOR_CACHE_TOKEN_NOTE =
+  'Cursor SDK runs do not expose cache read/write token splits in usage; cache columns show as unknown (not 0).'
+
+export type BillingTokenTotals = {
+  uncachedInputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+  /** False when any included record is from a runtime that omits cache splits (Cursor). */
+  cacheSplitKnown: boolean
+}
+
+export function runtimeReportsCacheTokenSplit(runtime: LoopUsageRecord['runtime']): boolean {
+  return runtime !== 'cursor'
+}
+
+export function sumBillingTokens(records: LoopUsageRecord[]): BillingTokenTotals {
+  let uncachedInputTokens = 0
+  let outputTokens = 0
+  let cacheReadTokens = 0
+  let cacheWriteTokens = 0
+  let cacheSplitKnown = true
+  for (const record of records) {
+    uncachedInputTokens += record.inputTokens
+    outputTokens += record.outputTokens
+    cacheReadTokens += record.cacheReadTokens
+    cacheWriteTokens += record.cacheWriteTokens
+    if (!runtimeReportsCacheTokenSplit(record.runtime)) {
+      cacheSplitKnown = false
+    }
+  }
+  return {
+    uncachedInputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+    cacheSplitKnown,
+  }
+}
+
+export function formatBillingTokensFragment(totals: BillingTokenTotals): string {
+  const base = `out ${formatTokenCount(totals.outputTokens)} | in(uncached) ${formatTokenCount(totals.uncachedInputTokens)}`
+  if (!totals.cacheSplitKnown) {
+    return `${base} | cache R/W unknown`
+  }
+  if (totals.cacheReadTokens > 0 || totals.cacheWriteTokens > 0) {
+    return `${base} | cache R ${formatTokenCount(totals.cacheReadTokens)} | cache W ${formatTokenCount(totals.cacheWriteTokens)}`
+  }
+  return base
+}
+
+export function formatUsageBillingBreakdown(summary: LoopUsageSummary): string[] {
+  if (summary.records.length === 0) return []
+  const lines = [`Billing tokens (total): ${formatBillingTokensFragment(sumBillingTokens(summary.records))}`]
+  const implement = summary.records.filter((r) => r.phase === 'implement')
+  const review = summary.records.filter((r) => r.phase === 'review')
+  if (implement.length > 0) {
+    lines.push(`Billing tokens (worker): ${formatBillingTokensFragment(sumBillingTokens(implement))}`)
+  }
+  if (review.length > 0) {
+    lines.push(`Billing tokens (judge): ${formatBillingTokensFragment(sumBillingTokens(review))}`)
+  }
+  return lines
+}
+
 export function isHostedFreeModel(model: string): boolean {
   if (model.endsWith(':free')) return true
   const rates = MODEL_PRICING_PER_MILLION[model]
@@ -456,8 +522,10 @@ export function formatUsageSummaryLine(summary: LoopUsageSummary): string {
   )
   const review = summarizeUsageRecords(summary.records.filter((r) => r.phase === 'review'))
 
+  const billing = sumBillingTokens(summary.records)
   const parts: string[] = [
     `${formatTokenCount(summary.totalInputTokens)} in / ${formatTokenCount(summary.totalOutputTokens)} out`,
+    formatBillingTokensFragment(billing),
   ]
 
   const listUsd = summary.totalListCostUsd
@@ -480,13 +548,6 @@ export function formatUsageSummaryLine(summary: LoopUsageSummary): string {
   }
   if (review.records.length > 0) {
     parts.push(`~$${(review.totalListCostUsd ?? review.totalCostUsd).toFixed(4)} review`)
-  }
-
-  const hasCache = summary.records.some((r) => r.cacheReadTokens > 0 || r.cacheWriteTokens > 0)
-  if (hasCache) {
-    parts.push(
-      `cache R ${formatTokenCount(summary.totalCacheReadTokens)} / W ${formatTokenCount(summary.totalCacheWriteTokens)}`,
-    )
   }
 
   const hasEstimate = summary.records.some((r) => r.costSource === 'estimated')

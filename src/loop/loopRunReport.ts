@@ -14,6 +14,8 @@ import { readLatestLoopReview, resolveLatestReviewPath } from './loopReport.js'
 import {
   addUsageRecord,
   emptyUsageSummary,
+  CURSOR_CACHE_TOKEN_NOTE,
+  formatUsageBillingBreakdown,
   formatUsageSummaryLine,
   usageCostsDifferForDisplay,
   USAGE_LIST_PRICE_NOTE,
@@ -183,7 +185,16 @@ export function buildRunReportMarkdown(input: BuildRunReportInput): string {
     `**Outcome:** ${input.result.complete ? 'complete' : 'incomplete'} in ${input.result.iterations} iteration(s)`,
     `**Reason:** ${input.result.completionReason}`,
     `**Usage:** ${usageLine}`,
-    ...(input.result.usage.records.length > 0 ? [`**Cost note:** ${USAGE_LIST_PRICE_NOTE}`, ''] : ['']),
+    ...(input.result.usage.records.length > 0
+      ? [
+          ...formatUsageBillingBreakdown(input.result.usage).map((line) => `**${line}**`),
+          ...(input.result.usage.records.some((r) => r.runtime === 'cursor')
+            ? [`*${CURSOR_CACHE_TOKEN_NOTE}*`, '']
+            : ['']),
+          `**Cost note:** ${USAGE_LIST_PRICE_NOTE}`,
+          '',
+        ]
+      : ['']),
     ...formatScoreboardMarkdown(
       buildLoopRunScoreboard({
         entries,
