@@ -376,7 +376,10 @@ describe('runPostSuccessReviewPhase', () => {
       costSource: 'estimated' as const,
     }
     vi.mocked(runPostLoopQualityReview).mockRejectedValue(
-      new AgentRunFailedError('Cursor agent run failed (status=error)', { usage: judgeUsage }),
+      new AgentRunFailedError('Cursor agent run failed (status=error)', {
+        usage: judgeUsage,
+        text: '',
+      }),
     )
 
     const result = await runPostSuccessReviewPhase({

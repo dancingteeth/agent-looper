@@ -599,7 +599,9 @@ describe('runAgentLoop', () => {
     const { AgentRunFailedError } = await import('../agents/agentRunFailed.js')
     const runIterationPrompt = vi
       .fn()
-      .mockRejectedValue(new AgentRunFailedError('CURSOR_API_KEY is not set', { usage }))
+      .mockRejectedValue(
+        new AgentRunFailedError('CURSOR_API_KEY is not set', { usage, text: '' }),
+      )
     mockSession(runIterationPrompt)
 
     const result = await runAgentLoop({

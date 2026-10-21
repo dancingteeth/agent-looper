@@ -39,7 +39,10 @@ describe('extractPartialWorkerRun', () => {
       costUsd: 0,
       costSource: 'estimated' as const,
     }
-    const err = new AgentRunFailedError('Cursor agent run failed (status=error)', { usage })
+    const err = new AgentRunFailedError('Cursor agent run failed (status=error)', {
+      usage,
+      text: '',
+    })
     expect(extractPartialWorkerRun(err)?.usage).toEqual(usage)
   })
 })
