@@ -1,5 +1,6 @@
-import { ClineCore, type CoreSessionEvent, type ClineCore as ClineCoreType } from '@cline/sdk'
+import type { CoreSessionEvent, ClineCore as ClineCoreType } from '@cline/sdk'
 import type { RepoContext } from '../context/repoContext.js'
+import { importOptionalPeer } from './optionalPeer.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import { handleClineSessionEvent } from '../stream/streamClineSession.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
@@ -167,6 +168,11 @@ export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoo
   const apiKey = requireClineApiKey()
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const clientName = ctx.profile.clientName
+  const { ClineCore } = await importOptionalPeer<typeof import('@cline/sdk')>(
+    '@cline/sdk',
+    'cline',
+    '@cline/sdk',
+  )
 
   // backendMode: local is in-process (no Cline hub daemon). Still watch children of
   // this Node — MCP tool processes — and never hunt PID-1 `.cline --cline-hub-daemon`

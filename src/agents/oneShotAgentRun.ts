@@ -15,7 +15,6 @@ import {
 import type { StreamCollector } from '../stream/streamCollect.js'
 import type { CursorSdkModel } from '../loop/loopAgentConfig.js'
 import type { AgentRunResult } from './agentRunResult.js'
-import { runCursorAgentPrompt } from './cursorAgent.js'
 
 export type OneShotAgent = ResolvedLoopAgent | ResolvedReviewAgent
 
@@ -102,7 +101,8 @@ export async function runOneShotAgentPrompt(
 ): Promise<AgentRunResult> {
   const runOptions = baseRunOptions(agent, options)
   switch (agent.runtime) {
-    case LOOP_RUNTIME_CURSOR:
+    case LOOP_RUNTIME_CURSOR: {
+      const { runCursorAgentPrompt } = await import('./cursorAgent.js')
       return runCursorAgentPrompt(ctx, prompt, {
         verbose: runOptions.verbose,
         modelId: runOptions.modelId as CursorSdkModel,
@@ -113,6 +113,7 @@ export async function runOneShotAgentPrompt(
         onAssistantText: runOptions.onAssistantText,
         timeoutMs: runOptions.timeoutMs,
       })
+    }
     case LOOP_RUNTIME_CLINE_PASS:
     case LOOP_RUNTIME_CLINE: {
       const { createClineLoopSession } = await import('./clineAgent.js')

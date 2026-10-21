@@ -8,6 +8,7 @@ import {
   resolveOpencodeExecutable,
 } from '../agents/opencodeServe.js'
 import { assertOpencodeAgentSkillsReadable } from '../agents/opencodeSkillPreflight.js'
+import { importOptionalPeer } from '../agents/optionalPeer.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
 type Runtime = 'cursor' | 'cline' | 'opencode' | 'pi' | 'codex' | 'dsh' | 'muse' | 'claude'
@@ -41,11 +42,20 @@ if (
   process.exit(1)
 }
 
-await checkRuntime(target)
+try {
+  await checkRuntime(target)
+} catch (err) {
+  console.error(err instanceof Error ? err.message : String(err))
+  process.exit(1)
+}
 
 async function checkRuntime(runtime: Runtime): Promise<void> {
   if (runtime === 'cursor') {
-    const { Agent } = await import('@cursor/sdk')
+    const { Agent } = await importOptionalPeer<typeof import('@cursor/sdk')>(
+      '@cursor/sdk',
+      'cursor',
+      '@cursor/sdk',
+    )
     const key = process.env.CURSOR_API_KEY?.trim()
     if (!key) {
       console.error('[agent-check] CURSOR_API_KEY is not set')

@@ -14,7 +14,8 @@ tags:
 **Landing page:** [looper.dancingteeth.net](https://looper.dancingteeth.net/) (static site in [`site/`](./site/)).
 
 ```bash
-pnpm add -D @dancingteeth/agent-looper
+# Core CLI only (init, setup, --version). Add the SDK for the runtime you will run:
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk   # example: Cursor worker/judge
 pnpm exec agent-loop-init
 pnpm exec agent-loop-setup    # pick worker + judge runtimes (one-screen wizard)
 # or draft a loop from an idea: pnpm exec agent-loop-prompt --out .cursor/loops/my-task
@@ -26,7 +27,7 @@ pnpm exec agent-loop run .cursor/loops/my-task
 
 Each runtime also needs its own SDK or CLI and key, e.g. `@cursor/sdk` + `CURSOR_API_KEY` for Cursor, `claude` on PATH for Claude Code, `opencode` for OpenCode. [`docs/runtime-map.md`](./docs/runtime-map.md) lists them all; `pnpm exec agent-check <runtime>` confirms one is wired. Flags and the rest are below. You do not need them for a first green run.
 
-How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md). What shipped: [`CHANGELOG.md`](./CHANGELOG.md) (current **0.8.2**). Embedding this package as a library dependency in another ADE: [`docs/embed-api.md`](./docs/embed-api.md). Reporting a vulnerability: [`SECURITY.md`](./SECURITY.md).
+How the loop is shaped: [`README.intro.md`](./README.intro.md). Technical deep dive: [`ARCHITECTURE.md`](./ARCHITECTURE.md) (including §1.1 — the harness is a small control-flow graph; the Ralph loop lives inside the worker node). npm releases: [`docs/releasing.md`](./docs/releasing.md). What shipped: [`CHANGELOG.md`](./CHANGELOG.md) (current **0.8.3**). Embedding this package as a library dependency in another ADE: [`docs/embed-api.md`](./docs/embed-api.md). Reporting a vulnerability: [`SECURITY.md`](./SECURITY.md).
 
 Supports pluggable **agent SDK** workers (`runtime`) and judges (`reviewRuntime`). Shipped today: **Cursor**, **Cline** (Pass / Credits), **OpenCode** (Go + BYOK), **Pi**, **Codex**, **DSH** (PATH `dsh`), **Muse** (PATH `muse`), **Claude** (PATH `claude`, `--safe-mode`). Defaults and cost notes: [`docs/runtime-map.md`](./docs/runtime-map.md). DSH companion for `dsh web` (skills + scaffold, not a second harness): [`docs/dsh-plugin.md`](./docs/dsh-plugin.md). OpenCode companion plugin (1.x + 2.x: skills, detached `agent_loop_start`, shell guard): [`plugins/opencode-agent-looper/`](./plugins/opencode-agent-looper/). Muse Code: [`docs/muse-runtime.md`](./docs/muse-runtime.md). Claude Code: [`docs/claude-runtime.md`](./docs/claude-runtime.md). To measure cheap-worker claims on a frozen loop: [`docs/runtime-cost-bench.md`](./docs/runtime-cost-bench.md). The judge runs on the worker's runtime when `reviewRuntime` is unset (each runtime has its own judge model, e.g. OpenCode → DeepSeek V4 Pro, Claude → Opus); set `reviewRuntime` + `reviewModel` to pair a cheap worker with a different judge.
 

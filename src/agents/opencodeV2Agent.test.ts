@@ -277,7 +277,7 @@ describe('createOpencodeV2LoopSession', () => {
     opencodeClientInstall.missing = true
     await expect(
       createOpencodeV2LoopSession({ repoRoot: '/repo', profile: repoProfileSchema.parse({}) }, baseInput),
-    ).rejects.toThrow(/@opencode\/client is not installed/)
+    ).rejects.toThrow(/Runtime "opencode" needs @opencode\/client/)
     expect(baseInput.restorePath).toHaveBeenCalled()
     opencodeClientInstall.missing = false
   })

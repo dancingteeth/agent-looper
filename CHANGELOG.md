@@ -12,6 +12,7 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+<<<<<<< HEAD
 ### Headline
 
 - **Behaviour change: verify sidecar by default** — `verifyLogMode` now defaults to `sidecar` (was `inline`). Full verify output is written under `<loop-dir>/verify-logs/` (gitignore `verify-logs/` in consumer repos); the worker prompt gets a tail-biased preview plus path. Opt into `inline` to paste capture only. In-memory capture uses head+tail with a middle elision marker (not head-only truncation).
@@ -20,6 +21,16 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 - **Expected tool-error stats** — `log.ndjson` and `run-report.md` aggregate `tool_end` errors and plain-text tool-call stalls per runtime/model for workers and judges.
 - **Transient worker SDK errors** — classify worker faults (connection stalled, `status=error`, timeouts, 5xx/rate-limit vs fatal auth/config). Retry on the next iteration with session recycle and backoff; preserve the working tree; log failure context; retain partial Cursor usage when the SDK reported it. Cap consecutive transients (`maxConsecutiveTransientAgentErrors`, default 3) then park (`agent_transient_exhausted`).
 - **Secondary review errors** — a failed optional `reviewSecondary` merge session is logged and noted in `review.md`; the primary verdict alone decides completion.
+=======
+## 0.8.3 — 2026-10-21
+
+Fix clean installs that omit optional runtime SDK peers.
+
+### Headline
+
+- **Lazy optional peers** — the CLI no longer statically imports `@cursor/sdk` (or other runtime SDKs) at startup. `agent-loop --version`, `--help`, `agent-loop-init`, and `agent-check` for a non-Cursor runtime work with only `@dancingteeth/agent-looper` installed. Selecting a runtime whose SDK is missing fails with an actionable install line (`Runtime "cursor" needs @cursor/sdk: pnpm add -D @cursor/sdk`) instead of `ERR_MODULE_NOT_FOUND`.
+- **CI: npm pack smoke** — packs the tarball, installs it in a temp project with zero optional peers, and asserts `--version` / `--help` plus the friendly missing-SDK error; also checks OpenCode-only peers without `@cursor/sdk`.
+>>>>>>> 7a955f9 (fix: lazy-load optional runtime SDK peers (0.8.3))
 
 ## 0.8.2 — 2026-10-20
 

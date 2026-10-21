@@ -39,6 +39,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm build
+      - name: Clean install pack smoke (no optional peers)
+        run: node --test scripts/clean-install-pack.test.mjs
       - name: Compile DSH companion plugin
         run: pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json
       - name: Compile OpenCode companion plugin

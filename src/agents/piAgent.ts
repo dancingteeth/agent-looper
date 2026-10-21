@@ -3,6 +3,7 @@ import type { AgentRunResult } from './agentRunResult.js'
 import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
+import { importOptionalPeer } from './optionalPeer.js'
 import {
   LOOP_RUNTIME_PI,
   parseProviderModel,
@@ -104,7 +105,11 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
         SessionManager,
         DefaultResourceLoader,
         getAgentDir,
-      } = await import('@earendil-works/pi-coding-agent')
+      } = await importOptionalPeer<typeof import('@earendil-works/pi-coding-agent')>(
+        '@earendil-works/pi-coding-agent',
+        'pi',
+        '@earendil-works/pi-coding-agent',
+      )
       const { getModel } = await import('@earendil-works/pi-ai/compat')
 
       const resolvePiModel = getModel as (

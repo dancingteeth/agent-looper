@@ -10,6 +10,7 @@ import {
 import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
+import { importOptionalPeer } from './optionalPeer.js'
 import { readPackageVersion } from '../telemetry/looperTelemetry.js'
 import {
   listChildPids,
@@ -182,13 +183,7 @@ function readMuseUsage(
 }
 
 async function loadMuseSdk(): Promise<MuseSdkModule> {
-  try {
-    return (await import('@muse-code/sdk')) as MuseSdkModule
-  } catch {
-    throw new Error(
-      '@muse-code/sdk is not installed. Install with: pnpm add -D @muse-code/sdk',
-    )
-  }
+  return importOptionalPeer<MuseSdkModule>('@muse-code/sdk', 'muse', '@muse-code/sdk')
 }
 
 type OwnedMuseServe = {

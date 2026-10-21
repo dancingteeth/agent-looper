@@ -1,6 +1,6 @@
 import path from 'node:path'
-import { Agent, CursorAgentError, JsonlLocalAgentStore } from '@cursor/sdk'
 import type { RepoContext } from '../context/repoContext.js'
+import { importOptionalPeer } from './optionalPeer.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import {
   CURSOR_WORKER_MODEL,
@@ -93,11 +93,19 @@ function requireApiKey(): string {
   return apiKey
 }
 
+type CursorSdkModule = typeof import('@cursor/sdk')
+
+async function loadCursorSdk(): Promise<CursorSdkModule> {
+  return importOptionalPeer('@cursor/sdk', 'cursor', '@cursor/sdk')
+}
+
 export async function runCursorAgentPrompt(
   ctx: RepoContext,
   prompt: string,
   options: CursorAgentRunOptions = {},
 ): Promise<AgentRunResult> {
+  const { Agent, CursorAgentError, JsonlLocalAgentStore } = await loadCursorSdk()
+
   const role = options.role ?? 'worker'
   const modelId = options.modelId ?? CURSOR_WORKER_MODEL
   assertCursorSdkModelAllowed(modelId, role)

@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Fix-until-green harness for coding agents: frozen goal + verify.sh, a fresh worker each round, optional judge review. Works with Cursor, Claude Code, Codex, OpenCode, Cline, Pi, DSH, and Muse.",
   "keywords": [
     "agent",
@@ -65,8 +65,8 @@
     "test:opencode-plugin:deps": "pnpm --dir plugins/opencode-agent-looper install --frozen-lockfile --ignore-scripts && node plugins/opencode-agent-looper/scripts/sync-skills.mjs",
     "sync:models": "node scripts/sync-model-catalog.mjs",
     "sync:models:check": "node scripts/sync-model-catalog.mjs --check",
-    "test": "pnpm test:dsh-plugin:deps && pnpm test:opencode-plugin:deps && vitest run && node --test scripts/prepare-package.test.mjs && node --test scripts/sync-model-catalog.test.mjs && node --test plugins/agent-looper/skills/check-running-loops/check-running-loops.test.mjs",
-    "test:coverage": "pnpm test:dsh-plugin:deps && pnpm test:opencode-plugin:deps && vitest run --coverage && node --test scripts/prepare-package.test.mjs && node --test scripts/sync-model-catalog.test.mjs && node --test plugins/agent-looper/skills/check-running-loops/check-running-loops.test.mjs",
+    "test": "pnpm test:dsh-plugin:deps && pnpm test:opencode-plugin:deps && vitest run && node --test scripts/prepare-package.test.mjs && node --test scripts/sync-model-catalog.test.mjs && node --test scripts/clean-install-pack.test.mjs && node --test plugins/agent-looper/skills/check-running-loops/check-running-loops.test.mjs",
+    "test:coverage": "pnpm test:dsh-plugin:deps && pnpm test:opencode-plugin:deps && vitest run --coverage && node --test scripts/prepare-package.test.mjs && node --test scripts/sync-model-catalog.test.mjs && node --test scripts/clean-install-pack.test.mjs && node --test plugins/agent-looper/skills/check-running-loops/check-running-loops.test.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "agent:init": "node dist/cli/init.js",

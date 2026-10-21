@@ -4,6 +4,7 @@ import { buildLoopSystemPrompt } from './loopSystemPrompt.js'
 import { assertPosixShell } from './shellPreflight.js'
 import { resolveInnerAgentStatus } from './innerAgentStatus.js'
 import { LOOP_RUNTIME_CODEX } from '../loop/loopAgentConfig.js'
+import { importOptionalPeer } from './optionalPeer.js'
 import { createUsageRecord, formatUsageRecordLog } from '../usage/loopUsage.js'
 import { emitAssistantText } from '../stream/assistantStream.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
@@ -100,14 +101,11 @@ export async function createCodexLoopSession(ctx: RepoContext): Promise<CodexLoo
     async runPrompt(prompt, options) {
       const phase = options.phase ?? 'implement'
 
-      let CodexCtor: typeof import('@openai/codex-sdk').Codex
-      try {
-        ;({ Codex: CodexCtor } = await import('@openai/codex-sdk'))
-      } catch {
-        throw new Error(
-          '@openai/codex-sdk is not installed. Install with: pnpm add -D @openai/codex-sdk',
-        )
-      }
+      const { Codex: CodexCtor } = await importOptionalPeer<typeof import('@openai/codex-sdk')>(
+        '@openai/codex-sdk',
+        'codex',
+        '@openai/codex-sdk',
+      )
 
       const apiKey =
         process.env.CODEX_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || undefined
