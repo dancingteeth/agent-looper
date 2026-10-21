@@ -1,5 +1,6 @@
-import { ClineCore, type CoreSessionEvent, type ClineCore as ClineCoreType } from '@cline/sdk'
+import type { CoreSessionEvent, ClineCore as ClineCoreType } from '@cline/sdk'
 import type { RepoContext } from '../context/repoContext.js'
+import { importOptionalPeer } from './optionalPeer.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import { handleClineSessionEvent } from '../stream/streamClineSession.js'
 import type { StreamCollector } from '../stream/streamCollect.js'
@@ -162,11 +163,19 @@ export type ClineLoopSession = {
   dispose(): Promise<void>
 }
 
-export async function createClineLoopSession(ctx: RepoContext): Promise<ClineLoopSession> {
+export async function createClineLoopSession(
+  ctx: RepoContext,
+  runtimeLabel: ClineProviderId = LOOP_RUNTIME_CLINE_PASS,
+): Promise<ClineLoopSession> {
   await assertPosixShell()
   const apiKey = requireClineApiKey()
   const systemPrompt = buildLoopSystemPrompt(ctx)
   const clientName = ctx.profile.clientName
+  const { ClineCore } = await importOptionalPeer<typeof import('@cline/sdk')>(
+    '@cline/sdk',
+    runtimeLabel,
+    '@cline/sdk',
+  )
 
   // backendMode: local is in-process (no Cline hub daemon). Still watch children of
   // this Node — MCP tool processes — and never hunt PID-1 `.cline --cline-hub-daemon`
@@ -274,7 +283,10 @@ export async function runClineAgentPrompt(
   prompt: string,
   options: ClineAgentRunOptions,
 ): Promise<AgentRunResult> {
-  const session = await createClineLoopSession(ctx)
+  const session = await createClineLoopSession(
+    ctx,
+    resolveClineProviderId(options.providerId),
+  )
   try {
     return await session.runPrompt(prompt, options)
   } finally {

@@ -11,6 +11,7 @@ import {
 import { bootstrapOpencodeProviderAuth, assertOpencodeProviderAuthReady } from './opencodeAuth.js'
 import { assertOpencodeAgentSkillsReadable, opencodeDanglingSkillHint } from './opencodeSkillPreflight.js'
 import { formatErrorChain, isTransportAgentError } from './errorFormat.js'
+import { importOptionalPeer } from './optionalPeer.js'
 import {
   OPENCODE_SESSION_TIMEOUT_MS,
   pickLatestAssistantMessage,
@@ -181,7 +182,11 @@ export async function createOpencodeLoopSession(ctx: RepoContext): Promise<Openc
 
   let createOpencodeClient: typeof import('@opencode-ai/sdk').createOpencodeClient
   try {
-    ;({ createOpencodeClient } = await import('@opencode-ai/sdk'))
+    ;({ createOpencodeClient } = await importOptionalPeer(
+      '@opencode-ai/sdk',
+      'opencode',
+      ['@opencode-ai/sdk', 'opencode-ai'],
+    ))
   } catch (err) {
     restorePath()
     throw err

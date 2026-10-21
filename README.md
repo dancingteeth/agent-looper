@@ -14,7 +14,8 @@ tags:
 **Landing page:** [looper.dancingteeth.net](https://looper.dancingteeth.net/) (static site in [`site/`](./site/)).
 
 ```bash
-pnpm add -D @dancingteeth/agent-looper
+# Core CLI only (init, setup, --version). Add the SDK for the runtime you will run:
+pnpm add -D @dancingteeth/agent-looper @cursor/sdk   # example: Cursor worker/judge
 pnpm exec agent-loop-init
 pnpm exec agent-loop-setup    # pick worker + judge runtimes (one-screen wizard)
 # or draft a loop from an idea: pnpm exec agent-loop-prompt --out .cursor/loops/my-task

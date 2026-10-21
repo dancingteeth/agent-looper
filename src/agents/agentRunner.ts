@@ -1,5 +1,4 @@
 import type { RepoContext } from '../context/repoContext.js'
-import { runCursorAgentPrompt } from './cursorAgent.js'
 import type { AgentRunResult } from './agentRunResult.js'
 import {
   isClineSdkRuntime,
@@ -61,7 +60,10 @@ export type LoopAgentSession = {
   dispose(): Promise<void>
 }
 
-function createCursorRunner(ctx: RepoContext): PromptRunner {
+function createCursorRunner(
+  ctx: RepoContext,
+  runCursorAgentPrompt: typeof import('./cursorAgent.js').runCursorAgentPrompt,
+): PromptRunner {
   return (prompt, agent, options) => {
     if (agent.runtime !== LOOP_RUNTIME_CURSOR) {
       throw new Error('Cursor runner invoked for non-cursor agent')
@@ -193,7 +195,8 @@ export async function createLoopAgentSession(
   const { runtime } = resolveLoopAgent(config)
 
   if (runtime === LOOP_RUNTIME_CURSOR) {
-    const runner = createCursorRunner(ctx)
+    const { runCursorAgentPrompt } = await import('./cursorAgent.js')
+    const runner = createCursorRunner(ctx, runCursorAgentPrompt)
     return {
       runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),
       dispose: async () => undefined,
@@ -271,7 +274,7 @@ export async function createLoopAgentSession(
   // Dynamic import: @cline/sdk is an optional peer. Cursor-only consumers must not
   // load clineAgent (and thus @cline/sdk) at module evaluation time.
   const { createClineLoopSession } = await import('./clineAgent.js')
-  const cline = await createClineLoopSession(ctx)
+  const cline = await createClineLoopSession(ctx, runtime)
   const runner = createClineRunner(cline)
   return {
     runIterationPrompt: (prompt, agent, options) => runner(prompt, agent, options),

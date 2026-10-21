@@ -6,6 +6,7 @@ import { LOOP_RUNTIME_OPENCODE, parseProviderModel } from '../loop/loopAgentConf
 import { assertOpencodeProviderAuthReady, bootstrapOpencodeV2ProviderAuth } from './opencodeAuth.js'
 import { opencodeDanglingSkillHint } from './opencodeSkillPreflight.js'
 import { formatErrorChain } from './errorFormat.js'
+import { isOptionalPeerModuleNotFound, missingOptionalPeerMessage } from './optionalPeer.js'
 import {
   OPENCODE_SESSION_TIMEOUT_MS,
   adaptOpencodeV2Events,
@@ -91,13 +92,14 @@ export async function createOpencodeV2LoopSession(
 
   let OpenCode: typeof import('@opencode/client').OpenCode
   try {
-    ;({ OpenCode } = await import('@opencode/client'))
-  } catch {
+    const mod = await import('@opencode/client')
+    ;({ OpenCode } = mod)
+  } catch (err) {
     input.restorePath()
-    throw new Error(
-      'OpenCode 2.x CLI detected but @opencode/client is not installed. ' +
-        'Install it (pnpm add -D @opencode/client), or pin the 1.x CLI (pnpm add -D opencode-ai@^1).',
-    )
+    if (isOptionalPeerModuleNotFound(err, '@opencode/client')) {
+      throw new Error(missingOptionalPeerMessage('opencode', '@opencode/client'))
+    }
+    throw err
   }
 
   const port = await reserveFreePort()
