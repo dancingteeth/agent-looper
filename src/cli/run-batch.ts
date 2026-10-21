@@ -87,7 +87,7 @@ let emitCompletionSignal = shouldEmitLoopCompletionSignal({
 })
 
 async function finishBatchExit(input: {
-  exitCode: 0 | 1 | 2
+  exitCode: 0 | 1 | 2 | 3
   complete: boolean
   reason: string
   loopsRun?: number

@@ -14,7 +14,8 @@ export type LoopCompletionSignalPayload = {
   /** Bundle or batch path relative to repo root when known. */
   bundle: string
   complete: boolean
-  exitCode: 0 | 1 | 2
+  /** 0 success · 1 fatal · 2 incomplete · 3 parked (waiting) */
+  exitCode: 0 | 1 | 2 | 3
   reason: string
   iterations?: number
   loopsRun?: number
@@ -53,7 +54,8 @@ export function emitLoopCompletionSignal(payload: LoopCompletionSignalPayload): 
 export function exitWithLoopCompletionSignal(input: {
   emit: boolean
   payload: LoopCompletionSignalPayload
-  exitCode: 0 | 1 | 2
+  /** 0 success · 1 fatal · 2 incomplete · 3 parked (waiting) */
+  exitCode: 0 | 1 | 2 | 3
 }): never {
   if (input.emit) {
     emitLoopCompletionSignal(input.payload)

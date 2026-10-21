@@ -341,15 +341,19 @@ CLI overrides: `--mode reverse`, `--pause-after-iteration`, `--review-gate`, `--
 When `reviewGate: true` and verify passes:
 
 ```text
-primary review (reviewRuntime + reviewModel; default cursor)
+primary review (reviewRuntime + reviewModel)
   → optional reviewReproduce path filter
   → optional reviewReproduceAgent KEEP/DROP
-  → optional reviewSecondaryRuntime merge
+  → optional reviewSecondaryRuntime merge (verdict merge, not error fallback)
   → gating blockers remain? → fix iteration (up to maxReviewCycles)
   → else PASS / ADVISORY → complete
 ```
 
+If the **primary judge session errors** (timeout, provider fault, text-with-no-tool-calls), the harness retries once, then runs **`reviewSecondary`** as a fallback judge. When both fail, the run **parks** (`status: waiting`, CLI exit `0`, `failure-domains.ndjson` reason `review_judge_failed`) — verify already passed.
+
 Unparseable verdicts retry (`unparseableReviewRetries`). Gate exhaust can escalate to HITL (`reviewGateHitl`). Gating bullets (`severity: error` + a recognized impact tag) keep the gate open even if a later `### Verdict — PASS` heading appears in the same `review.md`. Heading vs body token disagreement with no gating bullets is unparseable.
+
+`run-report.md` includes **billing token** rows (uncached in / out / cache read / cache write by worker vs judge) and an **expected tool errors** table when any session recorded `tool_end` failures or plain-text tool stalls.
 
 ## Ralph loop alignment
 
@@ -517,6 +521,15 @@ Example payload:
 ```text
 AGENT_LOOP_DONE {"v":1,"kind":"loop","bundle":".cursor/loops/my-task","complete":true,"exitCode":0,"reason":"Verifier passed (exit 0).","iterations":2,"runReport":".cursor/loops/my-task/run-report.md"}
 ```
+
+`exitCode` in the JSON matches the CLI process exit code:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success (`complete: true`) |
+| `1` | Fatal harness error (uncaught throw, bad argv) |
+| `2` | Incomplete — verify/review gate/stagnation (`status: continue`) |
+| `3` | Parked — budget, env/setup, judge unavailable, or too many transient worker agent errors (`status: waiting`; `complete: false`) |
 
 Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout is not lost before `process.exit`. Side channels (`notifyWebhook` / `notifyCommand` / PR comment) run **after** the sentinel and are time-capped so a hung hook cannot delay wake.
 

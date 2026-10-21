@@ -19,7 +19,7 @@ export type PostLoopCompletionChannelsInput = {
   kind: 'loop' | 'batch'
   bundleLabel: string
   complete: boolean
-  exitCode: 0 | 1 | 2
+  exitCode: 0 | 1 | 2 | 3
   reason: string
   report?: string
   iterations?: number

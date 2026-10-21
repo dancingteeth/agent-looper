@@ -59,8 +59,8 @@ describe('resolveLoopCliExitCode', () => {
     expect(resolveLoopCliExitCode({ complete: true, status: 'done' })).toBe(0)
   })
 
-  it('returns 0 for waiting parks', () => {
-    expect(resolveLoopCliExitCode({ complete: false, status: 'waiting' })).toBe(0)
+  it('returns 3 for waiting parks', () => {
+    expect(resolveLoopCliExitCode({ complete: false, status: 'waiting' })).toBe(3)
   })
 
   it('returns 2 for continue incomplete runs', () => {

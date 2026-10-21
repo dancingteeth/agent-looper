@@ -11,7 +11,7 @@ export type RunLoopNotifyCommandInput = {
   kind: LoopNotifyCommandKind
   bundle: string
   complete: boolean
-  exitCode: 0 | 1 | 2
+  exitCode: 0 | 1 | 2 | 3
   reason: string
   /** Short report body (same shape as Telegram completion text when available). */
   report?: string

@@ -11,7 +11,12 @@ import { buildAgentLoopPrompt } from './loopPrompt.js'
 import { loadLoopResearchSection, resolveLoopResearchRelativePath } from './loopResearch.js'
 import { detectStagnation } from './loopStagnation.js'
 import { resolveStagnationPolicy } from './loopStagnationPolicy.js'
-import { logFailureDomainFromVerify, logFailureDomainFromAgentError } from './loopFailureDomain.js'
+import {
+  AGENT_SDK_VERIFY_COMMAND,
+  appendFailureDomain,
+  logFailureDomainFromVerify,
+  logFailureDomainFromAgentError,
+} from './loopFailureDomain.js'
 import { readFailureContext } from './loopFailureContext.js'
 import { pauseForContinue } from './loopPause.js'
 import { createHitlCheckpoint, hitlLoopOverridesFrom } from '../integrations/hitlCheckpoint.js'
@@ -62,7 +67,12 @@ import {
   sleep,
   workerSdkVerifyResult,
 } from './loopWorkerRetry.js'
-
+import { appendWorkerAgentFailureContext } from './loopWorkerFailureContext.js'
+import {
+  classifyWorkerAgentError,
+  extractPartialWorkerRun,
+  TRANSIENT_AGENT_ITERATION_BACKOFF_MS,
+} from './loopWorkerAgentError.js'
 export type { LoopIterationLog } from './loopIterationLog.js'
 
 /**
@@ -94,13 +104,28 @@ export type AgentLoopResult = {
   setup?: VerifyResult
 }
 
-/** CLI exit: waiting parks (budget, env, judge down) exit 0; incomplete loops exit 2. */
+/** CLI exit when the loop completed successfully (verify + optional review). */
+export const LOOP_EXIT_SUCCESS = 0
+/** CLI exit for harness/bootstrap fatals (uncaught throw, missing bundle). */
+export const LOOP_EXIT_FATAL = 1
+/** CLI exit when the loop ended incomplete (verify/review gate/stagnation) but not parked. */
+export const LOOP_EXIT_INCOMPLETE = 2
+/** CLI exit when the run is parked for human/provider recovery (budget, env, judge down, agent cap). */
+export const LOOP_EXIT_PARKED = 3
+
+export type LoopCliExitCode =
+  | typeof LOOP_EXIT_SUCCESS
+  | typeof LOOP_EXIT_FATAL
+  | typeof LOOP_EXIT_INCOMPLETE
+  | typeof LOOP_EXIT_PARKED
+
+/** Map loop result → process exit code for agent-loop / AGENT_LOOP_DONE. */
 export function resolveLoopCliExitCode(
   result: Pick<AgentLoopResult, 'complete' | 'status'>,
-): 0 | 2 {
-  if (result.complete) return 0
-  if (result.status === 'waiting') return 0
-  return 2
+): LoopCliExitCode {
+  if (result.complete) return LOOP_EXIT_SUCCESS
+  if (result.status === 'waiting') return LOOP_EXIT_PARKED
+  return LOOP_EXIT_INCOMPLETE
 }
 
 export function deriveLoopRunStatus(
@@ -418,6 +443,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     const session = agentSession ?? (await createLoopAgentSession(config, ctx))
     agentSession = session
 
+    let consecutiveTransientAgentErrors = 0
+
     for (let i = 1; i <= config.maxIterations; i++) {
       iterations = i
       options.onIterationStart?.(i)
@@ -484,6 +511,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       } catch (err) {
         const escalate = shouldEscalateAfterWorkerFault(err, config, iterationAgent, i)
         const message = formatErrorChain(err)
+        const partialRun = extractPartialWorkerRun(err)
+        if (partialRun?.usage) {
+          usageSummary = addUsageRecord(usageSummary, partialRun.usage)
+        }
+        if (classifyWorkerAgentError(err) === 'fatal') {
+          throw err
+        }
+
         const workerFaultVerify = workerSdkVerifyResult(
           message,
           escalate ? config.escalateModel : undefined,
@@ -495,6 +530,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           runtime: config.runtime,
           model: iterationAgent.model,
           agentErrorMessage: message,
+          transcriptEvents: partialRun?.transcriptEvents,
         })
         appendJsonlLine(
           logPath,
@@ -502,23 +538,59 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             iteration: i,
             git,
             verify: workerFaultVerify,
-            assistantText: '',
+            assistantText: partialRun?.text ?? '',
             model: iterationAgent.model,
             reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+            usage: partialRun?.usage,
             durationsMs: { worker: elapsedMs(workerStartedAt) },
             ...(faultToolErrors ? { toolErrorStats: [faultToolErrors] } : {}),
           }),
         )
-        if (!escalate) throw err
-        console.error(
-          `[agent-loop] worker fault during iteration ${i} — switching to ${config.escalateModel} next: ${message}`,
-        )
+        appendWorkerAgentFailureContext(bundle.loopDir, {
+          iteration: i,
+          message,
+          verify: workerFaultVerify,
+        })
         logFailureDomainFromAgentError(bundle.loopDir, { iteration: i, message })
-        workerFaults += 1
+        consecutiveTransientAgentErrors += 1
+        if (consecutiveTransientAgentErrors >= config.maxConsecutiveTransientAgentErrors) {
+          appendFailureDomain(bundle.loopDir, {
+            iteration: i,
+            reason: 'agent_transient_exhausted',
+            fingerprint: `agent_transient_exhausted|${consecutiveTransientAgentErrors}`,
+            verify: {
+              command: AGENT_SDK_VERIFY_COMMAND,
+              exitCode: null,
+              reason: message.slice(0, 500),
+            },
+            status: 'waiting',
+            repeatCount: consecutiveTransientAgentErrors,
+          })
+          return finish({
+            complete: false,
+            iterations: i,
+            completionReason: `Worker agent: ${consecutiveTransientAgentErrors} consecutive transient error(s) (cap ${config.maxConsecutiveTransientAgentErrors}). Last: ${message}`,
+            lastVerify,
+            logPath,
+            status: 'waiting',
+          })
+        }
+        if (escalate) {
+          console.error(
+            `[agent-loop] worker fault during iteration ${i} — switching to ${config.escalateModel} next: ${message}`,
+          )
+          workerFaults += 1
+        } else {
+          console.error(
+            `[agent-loop] transient worker agent error during iteration ${i} — continuing after backoff: ${message}`,
+          )
+        }
         await recycleWorkerSession(session)
+        await sleep(TRANSIENT_AGENT_ITERATION_BACKOFF_MS)
         await maybePauseAfterIteration(config, i)
         continue
       }
+      consecutiveTransientAgentErrors = 0
       usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
       const budgetStop = await stopOnBudget(i)
       if (budgetStop) return budgetStop
@@ -799,12 +871,16 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     })
   } catch (err) {
     const message = formatErrorChain(err)
-    console.error(`[agent-loop] agent SDK error during iteration ${iterations}: ${message}`)
+    const partialRun = extractPartialWorkerRun(err)
+    if (partialRun?.usage) {
+      usageSummary = addUsageRecord(usageSummary, partialRun.usage)
+    }
+    console.error(`[agent-loop] fatal agent SDK error during iteration ${iterations}: ${message}`)
     logFailureDomainFromAgentError(bundle.loopDir, { iteration: iterations, message })
     return finish({
       complete: false,
       iterations,
-      completionReason: `Agent SDK error during iteration ${iterations}: ${message}`,
+      completionReason: `Agent SDK error (fatal) during iteration ${iterations}: ${message}`,
       lastVerify,
       logPath,
     })

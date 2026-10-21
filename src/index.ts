@@ -19,7 +19,12 @@ export {
   runAgentLoop,
   deriveLoopRunStatus,
   resolveLoopCliExitCode,
+  LOOP_EXIT_SUCCESS,
+  LOOP_EXIT_FATAL,
+  LOOP_EXIT_INCOMPLETE,
+  LOOP_EXIT_PARKED,
 } from './loop/agentLoop.js'
+export type { LoopCliExitCode } from './loop/agentLoop.js'
 export type {
   AgentLoopResult,
   AgentLoopOptions,

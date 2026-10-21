@@ -19,6 +19,7 @@ describe('loopConfigSchema', () => {
   it('applies defaults', () => {
     const parsed = loopConfigSchema.parse({ verify: 'true' })
     expect(parsed.maxIterations).toBe(8)
+    expect(parsed.maxConsecutiveTransientAgentErrors).toBe(3)
     expect(parsed.delayMs).toBe(1500)
     expect(parsed.verifyLogMode).toBe('sidecar')
     expect(parsed.skillDisclosure).toBe('index')
