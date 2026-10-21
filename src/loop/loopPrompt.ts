@@ -83,13 +83,19 @@ The verifier failed **${input.stagnationRepeatCount}** times with the same outpu
       : ''
 
   const rulesSection = renderLoopPromptRulesSection(agentsFile)
-  const factsSection = buildFactsPromptSection(input.verifyCommand, input.deliverables)
+  // Optional stable-head blocks after the rules. Each starts on its own line after a
+  // blank line (the rules block has no trailing newline); with none set, the head is
+  // byte-identical to a prompt without facts.
+  const stableHeadExtras = [buildFactsPromptSection(input.verifyCommand, input.deliverables)]
+    .filter(Boolean)
+    .map((section) => `\n\n${section}`)
+    .join('')
   const batchRubricSection = buildBatchRubricSection(input.batchRubric)
   const plainTextToolCallSection = input.plainTextToolCallWarning
     ? buildPlainTextToolCallWarningSection()
     : ''
 
-  // Stable head first (intro + goal + skills + research + mode + rules) so the prompt
+  // Stable head first (intro + goal + skills + research + mode + rules + ## Facts) so the prompt
   // prefix is byte-identical across iterations and the provider prefix cache is reused.
   // Volatile content (git snapshot, batch rubric, verifier results, failures, stagnation,
   // review guides, failure context) and the iteration counter go last.
@@ -100,7 +106,8 @@ An external shell verifier decides success — do not claim the task is finished
 
 ${input.goal}
 
-${skillsSection}${researchSection}${modeSection}${rulesSection}${factsSection}
+${skillsSection}${researchSection}${modeSection}${rulesSection}${stableHeadExtras}
+
 ## Workspace (git)
 
 - Branch: ${input.git.branch}
@@ -137,14 +144,15 @@ function buildFactsPromptSection(
   }
   const lines: string[] = []
   if (verifyCommand?.trim()) {
-    lines.push(`- Verifier command: \`${verifyCommand.trim()}\``)
+    // Exactly as the shell runs it — no trimming.
+    lines.push(`- Verifier command: \`${verifyCommand}\``)
   }
   if (deliverables && deliverables.length > 0) {
     lines.push(
       `- Deliverables: ${deliverables.map((p) => `\`${p}\``).join(', ')}`,
     )
   }
-  return `\n\n## Facts\n\n${lines.join('\n')}\n`
+  return `## Facts\n\n${lines.join('\n')}`
 }
 
 function buildBatchRubricSection(batchRubric?: string): string {

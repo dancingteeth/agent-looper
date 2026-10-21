@@ -286,6 +286,37 @@ describe('buildAgentLoopPrompt', () => {
     expect(factsBlock).toContain('docs/out.md')
   })
 
+  it('starts Facts and Workspace headings on their own line after a blank line', () => {
+    const git = { branch: 'main', shortSha: 'abc', diffStat: '', statusPorcelain: '' }
+    const base = { goal: 'g', iteration: 1, maxIterations: 3, git, lastVerify: null, priorFailures: [] }
+    const variants = [
+      buildAgentLoopPrompt(base),
+      buildAgentLoopPrompt({ ...base, verifyCommand: 'bash verify.sh' }),
+      buildAgentLoopPrompt({ ...base, verifyCommand: 'bash verify.sh', deliverables: ['a.md'] }),
+    ]
+    for (const prompt of variants) {
+      expect(prompt).toMatch(/[^\n]\n\n## Workspace \(git\)\n/)
+      expect(prompt).not.toMatch(/\n{3,}## /)
+    }
+    expect(variants[1]).toMatch(/[^\n]\n\n## Facts\n/)
+    expect(variants[2]).toMatch(/[^\n]\n\n## Facts\n/)
+    // No extras: the rules block is followed directly by a blank line and the workspace.
+    expect(variants[0]).toMatch(/through the tool interface\.\n\n## Workspace \(git\)/)
+  })
+
+  it('shows the verifier command exactly as configured (no trimming)', () => {
+    const prompt = buildAgentLoopPrompt({
+      goal: 'g',
+      iteration: 1,
+      maxIterations: 3,
+      git: { branch: 'main', shortSha: 'abc', diffStat: '', statusPorcelain: '' },
+      lastVerify: null,
+      priorFailures: [],
+      verifyCommand: '  bash verify.sh ',
+    })
+    expect(prompt).toContain('- Verifier command: `  bash verify.sh `')
+  })
+
   it('adds plain-text tool call warning in the volatile tail when requested', () => {
     const prompt = buildAgentLoopPrompt({
       goal: 'g',
