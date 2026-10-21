@@ -355,6 +355,37 @@ describe('loopPostReview', () => {
     stderrSpy.mockRestore()
   })
 
+  it('keeps the primary verdict when secondary review throws', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    runReviewAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**PASS**', '', '### Blockers', '- none'].join('\n'),
+    })
+    runReviewAgentPrompt.mockRejectedValueOnce(
+      new Error('Cursor agent run failed (status=error)'),
+    )
+
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const result = await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      reviewGate: true,
+      reviewSecondaryRuntime: 'cursor',
+    })
+
+    expect(result.parsed.verdict).toBe('PASS')
+    expect(result.secondaryReviewSkippedReason).toBe('error')
+    const reviewMd = fs.readFileSync(path.join(loopDir, 'review.md'), 'utf8')
+    expect(reviewMd).toContain('primary verdict stands')
+    expect(stderrSpy.mock.calls.some((c) => String(c[0]).includes('secondary review failed'))).toBe(
+      true,
+    )
+
+    stderrSpy.mockRestore()
+  })
+
   it('defaults Cursor secondary to composer-2.5 when worker is not cursor', async () => {
     const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
     const ctx = {

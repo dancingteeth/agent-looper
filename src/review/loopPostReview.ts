@@ -26,6 +26,7 @@ import {
   formatSecondaryMergeFooter,
   mergePrimarySecondaryReviews,
 } from './reviewReproduce.js'
+import { partialAgentRunFromError } from '../agents/agentRunFailed.js'
 import { summarizeSessionToolErrors, type ToolErrorStatRow } from '../loop/loopToolErrors.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
@@ -291,25 +292,42 @@ async function maybeRunSecondaryReview(
   console.error(
     `[agent-loop] secondary review: running (${agent.runtime}, model=${agent.model}, gating=${blockingBlockers(parsed).length})`,
   )
-  const run = await runReviewAgentPrompt(ctx, prompt, agent, { verbose: options.verbose })
-  const secondaryParsed = parseReviewMarkdown(run.text)
-  const merged = mergePrimarySecondaryReviews(parsed, secondaryParsed)
-  const mergeFooter = formatSecondaryMergeFooter(merged.secondaryOnly)
-  const secondarySection = `\n\n### Secondary review (${agent.runtime}/${agent.model})\n${run.text.trim()}\n`
-  const mergedText = `${text.trim()}${secondarySection}${mergeFooter}`
-  if (merged.secondaryOnly.length > 0) {
+  try {
+    const run = await runReviewAgentPrompt(ctx, prompt, agent, { verbose: options.verbose })
+    const secondaryParsed = parseReviewMarkdown(run.text)
+    const merged = mergePrimarySecondaryReviews(parsed, secondaryParsed)
+    const mergeFooter = formatSecondaryMergeFooter(merged.secondaryOnly)
+    const secondarySection = `\n\n### Secondary review (${agent.runtime}/${agent.model})\n${run.text.trim()}\n`
+    const mergedText = `${text.trim()}${secondarySection}${mergeFooter}`
+    if (merged.secondaryOnly.length > 0) {
+      console.error(
+        `[agent-loop] secondary review: merged ${merged.secondaryOnly.length} secondary-only gating blocker(s)`,
+      )
+    } else {
+      console.error('[agent-loop] secondary review: no new gating blockers from secondary judge')
+    }
+    return {
+      parsed: merged.parsed,
+      text: mergedText,
+      secondaryOnlyCount: merged.secondaryOnly.length,
+      secondaryModel: agent.model,
+      usage: run.usage,
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const partial = partialAgentRunFromError(err)
     console.error(
-      `[agent-loop] secondary review: merged ${merged.secondaryOnly.length} secondary-only gating blocker(s)`,
+      `[agent-loop] secondary review failed (primary verdict stands): ${message}`,
     )
-  } else {
-    console.error('[agent-loop] secondary review: no new gating blockers from secondary judge')
-  }
-  return {
-    parsed: merged.parsed,
-    text: mergedText,
-    secondaryOnlyCount: merged.secondaryOnly.length,
-    secondaryModel: agent.model,
-    usage: run.usage,
+    const failureSection = `\n\n### Secondary review (${agent.runtime}/${agent.model})\n_Secondary session failed — primary verdict stands._\n\n\`\`\`\n${message.trim()}\n\`\`\`\n`
+    return {
+      parsed,
+      text: `${text.trim()}${failureSection}`,
+      secondaryOnlyCount: 0,
+      secondaryModel: agent.model,
+      skippedReason: 'error',
+      usage: partial?.usage,
+    }
   }
 }
 
