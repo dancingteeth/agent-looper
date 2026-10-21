@@ -1,6 +1,6 @@
 {
   "name": "@dancingteeth/agent-looper",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Fix-until-green harness for coding agents: frozen goal + verify.sh, a fresh worker each round, optional judge review. Works with Cursor, Claude Code, Codex, OpenCode, Cline, Pi, DSH, and Muse.",
   "keywords": [
     "agent",
