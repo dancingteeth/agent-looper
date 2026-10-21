@@ -4,6 +4,7 @@ import { buildFailureContextPromptSection } from './loopFailureContext.js'
 import type { GitWorkspaceSnapshot } from './loopGit.js'
 import type { VerifyResult } from './loopVerify.js'
 import { renderLoopPromptRulesSection } from './loopSafetyRules.js'
+import { buildPlainTextToolCallWarningSection } from './loopToolCallText.js'
 import {
   formatGuidePacketsForPrompt,
   type GuidePacket,
@@ -30,6 +31,12 @@ export type LoopPromptInput = {
   batchRubric?: string
   mode?: LoopMode
   failureContext?: string
+  /** Shell verifier command (stable prompt head). */
+  verifyCommand?: string
+  /** Repo-relative deliverable paths (stable prompt head). */
+  deliverables?: string[]
+  /** When true, warn that the previous worker reply used plain-text tool calls. */
+  plainTextToolCallWarning?: boolean
 }
 
 export function buildAgentLoopPrompt(input: LoopPromptInput): string {
@@ -76,7 +83,11 @@ The verifier failed **${input.stagnationRepeatCount}** times with the same outpu
       : ''
 
   const rulesSection = renderLoopPromptRulesSection(agentsFile)
+  const factsSection = buildFactsPromptSection(input.verifyCommand, input.deliverables)
   const batchRubricSection = buildBatchRubricSection(input.batchRubric)
+  const plainTextToolCallSection = input.plainTextToolCallWarning
+    ? buildPlainTextToolCallWarningSection()
+    : ''
 
   // Stable head first (intro + goal + skills + research + mode + rules) so the prompt
   // prefix is byte-identical across iterations and the provider prefix cache is reused.
@@ -89,8 +100,7 @@ An external shell verifier decides success — do not claim the task is finished
 
 ${input.goal}
 
-${skillsSection}${researchSection}${modeSection}${rulesSection}
-
+${skillsSection}${researchSection}${modeSection}${rulesSection}${factsSection}
 ## Workspace (git)
 
 - Branch: ${input.git.branch}
@@ -112,10 +122,29 @@ ${lastSection}
 
 ${failureSection}
 
-${stagnationSection}${reviewGuideSection}${failureContextSection}## This iteration
+${stagnationSection}${reviewGuideSection}${failureContextSection}${plainTextToolCallSection}## This iteration
 
 Iteration ${input.iteration} of ${input.maxIterations}.
 `
+}
+
+function buildFactsPromptSection(
+  verifyCommand?: string,
+  deliverables?: readonly string[],
+): string {
+  if (!verifyCommand?.trim() && (!deliverables || deliverables.length === 0)) {
+    return ''
+  }
+  const lines: string[] = []
+  if (verifyCommand?.trim()) {
+    lines.push(`- Verifier command: \`${verifyCommand.trim()}\``)
+  }
+  if (deliverables && deliverables.length > 0) {
+    lines.push(
+      `- Deliverables: ${deliverables.map((p) => `\`${p}\``).join(', ')}`,
+    )
+  }
+  return `\n\n## Facts\n\n${lines.join('\n')}\n`
 }
 
 function buildBatchRubricSection(batchRubric?: string): string {

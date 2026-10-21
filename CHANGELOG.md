@@ -23,6 +23,10 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 - **Lazy optional peers** — the CLI no longer statically imports `@cursor/sdk` (or other runtime SDKs) at startup. `agent-loop --version`, `--help`, `agent-loop-init`, and `agent-check` for a non-Cursor runtime work with only `@dancingteeth/agent-looper` installed. Selecting a runtime whose SDK is missing fails with an actionable install line (`Runtime "cursor" needs @cursor/sdk: pnpm add -D @cursor/sdk`) instead of `ERR_MODULE_NOT_FOUND`.
 - **CI: npm pack smoke** — packs the tarball, installs it in a temp project with zero optional peers, and asserts `--version` / `--help` plus the friendly missing-SDK error; also checks OpenCode-only peers without `@cursor/sdk`.
 
+### Harness² ideas
+
+- **`deliverables`** — optional repo-relative paths in `loop.json`; worker prompts state them in `## Facts`, and the harness nudges the worker before verify when files are missing or empty (`deliverableNudges`, default `2`).
+
 ## 0.8.2 — 2026-10-20
 
 Quieter `agent-loop run` startup.

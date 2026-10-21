@@ -260,4 +260,49 @@ describe('buildAgentLoopPrompt', () => {
     })
     expect(without).not.toContain('## Research (index)')
   })
+
+  it('puts verify command and deliverables in Facts before Workspace', () => {
+    const prompt = buildAgentLoopPrompt({
+      goal: 'g',
+      iteration: 1,
+      maxIterations: 3,
+      git: {
+        branch: 'main',
+        shortSha: 'abc',
+        diffStat: '',
+        statusPorcelain: '',
+      },
+      lastVerify: null,
+      priorFailures: [],
+      verifyCommand: 'bash verify.sh',
+      deliverables: ['docs/out.md'],
+    })
+    expect(prompt.indexOf('## Facts')).toBeLessThan(prompt.indexOf('## Workspace (git)'))
+    const factsBlock = prompt.slice(
+      prompt.indexOf('## Facts'),
+      prompt.indexOf('## Workspace (git)'),
+    )
+    expect(factsBlock).toContain('bash verify.sh')
+    expect(factsBlock).toContain('docs/out.md')
+  })
+
+  it('adds plain-text tool call warning in the volatile tail when requested', () => {
+    const prompt = buildAgentLoopPrompt({
+      goal: 'g',
+      iteration: 2,
+      maxIterations: 3,
+      git: {
+        branch: 'main',
+        shortSha: 'abc',
+        diffStat: '',
+        statusPorcelain: '',
+      },
+      lastVerify: null,
+      priorFailures: [],
+      plainTextToolCallWarning: true,
+    })
+    expect(prompt.indexOf('## Plain-text tool calls')).toBeGreaterThan(
+      prompt.indexOf('## Workspace (git)'),
+    )
+  })
 })

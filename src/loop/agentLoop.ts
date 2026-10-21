@@ -18,6 +18,8 @@ import {
   logFailureDomainFromAgentError,
 } from './loopFailureDomain.js'
 import { readFailureContext } from './loopFailureContext.js'
+import { buildDeliverableNudgeSection, missingDeliverables } from './loopDeliverables.js'
+import { detectPlainTextToolCalls } from './loopToolCallText.js'
 import { pauseForContinue } from './loopPause.js'
 import { createHitlCheckpoint, hitlLoopOverridesFrom } from '../integrations/hitlCheckpoint.js'
 import { markTaskwarriorDoneByUuid, runTaskwarriorSync } from '../integrations/taskwarrior.js'
@@ -275,6 +277,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let usageSummary = emptyUsageSummary()
   const transcriptEvents: TranscriptEvent[] = []
   const stagnationThreshold = config.stagnationThreshold
+  let previousWorkerPlainTextToolCalls = false
 
   const emitPhase = (phase: AgentLoopPhase, iteration: number): void => {
     if (phase === 'WORKER' || phase === 'JUDGE') {
@@ -484,6 +487,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         batchRubric: options.batchRubric,
         mode: config.mode,
         failureContext,
+        verifyCommand: config.verify,
+        deliverables: config.deliverables,
+        plainTextToolCallWarning: previousWorkerPlainTextToolCalls,
       })
 
       console.error(
@@ -624,9 +630,76 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
       consecutiveTransientAgentErrors = 0
       usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+
+      const deliverables = config.deliverables ?? []
+      let workerPrompt = prompt
+      let nudgeCount = 0
+      while (deliverables.length > 0 && nudgeCount < config.deliverableNudges) {
+        const missing = missingDeliverables(repoRoot, deliverables)
+        if (missing.length === 0) break
+        workerPrompt = `${prompt}\n\n${buildDeliverableNudgeSection(missing)}`
+        console.error(
+          `[agent-loop] deliverables missing (${missing.join(', ')}) — nudge ${nudgeCount + 1}/${config.deliverableNudges}`,
+        )
+        const nudgeBudgetRefuse = await refuseIfNextWorkerExceedsBudget(
+          iterationAgent.model,
+          workerPrompt.length,
+          i,
+        )
+        if (nudgeBudgetRefuse) return nudgeBudgetRefuse
+        const nudgeStartedAt = Date.now()
+        try {
+          assistantRun = await runIterationWithRetry(
+            session,
+            workerPrompt,
+            iterationAgent,
+            {
+              verbose,
+              assistantOutput: 'none',
+              collector,
+            },
+          )
+        } catch (err) {
+          const escalate = shouldEscalateAfterWorkerFault(err, config, iterationAgent, i)
+          const message = formatErrorChain(err)
+          const workerFaultVerify = workerSdkVerifyResult(
+            message,
+            escalate ? config.escalateModel : undefined,
+          )
+          lastVerify = workerFaultVerify
+          priorFailures.push(workerFaultVerify)
+          appendJsonlLine(
+            logPath,
+            buildIterationLog({
+              iteration: i,
+              git,
+              verify: workerFaultVerify,
+              assistantText: '',
+              model: iterationAgent.model,
+              reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+              durationsMs: { worker: elapsedMs(nudgeStartedAt) },
+            }),
+          )
+          if (!escalate) throw err
+          console.error(
+            `[agent-loop] worker fault during deliverable nudge ${nudgeCount + 1}: ${message}`,
+          )
+          logFailureDomainFromAgentError(bundle.loopDir, { iteration: i, message })
+          workerFaults += 1
+          await recycleWorkerSession(session)
+          await maybePauseAfterIteration(config, i)
+          continue
+        }
+        usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+        nudgeCount += 1
+        const nudgeBudgetStop = await stopOnBudget(i)
+        if (nudgeBudgetStop) return nudgeBudgetStop
+      }
+
       const budgetStop = await stopOnBudget(i)
       if (budgetStop) return budgetStop
       const assistantText = assistantRun.text
+      previousWorkerPlainTextToolCalls = detectPlainTextToolCalls(assistantText)
       const innerAgent = assistantRun.innerAgent
       if (assistantRun.transcriptEvents?.length) {
         transcriptEvents.push(...assistantRun.transcriptEvents)

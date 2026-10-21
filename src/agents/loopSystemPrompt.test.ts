@@ -19,6 +19,7 @@ describe('buildLoopSystemPrompt', () => {
     expect(prompt).toContain('Follow AGENTS.md')
     expect(prompt).toContain('skills/*/SKILL.md')
     expect(prompt).toContain('Do not edit GOAL.md')
+    expect(prompt.toLowerCase()).toContain('plain text')
   })
 
   it('falls back when agents file is missing', () => {
