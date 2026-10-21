@@ -5,7 +5,7 @@ import type { RepoContext } from '../context/repoContext.js'
 import type { LoopConfig } from './loopConfig.js'
 import type { VerifyResult } from './loopVerify.js'
 
-export const verifyLogModeSchema = z.enum(['inline', 'sidecar']).default('inline')
+export const verifyLogModeSchema = z.enum(['inline', 'sidecar']).default('sidecar')
 export type VerifyLogMode = z.infer<typeof verifyLogModeSchema>
 
 export const SKILL_DISCLOSURE_INDEX = 'index' as const
@@ -39,8 +39,8 @@ export const loopExtensionFieldsSchema = z.object({
   plugins: z.array(z.string().trim().min(1)).optional(),
   /**
    * How verify stdout/stderr reach the next worker prompt.
-   * Default `inline` pastes the capture. Optional `sidecar` writes
-   * `<loop-dir>/verify-logs/` and pastes a preview + path.
+   * Default `sidecar` writes `<loop-dir>/verify-logs/` and pastes a tail-biased
+   * preview + path. Set `inline` to paste the in-memory capture only.
    */
   verifyLogMode: verifyLogModeSchema,
   /**
@@ -156,12 +156,22 @@ export const VERIFY_SIDECAR_PREVIEW_MAX = 600
 
 export type VerifySidecarStem = 'verify' | 'final'
 
-function sidecarPreview(text: string, filePath: string): string {
+const SIDECAR_HEAD_CHARS = 120
+
+export function sidecarPreview(text: string, filePath: string): string {
   const pointer = `[full output: ${filePath}]`
   const trimmed = text.trim()
   if (trimmed.length === 0) return pointer
   if (trimmed.length <= VERIFY_SIDECAR_PREVIEW_MAX) return `${trimmed}\n${pointer}`
-  return `${trimmed.slice(0, VERIFY_SIDECAR_PREVIEW_MAX - 1)}…\n${pointer}`
+
+  const tailBudget = VERIFY_SIDECAR_PREVIEW_MAX - SIDECAR_HEAD_CHARS - 40
+  const head = trimmed.slice(0, SIDECAR_HEAD_CHARS)
+  const tail = trimmed.slice(-Math.max(tailBudget, 200))
+  const body =
+    head.length + tail.length >= trimmed.length
+      ? trimmed.slice(0, VERIFY_SIDECAR_PREVIEW_MAX - 1) + '…'
+      : `${head}…\n…${tail}`
+  return `${body}\n${pointer}`
 }
 
 /** Persist verify stdout/stderr. Sidecar mode writes files and returns a prompt preview. */
