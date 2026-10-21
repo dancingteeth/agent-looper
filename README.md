@@ -237,7 +237,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `mode` | `forward` | `reverse` = clean-room rebuild (`templates/GOAL.reverse.template.md`) |
 | `pauseAfterIteration` | `false` | Wait for Enter after each iteration (TTY only) |
 | `injectFailureContext` | `false` | Read `failure-context.md` into the prompt (meta-loop fix rounds) |
-| `lessons` | `true` | Read/write `lessons.md` — bounded gotchas from earlier green runs in the stable prompt head |
+| `lessons` | `false` | Opt-in: read/write `lessons.md` — bounded verify gotchas from earlier green runs, quoted as data in the stable prompt head |
 | `deliverables` | — | Repo-relative files the worker must create (absolute or `..` paths are rejected); harness re-prompts before verify when missing or empty |
 | `deliverableNudges` | `2` | Max extra worker calls per iteration when `deliverables` are still missing (`0`–`5`) |
 | `syncOnSuccess` | `true` | Run repo profile `syncCommand` after success |
@@ -255,7 +255,7 @@ Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 | `reasoningEscalationStep` | `1` | Tiers to step per iteration (`1` or `2`) |
 | `escalateModelReasoningEffort` | — | Reasoning tier on escalated model |
 | `escalateAfterStagnation` | `2` | Identical-failure count before model switch (after reasoning ceiling). Worker timeout / no-tool stall switches immediately and does not wait for this count. |
-| `stallProbes` | `false` | When `true`, the first time identical failures hit `escalateAfterStagnation`, the harness runs two differently guided probe workers (procedure hints vs repo facts), keeps the better workspace, then resumes normal escalation — at most once per run. Workspace snapshots are stored as git objects (worktree + index, no stash); restore rewrites only paths that differ, never follows symlinks, keeps modes, never touches gitignored files and never deletes under `.cursor/loops/`. |
+| `stallProbes` | `false` | When `true`, the first time identical failures hit `escalateAfterStagnation`, the harness runs two differently guided probe workers (procedure hints vs repo facts), keeps the better workspace, then resumes normal escalation — at most once per run. Workspace snapshots are stored as git objects (worktree + index, no stash); restore puts back the branch and HEAD, rewrites only paths that differ, never follows symlinks, keeps file permissions, never deletes a path the snapshot's ignore rules ignore and never deletes under `.cursor/loops/`. **Limits:** ignored files are not snapshotted; restore reverts every change made during the probe round — one loop per worktree, don't edit while probes run. |
 | `skills` | — | Explicit `…/SKILL.md` paths (merged with GOAL refs). Default prompt is an **index** (name, description, path) — worker **Read**s the file when needed. |
 | `skillDisclosure` | `index` | `index` = progressive disclosure (0.4.0 default; 0.3.0 always inlined). `inline` = paste full SKILL.md bodies. Pin the field on any loop that must keep the old in-prompt runbook. |
 | `plugins` | — | Agent Plugins package dirs — discovers `skills/*/SKILL.md` ([`docs/agent-plugins.md`](./docs/agent-plugins.md)) |
