@@ -15,7 +15,16 @@ export {
   loadLoopDefaultsForDir,
 } from './context/repoProfile.js'
 
-export { runAgentLoop, deriveLoopRunStatus } from './loop/agentLoop.js'
+export {
+  runAgentLoop,
+  deriveLoopRunStatus,
+  resolveLoopCliExitCode,
+  LOOP_EXIT_SUCCESS,
+  LOOP_EXIT_FATAL,
+  LOOP_EXIT_INCOMPLETE,
+  LOOP_EXIT_PARKED,
+} from './loop/agentLoop.js'
+export type { LoopCliExitCode } from './loop/agentLoop.js'
 export type {
   AgentLoopResult,
   AgentLoopOptions,
@@ -309,6 +318,10 @@ export {
   lastPhaseCostUsd,
   nextCallFitsBudget,
   formatUsageSummaryLine,
+  formatUsageBillingBreakdown,
+  formatBillingTokensFragment,
+  sumBillingTokens,
+  CURSOR_CACHE_TOKEN_NOTE,
   formatUsageRecordLog,
   logUsageSummary,
   mergeUsageSummaries,

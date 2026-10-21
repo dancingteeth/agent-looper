@@ -11,6 +11,7 @@ import { effectiveReviewRuntime, type LoopRuntime } from '../loop/loopAgentConfi
 import { loadLoopBundle, mergeLoopConfig, resolveLoopDir } from '../loop/loopConfig.js'
 import { resolveLoopSetupCommand } from '../loop/loopSetup.js'
 import { detectLoopRuntimes } from './detectRuntimes.js'
+import { resolveLoopCliExitCode } from '../loop/agentLoop.js'
 import { formatUsageSummaryLine } from '../usage/loopUsage.js'
 import { maybeCreateIncompleteLoopHitl } from '../integrations/loopFailureVisibility.js'
 import {
@@ -385,7 +386,7 @@ try {
 
     lastCheckPassed = result.lastVerify?.complete
 
-    const exitCode: 0 | 2 = result.complete ? 0 : 2
+    const exitCode = resolveLoopCliExitCode(result)
     await finishLoopExit({
       exitCode,
       complete: result.complete,

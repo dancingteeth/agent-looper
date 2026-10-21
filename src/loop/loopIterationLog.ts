@@ -6,6 +6,7 @@ import type { LoopUsageRecord } from '../usage/loopUsage.js'
 import type { LoadedLoopBundle } from './loopConfig.js'
 import { persistVerifyOutput, type SiblingRepoRef, type VerifyLogRefs } from './loopExtensions.js'
 import type { captureGitWorkspaceSnapshot } from './loopGit.js'
+import type { ToolErrorStatRow } from './loopToolErrors.js'
 import type { VerifyResult } from './loopVerify.js'
 
 export type LoopIterationLog = {
@@ -32,6 +33,8 @@ export type LoopIterationLog = {
   reasoningEffort?: string
   workerSession?: AgentSessionRef
   toolSummary?: Record<string, number>
+  /** Classified expected tool errors for this iteration (worker and/or judge). */
+  toolErrorStats?: ToolErrorStatRow[]
   /** Transient SDK retries before this iteration's worker call succeeded (0 omitted). */
   sdkRetries?: number
   /** Wall-clock per phase for this iteration (ms). */
@@ -57,6 +60,7 @@ export function buildIterationLog(input: {
   reasoningEffort?: string
   workerSession?: AgentSessionRef
   toolSummary?: Record<string, number>
+  toolErrorStats?: ToolErrorStatRow[]
   sdkRetries?: number
   durationsMs?: LoopIterationLog['durationsMs']
 }): LoopIterationLog {
@@ -77,6 +81,7 @@ export function buildIterationLog(input: {
     ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {}),
     ...(input.workerSession ? { workerSession: input.workerSession } : {}),
     ...(input.toolSummary ? { toolSummary: input.toolSummary } : {}),
+    ...(input.toolErrorStats?.length ? { toolErrorStats: input.toolErrorStats } : {}),
     ...(input.sdkRetries ? { sdkRetries: input.sdkRetries } : {}),
     ...(input.durationsMs &&
     (input.durationsMs.worker || input.durationsMs.verify || input.durationsMs.judge)

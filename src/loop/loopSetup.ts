@@ -1,18 +1,17 @@
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { captureHeadTail, VERIFY_CAPTURE_MAX } from './captureText.js'
 import { attachVerifyClass, VERIFY_CLASS_ENV } from './verifyClass.js'
 import type { VerifyResult } from './loopVerify.js'
 
 export const SETUP_LOG_FILENAME = 'setup.log'
 export const SETUP_SCRIPT_FILENAME = 'setup.sh'
 
-const MAX_CAPTURE = 64 * 1024
 const MAX_SPAWN_BUFFER = 1024 * 1024
 
-function truncate(text: string, max = MAX_CAPTURE): string {
-  if (text.length <= max) return text
-  return `${text.slice(0, max)}\n…(truncated)`
+function truncate(text: string, max = VERIFY_CAPTURE_MAX): string {
+  return captureHeadTail(text, max)
 }
 
 function runSetupShell(command: string, cwd: string): VerifyResult {

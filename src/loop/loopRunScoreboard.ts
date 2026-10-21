@@ -34,6 +34,8 @@ const ZERO_FAILURE_COUNTS: Record<FailureDomainReason, number> = {
   max_iterations: 0,
   review_gate: 0,
   review_gate_hitl: 0,
+  review_judge_failed: 0,
+  agent_transient_exhausted: 0,
   meta_probe_failed: 0,
   agent_error: 0,
   verify_env: 0,

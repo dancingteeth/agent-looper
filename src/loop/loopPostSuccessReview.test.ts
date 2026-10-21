@@ -362,7 +362,54 @@ describe('runPostSuccessReviewPhase', () => {
     )
   })
 
-  it('stops without iteration log when gated review throws', async () => {
+  it('retains partial judge usage when gated review fails before parking', async () => {
+    const { AgentRunFailedError } = await import('../agents/agentRunFailed.js')
+    const judgeUsage = {
+      phase: 'review' as const,
+      runtime: 'cursor' as const,
+      model: 'grok-4.7',
+      inputTokens: 1200,
+      outputTokens: 80,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      costUsd: 0.02,
+      costSource: 'estimated' as const,
+    }
+    vi.mocked(runPostLoopQualityReview).mockRejectedValue(
+      new AgentRunFailedError('Cursor agent run failed (status=error)', {
+        usage: judgeUsage,
+        text: '',
+      }),
+    )
+
+    const result = await runPostSuccessReviewPhase({
+      config: baseConfig(),
+      goal: 'Goal text',
+      ctx: { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) },
+      loopDir: '/tmp/loop',
+      reviewBlockers: undefined,
+      reviewCyclesUsed: 0,
+      reviewAgent: cursorJudge(),
+      usageSummary: {
+        records: [],
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCacheReadTokens: 0,
+        totalCacheWriteTokens: 0,
+        totalCostUsd: 0,
+      },
+      reasoningEffort: 'default',
+    })
+
+    expect(result.outcome).toMatchObject({
+      action: 'stop',
+      parkWaiting: true,
+    })
+    expect(result.usageSummary.records.length).toBeGreaterThan(0)
+    expect(result.usageSummary.totalInputTokens).toBeGreaterThanOrEqual(1200)
+  })
+
+  it('retries once then parks when gated review keeps throwing', async () => {
     vi.mocked(runPostLoopQualityReview).mockRejectedValue(new Error('Cursor SDK unavailable'))
 
     const result = await runPostSuccessReviewPhase({
@@ -377,10 +424,62 @@ describe('runPostSuccessReviewPhase', () => {
       reasoningEffort: 'default',
     })
 
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
     expect(result.outcome).toMatchObject({
       action: 'stop',
-      completionReason: /quality review failed/,
+      failureDomainReason: 'review_judge_failed',
+      parkWaiting: true,
       skipIterationLog: true,
     })
+  })
+
+  it('succeeds after a single judge retry', async () => {
+    vi.mocked(runPostLoopQualityReview)
+      .mockRejectedValueOnce(new Error('Cursor agent run timed out after 480000ms'))
+      .mockResolvedValueOnce(reviewResult('PASS'))
+
+    const result = await runPostSuccessReviewPhase({
+      config: baseConfig(),
+      goal: 'Goal text',
+      ctx: { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) },
+      loopDir: '/tmp/loop',
+      reviewBlockers: undefined,
+      reviewCyclesUsed: 0,
+      reviewAgent: cursorJudge(),
+      usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
+      reasoningEffort: 'default',
+    })
+
+    expect(result.outcome.action).toBe('success')
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
+  })
+
+  it('skips merge secondary when reviewSecondary served as fallback primary', async () => {
+    vi.mocked(runPostLoopQualityReview)
+      .mockRejectedValueOnce(new Error('primary judge down'))
+      .mockRejectedValueOnce(new Error('primary judge still down'))
+      .mockResolvedValueOnce(reviewResult('PASS'))
+
+    const result = await runPostSuccessReviewPhase({
+      config: baseConfig({ reviewSecondaryRuntime: 'cursor', reviewSecondaryModel: 'grok-4.7' }),
+      goal: 'Goal text',
+      ctx: { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) },
+      loopDir: '/tmp/loop',
+      reviewBlockers: undefined,
+      reviewCyclesUsed: 0,
+      reviewAgent: cursorJudge(),
+      usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
+      reasoningEffort: 'default',
+    })
+
+    expect(result.outcome.action).toBe('success')
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(3)
+    expect(runPostLoopQualityReview).toHaveBeenNthCalledWith(
+      3,
+      '/tmp/loop',
+      'Goal text',
+      expect.anything(),
+      expect.objectContaining({ skipMergeSecondaryReview: true }),
+    )
   })
 })

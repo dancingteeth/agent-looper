@@ -8,6 +8,7 @@ import {
   detectExternalVerifierPaths,
   formatLoopExtensionPreflight,
   persistVerifyOutput,
+  sidecarPreview,
   validateLoopExtensionPreflight,
 } from './loopExtensions.js'
 import { repoProfileSchema } from '../context/repoProfile.js'
@@ -92,7 +93,12 @@ describe('persistVerifyOutput sidecar', () => {
     }
   })
 
-  it('writes full logs and returns a preview plus path', () => {
+  it('defaults verifyLogMode to sidecar', () => {
+    const parsed = loopConfigSchema.parse({ verify: 'pnpm test' })
+    expect(parsed.verifyLogMode).toBe('sidecar')
+  })
+
+  it('writes full logs and returns a tail-biased preview plus path', () => {
     const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-sidecar-'))
     dirs.push(loopDir)
     const stdout = `${'ok '.repeat(400)}END`
@@ -115,9 +121,17 @@ describe('persistVerifyOutput sidecar', () => {
     expect(fs.readFileSync(stderrPath, 'utf8')).toBe('boom')
     expect(persisted.verify.stdout).toContain('[full output:')
     expect(persisted.verify.stdout).toContain(stdoutPath)
+    expect(persisted.verify.stdout).toContain('END')
     expect(persisted.verify.stdout.length).toBeLessThan(stdout.length)
     expect(persisted.verify.stderr).toContain(stderrPath)
     expect(persisted.verifyLog).toEqual({ stdoutPath, stderrPath })
+  })
+
+  it('sidecarPreview favors the end of long output', () => {
+    const long = `${'a'.repeat(500)}FAIL_AT_END`
+    const preview = sidecarPreview(long, '/tmp/out.txt')
+    expect(preview).toContain('FAIL_AT_END')
+    expect(preview).toContain('/tmp/out.txt')
   })
 
   it('leaves inline verify untouched', () => {

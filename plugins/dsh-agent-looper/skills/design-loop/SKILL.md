@@ -68,7 +68,7 @@ Bounded preflight is enough: one `ssh … ls` (or a local path), copy the design
 - If no repo defaults yet: `runtime` / `model` for the worker (`runtime: dsh` = harness spawns `dsh --profile headless`); optional `reviewRuntime` / `reviewModel` for the judge (`reviewRuntime: opencode` defaults the judge to Go DeepSeek V4 Pro; `reviewRuntime: dsh` defaults to official V4 Pro; `reviewRuntime: claude` defaults to `opus` — omit `reviewModel` unless BYOK). Do **not** copy this GUI’s `opencode-go/…` slug onto `runtime: opencode` — that provider is DSH-private.
 - `reviewGate: true` when leftover taste or impact should reopen the worker after verify is green (not for smokes)
 - Optional `plugins: ["…"]` for Agent Plugins skill packages (indexed in the prompt by default; `"skillDisclosure": "inline"` pastes full SKILL.md)
-- Optional `verifyLogMode: "sidecar"` when verify dumps are large; default is `inline`
+- Default `verifyLogMode: "sidecar"`; use `"inline"` only when verify is always short
 
 ## Taste / visual loops (decide — not always-on)
 

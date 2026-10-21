@@ -48,13 +48,21 @@ export function shouldEscalateAfterWorkerFault(
 }
 
 /** Synthetic verify record for an iteration whose worker call never returned. */
-export function workerSdkVerifyResult(message: string, escalateModel?: string): VerifyResult {
+export function workerSdkVerifyResult(
+  message: string,
+  escalateModel?: string,
+  continuing = false,
+): VerifyResult {
   const hung = RECOVERABLE_WORKER_FAULT_PATTERN.test(message)
   let reason: string
   if (escalateModel) {
     reason = `Worker timed out or made no tool progress — next iteration uses ${escalateModel}.`
   } else if (hung) {
-    reason = 'Worker timed out or made no tool progress — loop stopped.'
+    reason = continuing
+      ? 'Worker timed out or made no tool progress — harness will retry on the next iteration.'
+      : 'Worker timed out or made no tool progress — loop stopped.'
+  } else if (continuing) {
+    reason = 'Worker agent failed before verify — harness will retry on the next iteration.'
   } else {
     reason = 'Agent SDK error before verify.'
   }

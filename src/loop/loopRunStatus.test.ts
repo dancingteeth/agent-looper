@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveLoopRunStatus } from './agentLoop.js'
+import { deriveLoopRunStatus, resolveLoopCliExitCode } from './agentLoop.js'
 
 describe('deriveLoopRunStatus', () => {
   it('maps complete to done', () => {
@@ -51,5 +51,19 @@ describe('deriveLoopRunStatus', () => {
 
   it('maps other incomplete to continue', () => {
     expect(deriveLoopRunStatus({ complete: false })).toBe('continue')
+  })
+})
+
+describe('resolveLoopCliExitCode', () => {
+  it('returns 0 for complete runs', () => {
+    expect(resolveLoopCliExitCode({ complete: true, status: 'done' })).toBe(0)
+  })
+
+  it('returns 2 for waiting parks (same as incomplete, 0.8.2)', () => {
+    expect(resolveLoopCliExitCode({ complete: false, status: 'waiting' })).toBe(2)
+  })
+
+  it('returns 2 for continue incomplete runs', () => {
+    expect(resolveLoopCliExitCode({ complete: false, status: 'continue' })).toBe(2)
   })
 })

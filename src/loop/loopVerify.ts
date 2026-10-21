@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { captureHeadTail, VERIFY_CAPTURE_MAX } from './captureText.js'
 import { attachVerifyClass, type VerifyClass } from './verifyClass.js'
 
 export type VerifyResult = {
@@ -12,13 +13,11 @@ export type VerifyResult = {
   verifyClass?: VerifyClass
 }
 
-const MAX_CAPTURE = 64 * 1024
 /** spawnSync kills the child on overflow; keep this well above typical test logs. */
 const MAX_SPAWN_BUFFER = 1024 * 1024
 
-function truncate(text: string, max = MAX_CAPTURE): string {
-  if (text.length <= max) return text
-  return `${text.slice(0, max)}\n…(truncated)`
+function truncate(text: string, max = VERIFY_CAPTURE_MAX): string {
+  return captureHeadTail(text, max)
 }
 
 export function runVerifyCommand(command: string, cwd: string): VerifyResult {

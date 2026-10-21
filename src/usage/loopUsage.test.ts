@@ -3,7 +3,10 @@ import {
   costSourceMix,
   createUsageRecord,
   estimateCostUsd,
+  formatBillingTokensFragment,
+  formatUsageBillingBreakdown,
   formatUsageSummaryLine,
+  sumBillingTokens,
   isHostedFreeModel,
   lastPhaseCostUsd,
   mergeUsageSummaries,
@@ -143,6 +146,50 @@ describe('loopUsage', () => {
     expect(summary.totalCostUsd).toBeCloseTo(0.14 + 0.05, 4)
   })
 
+  it('sums billing tokens by role with cache splits when reported', () => {
+    const summary = summarizeUsageRecords([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'opencode',
+        model: 'opencode-go/deepseek-v4-pro',
+        inputTokens: 10_000,
+        outputTokens: 2_000,
+        cacheReadTokens: 50_000,
+        cacheWriteTokens: 1_000,
+      }),
+      createUsageRecord({
+        phase: 'review',
+        runtime: 'opencode',
+        model: 'opencode-go/grok-4.7',
+        inputTokens: 5_000,
+        outputTokens: 500,
+        cacheReadTokens: 20_000,
+        cacheWriteTokens: 0,
+      }),
+    ])
+    const breakdown = formatUsageBillingBreakdown(summary)
+    expect(breakdown).toHaveLength(3)
+    expect(breakdown[0]).toMatch(/Billing tokens \(total\)/)
+    expect(breakdown[0]).toContain('cache R')
+    expect(breakdown[1]).toContain('worker')
+    expect(breakdown[2]).toContain('judge')
+    expect(sumBillingTokens(summary.records).uncachedInputTokens).toBe(15_000)
+  })
+
+  it('marks Cursor cache splits unknown in billing breakdown', () => {
+    const totals = sumBillingTokens([
+      createUsageRecord({
+        phase: 'implement',
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        inputTokens: 40_000,
+        outputTokens: 2_000,
+      }),
+    ])
+    expect(totals.cacheSplitKnown).toBe(false)
+    expect(formatBillingTokensFragment(totals)).toContain('cache R/W unknown')
+  })
+
   it('surfaces cache read/write tokens only when present', () => {
     const noCache = summarizeUsageRecords([
       createUsageRecord({
@@ -153,7 +200,7 @@ describe('loopUsage', () => {
         outputTokens: 2_000,
       }),
     ])
-    expect(formatUsageSummaryLine(noCache)).not.toContain('cache R')
+    expect(formatUsageSummaryLine(noCache)).toContain('cache R/W unknown')
 
     const withCache = summarizeUsageRecords([
       createUsageRecord({
@@ -169,7 +216,7 @@ describe('loopUsage', () => {
     const cachedLine = formatUsageSummaryLine(withCache)
     expect(cachedLine).toContain('cache R')
     expect(cachedLine).toContain('90.0k')
-    expect(cachedLine).toContain('W 30.0k')
+    expect(cachedLine).toContain('cache W 30.0k')
   })
 
   it('includes Anthropic cache in list so billed is not inverted above list', () => {

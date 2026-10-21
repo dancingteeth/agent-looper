@@ -215,9 +215,9 @@ Per-loop overrides in `loop.json`: `taskwarriorProject`, `taskwarriorUuid`, `hit
 | `verifyMode` | `command` | `command` = shell only. `skill` = verify agent reads `verifySkill`, emits `VERIFY_RESULT: PASS/FAIL`, then runs shell `verify` on PASS. Skill-verify uses the same iteration agent as the worker (reasoning ladder / `escalateModel` apply). |
 | `verifySkill` | — | Path to `VERIFY.skill.md` (required when `verifyMode` is `skill`). |
 | `finalVerify` | — | Stricter outer check after inner `verify` passes. |
-| `verifyLogMode` | `inline` | How verify stdout/stderr reach the next worker. `inline` pastes the capture. `sidecar` is **optional**: write `<loop-dir>/verify-logs/` and put a ~600-character preview + path in the prompt. Leave unset / `inline` when verify is short. |
+| `verifyLogMode` | `sidecar` | How verify stdout/stderr reach the next worker. **`sidecar`** (default) writes `<loop-dir>/verify-logs/` and puts a tail-biased preview + path in the prompt. **`inline`** pastes the in-memory capture only (head+tail when long). |
 
-Default stays **`inline`**. Use `"verifyLogMode": "sidecar"` only when verify dumps are large (full vitest / Playwright / compiler walls) and would otherwise repeat in every later prompt. Sidecar does not change the verifier; capture is still capped (~64KB) before anything is written to disk.
+Default is **`sidecar`** so failures at the end of vitest/Playwright walls stay visible without bloating every prompt. Set `"verifyLogMode": "inline"` when verify is always short. In-memory capture is capped (~64KB, head+tail) before sidecar write.
 
 Legacy `loop.json` field `syncPostgres` maps to `syncOnSuccess`.
 
@@ -341,15 +341,19 @@ CLI overrides: `--mode reverse`, `--pause-after-iteration`, `--review-gate`, `--
 When `reviewGate: true` and verify passes:
 
 ```text
-primary review (reviewRuntime + reviewModel; default cursor)
+primary review (reviewRuntime + reviewModel)
   → optional reviewReproduce path filter
   → optional reviewReproduceAgent KEEP/DROP
-  → optional reviewSecondaryRuntime merge
+  → optional reviewSecondaryRuntime merge (verdict merge, not error fallback)
   → gating blockers remain? → fix iteration (up to maxReviewCycles)
   → else PASS / ADVISORY → complete
 ```
 
+If the **primary judge session errors** (timeout, provider fault, text-with-no-tool-calls), the harness retries once, then runs **`reviewSecondary`** as a fallback judge (without a second merge pass on the same model). When both fail, the run **parks** (`status: waiting`, CLI exit `2`, `failure-domains.ndjson` reason `review_judge_failed`) — verify already passed.
+
 Unparseable verdicts retry (`unparseableReviewRetries`). Gate exhaust can escalate to HITL (`reviewGateHitl`). Gating bullets (`severity: error` + a recognized impact tag) keep the gate open even if a later `### Verdict — PASS` heading appears in the same `review.md`. Heading vs body token disagreement with no gating bullets is unparseable.
+
+`run-report.md` includes **billing token** rows (uncached in / out / cache read / cache write by worker vs judge) and an **expected tool errors** table when any session recorded `tool_end` failures or plain-text tool stalls.
 
 ## Ralph loop alignment
 
@@ -518,6 +522,14 @@ Example payload:
 AGENT_LOOP_DONE {"v":1,"kind":"loop","bundle":".cursor/loops/my-task","complete":true,"exitCode":0,"reason":"Verifier passed (exit 0).","iterations":2,"runReport":".cursor/loops/my-task/run-report.md"}
 ```
 
+`exitCode` in the JSON matches the CLI process exit code:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success (`complete: true`) |
+| `1` | Fatal harness error (uncaught throw, bad argv) |
+| `2` | Incomplete or parked — verify/review gate/stagnation (`status: continue`) or human/provider park (`status: waiting`; budget, env/setup, judge unavailable, transient worker cap; `complete: false`) |
+
 Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout is not lost before `process.exit`. Side channels (`notifyWebhook` / `notifyCommand` / PR comment) run **after** the sentinel and are time-capped so a hung hook cannot delay wake.
 
 ### Cloud Agents
@@ -534,7 +546,7 @@ Do not promise in-chat wake from `AGENT_LOOP_DONE` on Cloud Agents.
 
 ## Export packs (cloud / PR audit)
 
-In-loop `review.md` / `log.ndjson` / `run-report.md` stay **gitignored** (noisy mid-run). When `exportPack: true` (default), each finished loop also writes a curated snapshot to:
+In-loop `review.md` / `log.ndjson` / `run-report.md` / `verify-logs/` stay **gitignored** (noisy mid-run). `agent-loop-init` adds a block for loop artifacts including `.cursor/loops/**/verify-logs/`. When `exportPack: true` (default), each finished loop also writes a curated snapshot to:
 
 ```text
 .cursor/loop-exports/<slug>/

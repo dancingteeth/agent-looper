@@ -12,6 +12,15 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ## Unreleased
 
+### Headline
+
+- **Behaviour change: verify sidecar by default** — `verifyLogMode` now defaults to `sidecar` (was `inline`). Full verify output is written under `<loop-dir>/verify-logs/` (gitignore `verify-logs/` in consumer repos); the worker prompt gets a tail-biased preview plus path. Opt into `inline` to paste capture only. In-memory capture uses head+tail with a middle elision marker (not head-only truncation).
+- **Billing token breakdown on green runs** — run log and `run-report.md` sum uncached input, output, and cache read/write across worker and judge sessions, with per-role rows. List vs billed cost semantics unchanged. Cursor SDK runs mark cache splits as **unknown** (not zero).
+- **Judge failures park the run** — when the review gate is on and the primary judge errors, the harness classifies the fault, retries once, then tries `reviewSecondary` as fallback primary (merge secondary skipped for that verdict). If both fail, the run parks (`status: waiting`, CLI exit `2`, failure domain `review_judge_failed`) instead of hard-failing like a verify miss.
+- **Expected tool-error stats** — `log.ndjson` and `run-report.md` aggregate `tool_end` errors and plain-text tool-call stalls per runtime/model for workers and judges.
+- **Transient worker SDK errors** — classify worker faults (connection stalled, `status=error`, timeouts, 5xx/rate-limit vs fatal auth/config). Retry on the next iteration with session recycle and backoff; preserve the working tree; log failure context; retain partial Cursor usage when the SDK reported it. Cap consecutive transients (`maxConsecutiveTransientAgentErrors`, default 3) then park (`agent_transient_exhausted`).
+- **Secondary review errors** — a failed optional `reviewSecondary` merge session is logged and noted in `review.md`; the primary verdict alone decides completion.
+
 ## 0.8.2 — 2026-10-20
 
 Quieter `agent-loop run` startup.

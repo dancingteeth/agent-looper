@@ -26,6 +26,9 @@ import {
   formatSecondaryMergeFooter,
   mergePrimarySecondaryReviews,
 } from './reviewReproduce.js'
+import { partialAgentRunFromError } from '../agents/agentRunFailed.js'
+import { formatErrorChain } from '../agents/errorFormat.js'
+import { summarizeSessionToolErrors, type ToolErrorStatRow } from '../loop/loopToolErrors.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
 function requireMergeBase(ctx: RepoContext): string {
@@ -122,6 +125,11 @@ export type PostLoopReviewOptions = {
    * Advisory (ungated) review still skips secondary when the primary has no gating blockers.
    */
   reviewGate?: boolean
+  /**
+   * When true, skip merge secondary (e.g. `reviewSecondary` already served as the
+   * fallback primary judge for this verdict).
+   */
+  skipMergeSecondaryReview?: boolean
 }
 
 export function resolvePostLoopReviewAgent(options: PostLoopReviewOptions): ResolvedReviewAgent {
@@ -144,6 +152,7 @@ export type PostLoopReviewResult = {
   parsed: ParsedReview
   outPath: string
   usage?: LoopUsageRecord
+  toolErrorStats?: ToolErrorStatRow[]
   /** Blockers downgraded by deterministic reproduce filter (when enabled). */
   reproduceDroppedCount?: number
   /** Blockers dropped by the fresh reproduce agent (when enabled). */
@@ -242,6 +251,9 @@ function shouldSkipSecondaryReview(
   parsed: ParsedReview,
   options: PostLoopReviewOptions,
 ): { skip: true; reason: string } | { skip: false } {
+  if (options.skipMergeSecondaryReview) {
+    return { skip: true, reason: 'secondary judge already acted as fallback primary' }
+  }
   if (!options.reviewSecondaryRuntime) {
     return { skip: true, reason: 'disabled' }
   }
@@ -289,25 +301,42 @@ async function maybeRunSecondaryReview(
   console.error(
     `[agent-loop] secondary review: running (${agent.runtime}, model=${agent.model}, gating=${blockingBlockers(parsed).length})`,
   )
-  const run = await runReviewAgentPrompt(ctx, prompt, agent, { verbose: options.verbose })
-  const secondaryParsed = parseReviewMarkdown(run.text)
-  const merged = mergePrimarySecondaryReviews(parsed, secondaryParsed)
-  const mergeFooter = formatSecondaryMergeFooter(merged.secondaryOnly)
-  const secondarySection = `\n\n### Secondary review (${agent.runtime}/${agent.model})\n${run.text.trim()}\n`
-  const mergedText = `${text.trim()}${secondarySection}${mergeFooter}`
-  if (merged.secondaryOnly.length > 0) {
+  try {
+    const run = await runReviewAgentPrompt(ctx, prompt, agent, { verbose: options.verbose })
+    const secondaryParsed = parseReviewMarkdown(run.text)
+    const merged = mergePrimarySecondaryReviews(parsed, secondaryParsed)
+    const mergeFooter = formatSecondaryMergeFooter(merged.secondaryOnly)
+    const secondarySection = `\n\n### Secondary review (${agent.runtime}/${agent.model})\n${run.text.trim()}\n`
+    const mergedText = `${text.trim()}${secondarySection}${mergeFooter}`
+    if (merged.secondaryOnly.length > 0) {
+      console.error(
+        `[agent-loop] secondary review: merged ${merged.secondaryOnly.length} secondary-only gating blocker(s)`,
+      )
+    } else {
+      console.error('[agent-loop] secondary review: no new gating blockers from secondary judge')
+    }
+    return {
+      parsed: merged.parsed,
+      text: mergedText,
+      secondaryOnlyCount: merged.secondaryOnly.length,
+      secondaryModel: agent.model,
+      usage: run.usage,
+    }
+  } catch (err) {
+    const message = formatErrorChain(err)
+    const partial = partialAgentRunFromError(err)
     console.error(
-      `[agent-loop] secondary review: merged ${merged.secondaryOnly.length} secondary-only gating blocker(s)`,
+      `[agent-loop] secondary review failed (primary verdict stands): ${message}`,
     )
-  } else {
-    console.error('[agent-loop] secondary review: no new gating blockers from secondary judge')
-  }
-  return {
-    parsed: merged.parsed,
-    text: mergedText,
-    secondaryOnlyCount: merged.secondaryOnly.length,
-    secondaryModel: agent.model,
-    usage: run.usage,
+    const failureSection = `\n\n### Secondary review (${agent.runtime}/${agent.model})\n_Secondary session failed — primary verdict stands._\n\n\`\`\`\n${message.trim()}\n\`\`\`\n`
+    return {
+      parsed,
+      text: `${text.trim()}${failureSection}`,
+      secondaryOnlyCount: 0,
+      secondaryModel: agent.model,
+      skippedReason: 'error',
+      usage: partial?.usage,
+    }
   }
 }
 
@@ -371,6 +400,12 @@ export async function runPostLoopQualityReview(
   const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
   })
+  const judgeToolErrors = summarizeSessionToolErrors({
+    role: 'judge',
+    runtime: reviewAgent.runtime,
+    model: reviewAgent.model,
+    transcriptEvents: run.transcriptEvents,
+  })
   const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
     run.text,
@@ -404,6 +439,7 @@ export async function runPostLoopQualityReview(
     reproduceAgentDroppedCount: piped.reproduceAgentDroppedCount,
     secondaryOnlyBlockersCount: piped.secondaryOnlyCount,
     secondaryReviewSkippedReason: piped.secondaryReviewSkippedReason,
+    ...(judgeToolErrors ? { toolErrorStats: [judgeToolErrors] } : {}),
   }
 }
 
@@ -424,6 +460,12 @@ export async function runPostLoopBlockerRecheck(
   const prompt = buildBlockerRecheckPrompt(ctx, goal, blockers)
   const run = await runReviewAgentPrompt(ctx, prompt, reviewAgent, {
     verbose: options.verbose,
+  })
+  const judgeToolErrors = summarizeSessionToolErrors({
+    role: 'judge',
+    runtime: reviewAgent.runtime,
+    model: reviewAgent.model,
+    transcriptEvents: run.transcriptEvents,
   })
   const piped = await applyPostPrimaryReviewPipeline(
     parseReviewMarkdown(run.text),
@@ -458,5 +500,6 @@ export async function runPostLoopBlockerRecheck(
     reproduceAgentDroppedCount: piped.reproduceAgentDroppedCount,
     secondaryOnlyBlockersCount: piped.secondaryOnlyCount,
     secondaryReviewSkippedReason: piped.secondaryReviewSkippedReason,
+    ...(judgeToolErrors ? { toolErrorStats: [judgeToolErrors] } : {}),
   }
 }
