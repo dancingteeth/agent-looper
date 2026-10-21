@@ -110,7 +110,11 @@ export async function createPiLoopSession(ctx: RepoContext): Promise<PiLoopSessi
         'pi',
         '@earendil-works/pi-coding-agent',
       )
-      const { getModel } = await import('@earendil-works/pi-ai/compat')
+      const { getModel } = await importOptionalPeer<typeof import('@earendil-works/pi-ai/compat')>(
+        '@earendil-works/pi-ai/compat',
+        'pi',
+        '@earendil-works/pi-ai',
+      )
 
       const resolvePiModel = getModel as (
         provider: string,

@@ -4,9 +4,14 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, it } from 'node:test'
+import { after, before, describe, it } from 'node:test'
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+/** @type {string} */
+let tarball
+/** @type {string} */
+let packScratch
 
 function run(cmd, args, cwd, env = process.env) {
   const result = spawnSync(cmd, args, {
@@ -23,13 +28,13 @@ function npmPack(root) {
     cwd: packageRoot,
     encoding: 'utf8',
   }).trim()
-  const tarball = out.split('\n').pop()
-  assert.ok(tarball?.endsWith('.tgz'), `unexpected npm pack output: ${out}`)
-  return join(root, tarball)
+  const packed = out.split('\n').pop()
+  assert.ok(packed?.endsWith('.tgz'), `unexpected npm pack output: ${out}`)
+  return join(root, packed)
 }
 
-function installTarball(projectDir, tarball) {
-  const install = run('npm', ['install', '--no-save', tarball], projectDir)
+function installTarball(projectDir, extraArgs = []) {
+  const install = run('npm', ['install', '--no-save', tarball, ...extraArgs], projectDir)
   assert.equal(install.status, 0, install.stderr || install.stdout)
 }
 
@@ -47,14 +52,22 @@ function agentLoopCli(projectDir, bin, args) {
 }
 
 describe('clean install from npm pack (no optional peers)', () => {
+  before(() => {
+    execFileSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
+    packScratch = mkdtempSync(join(tmpdir(), 'agent-looper-pack-once-'))
+    tarball = npmPack(packScratch)
+  })
+
+  after(() => {
+    if (packScratch) rmSync(packScratch, { recursive: true, force: true })
+  })
+
   it('agent-loop --version and --help work without any runtime SDK', () => {
     const scratch = mkdtempSync(join(tmpdir(), 'agent-looper-pack-'))
     try {
-      execFileSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-      const tarball = npmPack(scratch)
       const projectDir = mkdtempSync(join(scratch, 'proj-'))
       run('npm', ['init', '-y'], projectDir)
-      installTarball(projectDir, tarball)
+      installTarball(projectDir)
 
       const version = agentLoopCli(projectDir, 'run', ['--version'])
       assert.equal(version.status, 0, version.stderr)
@@ -72,11 +85,9 @@ describe('clean install from npm pack (no optional peers)', () => {
   it('selecting a missing runtime surfaces a friendly install hint', () => {
     const scratch = mkdtempSync(join(tmpdir(), 'agent-looper-pack-'))
     try {
-      execFileSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-      const tarball = npmPack(scratch)
       const projectDir = mkdtempSync(join(scratch, 'proj-'))
       run('npm', ['init', '-y'], projectDir)
-      installTarball(projectDir, tarball)
+      installTarball(projectDir)
 
       const check = agentLoopCli(projectDir, 'check', ['cursor'])
       assert.notEqual(check.status, 0)
@@ -91,27 +102,15 @@ describe('clean install from npm pack (no optional peers)', () => {
   it('opencode-only install gets past CLI startup without @cursor/sdk', () => {
     const scratch = mkdtempSync(join(tmpdir(), 'agent-looper-pack-'))
     try {
-      execFileSync('pnpm', ['build'], { cwd: packageRoot, stdio: 'inherit' })
-      const tarball = npmPack(scratch)
       const projectDir = mkdtempSync(join(scratch, 'proj-'))
       run('npm', ['init', '-y'], projectDir)
-      const peers = run(
-        'npm',
-        [
-          'install',
-          '--no-save',
-          tarball,
-          '@opencode-ai/sdk@^1.18.15',
-          'opencode-ai@^1.18.15',
-        ],
-        projectDir,
-      )
-      assert.equal(peers.status, 0, peers.stderr || peers.stdout)
+      installTarball(projectDir, ['@opencode-ai/sdk@^1.18.15', 'opencode-ai@^1.18.15'])
 
       const version = agentLoopCli(projectDir, 'run', ['--version'])
       assert.equal(version.status, 0, version.stderr)
 
       const check = agentLoopCli(projectDir, 'check', ['opencode'])
+      assert.notEqual(check.status, 0)
       const combined = `${check.stderr}\n${check.stdout}`
       assert.doesNotMatch(combined, /Cannot find package '@cursor\/sdk'/)
       assert.doesNotMatch(combined, /ERR_MODULE_NOT_FOUND.*@cursor\/sdk/)

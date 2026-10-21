@@ -18,14 +18,24 @@ describe('optionalPeer', () => {
     )
   })
 
-  it('detects ERR_MODULE_NOT_FOUND', () => {
-    expect(isOptionalPeerModuleNotFound({ code: 'ERR_MODULE_NOT_FOUND' })).toBe(true)
+  it('requires the peer specifier in the error message when provided', () => {
+    expect(
+      isOptionalPeerModuleNotFound(
+        Object.assign(new Error('Cannot find package some-transitive-dep'), {
+          code: 'ERR_MODULE_NOT_FOUND',
+        }),
+        '@cursor/sdk',
+      ),
+    ).toBe(false)
     expect(
       isOptionalPeerModuleNotFound(
         new Error("Cannot find package '@cursor/sdk' imported from /x/y.js"),
         '@cursor/sdk',
       ),
     ).toBe(true)
+    expect(isOptionalPeerModuleNotFound({ code: 'ERR_MODULE_NOT_FOUND' }, '@cursor/sdk')).toBe(
+      false,
+    )
   })
 
   it('rethrows importOptionalPeer with a friendly message', async () => {

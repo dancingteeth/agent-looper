@@ -1,12 +1,13 @@
 /** True when Node failed to resolve an optional peer dependency. */
 export function isOptionalPeerModuleNotFound(err: unknown, specifier?: string): boolean {
   if (typeof err !== 'object' || err === null) return false
-  const code = (err as NodeJS.ErrnoException).code
-  if (code === 'ERR_MODULE_NOT_FOUND') return true
   const message = err instanceof Error ? err.message : String(err)
-  if (!message.includes('Cannot find package') && !message.includes('Cannot find module')) {
-    return false
-  }
+  const code = (err as NodeJS.ErrnoException).code
+  const looksLikeMissingModule =
+    code === 'ERR_MODULE_NOT_FOUND' ||
+    message.includes('Cannot find package') ||
+    message.includes('Cannot find module')
+  if (!looksLikeMissingModule) return false
   if (!specifier) return true
   return message.includes(specifier)
 }

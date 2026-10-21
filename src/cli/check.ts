@@ -8,6 +8,7 @@ import {
   resolveOpencodeExecutable,
 } from '../agents/opencodeServe.js'
 import { assertOpencodeAgentSkillsReadable } from '../agents/opencodeSkillPreflight.js'
+import { formatErrorChain } from '../agents/errorFormat.js'
 import { importOptionalPeer } from '../agents/optionalPeer.js'
 import { assertPosixShell } from '../agents/shellPreflight.js'
 
@@ -45,7 +46,7 @@ if (
 try {
   await checkRuntime(target)
 } catch (err) {
-  console.error(err instanceof Error ? err.message : String(err))
+  console.error(formatErrorChain(err))
   process.exit(1)
 }
 
