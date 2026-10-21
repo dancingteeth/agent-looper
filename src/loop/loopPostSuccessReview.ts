@@ -22,6 +22,8 @@ import {
   reviewGateBlockers,
   reviewGateBlocksCompletion,
 } from '../review/reviewVerdict.js'
+import { partialAgentRunFromError } from '../agents/agentRunFailed.js'
+import { formatErrorChain } from '../agents/errorFormat.js'
 import { addUsageRecord, type LoopUsageSummary } from '../usage/loopUsage.js'
 import {
   classifyReviewJudgeError,
@@ -296,6 +298,13 @@ export async function runPostSuccessReviewPhase(
       : await runPostLoopQualityReview(loopDir, goal, ctx, shared)
   }
 
+  function recordJudgeErrorUsage(err: unknown): void {
+    const partial = partialAgentRunFromError(err)
+    if (partial?.usage) {
+      usageSummary = addUsageRecord(usageSummary, partial.usage)
+    }
+  }
+
   for (;;) {
     reviewCycle++
     let reviewErrorClass: ReviewJudgeErrorClass | undefined
@@ -311,7 +320,8 @@ export async function runPostSuccessReviewPhase(
         reviewSucceeded = true
         break
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = formatErrorChain(err)
+        recordJudgeErrorUsage(err)
         reviewErrorClass = classifyReviewJudgeError(message)
         if (!config.reviewGate) {
           console.error(`[agent-loop] quality review failed (non-blocking): ${message}`)
@@ -340,8 +350,8 @@ export async function runPostSuccessReviewPhase(
             reviewSucceeded = true
             break
           } catch (fallbackErr) {
-            const fallbackMessage =
-              fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+            const fallbackMessage = formatErrorChain(fallbackErr)
+            recordJudgeErrorUsage(fallbackErr)
             reviewErrorClass = classifyReviewJudgeError(fallbackMessage)
             console.error(
               `[agent-loop] review gate: secondary judge failed (${formatReviewJudgeErrorClass(reviewErrorClass)}): ${fallbackMessage}`,

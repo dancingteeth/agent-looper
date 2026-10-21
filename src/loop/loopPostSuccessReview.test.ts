@@ -362,6 +362,50 @@ describe('runPostSuccessReviewPhase', () => {
     )
   })
 
+  it('retains partial judge usage when gated review fails before parking', async () => {
+    const { AgentRunFailedError } = await import('../agents/agentRunFailed.js')
+    const judgeUsage = {
+      phase: 'review' as const,
+      runtime: 'cursor' as const,
+      model: 'grok-4.7',
+      inputTokens: 1200,
+      outputTokens: 80,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      costUsd: 0.02,
+      costSource: 'estimated' as const,
+    }
+    vi.mocked(runPostLoopQualityReview).mockRejectedValue(
+      new AgentRunFailedError('Cursor agent run failed (status=error)', { usage: judgeUsage }),
+    )
+
+    const result = await runPostSuccessReviewPhase({
+      config: baseConfig(),
+      goal: 'Goal text',
+      ctx: { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) },
+      loopDir: '/tmp/loop',
+      reviewBlockers: undefined,
+      reviewCyclesUsed: 0,
+      reviewAgent: cursorJudge(),
+      usageSummary: {
+        records: [],
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCacheReadTokens: 0,
+        totalCacheWriteTokens: 0,
+        totalCostUsd: 0,
+      },
+      reasoningEffort: 'default',
+    })
+
+    expect(result.outcome).toMatchObject({
+      action: 'stop',
+      parkWaiting: true,
+    })
+    expect(result.usageSummary.records.length).toBeGreaterThan(0)
+    expect(result.usageSummary.totalInputTokens).toBeGreaterThanOrEqual(1200)
+  })
+
   it('retries once then parks when gated review keeps throwing', async () => {
     vi.mocked(runPostLoopQualityReview).mockRejectedValue(new Error('Cursor SDK unavailable'))
 

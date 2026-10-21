@@ -108,10 +108,14 @@ export type AgentLoopResult = {
 export const LOOP_EXIT_SUCCESS = 0
 /** CLI exit for harness/bootstrap fatals (uncaught throw, missing bundle). */
 export const LOOP_EXIT_FATAL = 1
-/** CLI exit when the loop ended incomplete (verify/review gate/stagnation) but not parked. */
+/**
+ * CLI exit when the loop ended without success (verify/review miss or park).
+ * Exit `2` does not distinguish `status: continue` from `status: waiting` — read
+ * `status` / `complete` on the result or `AGENT_LOOP_DONE` payload.
+ */
 export const LOOP_EXIT_INCOMPLETE = 2
-/** CLI exit when the run is parked for human/provider recovery (budget, env, judge down, agent cap). Same as incomplete (0.8.2). */
-export const LOOP_EXIT_PARKED = 2
+/** Alias of {@link LOOP_EXIT_INCOMPLETE} for parked runs (`status: waiting`). */
+export const LOOP_EXIT_PARKED = LOOP_EXIT_INCOMPLETE
 
 export type LoopCliExitCode =
   | typeof LOOP_EXIT_SUCCESS
