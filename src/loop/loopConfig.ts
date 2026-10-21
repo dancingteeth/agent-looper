@@ -161,12 +161,16 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     stagnationThreshold: z.number().int().min(0).max(10).default(3),
     /** Max consecutive transient worker SDK faults before parking (working tree preserved). */
     maxConsecutiveTransientAgentErrors: z.number().int().min(1).max(10).default(3),
+    /** When true, one stall round runs two guided probe workers before model escalation. */
+    stallProbes: z.boolean().default(false),
     /** forward = incremental fix; reverse = clean-room rebuild toward goal. */
     mode: loopModeSchema,
     /** Wait for Enter between iterations (watch-the-loop tuning). Skipped when stdin is not a TTY. */
     pauseAfterIteration: z.boolean().default(false),
     /** Read failure-context.md written by a meta-loop probe into the prompt. */
     injectFailureContext: z.boolean().default(false),
+    /** Opt-in: read/write lessons.md from prior green runs (verify gotchas). */
+    lessons: z.boolean().default(false),
     /** Send completion report to Telegram when repo profile + env are configured. */
     notifyTelegram: z.boolean().default(true),
     /**

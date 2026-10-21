@@ -1,6 +1,7 @@
 import type { LoopMode } from './loopMode.js'
 import { buildReverseModePromptSection } from './loopMode.js'
 import { buildFailureContextPromptSection } from './loopFailureContext.js'
+import { buildLessonsPromptSection } from './loopLessons.js'
 import type { GitWorkspaceSnapshot } from './loopGit.js'
 import type { VerifyResult } from './loopVerify.js'
 import { renderLoopPromptRulesSection } from './loopSafetyRules.js'
@@ -31,6 +32,8 @@ export type LoopPromptInput = {
   batchRubric?: string
   mode?: LoopMode
   failureContext?: string
+  /** Prior green-run lessons (stable prompt head). */
+  lessons?: string
   /** Shell verifier command (stable prompt head). */
   verifyCommand?: string
   /** Repo-relative deliverable paths (stable prompt head). */
@@ -85,8 +88,11 @@ The verifier failed **${input.stagnationRepeatCount}** times with the same outpu
   const rulesSection = renderLoopPromptRulesSection(agentsFile)
   // Optional stable-head blocks after the rules. Each starts on its own line after a
   // blank line (the rules block has no trailing newline); with none set, the head is
-  // byte-identical to a prompt without facts.
-  const stableHeadExtras = [buildFactsPromptSection(input.verifyCommand, input.deliverables)]
+  // byte-identical to a prompt without lessons or facts.
+  const stableHeadExtras = [
+    input.lessons?.trim() ? buildLessonsPromptSection(input.lessons.trim()).trimEnd() : '',
+    buildFactsPromptSection(input.verifyCommand, input.deliverables),
+  ]
     .filter(Boolean)
     .map((section) => `\n\n${section}`)
     .join('')
@@ -95,7 +101,7 @@ The verifier failed **${input.stagnationRepeatCount}** times with the same outpu
     ? buildPlainTextToolCallWarningSection()
     : ''
 
-  // Stable head first (intro + goal + skills + research + mode + rules + ## Facts) so the prompt
+  // Stable head first (intro + goal + skills + research + mode + rules + lessons + ## Facts) so the prompt
   // prefix is byte-identical across iterations and the provider prefix cache is reused.
   // Volatile content (git snapshot, batch rubric, verifier results, failures, stagnation,
   // review guides, failure context) and the iteration counter go last.

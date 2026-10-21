@@ -67,6 +67,8 @@ function bundle(overrides: Record<string, unknown> = {}) {
       exportPack: false,
       exportRunReport: false,
       exportTranscript: false,
+      // lessons is opt-in (default off since review of #47); these wiring tests opt in.
+      lessons: true,
       ...overrides,
     }),
     logPath: path.join(loopDir, 'log.ndjson'),
@@ -103,6 +105,10 @@ describe('lessons-file: module contract', () => {
     expect(LESSONS_FILENAME).toBe('lessons.md')
     expect(lessonsPath(loopDir)).toBe(path.join(loopDir, 'lessons.md'))
     expect(FROZEN_LOOP_BASENAMES as readonly string[]).toContain('lessons.md')
+  })
+
+  it('is opt-in: lessons defaults to false in loop.json', () => {
+    expect(loopConfigSchema.parse({ verify: VERIFY_CMD }).lessons).toBe(false)
   })
 
   it('reads nothing when the file is absent or blank', () => {

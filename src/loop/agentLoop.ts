@@ -12,12 +12,21 @@ import { loadLoopResearchSection, resolveLoopResearchRelativePath } from './loop
 import { detectStagnation } from './loopStagnation.js'
 import { resolveStagnationPolicy } from './loopStagnationPolicy.js'
 import {
+  buildStallProbePromptSection,
+  createGitWorkspacePort,
+  pickStallProbeWinner,
+  wrapProbeRestoreError,
+  type StallProbeVariant,
+  type WorkspacePort,
+} from './loopStallProbes.js'
+import {
   AGENT_SDK_VERIFY_COMMAND,
   appendFailureDomain,
   logFailureDomainFromVerify,
   logFailureDomainFromAgentError,
 } from './loopFailureDomain.js'
 import { readFailureContext } from './loopFailureContext.js'
+import { readLessons, recordGreenRunLessons } from './loopLessons.js'
 import { buildDeliverableNudgeSection, missingDeliverables } from './loopDeliverables.js'
 import { detectPlainTextToolCalls } from './loopToolCallText.js'
 import { pauseForContinue } from './loopPause.js'
@@ -167,6 +176,8 @@ export type AgentLoopOptions = {
   onPhase?: (event: AgentLoopPhaseEvent) => void
   /** Injected worker session from the host (WorkerPort). When set, bypasses createLoopAgentSession. */
   workerSession?: LoopAgentSession
+  /** Workspace snapshot/restore for stall probes (tests inject a fake; default is git). */
+  workspacePort?: WorkspacePort<any>
 }
 
 function elapsedMs(startedAt: number): number {
@@ -265,6 +276,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   }
 
   const priorFailures: VerifyResult[] = []
+  const lessonsForPrompt = config.lessons ? readLessons(bundle.loopDir) : undefined
   let lastVerify: VerifyResult | null = null
   let setupResult: VerifyResult | undefined
   let frozenSnapshot: FrozenFileSnapshot[] = []
@@ -278,6 +290,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const transcriptEvents: TranscriptEvent[] = []
   const stagnationThreshold = config.stagnationThreshold
   let previousWorkerPlainTextToolCalls = false
+  let stallProbesUsed = false
+  const workspacePort = options.workspacePort ?? createGitWorkspacePort(repoRoot)
 
   const emitPhase = (phase: AgentLoopPhase, iteration: number): void => {
     if (phase === 'WORKER' || phase === 'JUDGE') {
@@ -457,7 +471,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       options.onIterationStart?.(i)
 
       const repeatCount = detectStagnation(priorFailures, stagnationThreshold).repeatCount
-      const stagnation = resolveStagnationPolicy(config, repeatCount)
+      const stagnation = resolveStagnationPolicy(config, repeatCount, stallProbesUsed)
       const iterationAgent = resolveIterationAgent(
         config,
         i,
@@ -487,6 +501,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         batchRubric: options.batchRubric,
         mode: config.mode,
         failureContext,
+        lessons: lessonsForPrompt,
         verifyCommand: config.verify,
         deliverables: config.deliverables,
         plainTextToolCallWarning: previousWorkerPlainTextToolCalls,
@@ -616,6 +631,331 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         await maybePauseAfterIteration(config, i)
         return undefined
       }
+
+      const runProbeWorkerVerify = async (
+        workerPrompt: string,
+      ): Promise<
+        | {
+            assistantText: string
+            iterationVerify: VerifyResult
+            workerMs: number
+            verifyMs: number
+            assistantRun: AgentRunResult
+            plainTextToolCalls: boolean
+          }
+        | AgentLoopResult
+      > => {
+        const budgetRefuse = await refuseIfNextWorkerExceedsBudget(
+          iterationAgent.model,
+          workerPrompt.length,
+          i,
+        )
+        if (budgetRefuse) return budgetRefuse
+        emitPhase('WORKER', i)
+        const collector = config.exportTranscript
+          ? new StreamCollector({ phase: 'implement', iteration: i })
+          : undefined
+        const workerStartedAt = Date.now()
+        let assistantRun = await runIterationWithRetry(session, workerPrompt, iterationAgent, {
+          verbose,
+          assistantOutput: 'none',
+          collector,
+        })
+        usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+        if (assistantRun.transcriptEvents?.length) {
+          transcriptEvents.push(...assistantRun.transcriptEvents)
+        }
+        let plainTextToolCalls = detectPlainTextToolCalls(assistantRun.text)
+        // Same deliverable guard as the normal worker path; a fault here throws to the
+        // probe's catch (restore + shared fault path).
+        const probeDeliverables = config.deliverables ?? []
+        for (
+          let nudge = 0;
+          probeDeliverables.length > 0 && nudge < config.deliverableNudges;
+          nudge++
+        ) {
+          const missing = missingDeliverables(repoRoot, probeDeliverables)
+          if (missing.length === 0) break
+          const nudgePrompt = `${workerPrompt}\n\n${buildDeliverableNudgeSection(missing)}`
+          const nudgeRefuse = await refuseIfNextWorkerExceedsBudget(
+            iterationAgent.model,
+            nudgePrompt.length,
+            i,
+          )
+          if (nudgeRefuse) return nudgeRefuse
+          assistantRun = await runIterationWithRetry(session, nudgePrompt, iterationAgent, {
+            verbose,
+            assistantOutput: 'none',
+            collector,
+          })
+          usageSummary = addUsageRecord(usageSummary, assistantRun.usage)
+          if (assistantRun.transcriptEvents?.length) {
+            transcriptEvents.push(...assistantRun.transcriptEvents)
+          }
+          plainTextToolCalls ||= detectPlainTextToolCalls(assistantRun.text)
+        }
+        const assistantText = assistantRun.text
+        const workerMs = elapsedMs(workerStartedAt)
+        if (config.delayMs > 0) {
+          await sleep(config.delayMs)
+        }
+        const frozenAfterWorker = restoreFrozenFiles(frozenSnapshot)
+        emitPhase('VERIFY', i)
+        const verifyStartedAt = Date.now()
+        let verify: VerifyResult
+        if (frozenAfterWorker.restored.length > 0) {
+          verify = frozenFilesVerifyResult(frozenAfterWorker.restored)
+        } else {
+          verify = attachVerifyClass(
+            config.verifyMode === 'skill'
+              ? await runVerifySkill({
+                  ctx,
+                  loopDir: bundle.loopDir,
+                  goal,
+                  config,
+                  verbose,
+                  agent: iterationAgent,
+                  iteration: i,
+                  escalationRepeatCount: stagnation.escalationRepeatCount,
+                  reviewCycleEscalation: reviewCyclesUsed,
+                })
+              : runVerifyCommand(config.verify, repoRoot),
+          )
+          const frozenAfterVerify = restoreFrozenFiles(frozenSnapshot)
+          if (frozenAfterVerify.restored.length > 0) {
+            verify = frozenFilesVerifyResult(frozenAfterVerify.restored)
+          }
+        }
+        const iterationVerify = verify
+        const verifyMs = elapsedMs(verifyStartedAt)
+        return { assistantText, iterationVerify, workerMs, verifyMs, assistantRun, plainTextToolCalls }
+      }
+
+      let assistantText: string
+      let assistantRun: AgentRunResult
+      let iterationVerify: VerifyResult
+      let workerMs: number
+      let verifyMs: number
+      let finalVerify: VerifyResult | undefined
+      let verify: VerifyResult
+      let innerAgent: AgentRunResult['innerAgent']
+      let workerLogFields: {
+        workerSession?: AgentRunResult['sessionRef']
+        toolSummary?: AgentRunResult['toolSummary']
+        toolErrorStats?: ToolErrorStatRow[]
+      }
+      let probeLogsWritten = false
+      /** Kept green probe: its iteration line is written by the success path (with review). */
+      let deferredProbeLog: LoopIterationLog['probe'] | undefined
+
+      let probeRound = stagnation.probeRepeatCount !== undefined
+      let s0: unknown
+      if (probeRound) {
+        try {
+          s0 = await workspacePort.snapshot()
+        } catch (err) {
+          // e.g. unmerged index entries: never guess at the workspace — skip probes for
+          // this run and carry on with the normal worker.
+          console.error(
+            `[agent-loop] stall probes skipped: workspace snapshot failed: ${formatErrorChain(err)}`,
+          )
+          stallProbesUsed = true
+          probeRound = false
+        }
+      }
+
+      if (probeRound) {
+        probeLogsWritten = true
+        stallProbesUsed = true
+        const stalled = lastVerify ?? priorFailures[priorFailures.length - 1]
+        if (!stalled) {
+          throw new Error('stall probe round requires a prior verifier failure')
+        }
+        const probeInput = {
+          verifyCommand: config.verify,
+          lastVerify,
+          diffStat: git.diffStat,
+        }
+        type ProbeRun = Awaited<ReturnType<typeof runProbeWorkerVerify>>
+        const probeRuns: Array<{
+          variant: StallProbeVariant
+          run: Exclude<ProbeRun, AgentLoopResult>
+        }> = []
+
+        const writeProbeLines = (
+          winner: StallProbeVariant | undefined,
+          skip?: StallProbeVariant,
+        ): void => {
+          for (const probe of probeRuns) {
+            if (probe.variant === skip) continue
+            const { verifyForLog, verifyLog } = persistVerifyResultsForLog(
+              bundle.loopDir,
+              i,
+              probe.run.iterationVerify,
+              undefined,
+              config.verifyLogMode,
+            )
+            appendJsonlLine(
+              logPath,
+              buildIterationLog({
+                iteration: i,
+                git,
+                verify: verifyForLog,
+                verifyLog,
+                assistantText: probe.run.assistantText,
+                usage: probe.run.assistantRun.usage,
+                model: iterationAgent.model,
+                reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+                durationsMs: { worker: probe.run.workerMs, verify: probe.run.verifyMs },
+                probe: { variant: probe.variant, kept: probe.variant === winner },
+              }),
+            )
+          }
+        }
+
+        /**
+         * Restore the workspace to a probe-round snapshot. A failed restore leaves the
+         * workspace in an unknown state, so the run parks (`status: waiting`, working tree
+         * left as-is for a human) — keeping the original probe/worker error alongside it.
+         */
+        const restoreProbeWorkspace = async (
+          snap: unknown,
+          phase: string,
+          originalError?: unknown,
+        ): Promise<AgentLoopResult | undefined> => {
+          try {
+            await workspacePort.restore(snap)
+            return undefined
+          } catch (restoreError) {
+            const wrapped = wrapProbeRestoreError(phase, restoreError, originalError)
+            const message = formatErrorChain(wrapped)
+            console.error(`[agent-loop] ${message}`)
+            appendFailureDomain(bundle.loopDir, {
+              iteration: i,
+              reason: 'stall_probe_restore_failed',
+              fingerprint: `stall_probe_restore_failed|${phase}`,
+              verify: {
+                command: config.verify,
+                exitCode: null,
+                reason: message.slice(0, 500),
+              },
+              status: 'waiting',
+            })
+            return finish({
+              complete: false,
+              iterations: i,
+              completionReason: message,
+              lastVerify,
+              logPath,
+              status: 'waiting',
+            })
+          }
+        }
+
+        const procPrompt = `${prompt}\n\n${buildStallProbePromptSection('procedure', probeInput)}`
+        const procStartedAt = Date.now()
+        let procOutcome: ProbeRun
+        try {
+          procOutcome = await runProbeWorkerVerify(procPrompt)
+        } catch (err) {
+          // Roll back the half-done procedure probe; the one probe round is spent.
+          const parked = await restoreProbeWorkspace(s0, 'after procedure probe fault', err)
+          if (parked) return parked
+          const faultResult = await handleWorkerFault(
+            err,
+            procStartedAt,
+            `stall probe (procedure) of iteration ${i}`,
+          )
+          if (faultResult) return faultResult
+          continue iterationLoop
+        }
+        consecutiveTransientAgentErrors = 0
+        if ('completionReason' in procOutcome) return procOutcome
+        probeRuns.push({ variant: 'procedure', run: procOutcome })
+
+        let winner: StallProbeVariant | undefined
+        if (procOutcome.iterationVerify.complete) {
+          winner = 'procedure'
+        } else {
+          const sA = await workspacePort.snapshot()
+          const parkedBeforeFacts = await restoreProbeWorkspace(s0, 'before facts probe')
+          if (parkedBeforeFacts) return parkedBeforeFacts
+          const factsPrompt = `${prompt}\n\n${buildStallProbePromptSection('facts', probeInput)}`
+          const factsStartedAt = Date.now()
+          let factsOutcome: ProbeRun
+          try {
+            factsOutcome = await runProbeWorkerVerify(factsPrompt)
+          } catch (err) {
+            // Keep the completed procedure attempt rather than a half-done facts probe.
+            const parked = await restoreProbeWorkspace(sA, 'after facts probe fault', err)
+            if (parked) return parked
+            writeProbeLines('procedure')
+            const faultResult = await handleWorkerFault(
+              err,
+              factsStartedAt,
+              `stall probe (facts) of iteration ${i}`,
+            )
+            if (faultResult) return faultResult
+            continue iterationLoop
+          }
+          consecutiveTransientAgentErrors = 0
+          if ('completionReason' in factsOutcome) return factsOutcome
+          probeRuns.push({ variant: 'facts', run: factsOutcome })
+          const outcomes = probeRuns.map((p) => ({
+            variant: p.variant,
+            verify: p.run.iterationVerify,
+          }))
+          winner = pickStallProbeWinner(stalled, outcomes)
+          const restoreTo =
+            winner === 'procedure' ? sA : winner === undefined ? s0 : undefined
+          if (restoreTo !== undefined) {
+            const parked = await restoreProbeWorkspace(
+              restoreTo,
+              winner === 'procedure' ? 'keeping procedure probe' : 'no probe kept',
+            )
+            if (parked) return parked
+          }
+        }
+
+        const keptRun =
+          winner === undefined
+            ? probeRuns[probeRuns.length - 1]!.run
+            : probeRuns.find((p) => p.variant === winner)!.run
+        assistantText = keptRun.assistantText
+        assistantRun = keptRun.assistantRun
+        iterationVerify = keptRun.iterationVerify
+        workerMs = keptRun.workerMs
+        verifyMs = keptRun.verifyMs
+        verify = iterationVerify
+        finalVerify = undefined
+        if (iterationVerify.complete && config.finalVerify) {
+          console.error(`[agent-loop] inner verify passed — final: ${config.finalVerify}`)
+          finalVerify = attachVerifyClass(runVerifyCommand(config.finalVerify, repoRoot))
+          const frozenAfterFinalVerify = restoreFrozenFiles(frozenSnapshot)
+          if (frozenAfterFinalVerify.restored.length > 0) {
+            console.error(
+              `[agent-loop] frozen files restored after final verify: ${frozenAfterFinalVerify.restored.join(', ')}`,
+            )
+            verify = frozenFilesVerifyResult(frozenAfterFinalVerify.restored)
+            finalVerify = undefined
+          }
+        }
+        iterationVerify = finalVerify ?? verify
+        if (iterationVerify.complete && winner !== undefined) {
+          deferredProbeLog = { variant: winner, kept: true }
+          writeProbeLines(winner, winner)
+        } else {
+          writeProbeLines(winner)
+        }
+        innerAgent = assistantRun.innerAgent
+        workerLogFields = {
+          workerSession: assistantRun.sessionRef,
+          toolSummary: assistantRun.toolSummary,
+        }
+        previousWorkerPlainTextToolCalls = keptRun.plainTextToolCalls
+        const probeBudgetStop = await stopOnBudget(i)
+        if (probeBudgetStop) return probeBudgetStop
+      } else {
       const budgetRefuse = await refuseIfNextWorkerExceedsBudget(
         iterationAgent.model,
         prompt.length,
@@ -627,7 +967,6 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         ? new StreamCollector({ phase: 'implement', iteration: i })
         : undefined
       const workerStartedAt = Date.now()
-      let assistantRun: AgentRunResult
       try {
         assistantRun = await runIterationWithRetry(
           session,
@@ -699,11 +1038,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       const budgetStop = await stopOnBudget(i)
       if (budgetStop) return budgetStop
-      const assistantText = assistantRun.text
+      assistantText = assistantRun.text
       previousWorkerPlainTextToolCalls = workerRuns.some((run) =>
         detectPlainTextToolCalls(run.text),
       )
-      const innerAgent = assistantRun.innerAgent
+      innerAgent = assistantRun.innerAgent
       const iterationWorkerEvents = workerRuns.flatMap((run) => run.transcriptEvents ?? [])
       if (iterationWorkerEvents.length) {
         transcriptEvents.push(...iterationWorkerEvents)
@@ -714,13 +1053,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         model: iterationAgent.model,
         transcriptEvents: iterationWorkerEvents,
       })
-      const workerLogFields = {
+      workerLogFields = {
         workerSession: assistantRun.sessionRef,
         toolSummary: assistantRun.toolSummary,
         ...(workerToolErrors ? { toolErrorStats: [workerToolErrors] } : {}),
       }
       // Measured after the nudge loop, so durationsMs.worker covers every nudge call too.
-      const workerMs = elapsedMs(workerStartedAt)
+      workerMs = elapsedMs(workerStartedAt)
 
       if (innerAgent && !innerAgent.complete) {
         console.error(
@@ -735,8 +1074,6 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       const frozenAfterWorker = restoreFrozenFiles(frozenSnapshot)
       emitPhase('VERIFY', i)
       const verifyStartedAt = Date.now()
-      let verify: VerifyResult
-      let finalVerify: VerifyResult | undefined
       if (frozenAfterWorker.restored.length > 0) {
         console.error(
           `[agent-loop] frozen files restored after worker: ${frozenAfterWorker.restored.join(', ')}`,
@@ -772,19 +1109,27 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           finalVerify = undefined
         }
       }
-      const iterationVerify = finalVerify ?? verify
-      lastVerify = iterationVerify
-      const verifyMs = elapsedMs(verifyStartedAt)
+      iterationVerify = finalVerify ?? verify
+      verifyMs = elapsedMs(verifyStartedAt)
+      }
 
+      lastVerify = iterationVerify
       const passed = iterationVerify.complete
       const siblingRepos = siblingReposForIterationLog(config)
-      const { verifyForLog, verifyLog, finalVerifyForLog } = persistVerifyResultsForLog(
-        bundle.loopDir,
-        i,
-        verify,
-        finalVerify,
-        config.verifyLogMode,
-      )
+      const persistedVerify = probeLogsWritten
+        ? {
+            verifyForLog: iterationVerify,
+            verifyLog: undefined,
+            finalVerifyForLog: undefined,
+          }
+        : persistVerifyResultsForLog(
+            bundle.loopDir,
+            i,
+            verify,
+            finalVerify,
+            config.verifyLogMode,
+          )
+      const { verifyForLog, verifyLog, finalVerifyForLog } = persistedVerify
 
       if (passed) {
         runPostVerifierExtensionHooks(config, repoRoot)
@@ -796,6 +1141,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       // Every iteration-log call site below shares these fields; only `review` varies.
       const appendCurrentIterationLog = (review?: LoopIterationLog['review']): void => {
+        // Probe rounds already logged one line per probe; only a kept green probe is
+        // written here (once, with its review) so a green iteration has a single record.
+        if (probeLogsWritten && !deferredProbeLog) return
         const toolErrorStats = mergeToolErrorStatRows([
           ...(workerLogFields.toolErrorStats ?? []),
           ...(reviewPhaseToolErrors ?? []),
@@ -823,8 +1171,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             },
             ...workerLogFields,
             ...(toolErrorStats.length > 0 ? { toolErrorStats } : {}),
+            ...(deferredProbeLog ? { probe: deferredProbeLog } : {}),
           }),
         )
+        deferredProbeLog = undefined
       }
 
       if (isEnvVerifyFailure(iterationVerify)) {
@@ -918,6 +1268,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           })
         }
         maybeRunSync(ctx, config.syncOnSuccess)
+        if (config.lessons) {
+          recordGreenRunLessons(bundle.loopDir, {
+            verifyCommand: config.verify,
+            iterations: i,
+            failuresOvercome: priorFailures,
+          })
+        }
         return finish({
           complete: true,
           iterations: i,
@@ -944,7 +1301,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       await maybePauseAfterIteration(config, i)
 
       const afterFailure = detectStagnation(priorFailures, stagnationThreshold)
-      if (afterFailure.stagnant) {
+      const skipStagnationStopForProbeRound =
+        config.stallProbes && probeLogsWritten && stallProbesUsed
+      if (afterFailure.stagnant && !skipStagnationStopForProbeRound) {
         console.error(
           `[agent-loop] stagnation: same verifier failure ${afterFailure.repeatCount} times — stopping early`,
         )

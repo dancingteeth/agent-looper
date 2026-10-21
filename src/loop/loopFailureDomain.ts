@@ -17,6 +17,7 @@ export type FailureDomainReason =
   | 'review_judge_failed'
   | 'agent_transient_exhausted'
   | 'meta_probe_failed'
+  | 'stall_probe_restore_failed'
   | 'agent_error'
   | 'verify_env'
   | 'setup'
@@ -100,6 +101,8 @@ function suggestionForReason(reason: FailureDomainReason, repeatCount?: number):
       return 'Too many consecutive transient worker agent errors — fix network/provider or re-run; working tree kept as-is.'
     case 'meta_probe_failed':
       return 'Meta-loop probe still failing after fix cycle — inspect failure-context.md and failure-domains.ndjson.'
+    case 'stall_probe_restore_failed':
+      return 'A stall-probe workspace restore failed — the working tree is as the probe left it. Inspect `git status` / the reflog, put the tree back by hand, then re-run.'
     case 'agent_error':
       return 'Agent SDK threw during an iteration — see stderr. Re-run or inspect the agent session/API key.'
     case 'verify_env':

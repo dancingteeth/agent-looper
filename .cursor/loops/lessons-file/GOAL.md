@@ -13,12 +13,14 @@ line of each verifier failure before green, deduped, newest kept, size-capped). 
 the same loop reads it and puts it in every worker prompt, in the stable prompt head (before
 `## Workspace (git)`) so the provider prefix cache keeps working. Failed or parked runs never
 write it. Workers can't edit it: `lessons.md` joins `FROZEN_LOOP_BASENAMES`. A `lessons`
-boolean in `loop.json` (default `true`) turns read and write off together.
+boolean in `loop.json` turns read and write on or off together. It defaults to `false`
+(opt-in: set `"lessons": true`), per Paul in chat 2026-10-21 19:15 (review of #47); it was
+originally specified as default `true`.
 
 Canonical paths: new `src/loop/loopLessons.ts` (+ `src/loop/loopLessons.test.ts`),
 `src/loop/loopPrompt.ts` (`LoopPromptInput.lessons?: string`), `src/loop/agentLoop.ts`
 (read before iteration 1, write on the `complete: true` path only), `src/loop/loopConfig.ts`
-(`lessons: z.boolean().default(true)`), `src/loop/loopFrozenFiles.ts`, `README.md`
+(`lessons: z.boolean().default(false)` — opt-in, per Paul in chat 2026-10-21 19:15), `src/loop/loopFrozenFiles.ts`, `README.md`
 (bundle layout + config table), `CHANGELOG.md` (Unreleased).
 
 Code fact that shaped this goal: `failure-context.md` is **not** deleted after every run. It is
