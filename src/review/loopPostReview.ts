@@ -27,6 +27,7 @@ import {
   mergePrimarySecondaryReviews,
 } from './reviewReproduce.js'
 import { partialAgentRunFromError } from '../agents/agentRunFailed.js'
+import { formatErrorChain } from '../agents/errorFormat.js'
 import { summarizeSessionToolErrors, type ToolErrorStatRow } from '../loop/loopToolErrors.js'
 import type { LoopUsageRecord } from '../usage/loopUsage.js'
 
@@ -124,6 +125,11 @@ export type PostLoopReviewOptions = {
    * Advisory (ungated) review still skips secondary when the primary has no gating blockers.
    */
   reviewGate?: boolean
+  /**
+   * When true, skip merge secondary (e.g. `reviewSecondary` already served as the
+   * fallback primary judge for this verdict).
+   */
+  skipMergeSecondaryReview?: boolean
 }
 
 export function resolvePostLoopReviewAgent(options: PostLoopReviewOptions): ResolvedReviewAgent {
@@ -245,6 +251,9 @@ function shouldSkipSecondaryReview(
   parsed: ParsedReview,
   options: PostLoopReviewOptions,
 ): { skip: true; reason: string } | { skip: false } {
+  if (options.skipMergeSecondaryReview) {
+    return { skip: true, reason: 'secondary judge already acted as fallback primary' }
+  }
   if (!options.reviewSecondaryRuntime) {
     return { skip: true, reason: 'disabled' }
   }
@@ -314,7 +323,7 @@ async function maybeRunSecondaryReview(
       usage: run.usage,
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+    const message = formatErrorChain(err)
     const partial = partialAgentRunFromError(err)
     console.error(
       `[agent-loop] secondary review failed (primary verdict stands): ${message}`,

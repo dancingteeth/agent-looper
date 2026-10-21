@@ -349,7 +349,7 @@ primary review (reviewRuntime + reviewModel)
   → else PASS / ADVISORY → complete
 ```
 
-If the **primary judge session errors** (timeout, provider fault, text-with-no-tool-calls), the harness retries once, then runs **`reviewSecondary`** as a fallback judge. When both fail, the run **parks** (`status: waiting`, CLI exit `0`, `failure-domains.ndjson` reason `review_judge_failed`) — verify already passed.
+If the **primary judge session errors** (timeout, provider fault, text-with-no-tool-calls), the harness retries once, then runs **`reviewSecondary`** as a fallback judge (without a second merge pass on the same model). When both fail, the run **parks** (`status: waiting`, CLI exit `2`, `failure-domains.ndjson` reason `review_judge_failed`) — verify already passed.
 
 Unparseable verdicts retry (`unparseableReviewRetries`). Gate exhaust can escalate to HITL (`reviewGateHitl`). Gating bullets (`severity: error` + a recognized impact tag) keep the gate open even if a later `### Verdict — PASS` heading appears in the same `review.md`. Heading vs body token disagreement with no gating bullets is unparseable.
 
@@ -528,8 +528,7 @@ AGENT_LOOP_DONE {"v":1,"kind":"loop","bundle":".cursor/loops/my-task","complete"
 | --- | --- |
 | `0` | Success (`complete: true`) |
 | `1` | Fatal harness error (uncaught throw, bad argv) |
-| `2` | Incomplete — verify/review gate/stagnation (`status: continue`) |
-| `3` | Parked — budget, env/setup, judge unavailable, or too many transient worker agent errors (`status: waiting`; `complete: false`) |
+| `2` | Incomplete or parked — verify/review gate/stagnation (`status: continue`) or human/provider park (`status: waiting`; budget, env/setup, judge unavailable, transient worker cap; `complete: false`) |
 
 Human logs stay on **stderr**; the sentinel is written with **`fs.writeSync(1, …)`** so piped stdout is not lost before `process.exit`. Side channels (`notifyWebhook` / `notifyCommand` / PR comment) run **after** the sentinel and are time-capped so a hung hook cannot delay wake.
 
@@ -547,7 +546,7 @@ Do not promise in-chat wake from `AGENT_LOOP_DONE` on Cloud Agents.
 
 ## Export packs (cloud / PR audit)
 
-In-loop `review.md` / `log.ndjson` / `run-report.md` stay **gitignored** (noisy mid-run). When `exportPack: true` (default), each finished loop also writes a curated snapshot to:
+In-loop `review.md` / `log.ndjson` / `run-report.md` / `verify-logs/` stay **gitignored** (noisy mid-run). `agent-loop-init` adds a block for loop artifacts including `.cursor/loops/**/verify-logs/`. When `exportPack: true` (default), each finished loop also writes a curated snapshot to:
 
 ```text
 .cursor/loop-exports/<slug>/

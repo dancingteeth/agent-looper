@@ -17,7 +17,7 @@ export type NotifyWebhookPayload = {
   kind: 'loop' | 'batch'
   bundle: string
   complete: boolean
-  exitCode: 0 | 1 | 2 | 3
+  exitCode: 0 | 1 | 2
   reason: string
   report?: string
   iterations?: number
@@ -143,7 +143,7 @@ export function formatLoopPrCommentBody(input: {
   kind: 'loop' | 'batch'
   bundle: string
   complete: boolean
-  exitCode: 0 | 1 | 2 | 3
+  exitCode: 0 | 1 | 2
   reason: string
   report?: string
   exportPack?: string

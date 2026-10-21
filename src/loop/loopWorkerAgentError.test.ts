@@ -10,6 +10,20 @@ describe('classifyWorkerAgentError', () => {
   it('treats missing API key as fatal', () => {
     expect(classifyWorkerAgentError(new Error('CURSOR_API_KEY is not set'))).toBe('fatal')
   })
+
+  it('does not treat rate-limit text mentioning api key as fatal', () => {
+    expect(
+      classifyWorkerAgentError(
+        new Error('rate limit: retry after 60s (api key tier=pro)'),
+      ),
+    ).toBe('transient')
+  })
+
+  it('treats empty Cursor result as transient', () => {
+    expect(classifyWorkerAgentError(new Error('Cursor agent returned empty result'))).toBe(
+      'transient',
+    )
+  })
 })
 
 describe('extractPartialWorkerRun', () => {

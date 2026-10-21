@@ -406,4 +406,33 @@ describe('runPostSuccessReviewPhase', () => {
     expect(result.outcome.action).toBe('success')
     expect(runPostLoopQualityReview).toHaveBeenCalledTimes(2)
   })
+
+  it('skips merge secondary when reviewSecondary served as fallback primary', async () => {
+    vi.mocked(runPostLoopQualityReview)
+      .mockRejectedValueOnce(new Error('primary judge down'))
+      .mockRejectedValueOnce(new Error('primary judge still down'))
+      .mockResolvedValueOnce(reviewResult('PASS'))
+
+    const result = await runPostSuccessReviewPhase({
+      config: baseConfig({ reviewSecondaryRuntime: 'cursor', reviewSecondaryModel: 'grok-4.7' }),
+      goal: 'Goal text',
+      ctx: { repoRoot: process.cwd(), profile: repoProfileSchema.parse({}) },
+      loopDir: '/tmp/loop',
+      reviewBlockers: undefined,
+      reviewCyclesUsed: 0,
+      reviewAgent: cursorJudge(),
+      usageSummary: { records: [], totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, totalCacheWriteTokens: 0, totalCostUsd: 0 },
+      reasoningEffort: 'default',
+    })
+
+    expect(result.outcome.action).toBe('success')
+    expect(runPostLoopQualityReview).toHaveBeenCalledTimes(3)
+    expect(runPostLoopQualityReview).toHaveBeenNthCalledWith(
+      3,
+      '/tmp/loop',
+      'Goal text',
+      expect.anything(),
+      expect.objectContaining({ skipMergeSecondaryReview: true }),
+    )
+  })
 })

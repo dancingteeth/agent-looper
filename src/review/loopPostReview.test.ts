@@ -355,6 +355,30 @@ describe('loopPostReview', () => {
     stderrSpy.mockRestore()
   })
 
+  it('skips merge secondary when skipMergeSecondaryReview is set', async () => {
+    const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
+    const ctx = {
+      repoRoot: process.cwd(),
+      profile: repoProfileSchema.parse({}),
+    }
+    runReviewAgentPrompt.mockResolvedValueOnce({
+      text: ['### Verdict', '**BLOCKERS**', '', '### Blockers', '- severity: error impact: false-closure [must-fix] **X** — y'].join(
+        '\n',
+      ),
+    })
+
+    const result = await runPostLoopQualityReview(loopDir, 'goal', ctx, {
+      reviewGate: true,
+      reviewSecondaryRuntime: 'cursor',
+      skipMergeSecondaryReview: true,
+    })
+
+    expect(runReviewAgentPrompt).toHaveBeenCalledTimes(1)
+    expect(result.secondaryReviewSkippedReason).toBe(
+      'secondary judge already acted as fallback primary',
+    )
+  })
+
   it('keeps the primary verdict when secondary review throws', async () => {
     const loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-loop-review-'))
     const ctx = {

@@ -534,6 +534,9 @@ describe('runAgentLoop', () => {
       .trim()
       .split('\n')
     expect(lines.length).toBeGreaterThanOrEqual(2)
+    const faultLine = JSON.parse(lines[0]!)
+    expect(faultLine.verify.reason).toMatch(/retry on the next iteration/)
+    expect(faultLine.verify.reason).not.toMatch(/loop stopped/)
     expect(result.usage.records.length).toBeGreaterThan(0)
   })
 
@@ -557,7 +560,7 @@ describe('runAgentLoop', () => {
     expect(result.status).toBe('waiting')
     expect(result.completionReason).toMatch(/consecutive transient error/)
     expect(runIterationPrompt).toHaveBeenCalledTimes(2)
-    expect(resolveLoopCliExitCode(result)).toBe(3)
+    expect(resolveLoopCliExitCode(result)).toBe(2)
   })
 
   it('stops immediately on a fatal worker agent error', async () => {
@@ -579,6 +582,43 @@ describe('runAgentLoop', () => {
     expect(result.completionReason).toMatch(/fatal/)
     expect(runIterationPrompt).toHaveBeenCalledTimes(1)
     expect(resolveLoopCliExitCode(result)).toBe(2)
+  })
+
+  it('records one usage row and an iteration log line on fatal worker error', async () => {
+    const usage = {
+      phase: 'implement' as const,
+      runtime: 'cursor' as const,
+      model: 'composer-2.5',
+      inputTokens: 900,
+      outputTokens: 100,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      costUsd: 0.05,
+      costSource: 'estimated' as const,
+    }
+    const { AgentRunFailedError } = await import('../agents/agentRunFailed.js')
+    const runIterationPrompt = vi
+      .fn()
+      .mockRejectedValue(new AgentRunFailedError('CURSOR_API_KEY is not set', { usage }))
+    mockSession(runIterationPrompt)
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        runtime: 'cursor',
+        model: 'composer-2.5',
+        maxIterations: 3,
+      }),
+    })
+
+    expect(result.usage.records).toHaveLength(1)
+    expect(result.usage.records[0]?.inputTokens).toBe(900)
+    const lines = fs
+      .readFileSync(path.join(tmpLoopDir, 'log.ndjson'), 'utf8')
+      .trim()
+      .split('\n')
+    expect(lines).toHaveLength(1)
+    expect(JSON.parse(lines[0]!).verify.reason).toContain('Agent SDK error before verify')
   })
 
   it('marks taskwarrior done, creates HITL check, and runs sync on success', async () => {

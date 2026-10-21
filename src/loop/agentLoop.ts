@@ -110,8 +110,8 @@ export const LOOP_EXIT_SUCCESS = 0
 export const LOOP_EXIT_FATAL = 1
 /** CLI exit when the loop ended incomplete (verify/review gate/stagnation) but not parked. */
 export const LOOP_EXIT_INCOMPLETE = 2
-/** CLI exit when the run is parked for human/provider recovery (budget, env, judge down, agent cap). */
-export const LOOP_EXIT_PARKED = 3
+/** CLI exit when the run is parked for human/provider recovery (budget, env, judge down, agent cap). Same as incomplete (0.8.2). */
+export const LOOP_EXIT_PARKED = 2
 
 export type LoopCliExitCode =
   | typeof LOOP_EXIT_SUCCESS
@@ -512,16 +512,40 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         const escalate = shouldEscalateAfterWorkerFault(err, config, iterationAgent, i)
         const message = formatErrorChain(err)
         const partialRun = extractPartialWorkerRun(err)
-        if (partialRun?.usage) {
+        const isFatalWorker = classifyWorkerAgentError(err) === 'fatal'
+        if (!isFatalWorker && partialRun?.usage) {
           usageSummary = addUsageRecord(usageSummary, partialRun.usage)
         }
-        if (classifyWorkerAgentError(err) === 'fatal') {
+        if (isFatalWorker) {
+          const workerFaultVerify = workerSdkVerifyResult(message)
+          const faultToolErrors = summarizeSessionToolErrors({
+            role: 'worker',
+            runtime: config.runtime,
+            model: iterationAgent.model,
+            agentErrorMessage: message,
+            transcriptEvents: partialRun?.transcriptEvents,
+          })
+          appendJsonlLine(
+            logPath,
+            buildIterationLog({
+              iteration: i,
+              git,
+              verify: workerFaultVerify,
+              assistantText: partialRun?.text ?? '',
+              model: iterationAgent.model,
+              reasoningEffort: iterationAgent.reasoningEffort ?? 'default',
+              usage: partialRun?.usage,
+              durationsMs: { worker: elapsedMs(workerStartedAt) },
+              ...(faultToolErrors ? { toolErrorStats: [faultToolErrors] } : {}),
+            }),
+          )
           throw err
         }
 
         const workerFaultVerify = workerSdkVerifyResult(
           message,
           escalate ? config.escalateModel : undefined,
+          true,
         )
         lastVerify = workerFaultVerify
         priorFailures.push(workerFaultVerify)
@@ -585,8 +609,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             `[agent-loop] transient worker agent error during iteration ${i} — continuing after backoff: ${message}`,
           )
         }
-        await recycleWorkerSession(session)
-        await sleep(TRANSIENT_AGENT_ITERATION_BACKOFF_MS)
+        const budgetStopAfterFault = await stopOnBudget(i)
+        if (budgetStopAfterFault) return budgetStopAfterFault
+        if (i < config.maxIterations) {
+          await recycleWorkerSession(session)
+          await sleep(TRANSIENT_AGENT_ITERATION_BACKOFF_MS)
+        }
         await maybePauseAfterIteration(config, i)
         continue
       }

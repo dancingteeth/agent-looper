@@ -76,7 +76,7 @@ let runStartedAt: number | undefined
 let lastCheckPassed: boolean | undefined
 
 async function finishLoopExit(input: {
-  exitCode: 0 | 1 | 2 | 3
+  exitCode: 0 | 1 | 2
   complete: boolean
   reason: string
   iterations?: number

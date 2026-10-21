@@ -9,7 +9,11 @@ import { resolveSecondaryReviewAgent, type ResolvedReviewAgent } from '../loop/l
 import type { LoopConfig } from '../loop/loopConfig.js'
 import { resolveShouldRunQualityReview } from '../loop/loopRisk.js'
 import { resolveLoopRiskKeywords } from '../loop/loopRiskProfile.js'
-import { runPostLoopBlockerRecheck, runPostLoopQualityReview } from '../review/loopPostReview.js'
+import {
+  runPostLoopBlockerRecheck,
+  runPostLoopQualityReview,
+  type PostLoopReviewOptions,
+} from '../review/loopPostReview.js'
 import type { GuidePacket } from '../review/guidePackets.js'
 import { guidePacketsFromReview } from '../review/guidePackets.js'
 import type { ParsedReview, ReviewRisk, ReviewVerdict } from '../review/reviewVerdict.js'
@@ -281,8 +285,12 @@ export async function runPostSuccessReviewPhase(
     reviewGate: config.reviewGate,
   }
 
-  async function invokeReview(agent: ResolvedReviewAgent, cycle: number) {
-    const shared = { ...baseReviewOptions, reviewCycle: cycle, reviewAgent: agent }
+  async function invokeReview(
+    agent: ResolvedReviewAgent,
+    cycle: number,
+    extra: Pick<PostLoopReviewOptions, 'skipMergeSecondaryReview'> = {},
+  ) {
+    const shared = { ...baseReviewOptions, reviewCycle: cycle, reviewAgent: agent, ...extra }
     return useRecheck
       ? await runPostLoopBlockerRecheck(loopDir, goal, ctx, reviewBlockers!, shared)
       : await runPostLoopQualityReview(loopDir, goal, ctx, shared)
@@ -321,7 +329,9 @@ export async function runPostSuccessReviewPhase(
             `[agent-loop] review gate: primary judge failed (${formatReviewJudgeErrorClass(reviewErrorClass)}) — falling back to secondary ${secondary.runtime}/${secondary.model}`,
           )
           try {
-            const fallback = await invokeReview(secondary, reviewCycle)
+            const fallback = await invokeReview(secondary, reviewCycle, {
+              skipMergeSecondaryReview: true,
+            })
             usageSummary = addUsageRecord(usageSummary, fallback.usage)
             if (fallback.toolErrorStats?.length) {
               judgeToolErrorRows.push(...fallback.toolErrorStats)
