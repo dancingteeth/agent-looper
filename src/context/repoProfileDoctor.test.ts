@@ -31,34 +31,46 @@ afterEach(() => {
 
 describe('validateRepoProfile', () => {
   it('run scope (loopDir) lints only that loop and leaves Telegram to the run preflight; doctor scans all', () => {
-    const repoRoot = makeGitRepo()
-    for (const name of ['current', 'old-gameable']) {
-      const dir = path.join(repoRoot, '.cursor', 'loops', name)
-      fs.mkdirSync(dir, { recursive: true })
-      fs.writeFileSync(path.join(dir, 'loop.json'), JSON.stringify({ verify: `bash .cursor/loops/${name}/verify.sh` }))
-      fs.writeFileSync(
-        path.join(dir, 'verify.sh'),
-        "#!/bin/sh\nTITLES='Compact Disc Player|Beige Desktop|Candybar Phone'\ngrep -qE \"$TITLES\" index.html\n",
-      )
+    // The doctor warning depends on Telegram env being unset; Doppler-run shells set it.
+    // Clear it for this test only and put the caller's values back afterwards.
+    const telegramKeys = ['AGENT_LOOP_TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_TOKEN', 'AGENT_LOOP_TELEGRAM_CHAT_ID']
+    const savedTelegramEnv = telegramKeys.map((key) => [key, process.env[key]] as const)
+    for (const key of telegramKeys) delete process.env[key]
+    try {
+      const repoRoot = makeGitRepo()
+      for (const name of ['current', 'old-gameable']) {
+        const dir = path.join(repoRoot, '.cursor', 'loops', name)
+        fs.mkdirSync(dir, { recursive: true })
+        fs.writeFileSync(path.join(dir, 'loop.json'), JSON.stringify({ verify: `bash .cursor/loops/${name}/verify.sh` }))
+        fs.writeFileSync(
+          path.join(dir, 'verify.sh'),
+          "#!/bin/sh\nTITLES='Compact Disc Player|Beige Desktop|Candybar Phone'\ngrep -qE \"$TITLES\" index.html\n",
+        )
+      }
+      const ctx = {
+        repoRoot,
+        profile: repoProfileSchema.parse({ defaultBranch: 'main', telegramNotify: {} }),
+      }
+      const opts = { detection: emptyDetection() }
+
+      const doctor = validateRepoProfile(ctx, opts)
+      expect(doctor.warnings.filter((w) => w.includes('gameable'))).toHaveLength(2)
+      expect(doctor.warnings.some((w) => w.startsWith('telegramNotify is enabled'))).toBe(true)
+
+      const run = validateRepoProfile(ctx, { ...opts, loopDir: path.join(repoRoot, '.cursor', 'loops', 'current') })
+      const gameable = run.warnings.filter((w) => w.includes('gameable'))
+      expect(gameable).toHaveLength(1)
+      expect(gameable[0]).toContain('loops/current/verify.sh')
+      expect(run.warnings.some((w) => w.startsWith('telegramNotify is enabled'))).toBe(false)
+
+      const outside = validateRepoProfile(ctx, { ...opts, loopDir: path.join(repoRoot, 'elsewhere', 'loop') })
+      expect(outside.warnings.filter((w) => w.includes('gameable'))).toHaveLength(0)
+    } finally {
+      for (const [key, value] of savedTelegramEnv) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
     }
-    const ctx = {
-      repoRoot,
-      profile: repoProfileSchema.parse({ defaultBranch: 'main', telegramNotify: {} }),
-    }
-    const opts = { detection: emptyDetection() }
-
-    const doctor = validateRepoProfile(ctx, opts)
-    expect(doctor.warnings.filter((w) => w.includes('gameable'))).toHaveLength(2)
-    expect(doctor.warnings.some((w) => w.startsWith('telegramNotify is enabled'))).toBe(true)
-
-    const run = validateRepoProfile(ctx, { ...opts, loopDir: path.join(repoRoot, '.cursor', 'loops', 'current') })
-    const gameable = run.warnings.filter((w) => w.includes('gameable'))
-    expect(gameable).toHaveLength(1)
-    expect(gameable[0]).toContain('loops/current/verify.sh')
-    expect(run.warnings.some((w) => w.startsWith('telegramNotify is enabled'))).toBe(false)
-
-    const outside = validateRepoProfile(ctx, { ...opts, loopDir: path.join(repoRoot, 'elsewhere', 'loop') })
-    expect(outside.warnings.filter((w) => w.includes('gameable'))).toHaveLength(0)
   })
 
   it('accepts the current repo default branch', () => {
