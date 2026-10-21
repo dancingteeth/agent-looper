@@ -1,15 +1,12 @@
 {
   "verify": "bash .cursor/loops/stall-probes/verify.sh",
-  "runtime": "opencode",
-  "model": "opencode-go/qwen3.7-plus",
-  "escalateModel": "opencode-go/deepseek-v4-pro",
+  "runtime": "cursor",
   "escalateAfterStagnation": 2,
-  "reviewRuntime": "opencode",
-  "reviewSecondaryRuntime": "opencode",
-  "reviewSecondaryModel": "opencode-go/glm-5.3",
+  "reviewRuntime": "cursor",
   "reviewGate": true,
   "maxReviewCycles": 2,
   "maxIterations": 10,
   "stagnationThreshold": 3,
-  "mode": "forward"
+  "mode": "forward",
+  "costPreset": "cursor"
 }
