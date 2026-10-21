@@ -8,7 +8,9 @@ import {
   createGitWorkspacePort,
   pickStallProbeWinner,
   STALL_PROBE_VARIANTS,
+  wrapProbeRestoreError,
 } from './loopStallProbes.js'
+import { formatErrorChain } from '../agents/errorFormat.js'
 import type { VerifyResult } from './loopVerify.js'
 
 const VERIFY_CMD = 'bash verify.sh'
@@ -36,6 +38,21 @@ function pass(): VerifyResult {
 }
 
 describe('loopStallProbes', () => {
+  it('wraps a restore failure and keeps the original error (AggregateError + cause)', () => {
+    const original = new Error('worker timed out after 1000ms')
+    const restore = new Error('HEAD moved from a to b (not a descendant)')
+    const wrapped = wrapProbeRestoreError('after procedure probe fault', restore, original)
+    expect(wrapped).toBeInstanceOf(AggregateError)
+    expect(wrapped.errors).toEqual([restore, original])
+    expect(wrapped.cause).toBe(original)
+    const chain = formatErrorChain(wrapped)
+    expect(chain).toContain('HEAD moved from a to b')
+    expect(chain).toContain('worker timed out after 1000ms')
+    const alone = wrapProbeRestoreError('no probe kept', restore)
+    expect(alone.errors).toEqual([restore])
+    expect(alone.cause).toBe(restore)
+  })
+
   it('exports two variants', () => {
     expect([...STALL_PROBE_VARIANTS]).toEqual(['procedure', 'facts'])
   })
@@ -331,9 +348,200 @@ describe('loopStallProbes', () => {
       expect(sh(dir, 'rev-parse', 'HEAD').trim()).toBe(head)
       expect(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8')).toBe('dirty\n')
 
+      // The branch itself moved to an unrelated commit (same branch, not a descendant).
+      const unrelated = sh(dir, 'commit-tree', sh(dir, 'write-tree').trim(), '-m', 'unrelated').trim()
+      sh(dir, 'update-ref', 'HEAD', unrelated)
+      expect(() => port.restore(snap)).toThrow(/HEAD moved/)
+    })
+
+    function ignoredRepo(): string {
+      const dir = repo()
+      fs.writeFileSync(path.join(dir, '.gitignore'), '.env\nnode_modules/\n')
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'a\n')
+      sh(dir, 'add', '-A')
+      sh(dir, 'commit', '-qm', 'init')
+      fs.writeFileSync(path.join(dir, '.env'), 'SECRET=1\n')
+      fs.mkdirSync(path.join(dir, 'node_modules', 'pkg'), { recursive: true })
+      fs.writeFileSync(path.join(dir, 'node_modules', 'pkg', 'index.js'), 'x\n')
+      return dir
+    }
+    function expectIgnoredFilesKept(dir: string): void {
+      expect(fs.readFileSync(path.join(dir, '.env'), 'utf8')).toBe('SECRET=1\n')
+      expect(fs.readFileSync(path.join(dir, 'node_modules', 'pkg', 'index.js'), 'utf8')).toBe('x\n')
+      expect(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8')).toBe('.env\nnode_modules/\n')
+    }
+
+    it('never deletes files the snapshot ignores when a probe rewrites .gitignore', async () => {
+      const dir = ignoredRepo()
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      fs.writeFileSync(path.join(dir, '.gitignore'), '# cleaned\n')
+      fs.writeFileSync(path.join(dir, 'probe.txt'), 'probe\n')
+      await port.restore(snap)
+      expectIgnoredFilesKept(dir)
+      expect(fs.existsSync(path.join(dir, 'probe.txt'))).toBe(false)
+    })
+
+    it('never deletes files the snapshot ignores when a probe deletes .gitignore', async () => {
+      const dir = ignoredRepo()
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      fs.rmSync(path.join(dir, '.gitignore'))
+      await port.restore(snap)
+      expectIgnoredFilesKept(dir)
+    })
+
+    it('never deletes an ignored file a probe force-added to the index', async () => {
+      const dir = ignoredRepo()
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      sh(dir, 'add', '-f', '.env', 'node_modules')
+      await port.restore(snap)
+      expectIgnoredFilesKept(dir)
+      expect(sh(dir, 'ls-files', '--', '.env', 'node_modules')).toBe('')
+    })
+
+    it('keeps files ignored via info/exclude when a probe rewrites it, and restores it', async () => {
+      const dir = repo()
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'a\n')
+      sh(dir, 'add', '-A')
+      sh(dir, 'commit', '-qm', 'init')
+      const exclude = path.join(dir, '.git', 'info', 'exclude')
+      fs.mkdirSync(path.dirname(exclude), { recursive: true })
+      fs.writeFileSync(exclude, 'local.db\n')
+      fs.writeFileSync(path.join(dir, 'local.db'), 'data\n')
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      fs.writeFileSync(exclude, '')
+      await port.restore(snap)
+      expect(fs.readFileSync(path.join(dir, 'local.db'), 'utf8')).toBe('data\n')
+      expect(fs.readFileSync(exclude, 'utf8')).toBe('local.db\n')
+    })
+
+    it('a nested .gitignore the probe edits is restored before deciding what to delete', async () => {
+      const dir = repo()
+      fs.mkdirSync(path.join(dir, 'pkg'))
+      fs.writeFileSync(path.join(dir, 'pkg', '.gitignore'), 'cache/\n')
+      fs.writeFileSync(path.join(dir, 'pkg', 'a.txt'), 'a\n')
+      sh(dir, 'add', '-A')
+      sh(dir, 'commit', '-qm', 'init')
+      fs.mkdirSync(path.join(dir, 'pkg', 'cache'))
+      fs.writeFileSync(path.join(dir, 'pkg', 'cache', 'blob'), 'c\n')
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      fs.rmSync(path.join(dir, 'pkg', '.gitignore'))
+      fs.writeFileSync(path.join(dir, '.gitignore'), '# probe added\n')
+      await port.restore(snap)
+      expect(fs.readFileSync(path.join(dir, 'pkg', 'cache', 'blob'), 'utf8')).toBe('c\n')
+      expect(fs.readFileSync(path.join(dir, 'pkg', '.gitignore'), 'utf8')).toBe('cache/\n')
+      expect(fs.existsSync(path.join(dir, '.gitignore'))).toBe(false)
+    })
+
+    it('switches back to the snapshot branch after a probe ran git checkout -b (and committed)', async () => {
+      const dir = repo()
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'v1\n')
+      sh(dir, 'add', '.')
+      sh(dir, 'commit', '-qm', 'init')
+      const branch = sh(dir, 'symbolic-ref', 'HEAD').trim()
+      const head = sh(dir, 'rev-parse', 'HEAD').trim()
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      sh(dir, 'checkout', '-q', '-b', 'probe-branch')
+      await port.restore(snap)
+      expect(sh(dir, 'symbolic-ref', 'HEAD').trim()).toBe(branch)
+      expect(sh(dir, 'rev-parse', 'HEAD').trim()).toBe(head)
+
+      sh(dir, 'checkout', '-q', '-b', 'probe-branch-2')
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'probe\n')
+      sh(dir, 'commit', '-qam', 'probe on its own branch')
+      await port.restore(snap)
+      expect(sh(dir, 'symbolic-ref', 'HEAD').trim()).toBe(branch)
+      expect(sh(dir, 'rev-parse', 'HEAD').trim()).toBe(head)
+      expect(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8')).toBe('v1\n')
+      expect(sh(dir, 'status', '--porcelain')).toBe('')
+    })
+
+    it('switches back from an orphan branch, and re-attaches after a detached HEAD', async () => {
+      const dir = repo()
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'v1\n')
+      sh(dir, 'add', '.')
+      sh(dir, 'commit', '-qm', 'init')
+      const branch = sh(dir, 'symbolic-ref', 'HEAD').trim()
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
       sh(dir, 'checkout', '-q', '--orphan', 'elsewhere')
       sh(dir, 'commit', '-qm', 'unrelated')
-      expect(() => port.restore(snap)).toThrow(/HEAD moved/)
+      await port.restore(snap)
+      expect(sh(dir, 'symbolic-ref', 'HEAD').trim()).toBe(branch)
+
+      sh(dir, 'checkout', '-q', '--detach')
+      await port.restore(snap)
+      expect(sh(dir, 'symbolic-ref', 'HEAD').trim()).toBe(branch)
+    })
+
+    it('restores a detached snapshot HEAD as detached', async () => {
+      const dir = repo()
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'v1\n')
+      sh(dir, 'add', '.')
+      sh(dir, 'commit', '-qm', 'init')
+      sh(dir, 'checkout', '-q', '--detach')
+      const head = sh(dir, 'rev-parse', 'HEAD').trim()
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      sh(dir, 'checkout', '-q', '-b', 'probe-branch')
+      await port.restore(snap)
+      expect(() => sh(dir, 'symbolic-ref', '-q', 'HEAD')).toThrow()
+      expect(sh(dir, 'rev-parse', 'HEAD').trim()).toBe(head)
+    })
+
+    it('recreates the snapshot branch when a probe deleted it', async () => {
+      const dir = repo()
+      fs.writeFileSync(path.join(dir, 'a.txt'), 'v1\n')
+      sh(dir, 'add', '.')
+      sh(dir, 'commit', '-qm', 'init')
+      const branch = sh(dir, 'symbolic-ref', 'HEAD').trim()
+      const head = sh(dir, 'rev-parse', 'HEAD').trim()
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      sh(dir, 'checkout', '-q', '-b', 'probe-branch')
+      sh(dir, 'branch', '-D', branch.replace('refs/heads/', ''))
+      await port.restore(snap)
+      expect(sh(dir, 'symbolic-ref', 'HEAD').trim()).toBe(branch)
+      expect(sh(dir, 'rev-parse', 'HEAD').trim()).toBe(head)
+    })
+
+    it('keeps a restored file\'s own permission bits (git only records the exec bit)', async () => {
+      const dir = repo()
+      fs.writeFileSync(path.join(dir, 'secret.txt'), 's\n', { mode: 0o600 })
+      fs.chmodSync(path.join(dir, 'secret.txt'), 0o600)
+      sh(dir, 'add', '.')
+      sh(dir, 'commit', '-qm', 'init')
+      const port = createGitWorkspacePort(dir)
+      const snap = await port.snapshot()
+      fs.writeFileSync(path.join(dir, 'secret.txt'), 'changed\n')
+      await port.restore(snap)
+      expect(fs.readFileSync(path.join(dir, 'secret.txt'), 'utf8')).toBe('s\n')
+      expect(fs.statSync(path.join(dir, 'secret.txt')).mode & 0o777).toBe(0o600)
+    })
+
+    it('never unlinks a file or symlink parent under a protected dir', async () => {
+      const dir = repo()
+      fs.mkdirSync(path.join(dir, 'keep', 'sub'), { recursive: true })
+      fs.writeFileSync(path.join(dir, 'keep', 'sub', 'f.txt'), 'v1\n')
+      sh(dir, 'add', '.')
+      sh(dir, 'commit', '-qm', 'init')
+      const port = createGitWorkspacePort(dir, { protectedDirs: ['keep'] })
+      const snap = await port.snapshot()
+      fs.rmSync(path.join(dir, 'keep', 'sub'), { recursive: true })
+      fs.writeFileSync(path.join(dir, 'keep', 'sub'), 'a file now\n')
+      await port.restore(snap)
+      expect(fs.readFileSync(path.join(dir, 'keep', 'sub'), 'utf8')).toBe('a file now\n')
     })
 
     it('leaves the worktree, index, refs and stash untouched when taking a snapshot', async () => {

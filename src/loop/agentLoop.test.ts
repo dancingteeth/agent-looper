@@ -367,6 +367,73 @@ describe('runAgentLoop', () => {
     expect(runIterationPrompt.mock.calls[3]?.[0]).not.toContain('## Stall probe')
   })
 
+  it('parks with both errors when the restore after a probe fault fails', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const runIterationPrompt = vi.fn().mockImplementation(async (prompt: string) => {
+      if (prompt.includes('## Stall probe: procedure hints')) {
+        throw new Error('Cursor agent run failed (status=error)')
+      }
+      return { text: 'ok' }
+    })
+    mockSession(runIterationPrompt)
+    mockedRunVerify.mockReturnValue(failVerify('FAIL same'))
+
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        maxIterations: 4,
+        stagnationThreshold: 5,
+        escalateAfterStagnation: 2,
+        stallProbes: true,
+      }),
+      workspacePort: {
+        snapshot: async () => ({}),
+        restore: async () => {
+          throw new Error('HEAD moved from aaa to bbb (not a descendant)')
+        },
+      },
+    })
+
+    expect(result.complete).toBe(false)
+    expect(result.status).toBe('waiting')
+    expect(result.completionReason).toContain('stall probe workspace restore failed (after procedure probe fault)')
+    expect(result.completionReason).toContain('HEAD moved from aaa to bbb')
+    expect(result.completionReason).toContain('Cursor agent run failed (status=error)')
+    // No further worker after the failed restore.
+    expect(runIterationPrompt).toHaveBeenCalledTimes(3)
+    const domains = fs.readFileSync(path.join(tmpLoopDir, 'failure-domains.ndjson'), 'utf8')
+    expect(domains).toContain('"reason":"stall_probe_restore_failed"')
+    errSpy.mockRestore()
+  })
+
+  it('parks when the restore that discards both probes fails', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { runIterationPrompt } = mockSession()
+    mockedRunVerify.mockReturnValue(failVerify('FAIL same'))
+    let restores = 0
+    const result = await runAgentLoop({
+      ctx: makeCtx(),
+      bundle: makeBundle({
+        maxIterations: 6,
+        stagnationThreshold: 5,
+        escalateAfterStagnation: 2,
+        stallProbes: true,
+      }),
+      workspacePort: {
+        snapshot: async () => ({}),
+        restore: async () => {
+          restores += 1
+          if (restores === 2) throw new Error('disk full')
+        },
+      },
+    })
+
+    expect(result.status).toBe('waiting')
+    expect(result.completionReason).toContain('stall probe workspace restore failed (no probe kept): disk full')
+    expect(runIterationPrompt).toHaveBeenCalledTimes(4)
+    errSpy.mockRestore()
+  })
+
   it('writes a single iteration line for a green kept probe', async () => {
     mockSession()
     mockedRunVerify

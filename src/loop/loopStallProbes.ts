@@ -72,11 +72,20 @@ export function pickStallProbeWinner(
  *   file. Respects .gitignore (ignored files are never captured, restored or deleted),
  *   stores symlinks as links (never followed), keeps the executable bit and raw bytes, and
  *   handles any path (git plumbing with -z, no porcelain quoting).
+ *
+ * Limits: ignored files are not part of the snapshot (restore never deletes or rewrites
+ * them, judged by the snapshot's ignore rules), and the window between snapshot and
+ * restore must have no other writer — restore reverts every change made in it, not only
+ * the probe's (one loop per worktree; don't edit during a probe round).
  */
 export type GitWorkspaceSnap = {
   head: string
+  /** `refs/heads/<branch>` HEAD pointed at, or `null` for a detached HEAD. */
+  headRef: string | null
   indexTree: string
   worktreeTree: string
+  /** Content of `$GIT_DIR/info/exclude` (`null` when absent) — an ignore source outside the tree. */
+  infoExclude: string | null
 }
 
 export type GitWorkspacePortOptions = {
@@ -122,11 +131,38 @@ function worktreeTree(repoRoot: string): string {
   }
 }
 
+function symbolicHeadRef(repoRoot: string): string | null {
+  try {
+    return git(repoRoot, ['symbolic-ref', '-q', 'HEAD']) || null
+  } catch {
+    return null // detached HEAD (exit 1)
+  }
+}
+
+function infoExcludePath(repoRoot: string): string {
+  return path.resolve(repoRoot, git(repoRoot, ['rev-parse', '--git-path', 'info/exclude']))
+}
+
+function readInfoExclude(repoRoot: string): string | null {
+  try {
+    return fs.readFileSync(infoExcludePath(repoRoot), 'utf8')
+  } catch {
+    return null
+  }
+}
+
 function snapshotGitWorkspace(repoRoot: string): GitWorkspaceSnap {
   const head = git(repoRoot, ['rev-parse', '--verify', 'HEAD'])
+  const headRef = symbolicHeadRef(repoRoot)
   // Fails on unmerged entries — the caller skips probes rather than guess.
   const indexTree = git(repoRoot, ['write-tree'])
-  return { head, indexTree, worktreeTree: worktreeTree(repoRoot) }
+  return {
+    head,
+    headRef,
+    indexTree,
+    worktreeTree: worktreeTree(repoRoot),
+    infoExclude: readInfoExclude(repoRoot),
+  }
 }
 
 type TreeEntry = { mode: string; oid: string }
@@ -163,11 +199,17 @@ function isUnder(rel: string, dirs: readonly string[]): boolean {
  * a file). Returns false when a parent cannot be made safe — the path is then skipped
  * rather than written through a link to somewhere outside the repo.
  */
-function ensureRealParentDirs(repoRoot: string, rel: string): boolean {
+function ensureRealParentDirs(
+  repoRoot: string,
+  rel: string,
+  protectedDirs: readonly string[],
+): boolean {
   const segments = rel.split('/').slice(0, -1)
   let current = repoRoot
+  let currentRel = ''
   for (const segment of segments) {
     current = path.join(current, segment)
+    currentRel = currentRel ? `${currentRel}/${segment}` : segment
     let st: fs.Stats | undefined
     try {
       st = fs.lstatSync(current)
@@ -179,6 +221,8 @@ function ensureRealParentDirs(repoRoot: string, rel: string): boolean {
       continue
     }
     if (st.isDirectory()) continue
+    // Never remove anything under a protected dir (the running loop's bundle): skip the path.
+    if (isUnder(currentRel, protectedDirs)) return false
     // A symlink or file sits where the snapshot needs a directory: drop the link/file
     // itself (never its target) — the snapshot has no entry at this path.
     fs.unlinkSync(current)
@@ -213,18 +257,139 @@ function pruneEmptyParents(repoRoot: string, rel: string): void {
   }
 }
 
-function writeEntry(repoRoot: string, rel: string, entry: TreeEntry): void {
+/**
+ * Permission bits for a restored regular file. Git only records the executable bit, so an
+ * existing regular file keeps its own bits (e.g. 0600) with just the exec bits adjusted.
+ */
+function restoredFileMode(existing: fs.Stats | undefined, executable: boolean): number {
+  if (!existing || !existing.isFile()) return executable ? 0o755 : 0o644
+  const bits = existing.mode & 0o777
+  if (!executable) return bits & ~0o111
+  if (bits & 0o111) return bits
+  // Grant exec wherever read is granted (like git checkout of a 100755 entry).
+  return bits | ((bits & 0o444) >> 2)
+}
+
+function writeEntry(
+  repoRoot: string,
+  rel: string,
+  entry: TreeEntry,
+  protectedDirs: readonly string[],
+): void {
   const abs = path.join(repoRoot, rel)
   if (entry.mode === '160000') return // submodule commit: nothing to write
-  ensureRealParentDirs(repoRoot, rel)
+  if (!ensureRealParentDirs(repoRoot, rel, protectedDirs)) return
+  let existing: fs.Stats | undefined
+  try {
+    existing = fs.lstatSync(abs)
+  } catch {
+    existing = undefined
+  }
   removePath(abs) // never write through an existing symlink
   const data = gitBuffer(repoRoot, ['cat-file', 'blob', entry.oid])
   if (entry.mode === '120000') {
     fs.symlinkSync(data.toString('utf8'), abs)
     return
   }
-  fs.writeFileSync(abs, data, { mode: entry.mode === '100755' ? 0o755 : 0o644 })
-  fs.chmodSync(abs, entry.mode === '100755' ? 0o755 : 0o644)
+  const mode = restoredFileMode(existing, entry.mode === '100755')
+  fs.writeFileSync(abs, data, { mode })
+  fs.chmodSync(abs, mode)
+}
+
+function isIgnoreSource(rel: string): boolean {
+  return rel === '.gitignore' || rel.endsWith('/.gitignore')
+}
+
+/**
+ * Of `rels`, the paths ignored by the ignore rules currently on disk (`--no-index`: a path
+ * a probe force-added to the index still counts as ignored).
+ */
+function ignoredPaths(repoRoot: string, rels: string[]): Set<string> {
+  if (rels.length === 0) return new Set()
+  let out = ''
+  try {
+    out = execFileSync('git', ['check-ignore', '--no-index', '-z', '--stdin'], {
+      cwd: repoRoot,
+      input: `${rels.join('\0')}\0`,
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+    })
+  } catch (err) {
+    // exit 1 = none of the paths is ignored; anything else is a real failure
+    const status = (err as { status?: number }).status
+    if (status !== 1) throw err
+    out = (err as { stdout?: string }).stdout ?? ''
+  }
+  return new Set(out.split('\0').filter(Boolean))
+}
+
+function restoreHead(repoRoot: string, snap: GitWorkspaceSnap): void {
+  // Branch first: a probe that ran `git checkout -b x` (or detached HEAD) keeps the sha but
+  // leaves the user on another branch. Point HEAD back at the snapshot's ref without
+  // touching the worktree or index; the commit check below then runs against that ref.
+  const refNow = symbolicHeadRef(repoRoot)
+  if (refNow !== snap.headRef) {
+    console.error(
+      `[agent-loop] stall probe switched HEAD ${snap.headRef ?? '(detached)'} → ${refNow ?? '(detached)'}; switching back before restore`,
+    )
+    if (snap.headRef) {
+      let refExists = true
+      try {
+        git(repoRoot, ['rev-parse', '--verify', '-q', `${snap.headRef}^{commit}`])
+      } catch {
+        refExists = false
+      }
+      // A probe that deleted or renamed the branch: recreate it at the snapshot commit.
+      if (!refExists) git(repoRoot, ['update-ref', snap.headRef, snap.head, ''])
+      git(repoRoot, ['symbolic-ref', 'HEAD', snap.headRef])
+    } else {
+      git(repoRoot, ['update-ref', '--no-deref', 'HEAD', snap.head])
+    }
+  }
+
+  const headNow = git(repoRoot, ['rev-parse', '--verify', 'HEAD'])
+  if (headNow === snap.head) return
+  let probeAddedCommits = false
+  try {
+    git(repoRoot, ['merge-base', '--is-ancestor', snap.head, headNow])
+    probeAddedCommits = true
+  } catch {
+    probeAddedCommits = false
+  }
+  if (!probeAddedCommits) {
+    throw new Error(
+      `createGitWorkspacePort: HEAD moved from ${snap.head} to ${headNow} (not a descendant) — refusing to restore`,
+    )
+  }
+  // A probe committed on top of the snapshot: undo the commit(s) without touching
+  // files (they stay reachable via the reflog), then restore as usual.
+  console.error(
+    `[agent-loop] stall probe moved HEAD ${snap.head.slice(0, 7)} → ${headNow.slice(0, 7)}; resetting HEAD (soft) before restore`,
+  )
+  git(repoRoot, ['reset', '--soft', snap.head])
+}
+
+function applyChanges(
+  repoRoot: string,
+  changes: Array<{ rel: string; target: TreeEntry | undefined }>,
+  protectedDirs: readonly string[],
+): void {
+  const deletions = changes
+    .filter((c) => !c.target && !isUnder(c.rel, protectedDirs))
+    .map((c) => c.rel)
+  // Never delete a path the snapshot's ignore rules ignore (e.g. .env, node_modules a probe
+  // force-added or un-ignored): callers restore the ignore sources before this runs.
+  const ignored = ignoredPaths(repoRoot, deletions)
+  // Deletions first so a symlink/file can give way to a directory and vice versa.
+  for (const rel of deletions) {
+    if (ignored.has(rel)) continue
+    removePath(path.join(repoRoot, rel))
+    pruneEmptyParents(repoRoot, rel)
+  }
+  for (const { rel, target } of changes) {
+    if (!target) continue
+    writeEntry(repoRoot, rel, target, protectedDirs)
+  }
 }
 
 function restoreGitWorkspace(
@@ -232,42 +397,26 @@ function restoreGitWorkspace(
   snap: GitWorkspaceSnap,
   protectedDirs: readonly string[],
 ): void {
-  // Tripwire before any write: a probe that moved HEAD.
-  const headNow = git(repoRoot, ['rev-parse', '--verify', 'HEAD'])
-  if (headNow !== snap.head) {
-    let probeAddedCommits = false
-    try {
-      git(repoRoot, ['merge-base', '--is-ancestor', snap.head, headNow])
-      probeAddedCommits = true
-    } catch {
-      probeAddedCommits = false
-    }
-    if (!probeAddedCommits) {
-      throw new Error(
-        `createGitWorkspacePort: HEAD moved from ${snap.head} to ${headNow} (not a descendant) — refusing to restore`,
-      )
-    }
-    // A probe committed on top of the snapshot: undo the commit(s) without touching
-    // files (they stay reachable via the reflog), then restore as usual.
-    console.error(
-      `[agent-loop] stall probe moved HEAD ${snap.head.slice(0, 7)} → ${headNow.slice(0, 7)}; resetting HEAD (soft) before restore`,
-    )
-    git(repoRoot, ['reset', '--soft', snap.head])
-  }
+  // Tripwire before any write: a probe that switched branch or moved HEAD.
+  restoreHead(repoRoot, snap)
 
-  const current = worktreeTree(repoRoot)
-  const changes = changedPaths(repoRoot, current, snap.worktreeTree)
-  // Deletions first so a symlink/file can give way to a directory and vice versa.
-  for (const { rel, target } of changes) {
-    if (target) continue
-    if (isUnder(rel, protectedDirs)) continue
-    removePath(path.join(repoRoot, rel))
-    pruneEmptyParents(repoRoot, rel)
+  // Ignore rules first. Under the probe's rules a probe that edited or deleted a .gitignore
+  // (or info/exclude) would make ignored files (.env, node_modules) look like probe-added
+  // files. Put the snapshot's ignore sources back, then diff again under the snapshot's rules.
+  if (snap.infoExclude !== null && readInfoExclude(repoRoot) !== snap.infoExclude) {
+    const excludeFile = infoExcludePath(repoRoot)
+    fs.mkdirSync(path.dirname(excludeFile), { recursive: true })
+    fs.writeFileSync(excludeFile, snap.infoExclude)
   }
-  for (const { rel, target } of changes) {
-    if (!target) continue
-    writeEntry(repoRoot, rel, target)
-  }
+  const ignoreChanges = changedPaths(repoRoot, worktreeTree(repoRoot), snap.worktreeTree).filter(
+    (c) => isIgnoreSource(c.rel),
+  )
+  // A .gitignore the probe added (absent in the snapshot) can only ignore more, so removing
+  // it first is safe; one the probe edited or deleted is written back.
+  applyChanges(repoRoot, ignoreChanges, protectedDirs)
+
+  const changes = changedPaths(repoRoot, worktreeTree(repoRoot), snap.worktreeTree)
+  applyChanges(repoRoot, changes, protectedDirs)
   // Index back to exactly what it was (staged adds/renames/deletions), worktree untouched.
   git(repoRoot, ['read-tree', snap.indexTree])
   try {
@@ -278,9 +427,10 @@ function restoreGitWorkspace(
 }
 
 /**
- * Default stall-probe workspace port. Snapshot is read-only (git objects); restore rewrites
- * only the paths that differ from the snapshot, never follows symlinks, never touches
- * gitignored files, never deletes under `protectedDirs`, and leaves no stash entries.
+ * Default stall-probe workspace port. Snapshot is read-only (git objects); restore puts back
+ * the branch and HEAD, rewrites only the paths that differ from the snapshot, never follows
+ * symlinks, never deletes a path the snapshot's ignore rules ignore, never deletes under
+ * `protectedDirs`, and leaves no stash entries.
  */
 export function createGitWorkspacePort(
   repoRoot: string,
@@ -293,4 +443,23 @@ export function createGitWorkspacePort(
       restoreGitWorkspace(repoRoot, snap, protectedDirs)
     },
   }
+}
+
+/**
+ * A failed workspace restore during a probe round, keeping the error that led to the
+ * restore (the probe worker's fault) as well: `errors` holds both and `cause` points at
+ * the original, so `formatErrorChain` shows the restore failure then the original error.
+ */
+export function wrapProbeRestoreError(
+  phase: string,
+  restoreError: unknown,
+  originalError?: unknown,
+): AggregateError {
+  const restoreMessage = restoreError instanceof Error ? restoreError.message : String(restoreError)
+  const errors = originalError === undefined ? [restoreError] : [restoreError, originalError]
+  return new AggregateError(
+    errors,
+    `stall probe workspace restore failed (${phase}): ${restoreMessage}`,
+    { cause: originalError ?? restoreError },
+  )
 }

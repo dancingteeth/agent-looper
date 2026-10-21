@@ -15,6 +15,7 @@ import {
   buildStallProbePromptSection,
   createGitWorkspacePort,
   pickStallProbeWinner,
+  wrapProbeRestoreError,
   type StallProbeVariant,
   type WorkspacePort,
 } from './loopStallProbes.js'
@@ -813,6 +814,45 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           }
         }
 
+        /**
+         * Restore the workspace to a probe-round snapshot. A failed restore leaves the
+         * workspace in an unknown state, so the run parks (`status: waiting`, working tree
+         * left as-is for a human) — keeping the original probe/worker error alongside it.
+         */
+        const restoreProbeWorkspace = async (
+          snap: unknown,
+          phase: string,
+          originalError?: unknown,
+        ): Promise<AgentLoopResult | undefined> => {
+          try {
+            await workspacePort.restore(snap)
+            return undefined
+          } catch (restoreError) {
+            const wrapped = wrapProbeRestoreError(phase, restoreError, originalError)
+            const message = formatErrorChain(wrapped)
+            console.error(`[agent-loop] ${message}`)
+            appendFailureDomain(bundle.loopDir, {
+              iteration: i,
+              reason: 'stall_probe_restore_failed',
+              fingerprint: `stall_probe_restore_failed|${phase}`,
+              verify: {
+                command: config.verify,
+                exitCode: null,
+                reason: message.slice(0, 500),
+              },
+              status: 'waiting',
+            })
+            return finish({
+              complete: false,
+              iterations: i,
+              completionReason: message,
+              lastVerify,
+              logPath,
+              status: 'waiting',
+            })
+          }
+        }
+
         const procPrompt = `${prompt}\n\n${buildStallProbePromptSection('procedure', probeInput)}`
         const procStartedAt = Date.now()
         let procOutcome: ProbeRun
@@ -820,7 +860,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           procOutcome = await runProbeWorkerVerify(procPrompt)
         } catch (err) {
           // Roll back the half-done procedure probe; the one probe round is spent.
-          await workspacePort.restore(s0)
+          const parked = await restoreProbeWorkspace(s0, 'after procedure probe fault', err)
+          if (parked) return parked
           const faultResult = await handleWorkerFault(
             err,
             procStartedAt,
@@ -838,7 +879,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           winner = 'procedure'
         } else {
           const sA = await workspacePort.snapshot()
-          await workspacePort.restore(s0)
+          const parkedBeforeFacts = await restoreProbeWorkspace(s0, 'before facts probe')
+          if (parkedBeforeFacts) return parkedBeforeFacts
           const factsPrompt = `${prompt}\n\n${buildStallProbePromptSection('facts', probeInput)}`
           const factsStartedAt = Date.now()
           let factsOutcome: ProbeRun
@@ -846,7 +888,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             factsOutcome = await runProbeWorkerVerify(factsPrompt)
           } catch (err) {
             // Keep the completed procedure attempt rather than a half-done facts probe.
-            await workspacePort.restore(sA)
+            const parked = await restoreProbeWorkspace(sA, 'after facts probe fault', err)
+            if (parked) return parked
             writeProbeLines('procedure')
             const faultResult = await handleWorkerFault(
               err,
@@ -864,10 +907,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             verify: p.run.iterationVerify,
           }))
           winner = pickStallProbeWinner(stalled, outcomes)
-          if (winner === 'procedure') {
-            await workspacePort.restore(sA)
-          } else if (winner === undefined) {
-            await workspacePort.restore(s0)
+          const restoreTo =
+            winner === 'procedure' ? sA : winner === undefined ? s0 : undefined
+          if (restoreTo !== undefined) {
+            const parked = await restoreProbeWorkspace(
+              restoreTo,
+              winner === 'procedure' ? 'keeping procedure probe' : 'no probe kept',
+            )
+            if (parked) return parked
           }
         }
 
