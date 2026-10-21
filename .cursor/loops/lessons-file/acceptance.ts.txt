@@ -1,0 +1,239 @@
+/**
+ * FROZEN acceptance spec — loop `.cursor/loops/lessons-file`.
+ *
+ * verify.sh copies this file to `src/loop/__acceptance__/lessonsFile.acceptance.test.ts`,
+ * typechecks it with the repo, runs it with vitest, then deletes the copy.
+ * Its sha256 is pinned in verify.sh. Do not edit it; make the code satisfy it.
+ */
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { repoProfileSchema } from '../../context/repoProfile.js'
+import { runAgentLoop } from '../agentLoop.js'
+import { loopConfigSchema } from '../loopConfig.js'
+import { FROZEN_LOOP_BASENAMES } from '../loopFrozenFiles.js'
+import {
+  LESSONS_FILENAME,
+  LESSONS_MAX_CHARS,
+  buildLessonsPromptSection,
+  lessonsPath,
+  readLessons,
+  recordGreenRunLessons,
+} from '../loopLessons.js'
+import { buildAgentLoopPrompt } from '../loopPrompt.js'
+import { runVerifyCommand, type VerifyResult } from '../loopVerify.js'
+
+vi.mock('../loopVerify.js', () => ({ runVerifyCommand: vi.fn() }))
+vi.mock('../loopGit.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../loopGit.js')>()
+  return {
+    ...actual,
+    captureGitWorkspaceSnapshot: vi.fn(() => ({
+      branch: 'main',
+      shortSha: 'abc1234',
+      diffStat: '',
+      statusPorcelain: '',
+    })),
+  }
+})
+
+const mockedVerify = vi.mocked(runVerifyCommand)
+const VERIFY_CMD = 'bash .cursor/loops/acc/verify.sh'
+
+let loopDir: string
+let repoRoot: string
+
+function pass(): VerifyResult {
+  return { complete: true, command: VERIFY_CMD, exitCode: 0, stdout: 'all green', stderr: '', reason: 'Verifier passed (exit 0).' }
+}
+
+function fail(stdout: string): VerifyResult {
+  return { complete: false, command: VERIFY_CMD, exitCode: 1, stdout, stderr: '', reason: 'Verifier failed (exit 1).' }
+}
+
+function bundle(overrides: Record<string, unknown> = {}) {
+  return {
+    loopDir,
+    goal: 'Acceptance goal for lessons-file.',
+    config: loopConfigSchema.parse({
+      verify: VERIFY_CMD,
+      maxIterations: 3,
+      delayMs: 0,
+      postQualityReview: false,
+      reviewGate: false,
+      syncOnSuccess: false,
+      stagnationThreshold: 0,
+      exportPack: false,
+      exportRunReport: false,
+      exportTranscript: false,
+      ...overrides,
+    }),
+    logPath: path.join(loopDir, 'log.ndjson'),
+  }
+}
+
+function ctx() {
+  return { repoRoot, profile: repoProfileSchema.parse({ syncCommand: null }) }
+}
+
+function session() {
+  const prompts: string[] = []
+  const runIterationPrompt = vi.fn(async (prompt: string) => {
+    prompts.push(prompt)
+    return { text: 'done' }
+  })
+  return { prompts, workerSession: { runIterationPrompt, dispose: vi.fn(async () => undefined) } }
+}
+
+function count(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1
+}
+
+const git = { branch: 'main', shortSha: 'abc1234', diffStat: '', statusPorcelain: '' }
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  loopDir = fs.mkdtempSync(path.join(os.tmpdir(), 'acc-lessons-loop-'))
+  repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'acc-lessons-repo-'))
+})
+
+describe('lessons-file: module contract', () => {
+  it('names the file lessons.md in the loop dir and freezes it against workers', () => {
+    expect(LESSONS_FILENAME).toBe('lessons.md')
+    expect(lessonsPath(loopDir)).toBe(path.join(loopDir, 'lessons.md'))
+    expect(FROZEN_LOOP_BASENAMES as readonly string[]).toContain('lessons.md')
+  })
+
+  it('reads nothing when the file is absent or blank', () => {
+    expect(readLessons(loopDir)).toBeUndefined()
+    fs.writeFileSync(lessonsPath(loopDir), '   \n')
+    expect(readLessons(loopDir)).toBeUndefined()
+  })
+
+  it('records the verify command and the first output line of each failure overcome', () => {
+    recordGreenRunLessons(loopDir, {
+      verifyCommand: VERIFY_CMD,
+      iterations: 2,
+      failuresOvercome: [fail('\nFAIL src/a.test.ts > parses dates\nAssertionError: expected 1 to be 2')],
+    })
+    const text = readLessons(loopDir)
+    expect(text).toBeDefined()
+    expect(text).toContain(VERIFY_CMD)
+    expect(text).toContain('FAIL src/a.test.ts > parses dates')
+  })
+
+  it('is idempotent: the same green run recorded twice does not duplicate facts', () => {
+    const run = {
+      verifyCommand: VERIFY_CMD,
+      iterations: 2,
+      failuresOvercome: [fail('FAIL gotcha-dedupe-7')],
+    }
+    recordGreenRunLessons(loopDir, run)
+    recordGreenRunLessons(loopDir, run)
+    const text = readLessons(loopDir) ?? ''
+    expect(count(text, 'gotcha-dedupe-7')).toBe(1)
+    expect(count(text, VERIFY_CMD)).toBe(1)
+  })
+
+  it('stays bounded and keeps the newest gotchas', () => {
+    for (let run = 0; run < 50; run++) {
+      recordGreenRunLessons(loopDir, {
+        verifyCommand: VERIFY_CMD,
+        iterations: 3,
+        failuresOvercome: [0, 1, 2, 3].map((k) => fail(`FAIL gotcha-${run}-${k} ${'x'.repeat(120)}`)),
+      })
+    }
+    const text = fs.readFileSync(lessonsPath(loopDir), 'utf8')
+    expect(text.length).toBeLessThanOrEqual(LESSONS_MAX_CHARS)
+    expect(text).toContain('gotcha-49-3')
+    expect(text).not.toContain('gotcha-0-0 ')
+  })
+
+  it('renders a prompt section in the stable head, before the workspace block', () => {
+    const section = buildLessonsPromptSection('LESSON-ALPHA')
+    expect(section).toContain('## Lessons from earlier green runs')
+    expect(section).toContain('LESSON-ALPHA')
+
+    const prompt = buildAgentLoopPrompt({
+      goal: 'g',
+      iteration: 1,
+      maxIterations: 2,
+      git,
+      lastVerify: null,
+      priorFailures: [],
+      lessons: 'LESSON-ALPHA',
+    })
+    const head = prompt.indexOf('## Lessons from earlier green runs')
+    expect(head).toBeGreaterThan(-1)
+    expect(head).toBeLessThan(prompt.indexOf('## Workspace (git)'))
+
+    const without = buildAgentLoopPrompt({ goal: 'g', iteration: 1, maxIterations: 2, git, lastVerify: null, priorFailures: [] })
+    expect(without).not.toContain('## Lessons from earlier green runs')
+  })
+})
+
+describe('lessons-file: wired into runAgentLoop', () => {
+  it('writes lessons.md after a green run, with the loop verify command and the gotcha it overcame', async () => {
+    mockedVerify.mockReturnValueOnce(fail('FAIL gotcha-one: missing export')).mockReturnValueOnce(pass())
+    const { workerSession } = session()
+    const result = await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession })
+    expect(result.complete).toBe(true)
+    const text = readLessons(loopDir) ?? ''
+    expect(text).toContain(VERIFY_CMD)
+    expect(text).toContain('gotcha-one: missing export')
+  })
+
+  it('writes nothing when the run never goes green', async () => {
+    mockedVerify.mockReturnValue(fail('FAIL never-green'))
+    const { workerSession } = session()
+    const result = await runAgentLoop({ ctx: ctx(), bundle: bundle({ maxIterations: 2 }), workerSession })
+    expect(result.complete).toBe(false)
+    expect(fs.existsSync(lessonsPath(loopDir))).toBe(false)
+  })
+
+  it('keeps existing lessons untouched when a later run fails', async () => {
+    fs.writeFileSync(lessonsPath(loopDir), '# Lessons\n\n- PRIOR-KEEP-9\n')
+    mockedVerify.mockReturnValue(fail('FAIL brand-new-failure'))
+    const { workerSession } = session()
+    await runAgentLoop({ ctx: ctx(), bundle: bundle({ maxIterations: 1 }), workerSession })
+    const text = readLessons(loopDir) ?? ''
+    expect(text).toContain('PRIOR-KEEP-9')
+    expect(text).not.toContain('brand-new-failure')
+  })
+
+  it('feeds existing lessons into every worker prompt of the next run', async () => {
+    fs.writeFileSync(lessonsPath(loopDir), '# Lessons\n\n- PRIOR-LESSON-42\n')
+    mockedVerify.mockReturnValueOnce(fail('FAIL first')).mockReturnValueOnce(pass())
+    const { prompts, workerSession } = session()
+    await runAgentLoop({ ctx: ctx(), bundle: bundle(), workerSession })
+    expect(prompts).toHaveLength(2)
+    for (const prompt of prompts) expect(prompt).toContain('PRIOR-LESSON-42')
+  })
+
+  it('lessons: false neither reads nor writes the file', async () => {
+    fs.writeFileSync(lessonsPath(loopDir), '# Lessons\n\n- PRIOR-OFF-1\n')
+    const before = fs.readFileSync(lessonsPath(loopDir), 'utf8')
+    mockedVerify.mockReturnValueOnce(fail('FAIL off-gotcha')).mockReturnValueOnce(pass())
+    const { prompts, workerSession } = session()
+    const result = await runAgentLoop({ ctx: ctx(), bundle: bundle({ lessons: false }), workerSession })
+    expect(result.complete).toBe(true)
+    for (const prompt of prompts) expect(prompt).not.toContain('PRIOR-OFF-1')
+    expect(fs.readFileSync(lessonsPath(loopDir), 'utf8')).toBe(before)
+  })
+
+  it('a worker that plants lessons.md mid-run fails that visit (frozen) and the plant is removed', async () => {
+    mockedVerify.mockReturnValue(pass())
+    const runIterationPrompt = vi.fn(async () => {
+      fs.writeFileSync(lessonsPath(loopDir), 'PLANTED-BY-WORKER\n')
+      return { text: 'done' }
+    })
+    const result = await runAgentLoop({
+      ctx: ctx(),
+      bundle: bundle({ maxIterations: 1 }),
+      workerSession: { runIterationPrompt, dispose: vi.fn(async () => undefined) },
+    })
+    expect(result.complete).toBe(false)
+    expect(readLessons(loopDir) ?? '').not.toContain('PLANTED-BY-WORKER')
+  })
+})
