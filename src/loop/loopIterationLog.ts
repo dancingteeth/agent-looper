@@ -43,6 +43,7 @@ export type LoopIterationLog = {
     verify?: number
     judge?: number
   }
+  probe?: { variant: string; kept: boolean }
 }
 
 export function buildIterationLog(input: {
@@ -63,6 +64,7 @@ export function buildIterationLog(input: {
   toolErrorStats?: ToolErrorStatRow[]
   sdkRetries?: number
   durationsMs?: LoopIterationLog['durationsMs']
+  probe?: LoopIterationLog['probe']
 }): LoopIterationLog {
   return {
     at: new Date().toISOString(),
@@ -87,6 +89,7 @@ export function buildIterationLog(input: {
     (input.durationsMs.worker || input.durationsMs.verify || input.durationsMs.judge)
       ? { durationsMs: input.durationsMs }
       : {}),
+    ...(input.probe ? { probe: input.probe } : {}),
   }
 }
 

@@ -25,6 +25,7 @@ Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
 ### Harness² ideas
 
+- **`stallProbes`** — opt-in (`false` by default): on the first hard stall at `escalateAfterStagnation`, run two sequential probe workers with different prompt sections, snapshot/restore the git workspace between them, keep whichever verify result goes green or moves the failure fingerprint, log `probe: { variant, kept }`, then allow model escalation on later stalls. Disabled when `stagnationThreshold` is `0`.
 - **`lessons.md`** — after a green verifier run, the harness writes deduped verify gotchas to the loop bundle; the next run injects them before `## Workspace (git)`. Disabled with `"lessons": false`. Workers cannot edit the file (frozen).
 - **`deliverables`** — optional repo-relative paths in `loop.json`; worker prompts state them in `## Facts`, and the harness nudges the worker before verify when files are missing or empty (`deliverableNudges`, default `2`).
 
