@@ -85,7 +85,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('site version labels say 0.8.3 current with no stale 0.7.x as current', () => {
+  it('site version labels say 0.8.4 current with no stale 0.7.x as current', () => {
     const versionPaths = [
       'about/index.html',
       'about/index.md',
@@ -96,14 +96,14 @@ describe('landing agent readiness', () => {
     ]
     for (const file of versionPaths) {
       const body = readSite(file)
-      expect(body, file).toContain('0.8.3')
+      expect(body, file).toContain('0.8.4')
       expect(body, file).not.toMatch(/Current npm: \*\*0\.7\./)
     }
     const llms = readSite('llms.txt')
-    expect(llms).toContain('Current npm: **0.8.3**')
+    expect(llms).toContain('Current npm: **0.8.4**')
     expect(llms).toContain('supported line **0.8.x**')
     expect(llms).not.toContain('supported line **0.7.x**')
-    expect(llms).toMatch(/Changelog.*0\.8\.3/)
+    expect(llms).toMatch(/Changelog.*0\.8\.4/)
   })
 
   it('llms.txt follows llmstxt.org v2 and includes when-to-use guidance', () => {
@@ -800,9 +800,9 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/supported line \*\*0\.7\.x\*\*/i)
     }
 
-    expect(llms).toContain('Current npm: **0.8.3**')
+    expect(llms).toContain('Current npm: **0.8.4**')
     expect(llms).toContain('0.8.x')
-    expect(llms).not.toContain('Current npm: **0.8.2**')
+    expect(llms).not.toContain('Current npm: **0.8.3**')
     expect(llms).not.toContain('Current npm: **0.7.')
     expect(llms).toContain('@dancingteeth/opencode-agent-looper')
     expect(llms).toMatch(/no Cursor default judge/i)
