@@ -21,7 +21,7 @@ From `dsh web`, switch the session to **Full Access** (or start the grind bash w
 | Skills `design-loop`, `install-agent-looper`, `review-gate`, `run-loop-in-dsh` | Cursor-parity design/install/review; start grind as a DSH background job |
 | Command `loop-scaffold` | Guided GOAL + verify scaffold (direct UI handler — not sent to the model) |
 | System prompt `plugin:agent-looper` | Always-on routing: plugin is already loaded; do not inspect DSH internals |
-| Bash guard | Denies *foreground* `agent-loop run` and Doppler / DSH credentials-local / OpenCode secret dumps. Background grind is allowed (`blockNestedRun` toggles the foreground deny). **Best-effort tripwire, not a boundary:** it matches literal command text, so `sh -c env`, variable indirection, or a pipe through `bash` slip past by design. Its job is to stop *accidental* leaks into session logs and ~60s bash timeouts; do not rely on it for egress or secrets policy (that lives in `verify` + permissions). |
+| Bash guard | Denies *foreground* `agent-loop run`, `verify.sh` / test / typecheck / lint output piped straight into `head`/`tail`/`grep`/`sed`/`awk` (the cut hides the failure; `| tee <file>` is allowed), and Doppler / DSH credentials-local / OpenCode secret dumps. Background grind is allowed (`blockNestedRun` toggles the foreground deny). **Best-effort tripwire, not a boundary:** it matches literal command text, so `sh -c env`, variable indirection, or a pipe through `bash` slip past by design. Its job is to stop *accidental* leaks into session logs and ~60s bash timeouts; do not rely on it for egress or secrets policy (that lives in `verify` + permissions). |
 | `cordis.patch.yml` | Inserts plugin row `id: agent-looper` |
 
 Parity reference: [`plugins/agent-looper/`](../plugins/agent-looper/) and [`docs/cursor-marketplace-plugin.md`](./cursor-marketplace-plugin.md). Harness heartbeat (`ps` + `watch-status.json`) is runtime-agnostic; Cursor Agent Shell terminal files are an extra probe in `check-running-loops` when the grind was started from that chat.
@@ -50,6 +50,7 @@ Optional row config (Schemastery `Config` on the plugin module):
 | `skillsDir` | `./skills` | Directory of bundled `skills/*/SKILL.md` |
 | `agentLoopBinary` | `agent-loop` | CLI name referenced in guidance |
 | `blockNestedRun` | `true` | Deny *foreground* `agent-loop run` (60s bash timeout). Background jobs (`run_in_background: true`) are allowed. Secret-file dumps are always denied. |
+| `blockCheckOutputFilter` | `true` | Deny check output (`verify.sh`, `pnpm test`, `vitest`, `tsc`, lint, `pytest`, `cargo test`) piped directly into a slicing filter. `| tee <file>` then filtering the file is allowed. |
 
 Example profile patch override:
 
@@ -59,6 +60,7 @@ Example profile patch override:
   config:
     agentLoopBinary: agent-loop
     blockNestedRun: true
+    blockCheckOutputFilter: true
 ```
 
 ## Verify in this repo
@@ -66,7 +68,7 @@ Example profile patch override:
 Offline (CI — no live `dsh web`):
 
 - `bash .cursor/loops/dsh-plugin/verify.sh` — bundle layout, named exports, skills, bash guard (installs plugin deps via `pnpm test:dsh-plugin:deps` first)
-- `pnpm test:dsh-plugin:deps && pnpm exec vitest run plugins/dsh-agent-looper/src/index.test.ts` — nested-run / secret-dump guards (plugin `node_modules` are not part of the root install)
+- `pnpm test:dsh-plugin:deps && pnpm exec vitest run plugins/dsh-agent-looper/src/index.test.ts` — nested-run / secret-dump / check-output-filter guards (plugin `node_modules` are not part of the root install)
 
 Live (manual): `pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json` then `dsh plugin --profile web add ./plugins/dsh-agent-looper`. Freeze loops in the **same** workspace as the product repo. Start `dsh web` from that cwd. Before a `runtime: dsh` grind, set the session to **Full Access** (see runtime doc above).
 

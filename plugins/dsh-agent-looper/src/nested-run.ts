@@ -238,9 +238,13 @@ function unwrapShell(command: string): string {
   return text
 }
 
-/** Split shell code on unquoted `;`/`&&`/`||`/`|`/`&`/newlines, respecting quotes. */
-function splitShellSegments(command: string): string[] {
-  const segments: string[] = []
+/**
+ * Split shell code on unquoted `;`/`&&`/`||`/`&`/newlines into pipelines, and each pipeline on
+ * single `|` into stages, respecting quotes.
+ */
+function splitShellPipelines(command: string): string[][] {
+  const pipelines: string[][] = []
+  let stages: string[] = []
   let current = ''
   let quote: string | undefined
   for (let index = 0; index < command.length; index += 1) {
@@ -263,21 +267,36 @@ function splitShellSegments(command: string): string[] {
       }
       continue
     }
-    if (char === '\n' || char === ';') {
-      segments.push(current)
-      current = ''
+    // `2>&1`, `<&3`, `&>file` are redirections, not background / list separators.
+    if (char === '&' && (/[<>]$/.test(current) || command[index + 1] === '>')) {
+      current += char
       continue
     }
-    if (char === '&' || char === '|') {
-      segments.push(current)
+    if (char === '|' && command[index + 1] !== '|') {
+      stages.push(current)
       current = ''
-      if (command[index + 1] === char) index += 1
+      // `|&` pipes stderr too; still one stage boundary.
+      if (command[index + 1] === '&') index += 1
+      continue
+    }
+    if (char === '\n' || char === ';' || char === '&' || char === '|') {
+      stages.push(current)
+      pipelines.push(stages)
+      stages = []
+      current = ''
+      if ((char === '&' || char === '|') && command[index + 1] === char) index += 1
       continue
     }
     current += char
   }
-  segments.push(current)
-  return segments
+  stages.push(current)
+  pipelines.push(stages)
+  return pipelines
+}
+
+/** Split shell code on unquoted `;`/`&&`/`||`/`|`/`&`/newlines, respecting quotes. */
+function splitShellSegments(command: string): string[] {
+  return splitShellPipelines(command).flat()
 }
 
 /** Split one segment into shell words, stripping single/double quotes. */
@@ -473,4 +492,69 @@ export function secretDumpReason(toolName: string, args: unknown): string | unde
   if (command === undefined) return undefined
   if (!isSecretDumpCommand(command)) return undefined
   return SECRET_DUMP_DENIAL
+}
+
+export const CHECK_OUTPUT_FILTER_DENIAL = [
+  'Blocked: do not pipe `verify.sh`, test, typecheck, or lint output straight into head/tail/grep/sed/awk.',
+  'The cut hides the failure that matters and the loop pays an iteration for it.',
+  'Run the command unfiltered, or `… 2>&1 | tee <file>` and then grep/tail that file.',
+].join(' ')
+
+/** Package scripts that are checks: `test`, `test:unit`, `typecheck`, `lint`, `check`, `verify`. */
+const CHECK_SCRIPT_RE = /^(?:test|typecheck|lint|check|verify)(?::[\w:.-]+)?$/
+const CHECK_BINS = new Set(['vitest', 'jest', 'tsc', 'pytest', 'eslint', 'oxlint', 'biome'])
+const VERIFY_SCRIPT_RE = /(?:^|\/)verify\.sh$/
+const SCRIPT_SHELLS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh'])
+/** Readers that keep a slice of the stream. `tee` keeps all of it, so `| tee file | tail` is fine. */
+const OUTPUT_FILTERS = new Set(['head', 'tail', 'grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk', 'cut', 'less', 'more'])
+
+function stageWords(stage: string): string[] {
+  const text = stage
+    .trim()
+    .replace(/^[({]+\s*/, '')
+    .replace(/\s*\)+$/, '')
+  return skipLeadingPrefixWords(shellWords(text))
+}
+
+function isCheckStage(stage: string): boolean {
+  const words = stageWords(stage)
+  if (PACKAGE_MANAGERS.has(words[0] ?? '')) {
+    const script = words[1] === 'run' || words[1] === 'run-script' ? words[2] : words[1]
+    if (script !== undefined && (CHECK_SCRIPT_RE.test(script) || CHECK_BINS.has(script))) return true
+  }
+  const command = stripRunnerWords(words)
+  const first = command[0]
+  if (first === undefined) return false
+  const head = commandBasename(first)
+  if (CHECK_BINS.has(head) || VERIFY_SCRIPT_RE.test(first)) return true
+  if ((head === 'cargo' || head === 'go') && command[1] === 'test') return true
+  if (SCRIPT_SHELLS.has(head)) {
+    const script = command.slice(1).find((word) => !word.startsWith('-'))
+    return script !== undefined && VERIFY_SCRIPT_RE.test(script)
+  }
+  return false
+}
+
+function isOutputFilterStage(stage: string): boolean {
+  const head = stageWords(stage)[0]
+  return head !== undefined && OUTPUT_FILTERS.has(commandBasename(head))
+}
+
+/** True when a verify/test/typecheck/lint command pipes directly into a slicing filter. */
+export function isFilteredCheckCommand(command: string): boolean {
+  const code = unwrapShell(withoutDataHeredoc(command))
+  for (const stages of splitShellPipelines(code)) {
+    for (let index = 0; index + 1 < stages.length; index += 1) {
+      if (isCheckStage(stages[index]) && isOutputFilterStage(stages[index + 1])) return true
+    }
+  }
+  return false
+}
+
+export function checkOutputFilterReason(toolName: string, args: unknown): string | undefined {
+  if (!SHELL_TOOLS.includes(toolName)) return undefined
+  const command = bashCommand(args)
+  if (command === undefined) return undefined
+  if (!isFilteredCheckCommand(command)) return undefined
+  return CHECK_OUTPUT_FILTER_DENIAL
 }

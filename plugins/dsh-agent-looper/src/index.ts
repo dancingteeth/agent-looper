@@ -1,7 +1,7 @@
 import Schema from '@deepseek-ai/schemastery'
 import path from 'node:path'
 import { loopScaffoldGuidance } from './loop-scaffold.js'
-import { nestedAgentLoopRunReason, secretDumpReason } from './nested-run.js'
+import { checkOutputFilterReason, nestedAgentLoopRunReason, secretDumpReason } from './nested-run.js'
 import { AGENT_LOOPER_PROMPT_NAME, AGENT_LOOPER_PROMPT_ORDER, agentLooperPromptSection } from './prompt.js'
 import { discoverSkills, pluginRoot, resolveSkillsDir } from './skills.js'
 
@@ -43,12 +43,15 @@ export interface Config {
   agentLoopBinary: string
   /** When true (default), deny *foreground* `agent-loop run`. Background bash jobs are allowed. */
   blockNestedRun: boolean
+  /** When true (default), deny piping verify / test / typecheck / lint output into head/tail/grep. */
+  blockCheckOutputFilter: boolean
 }
 
 export const Config: Schema<Config> = Schema.object({
   skillsDir: Schema.string().default('./skills'),
   agentLoopBinary: Schema.string().default('agent-loop'),
   blockNestedRun: Schema.boolean().default(true),
+  blockCheckOutputFilter: Schema.boolean().default(true),
 })
 
 export const inject = ['skills', 'commands', 'systemPrompt', 'tools'] as const
@@ -76,6 +79,10 @@ export function apply(ctx: AgentLooperContext, config: Config) {
         ctx.tools.guard((execution) => {
           const secret = secretDumpReason(execution.name, execution.arguments)
           if (secret !== undefined) return secret
+          if (config.blockCheckOutputFilter) {
+            const filtered = checkOutputFilterReason(execution.name, execution.arguments)
+            if (filtered !== undefined) return filtered
+          }
           if (!config.blockNestedRun) return undefined
           return nestedAgentLoopRunReason(execution.name, execution.arguments)
         }),
