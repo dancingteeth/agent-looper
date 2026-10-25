@@ -60,7 +60,10 @@ Skip for tiny, well-understood verify scripts you’ve already dogfooded.
 7. **Brownfield research** (optional) — If the worker would otherwise spend the
    first iteration Grep-hunting, freeze a short map as `RESEARCH.md` beside
    GOAL.md ([`templates/RESEARCH.example.md`](../templates/RESEARCH.example.md)):
-   relevant files, data flow, likely cause, how this repo tests this area. A
+   relevant files, data flow, likely cause, how this repo tests this area.
+   Write it **blind to GOAL**: one pass turns GOAL into questions about how the
+   code works today; a fresh session answers only those questions, without
+   reading GOAL or the ticket (HumanLayer's research-questions split). A
    **human reads it** before freeze — throw it out if it says the bug is invalid
    or names the wrong layer. The worker prompt indexes the path (Read on demand);
    do not paste the body into GOAL. This is **not** an inner

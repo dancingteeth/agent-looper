@@ -16,6 +16,11 @@ if verify contradicts this map, trust verify.
 A wrong line here is expensive. A human reads this before freeze. Throw it out if it
 says the bug is invalid or names the wrong layer.
 
+Write it **blind to GOAL**: first turn the goal into neutral questions about how the
+code works today, then answer those without reading `GOAL.md` or the ticket. A map
+written toward the wanted change finds what it expects. Describe what exists; leave
+what to build to GOAL.
+
 ## Where
 
 - Canonical files / modules the change should touch (paths, not vibes).

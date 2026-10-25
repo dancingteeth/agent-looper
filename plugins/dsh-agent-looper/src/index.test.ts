@@ -1,7 +1,15 @@
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { apply, inject, name } from './index.js'
-import { isAgentLoopRunCommand, isBashRunInBackground, isSecretDumpCommand, nestedAgentLoopRunReason, secretDumpReason } from './nested-run.js'
+import {
+  checkOutputFilterReason,
+  isAgentLoopRunCommand,
+  isBashRunInBackground,
+  isFilteredCheckCommand,
+  isSecretDumpCommand,
+  nestedAgentLoopRunReason,
+  secretDumpReason,
+} from './nested-run.js'
 import { AGENT_LOOPER_PROMPT_NAME, agentLooperPromptSection } from './prompt.js'
 import { discoverSkills, parseSkillFile, pluginRoot, resolveSkillsDir } from './skills.js'
 
@@ -75,6 +83,7 @@ describe('dsh-agent-looper plugin', () => {
       skillsDir: './skills',
       agentLoopBinary: 'agent-loop',
       blockNestedRun: true,
+      blockCheckOutputFilter: true,
     })
 
     expect(ctx.systemPrompt.section).toHaveBeenCalledTimes(1)
@@ -133,10 +142,32 @@ describe('dsh-agent-looper plugin', () => {
       skillsDir: './skills',
       agentLoopBinary: 'agent-loop',
       blockNestedRun: false,
+      blockCheckOutputFilter: true,
     })
     expect(ctx.tools.guard).toHaveBeenCalledTimes(1)
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'agent-loop run x' } })).toBeUndefined()
     expect(guards[0]?.({ name: 'bash', arguments: { command: 'doppler secrets' } })).toMatch(/Blocked/)
+  })
+
+  it('guards filtered check output unless blockCheckOutputFilter is false', () => {
+    const command = 'pnpm test 2>&1 | tail -20'
+    const on = mockCtx()
+    apply(on.ctx, {
+      skillsDir: './skills',
+      agentLoopBinary: 'agent-loop',
+      blockNestedRun: true,
+      blockCheckOutputFilter: true,
+    })
+    expect(on.guards[0]?.({ name: 'bash', arguments: { command } })).toMatch(/tee/)
+
+    const off = mockCtx()
+    apply(off.ctx, {
+      skillsDir: './skills',
+      agentLoopBinary: 'agent-loop',
+      blockNestedRun: true,
+      blockCheckOutputFilter: false,
+    })
+    expect(off.guards[0]?.({ name: 'bash', arguments: { command } })).toBeUndefined()
   })
 
   it('hangs registrations off ctx.effect so a reload releases them', () => {
@@ -145,6 +176,7 @@ describe('dsh-agent-looper plugin', () => {
       skillsDir: './skills',
       agentLoopBinary: 'agent-loop',
       blockNestedRun: true,
+      blockCheckOutputFilter: true,
     })
     expect(ctx.effect).toHaveBeenCalledTimes(1)
     expect(disposers).toHaveLength(1)
@@ -162,6 +194,7 @@ describe('dsh-agent-looper plugin', () => {
       skillsDir: './definitely-missing-skills-dir',
       agentLoopBinary: 'agent-loop',
       blockNestedRun: true,
+      blockCheckOutputFilter: true,
     })
     expect(warnings.length).toBeGreaterThan(0)
     expect(warnings.join('\n')).toMatch(/skillsDir/)
@@ -355,5 +388,49 @@ describe('nested agent-loop run detection', () => {
     expect(
       secretDumpReason('bash', { command: 'cat /Users/me/.dsh/.credentials.yaml' }),
     ).toMatch(/Blocked/)
+  })
+})
+
+describe('check output filter detection', () => {
+  it('blocks verify, test, typecheck, and lint piped into a slicing filter', () => {
+    for (const command of [
+      'bash .cursor/loops/x/verify.sh | tail -50',
+      './verify.sh 2>&1 | grep FAIL',
+      'pnpm test 2>&1 | tail',
+      'npm run test:unit | head -40',
+      'pnpm typecheck |& grep error',
+      'pnpm exec vitest run src/loop | tail -30',
+      'npx tsc --noEmit | head',
+      'cd pkg && pnpm vitest run | grep -v PASS',
+      'timeout 300 bash verify.sh | sed -n 1,40p',
+      'pytest -q | tail -5',
+      'cargo test | rg FAILED',
+      'bash -c "pnpm lint | awk NR<20"',
+    ]) {
+      expect(isFilteredCheckCommand(command), command).toBe(true)
+    }
+  })
+
+  it('allows unfiltered checks, tee, filtering a saved file, and non-check pipes', () => {
+    for (const command of [
+      'pnpm test',
+      'bash verify.sh 2>&1',
+      'pnpm test 2>&1 | tee /tmp/out.txt',
+      'pnpm test 2>&1 | tee /tmp/out.txt | tail -20',
+      'pnpm test > /tmp/out.txt 2>&1; tail -50 /tmp/out.txt',
+      'git log --oneline | head',
+      'cat verify.sh | head',
+      'pnpm test:dsh-plugin:deps && pnpm exec vitest run x.test.ts',
+      'echo "pnpm test | tail"',
+      'pnpm build | tail',
+    ]) {
+      expect(isFilteredCheckCommand(command), command).toBe(false)
+    }
+  })
+
+  it('only guards shell tools', () => {
+    expect(checkOutputFilterReason('bash', { command: 'pnpm test | tail' })).toMatch(/Blocked/)
+    expect(checkOutputFilterReason('read', { command: 'pnpm test | tail' })).toBeUndefined()
+    expect(checkOutputFilterReason('bash', { command: 'pnpm test' })).toBeUndefined()
   })
 })
