@@ -11,6 +11,12 @@
     "skills",
     "cordis.patch.yml"
   ],
+  "homepage": "https://looper.dancingteeth.net/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dancingteeth/agent-looper.git",
+    "directory": "plugins/dsh-agent-looper"
+  },
   "engines": {
     "node": ">=22.15.0"
   },
