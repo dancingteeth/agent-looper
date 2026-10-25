@@ -10,6 +10,17 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
+## 0.8.4 — 2026-10-25
+
+Two small steals from [humanlayer/humanlayer](https://github.com/humanlayer/humanlayer).
+
+### Headline
+
+- **Research map blind to GOAL** — `templates/RESEARCH.example.md` and the unknowns preflight now say to write `RESEARCH.md` in two passes: turn GOAL into neutral questions about how the code works today, then answer them without reading GOAL or the ticket. A map written toward the wanted change finds what it expects.
+- **DSH plugin 0.1.2: no filtered check output** — the DSH bash guard denies `verify.sh`, test, typecheck, or lint output piped straight into `head`/`tail`/`grep`/`sed`/`awk` (the cut hides the failure and costs an iteration). `| tee <file>` and filtering the saved file stay allowed. Toggle with `blockCheckOutputFilter` (default `true`). The guard's shell splitter no longer breaks `2>&1` at the ampersand.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.8.4)
+
 ## 0.8.3 — 2026-10-21
 
 npm 0.8.2 no longer crashes without `@cursor/sdk`; verify output goes to a sidecar log by default; judge and worker faults park instead of crashing; Harness² ideas: `## Facts`, deliverables, opt-in lessons and stall probes.
