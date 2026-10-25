@@ -72,6 +72,17 @@ Offline (CI — no live `dsh web`):
 
 Live (manual): `pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json` then `dsh plugin --profile web add ./plugins/dsh-agent-looper`. Freeze loops in the **same** workspace as the product repo. Start `dsh web` from that cwd. Before a `runtime: dsh` grind, set the session to **Full Access** (see runtime doc above).
 
+## Publishing
+
+[`.github/workflows/publish-dsh-plugin.yml`](../.github/workflows/publish-dsh-plugin.yml) publishes `@dancingteeth/dsh-agent-looper` with npm trusted publishing (OIDC, no token). Bump `plugins/dsh-agent-looper/package.json`, merge to `main`, then push a matching tag:
+
+```bash
+git tag dsh-plugin-v0.1.2
+git push origin dsh-plugin-v0.1.2
+```
+
+Or **Actions → Publish DSH plugin → Run workflow**. The tag must match the package version or the job fails. One-time setup: on npm, the package's **Settings → Trusted Publisher** must name GitHub Actions, `dancingteeth` / `agent-looper`, workflow `publish-dsh-plugin.yml` (same steps as [`releasing.md`](./releasing.md)).
+
 ## Related
 
 - Cursor marketplace companion: [`docs/cursor-marketplace-plugin.md`](./cursor-marketplace-plugin.md)

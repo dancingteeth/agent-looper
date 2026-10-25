@@ -1,0 +1,53 @@
+name: Publish DSH plugin
+
+# Publishes plugins/dsh-agent-looper (@dancingteeth/dsh-agent-looper).
+# Tag `dsh-plugin-v<version>` (matching plugins/dsh-agent-looper/package.json) or run manually.
+on:
+  push:
+    tags:
+      - 'dsh-plugin-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for npm OIDC trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.15'
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+          package-manager-cache: false
+
+      # Trusted publishing needs npm ≥ 11.5.1 (Node 22.14+).
+      - run: npm install -g npm@^11.5.1
+
+      - name: Tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(node -p "require('./plugins/dsh-agent-looper/package.json').version")
+          test "${GITHUB_REF_NAME}" = "dsh-plugin-v${version}" || {
+            echo "tag ${GITHUB_REF_NAME} does not match package version ${version}"; exit 1; }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:dsh-plugin:deps
+      - run: pnpm exec vitest run plugins/dsh-agent-looper
+      # The plugin has no TypeScript of its own; the root tsc emits plugins/dsh-agent-looper/dist/.
+      - run: pnpm exec tsc -p plugins/dsh-agent-looper/tsconfig.json
+
+      # OIDC trusted publishing — do not set NODE_AUTH_TOKEN (see publish.yml).
+      - run: npm publish --access public --ignore-scripts
+        working-directory: plugins/dsh-agent-looper
+        env:
+          NODE_AUTH_TOKEN: ''
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
