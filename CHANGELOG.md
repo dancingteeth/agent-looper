@@ -10,6 +10,18 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
+## 0.8.5 — 2026-11-01
+
+Capable → efficient handoff, after [AgentBaton](https://arxiv.org/abs/2610.35959): start the loop on the strong model, hand off to a cheaper same-runtime model once the harness (not the worker) detects readiness.
+
+### Headline
+
+- **`handoffModel` + `handoffMinIteration` in `loop.json`** — opt-in one-time capable → efficient handoff. Each iteration the harness checks readiness via `detectHandoffReadiness()` (workspace artifact present, real product feedback observed, remaining work localized) and latches onto the cheaper model for all remaining iterations. Escalation (`escalateModel` on stagnation/fault) still applies on top; Cursor workers stay pinned (no handoff). Unset by default — existing loops behave exactly as before.
+- **Budget caps cover the handoff model** — `maxCostUsd` now rejects an unpriced `handoffModel` at parse time, same as worker/`escalateModel`, so the cap cannot silently stop being enforced after handoff.
+- **Dogfood loop** — [`.cursor/loops/agentbaton-handoff/`](https://github.com/dancingteeth/agent-looper/tree/main/.cursor/loops/agentbaton-handoff) (`opencode-go/qwen3.7-plus` → `opencode-go/deepseek-v4.1-flash`) with `verify.sh` gate.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.8.5)
+
 ## 0.8.4 — 2026-10-25
 
 Two small steals from [humanlayer/humanlayer](https://github.com/humanlayer/humanlayer).
