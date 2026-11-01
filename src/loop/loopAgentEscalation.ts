@@ -48,10 +48,21 @@ export function resolveIterationAgent(
   escalationRepeatCount: number | undefined,
   reviewCycleEscalation = 0,
   escalateForWorkerFault = false,
+  handoffReady = false,
 ): ResolvedLoopAgent {
-  const base = resolveLoopAgent(config)
-  if (base.runtime === LOOP_RUNTIME_CURSOR) {
-    return base
+  const configured = resolveLoopAgent(config)
+  if (configured.runtime === LOOP_RUNTIME_CURSOR) {
+    // Cursor worker is pinned to Composer — handoffModel does not apply.
+    return configured
+  }
+  // AgentBaton-style one-time capable → efficient handoff: once the readiness
+  // detector fires, the cheaper handoff model becomes the base for all
+  // remaining iterations. Escalation (stagnation/fault → escalateModel) still
+  // applies on top, so a hung worker never stays stuck on the cheap model.
+  let base: ResolvedLoopAgent = configured
+  if (handoffReady && config.handoffModel && base.model !== config.handoffModel) {
+    assertLoopModelAllowed(base.runtime, config.handoffModel)
+    base = resolveLoopAgent({ ...config, model: config.handoffModel })
   }
 
   if (runtimeHonorsReasoningEffort(base.runtime)) {

@@ -187,6 +187,9 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
   if (config.escalateModel) {
     assertRuntimeModel(config.runtime ?? LOOP_RUNTIME_CURSOR, config.escalateModel, 'worker', 'escalateModel')
   }
+  if (config.handoffModel) {
+    assertRuntimeModel(config.runtime ?? LOOP_RUNTIME_CURSOR, config.handoffModel, 'worker', 'handoffModel')
+  }
   if (config.maxCostUsd !== undefined) {
     if (!isPricedLoopModel(worker.model)) {
       throw new AgentModelError(
@@ -198,6 +201,12 @@ export function validateLoopAgentConfig(config: LoopConfig): void {
       throw new AgentModelError(
         `maxCostUsd is set but model "${config.escalateModel}" has no pricing row — the budget cap cannot be enforced. Use a catalogued slug or drop maxCostUsd.`,
         'escalateModel',
+      )
+    }
+    if (config.handoffModel && !isPricedLoopModel(config.handoffModel)) {
+      throw new AgentModelError(
+        `maxCostUsd is set but model "${config.handoffModel}" has no pricing row — the budget cap cannot be enforced. Use a catalogued slug or drop maxCostUsd.`,
+        'handoffModel',
       )
     }
   }
@@ -213,11 +222,14 @@ export function clearIncompatibleAgentFieldsOnRuntimeSwitch(input: {
   nextRuntime: LoopRuntime
   model?: string
   escalateModel?: string
+  handoffModel?: string
   modelOverridden: boolean
   escalateModelOverridden: boolean
+  handoffModelOverridden?: boolean
 }): {
   model?: string
   escalateModel?: string
+  handoffModel?: string
   warnings: string[]
 } {
   const { previousRuntime, nextRuntime } = input
@@ -225,6 +237,7 @@ export function clearIncompatibleAgentFieldsOnRuntimeSwitch(input: {
     return {
       model: input.model,
       escalateModel: input.escalateModel,
+      handoffModel: input.handoffModel,
       warnings: [],
     }
   }
@@ -232,6 +245,7 @@ export function clearIncompatibleAgentFieldsOnRuntimeSwitch(input: {
   const warnings: string[] = []
   let model = input.model
   let escalateModel = input.escalateModel
+  let handoffModel = input.handoffModel
 
   if (!input.modelOverridden && model !== undefined && !modelCompatibleWithRuntime(nextRuntime, model)) {
     warnings.push(
@@ -253,7 +267,19 @@ export function clearIncompatibleAgentFieldsOnRuntimeSwitch(input: {
     escalateModel = undefined
   }
 
-  return { model, escalateModel, warnings }
+  if (
+    !input.handoffModelOverridden &&
+    handoffModel !== undefined &&
+    !modelCompatibleWithRuntime(nextRuntime, handoffModel)
+  ) {
+    warnings.push(
+      `cleared handoffModel "${handoffModel}" after switching runtime ${previousRuntime} → ${nextRuntime}. ` +
+        `Pass --handoff-model if you still want capable-to-efficient handoff on ${nextRuntime}.`,
+    )
+    handoffModel = undefined
+  }
+
+  return { model, escalateModel, handoffModel, warnings }
 }
 
 /**

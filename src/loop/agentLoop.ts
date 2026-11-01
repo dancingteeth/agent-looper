@@ -11,6 +11,7 @@ import { buildAgentLoopPrompt } from './loopPrompt.js'
 import { loadLoopResearchSection, resolveLoopResearchRelativePath } from './loopResearch.js'
 import { detectStagnation } from './loopStagnation.js'
 import { resolveStagnationPolicy } from './loopStagnationPolicy.js'
+import { detectHandoffReadiness } from './loopHandoffReadiness.js'
 import {
   buildStallProbePromptSection,
   createGitWorkspacePort,
@@ -270,6 +271,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   for (const line of unpricedModelWarnings([
     baseAgent.model,
     config.escalateModel,
+    config.handoffModel,
     reviewAgent.model,
   ])) {
     console.error(line)
@@ -291,6 +293,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const stagnationThreshold = config.stagnationThreshold
   let previousWorkerPlainTextToolCalls = false
   let stallProbesUsed = false
+  // AgentBaton-style one-time capable → efficient handoff. Latched: once the
+  // readiness detector fires, all remaining iterations use handoffModel.
+  let handoffEngaged = false
   const workspacePort = options.workspacePort ?? createGitWorkspacePort(repoRoot)
 
   const emitPhase = (phase: AgentLoopPhase, iteration: number): void => {
@@ -472,15 +477,34 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       const repeatCount = detectStagnation(priorFailures, stagnationThreshold).repeatCount
       const stagnation = resolveStagnationPolicy(config, repeatCount, stallProbesUsed)
+      const git = captureGitWorkspaceSnapshot(repoRoot)
+
+      // AgentBaton-style capable → efficient handoff (§3.3): the harness (not
+      // the worker) decides when the efficient model takes over. Latched.
+      if (!handoffEngaged && config.handoffModel && lastVerify && !lastVerify.complete) {
+        const readiness = detectHandoffReadiness({
+          iteration: i,
+          git,
+          lastVerify,
+          priorFailures,
+          stagnationRepeatCount: stagnation.promptRepeatCount,
+          minIteration: config.handoffMinIteration ?? 2,
+        })
+        if (readiness.ready) {
+          handoffEngaged = true
+          console.error(
+            `[agent-loop] capable→efficient handoff engaged at iteration ${i} → ${config.handoffModel} (${readiness.reasons.join('; ')})`,
+          )
+        }
+      }
       const iterationAgent = resolveIterationAgent(
         config,
         i,
         stagnation.escalationRepeatCount,
         reviewCyclesUsed,
         workerFaults > 0,
+        handoffEngaged,
       )
-
-      const git = captureGitWorkspaceSnapshot(repoRoot)
       const failureContext = readInjectedFailureContext(
         bundle.loopDir,
         config.injectFailureContext,

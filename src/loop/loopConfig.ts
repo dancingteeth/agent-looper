@@ -98,6 +98,14 @@ export const loopConfigSchema = loopExtensionFieldsSchema
     reviewModel: z.string().optional(),
     escalateModel: z.string().optional(),
     escalateAfterStagnation: z.number().int().min(1).max(10).default(2),
+    /**
+     * AgentBaton-style one-time capable → efficient handoff (arXiv:2610.35959).
+     * When set, the harness latches onto this cheaper same-runtime model for
+     * all remaining iterations once detectHandoffReadiness() fires. Unset = off.
+     */
+    handoffModel: z.string().optional(),
+    /** Earliest iteration the handoff detector may fire (default 2). */
+    handoffMinIteration: z.number().int().min(1).max(50).default(2),
     /** Worker/verify thinking dial when the runtime honors it. Omit or `none` = off. */
     reasoningEffort: z.enum(LOOP_REASONING_EFFORTS).optional(),
     /** Ceiling for the reasoning ladder (runtimes that honor reasoningEffort). */
@@ -350,7 +358,7 @@ export function loadLoopBundle(
 }
 
 /** Fields whose values may be cleared when the owning runtime switches. */
-type ReconciledModelField = 'model' | 'escalateModel' | 'reviewModel' | 'reviewSecondaryModel'
+type ReconciledModelField = 'model' | 'escalateModel' | 'handoffModel' | 'reviewModel' | 'reviewSecondaryModel'
 
 export function mergeLoopConfig(base: LoopConfig, overrides: Partial<LoopConfig>): LoopConfig {
   const cleanedOverrides: Partial<LoopConfig> = Object.fromEntries(
@@ -363,8 +371,10 @@ export function mergeLoopConfig(base: LoopConfig, overrides: Partial<LoopConfig>
     nextRuntime: next.runtime,
     model: next.model,
     escalateModel: next.escalateModel,
+    handoffModel: next.handoffModel,
     modelOverridden: cleanedOverrides.model !== undefined,
     escalateModelOverridden: cleanedOverrides.escalateModel !== undefined,
+    handoffModelOverridden: cleanedOverrides.handoffModel !== undefined,
   })
 
   const review = clearIncompatibleReviewFieldsOnRuntimeSwitch({
@@ -393,6 +403,7 @@ export function mergeLoopConfig(base: LoopConfig, overrides: Partial<LoopConfig>
   const reconciled: Array<[ReconciledModelField, string | undefined]> = [
     ['model', worker.model],
     ['escalateModel', worker.escalateModel],
+    ['handoffModel', worker.handoffModel],
     ['reviewModel', review.reviewModel],
     ['reviewSecondaryModel', secondary.reviewModel],
   ]

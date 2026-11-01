@@ -1,0 +1,16 @@
+{
+  "runtime": "opencode",
+  "model": "opencode-go/qwen3.7-plus",
+  "handoffModel": "opencode-go/deepseek-v4.1-flash",
+  "handoffMinIteration": 2,
+  "maxIterations": 8,
+  "verify": "bash .cursor/loops/agentbaton-handoff/verify.sh",
+  "postQualityReview": false,
+  "reviewGate": false,
+  "syncOnSuccess": false,
+  "stagnationThreshold": 3,
+  "mode": "forward",
+  "notifyTelegram": false,
+  "delayMs": 0,
+  "trustConfig": true
+}

@@ -45,7 +45,7 @@ import {
 } from './modelCatalog.js'
 
 /** loop.json fields that name a model; carried on {@link AgentModelError} for zod issue paths. */
-export type AgentModelField = 'model' | 'escalateModel' | 'reviewModel' | 'reviewSecondaryModel'
+export type AgentModelField = 'model' | 'escalateModel' | 'handoffModel' | 'reviewModel' | 'reviewSecondaryModel'
 
 /**
  * One row per runtime: defaults, model-shape validation, and capability flags.
@@ -74,9 +74,10 @@ function cursorModelHint(model: string, field: AgentModelField): string {
   }
   switch (field) {
     case 'escalateModel':
+    case 'handoffModel':
       return (
         `Cursor workers are always "${CURSOR_WORKER_MODEL}". ` +
-        `escalateModel is a worker fallback, not the judge, and Cursor has no stronger worker slug — omit it. ` +
+        `${field} is a worker fallback, not the judge, and Cursor has no stronger worker slug — omit it. ` +
         `For a non-Cursor judge, set reviewRuntime + reviewModel.`
       )
     case 'reviewModel':
