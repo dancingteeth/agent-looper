@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { assertDshCredentialsStore } from '../agents/dshCredentialsStore.js'
+import { DSH_HEADLESS_ENV_KEY_HINT } from '../loop/loopCredentialPreflight.js'
 import { OPENCODE_PROVIDER_API_KEY_ENV } from '../agents/opencodeAuth.js'
 import {
   detectOpencodeMajorVersion,
@@ -253,9 +254,8 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
     if (key) {
       console.log('[agent-check] DEEPSEEK_API_KEY present (prefix):', `${key.slice(0, 4)}…`)
     } else {
-      console.log(
-        '[agent-check] no DEEPSEEK_API_KEY — will rely on DSH credentials (`dsh` settings / credentials-local)',
-      )
+      console.error(`[agent-check] DEEPSEEK_API_KEY is not set. ${DSH_HEADLESS_ENV_KEY_HINT}`)
+      process.exit(1)
     }
     console.log('[agent-check] DSH credentials-local: absent, layout v1, or migratable flat map')
 

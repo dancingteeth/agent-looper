@@ -46,9 +46,12 @@ export function requiredCredentialNeed(
         ? undefined
         : 'OPENROUTER_API_KEY (or ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY)'
     }
+    case LOOP_RUNTIME_DSH:
+      // DSH >= 0.2.1 `--profile headless` mounts no credentials service, so a key stored in
+      // ~/.dsh/.credentials.yaml (what the web Models page writes) is invisible to it.
+      return envSet('DEEPSEEK_API_KEY', env) ? undefined : 'DEEPSEEK_API_KEY'
     case LOOP_RUNTIME_OPENCODE:
     case LOOP_RUNTIME_CODEX:
-    case LOOP_RUNTIME_DSH:
     case LOOP_RUNTIME_MUSE:
     case LOOP_RUNTIME_CLAUDE:
       return undefined
@@ -95,14 +98,21 @@ export function listMissingLoopCredentials(
   return missing
 }
 
+export const DSH_HEADLESS_ENV_KEY_HINT =
+  'DSH headless does not read ~/.dsh/.credentials.yaml — export DEEPSEEK_API_KEY in the launching shell'
+
 export function formatMissingLoopCredentials(missing: readonly CredentialNeed[]): string {
-  return [
+  const lines = [
     'Missing credentials — aborting before WORKER.',
     ...missing.map(
       (item) =>
         `  ${item.role} (${item.runtime}): ${item.need} is not set. Run via doppler or agent-check ${item.runtime}`,
     ),
-  ].join('\n')
+  ]
+  if (missing.some((item) => item.runtime === LOOP_RUNTIME_DSH)) {
+    lines.push(`  note: ${DSH_HEADLESS_ENV_KEY_HINT}`)
+  }
+  return lines.join('\n')
 }
 
 function configUsesDsh(
