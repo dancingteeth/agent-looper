@@ -11,6 +11,7 @@ import {
   formatRunHandoffCommand,
   loadLoopConfigForPrompt,
   readDraftSnapshot,
+  readRunFailureReason,
   resolvePromptPaths,
   runScaffoldAgent,
   spawnLoopRun,
@@ -158,7 +159,7 @@ async function executePromptFlow(options: PromptCliOptions): Promise<number> {
   }
 
   const config = loadLoopConfigForPrompt(loopDir, await detectLoopRuntimes())
-  const { child, logPath, bundleLabel } = spawnLoopRun(loopDir, repoRoot)
+  const { child, logPath, logOffset, bundleLabel } = spawnLoopRun(loopDir, repoRoot)
   if (!useInk) {
     console.error(`[agent-loop-prompt] watching ${bundleLabel} (log: ${logPath})`)
   }
@@ -168,10 +169,19 @@ async function executePromptFlow(options: PromptCliOptions): Promise<number> {
       ? await watchChildInk(loopDir, child, config.maxIterations)
       : await waitForChildExit(child)
 
+  const failure =
+    exitCode === 0
+      ? undefined
+      : {
+          reason: readRunFailureReason(logPath, logOffset),
+          log: path.relative(repoRoot, logPath) || logPath,
+        }
   if (useInk) {
-    await showDoneInk(exitCode, exitCode === 0 ? config.preview : undefined)
+    await showDoneInk(exitCode, exitCode === 0 ? config.preview : undefined, failure)
   } else {
     console.error(`[agent-loop-prompt] run exited ${exitCode}`)
+    if (failure?.reason) console.error(`[agent-loop-prompt] reason: ${failure.reason}`)
+    if (failure) console.error(`[agent-loop-prompt] log: ${failure.log}`)
   }
 
   if (exitCode === 0 && config.preview) {

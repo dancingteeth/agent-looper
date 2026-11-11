@@ -97,6 +97,23 @@ describe('DoneView', () => {
     const fail = render(createElement(DoneView, { exitCode: 2 }))
     expect(fail.lastFrame()).toMatch(/run exited 2/)
   })
+
+  it('shows the failure reason and log path when a run fails', () => {
+    const fail = render(
+      createElement(DoneView, {
+        exitCode: 1,
+        failure: { reason: 'DSH credentials store will not boot', log: '.cursor/loops/demo/prompt-run.log' },
+      }),
+    )
+    expect(fail.lastFrame()).toMatch(/run exited 1/)
+    expect(fail.lastFrame()).toMatch(/DSH credentials store will not boot/)
+    expect(fail.lastFrame()).toMatch(/log: \.cursor\/loops\/demo\/prompt-run\.log/)
+
+    const ok = render(
+      createElement(DoneView, { exitCode: 0, failure: { reason: 'stale', log: 'x.log' } }),
+    )
+    expect(ok.lastFrame()).not.toMatch(/stale|log:/)
+  })
 })
 
 describe('MultilinePrompt', () => {
