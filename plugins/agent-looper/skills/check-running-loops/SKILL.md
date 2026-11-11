@@ -1,15 +1,12 @@
 ---
 name: check-running-loops
-description: >-
-  Checks whether agent-loop / agent-loop-batch jobs are actually alive, stale, hung, dead, or done,
-  for any worker/judge runtime (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, Claude).
-  Use when the user asks if loops are ok, stuck, running, healthy, or what the current batch status is;
-  when they mention agent-loop, loop-batch, verify.sh harness, or AGENT_LOOP_DONE.
+description: Checks whether agent-loop / agent-loop-batch jobs are actually alive, stale, hung, dead, or done, for any worker/judge runtime (Cursor, Cline, OpenCode, Pi, Codex, DSH, Muse, Claude). Use when the user asks if loops are ok, stuck, running, healthy, or what the current batch status is; when they mention agent-loop, loop-batch, verify.sh harness, or AGENT_LOOP_DONE.
 tags:
   - agentic_ai
   - agents
   - documentation
   - loops
+  - type/app
 ---
 
 # Check running loops

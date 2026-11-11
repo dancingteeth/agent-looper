@@ -4,6 +4,8 @@ tags:
   - agents
   - templates
   - frontend
+  - agentic_ai
+  - type/app
 ---
 # TW — Visual / taste: {page or UI}
 

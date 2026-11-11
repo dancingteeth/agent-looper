@@ -5,6 +5,8 @@ tags:
   - muse
   - cost
   - agents
+  - agentic_ai
+  - type/app
 ---
 # Muse Code worker runtime
 

@@ -3,6 +3,8 @@ tags:
   - documentation
   - agents
   - loops
+  - agentic_ai
+  - type/app
 ---
 # Research — short title
 
