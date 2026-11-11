@@ -5,6 +5,7 @@ tags:
   - agents
   - loops
   - agentic_ai
+  - type/app
 ---
 # DeepSeek Harness companion plugin
 

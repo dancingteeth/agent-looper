@@ -5,6 +5,7 @@ tags:
   - documentation
   - loops
   - plugins
+  - type/app
 ---
 # Agent Looper (DSH companion plugin)
 

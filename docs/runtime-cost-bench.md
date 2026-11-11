@@ -5,6 +5,8 @@ tags:
   - cost
   - agents
   - loops
+  - agentic_ai
+  - type/app
 ---
 # Same-task runtime cost bench
 

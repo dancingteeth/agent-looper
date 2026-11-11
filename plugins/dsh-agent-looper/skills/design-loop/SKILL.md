@@ -6,6 +6,7 @@ tags:
   - agents
   - documentation
   - loops
+  - type/app
 ---
 
 # Design a loop
