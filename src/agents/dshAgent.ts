@@ -27,7 +27,7 @@ import {
   readDshSessionUsage,
 } from './dshSessionUsage.js'
 import { formatUsageRecordLog } from '../usage/loopUsage.js'
-import { assertDshCredentialsStore, DSH_CREDENTIALS_FLAT_HINT } from './dshCredentialsStore.js'
+import { assertDshCredentialsStore, DSH_CREDENTIALS_LAYOUT_HINT } from './dshCredentialsStore.js'
 
 export const DSH_SESSION_TIMEOUT_MS = 45 * 60 * 1000
 export const DSH_KILL_GRACE_MS = 3000
@@ -38,10 +38,11 @@ export const DSH_MIN_NODE_MINOR = 15
 export function formatDshHeadlessFailure(exitCode: number, detail: string): string {
   const prefix = `DSH headless failed (exit ${exitCode})`
   if (
-    /credentials\.yaml must be a string/i.test(detail) ||
-    /value for "(version|refs|records)"/i.test(detail)
+    /credentials\.yaml must be a (string|mapping)/i.test(detail) ||
+    /value for "(version|refs|records)"/i.test(detail) ||
+    /credentials-local: .*(declares version|pre-release flat layout|invalid document)/i.test(detail)
   ) {
-    return `${prefix}: ${DSH_CREDENTIALS_FLAT_HINT}`
+    return `${prefix}: ${DSH_CREDENTIALS_LAYOUT_HINT}`
   }
   const compact = detail
     .split('\n')

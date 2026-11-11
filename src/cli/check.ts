@@ -257,7 +257,7 @@ async function checkRuntime(runtime: Runtime): Promise<void> {
         '[agent-check] no DEEPSEEK_API_KEY — will rely on DSH credentials (`dsh` settings / credentials-local)',
       )
     }
-    console.log('[agent-check] DSH credentials-local: absent or flat KEY: string map')
+    console.log('[agent-check] DSH credentials-local: absent, layout v1, or migratable flat map')
 
     console.log('[agent-check] dsh CLI:', (which.stdout || which.stderr).trim().split('\n')[0])
     console.log('[agent-check] shell preflight OK')

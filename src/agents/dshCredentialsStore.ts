@@ -3,12 +3,15 @@ import os from 'node:os'
 import path from 'node:path'
 import { resolveDshHome } from './dshSessionUsage.js'
 
-/** Same one-liner for preflight, agent-check, and collapsed headless stderr. */
-export const DSH_CREDENTIALS_FLAT_HINT =
-  '~/.dsh/.credentials.yaml must be a flat KEY: "string" map ' +
-  '(DEEPSEEK_API_KEY: "…"). A wrapped store (version/refs/records) or YAML integer (version: 1) fails boot.'
-
-const WRAPPED_ROOT_KEYS = new Set(['version', 'refs', 'records'])
+/**
+ * Same one-liner for preflight, agent-check, and collapsed headless stderr.
+ * DSH >= 0.2.1 `credentials-local` reads layout v1 and auto-migrates the
+ * pre-release flat map, so both shapes boot; anything else fails boot.
+ */
+export const DSH_CREDENTIALS_LAYOUT_HINT =
+  '~/.dsh/.credentials.yaml must be DSH layout v1: `version: 1` (unquoted integer) with ' +
+  '`refs:` holding KEY: "string" entries (DEEPSEEK_API_KEY: "…"). ' +
+  'A flat KEY: "string" map is also accepted (DSH migrates it).'
 
 /** DSH `credentialRef`: POSIX identifier. */
 const POSIX_CREDENTIAL_REF = /^[A-Za-z_][A-Za-z0-9_]*$/
@@ -22,22 +25,28 @@ export function dshCredentialsFilename(
   return path.join(resolveDshHome(env, homedir), '.credentials.yaml')
 }
 
-function rootKeyName(line: string): string | undefined {
-  if (/^[ \t]/.test(line)) return undefined
-  const trimmed = line.trimEnd()
-  if (trimmed.length === 0 || trimmed.startsWith('#') || trimmed === '---' || trimmed === '...') {
+type KeyLine = { indent: number; key: string; value: string }
+
+function parseKeyLine(raw: string): KeyLine | undefined {
+  const trimmed = raw.trimEnd()
+  const body = trimmed.trimStart()
+  if (body.length === 0 || body.startsWith('#') || body === '---' || body === '...') {
     return undefined
   }
-  const quoted = /^["']([^"']+)["']\s*:/.exec(trimmed)
-  if (quoted) return quoted[1]
-  const plain = /^([^:#\s][^:]*)\s*:/.exec(trimmed)
-  return plain?.[1]?.trim()
+  const indent = trimmed.length - body.length
+  const quoted = /^["']([^"']+)["']\s*:(.*)$/.exec(body)
+  const plain = quoted ? undefined : /^([^:#\s][^:]*?)\s*:(?:\s(.*)|)$/.exec(body)
+  const match = quoted ?? plain
+  if (!match) return undefined
+  const value = (match[2] ?? '').replace(/\s+#.*$/, '').trim()
+  return { indent, key: match[1]!.trim(), value }
 }
 
-function rootValuePrefix(line: string): string {
-  const colon = line.indexOf(':')
-  if (colon < 0) return ''
-  return line.slice(colon + 1).replace(/\s+#.*$/, '').trim()
+/** Value prefix that DSH would not read as a non-empty string scalar. */
+function notAString(value: string): boolean {
+  if (value.length === 0) return true
+  if (value.startsWith('"') || value.startsWith("'")) return /^(""|'')$/.test(value)
+  return UNQUOTED_NON_STRING.test(value)
 }
 
 /**
@@ -45,16 +54,42 @@ function rootValuePrefix(line: string): string {
  * Absent / empty documents are OK (DSH treats them as an empty store).
  */
 export function dshCredentialsDocumentProblem(text: string): string | undefined {
-  for (const raw of text.split(/\r?\n/)) {
-    const key = rootKeyName(raw)
-    if (key === undefined) continue
-    if (WRAPPED_ROOT_KEYS.has(key) || !POSIX_CREDENTIAL_REF.test(key)) {
-      return DSH_CREDENTIALS_FLAT_HINT
+  const lines = text
+    .split(/\r?\n/)
+    .map(parseKeyLine)
+    .filter((line): line is KeyLine => line !== undefined)
+  const roots = lines.filter((line) => line.indent === 0)
+  if (roots.length === 0) return undefined
+
+  const version = roots.find((line) => line.key === 'version')
+  if (version === undefined) {
+    // Pre-release flat layout: DSH migrates it when every entry is a ref → string.
+    for (const line of roots) {
+      if (!POSIX_CREDENTIAL_REF.test(line.key) || notAString(line.value)) {
+        return DSH_CREDENTIALS_LAYOUT_HINT
+      }
     }
-    const value = rootValuePrefix(raw)
-    if (value.length === 0) continue
-    if (value.startsWith('"') || value.startsWith("'")) continue
-    if (UNQUOTED_NON_STRING.test(value)) return DSH_CREDENTIALS_FLAT_HINT
+    return undefined
+  }
+
+  if (version.value !== '1') return DSH_CREDENTIALS_LAYOUT_HINT
+  let section: string | undefined
+  let childIndent: number | undefined
+  for (const line of lines) {
+    if (line.indent === 0) {
+      section = line.key
+      childIndent = undefined
+      if (section === 'refs' && line.value.length > 0 && line.value !== '{}') {
+        return DSH_CREDENTIALS_LAYOUT_HINT
+      }
+      continue
+    }
+    if (section !== 'refs') continue // records are DSH-owned; other roots are ignored by DSH
+    childIndent ??= line.indent
+    if (line.indent !== childIndent) return DSH_CREDENTIALS_LAYOUT_HINT
+    if (!POSIX_CREDENTIAL_REF.test(line.key) || notAString(line.value)) {
+      return DSH_CREDENTIALS_LAYOUT_HINT
+    }
   }
   return undefined
 }
@@ -78,5 +113,5 @@ export function assertDshCredentialsStore(options: AssertDshCredentialsStoreOpti
   }
   const problem = dshCredentialsDocumentProblem(text)
   if (problem === undefined) return
-  throw new Error(`DSH credentials store is not flat — aborting before WORKER. ${problem}`)
+  throw new Error(`DSH credentials store will not boot — aborting before WORKER. ${problem}`)
 }

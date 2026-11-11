@@ -88,25 +88,22 @@ describe('loopCredentialPreflight', () => {
     expect(requiredCredentialNeed('claude', {})).toBeUndefined()
   })
 
-  it('aborts a DSH worker on a wrapped credentials store before WORKER', () => {
+  it('aborts a DSH worker on a credentials store DSH cannot boot', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-loop-creds-'))
     tmpHomes.push(dir)
-    fs.writeFileSync(
-      path.join(dir, '.credentials.yaml'),
-      'version: 1\nrefs:\n  DEEPSEEK_API_KEY: sk-secret-do-not-leak\n',
-      { encoding: 'utf8', mode: 0o600 },
-    )
-    expect(() =>
-      assertLoopCredentials(
-        { runtime: 'dsh', postQualityReview: false },
-        { DSH_HOME: dir },
-      ),
-    ).toThrow(/aborting before WORKER/)
-    expect(() =>
-      assertLoopCredentials(
-        { runtime: 'dsh', postQualityReview: false },
-        { DSH_HOME: dir },
-      ),
-    ).toThrow(/wrapped store/)
+    const store = path.join(dir, '.credentials.yaml')
+    const run = () =>
+      assertLoopCredentials({ runtime: 'dsh', postQualityReview: false }, { DSH_HOME: dir })
+    fs.writeFileSync(store, 'version: "1"\nrefs:\n  DEEPSEEK_API_KEY: sk-secret-do-not-leak\n', {
+      encoding: 'utf8',
+      mode: 0o600,
+    })
+    expect(run).toThrow(/aborting before WORKER/)
+    expect(run).toThrow(/layout v1/)
+    fs.writeFileSync(store, 'version: 1\nrefs:\n  DEEPSEEK_API_KEY: sk-test\n', {
+      encoding: 'utf8',
+      mode: 0o600,
+    })
+    expect(run).not.toThrow(/aborting before WORKER/)
   })
 })
