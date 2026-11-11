@@ -41,6 +41,21 @@ export function formatLoopCompletionSignalLine(payload: LoopCompletionSignalPayl
   return `${LOOP_COMPLETION_SIGNAL_PREFIX} ${JSON.stringify(payload)}`
 }
 
+/** Inverse of {@link formatLoopCompletionSignalLine}; `undefined` for any other line. */
+export function parseLoopCompletionSignalLine(
+  line: string,
+): LoopCompletionSignalPayload | undefined {
+  const prefix = `${LOOP_COMPLETION_SIGNAL_PREFIX} `
+  if (!line.startsWith(prefix)) return undefined
+  try {
+    const payload = JSON.parse(line.slice(prefix.length)) as Partial<LoopCompletionSignalPayload>
+    if (payload?.v !== 1 || typeof payload.reason !== 'string') return undefined
+    return payload as LoopCompletionSignalPayload
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * One-line machine-readable completion event on stdout (fd 1).
  * Uses writeSync so piped stdout (Cursor background shells) is flushed before process.exit.

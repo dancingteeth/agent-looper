@@ -216,12 +216,20 @@ export function FreezeConfirm({ snapshot, onChoose }: FreezeConfirmProps) {
   )
 }
 
+export type RunFailureSummary = {
+  /** One-line cause from the run log (`AGENT_LOOP_DONE` reason when present). */
+  reason?: string
+  /** prompt-run.log path, repo-relative when possible. */
+  log: string
+}
+
 export type DoneViewProps = {
   exitCode: number
   preview?: string
+  failure?: RunFailureSummary
 }
 
-export function DoneView({ exitCode, preview }: DoneViewProps) {
+export function DoneView({ exitCode, preview, failure }: DoneViewProps) {
   return (
     <CoverFrame>
       <LooperMark idlePipeline />
@@ -231,6 +239,12 @@ export function DoneView({ exitCode, preview }: DoneViewProps) {
       {exitCode === 0 && preview ? (
         <Text color={C.muted} wrap="truncate">
           preview: {preview}
+        </Text>
+      ) : null}
+      {exitCode !== 0 && failure?.reason ? <Text wrap="wrap">{failure.reason}</Text> : null}
+      {exitCode !== 0 && failure ? (
+        <Text color={C.muted} wrap="truncate">
+          log: {failure.log}
         </Text>
       ) : null}
     </CoverFrame>
@@ -329,9 +343,13 @@ export async function watchChildInk(
   })
 }
 
-export async function showDoneInk(exitCode: number, preview?: string): Promise<void> {
+export async function showDoneInk(
+  exitCode: number,
+  preview?: string,
+  failure?: RunFailureSummary,
+): Promise<void> {
   await new Promise<void>((resolve) => {
-    const instance = render(createElement(DoneView, { exitCode, preview }), {
+    const instance = render(createElement(DoneView, { exitCode, preview, failure }), {
       exitOnCtrlC: false,
       incrementalRendering: true,
     })

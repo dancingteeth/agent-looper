@@ -23,6 +23,7 @@ import { assertShellConfigTrusted } from '../loop/loopShellTrust.js'
 import { StreamCollector } from '../stream/streamCollect.js'
 import { formatPreflightMessage, validateGoalPreflight } from '../loop/loopPreflight.js'
 import { formatLoopResumeCommand } from '../loop/loopResumeCommand.js'
+import { parseLoopCompletionSignalLine } from '../integrations/loopCompletionSignal.js'
 import {
   formatVerifyScriptLintMessage,
   lintVerifyScript,
@@ -190,11 +191,13 @@ export function resolveAgentLoopRunBin(): string {
 export function spawnLoopRun(
   loopDir: string,
   repoRoot: string,
-): { child: ChildProcess; logPath: string; bundleLabel: string } {
+): { child: ChildProcess; logPath: string; logOffset: number; bundleLabel: string } {
   const bundleLabel = path.relative(repoRoot, loopDir) || '.'
   const logPath = path.join(loopDir, 'prompt-run.log')
   fs.mkdirSync(loopDir, { recursive: true })
   const logFd = fs.openSync(logPath, 'a')
+  /** Log is append-only across runs; readers start here to see only this run. */
+  const logOffset = fs.fstatSync(logFd).size
   const child = spawn(process.execPath, [resolveAgentLoopRunBin(), 'run', bundleLabel], {
     cwd: repoRoot,
     stdio: ['ignore', logFd, logFd],
@@ -207,7 +210,7 @@ export function spawnLoopRun(
       // log fd may already be closed
     }
   })
-  return { child, logPath, bundleLabel }
+  return { child, logPath, logOffset, bundleLabel }
 }
 
 /** Trust-gate preview at the execute site — `agent-loop run` does not exec this shell. */
@@ -243,6 +246,39 @@ export function formatRunHandoffCommand(
 ): string {
   const bundleLabel = path.relative(repoRoot, loopDir) || '.'
   return formatLoopResumeCommand(bundleLabel, env)
+}
+
+const RUN_FAILURE_REASON_MAX = 400
+
+/**
+ * Why the spawned run ended, from this run's slice of prompt-run.log:
+ * the `AGENT_LOOP_DONE` reason when present, else the last `failed:` / error line,
+ * else the last non-empty line. One line, capped — the full log stays on disk.
+ */
+export function readRunFailureReason(logPath: string, logOffset = 0): string | undefined {
+  let text: string
+  try {
+    const buf = fs.readFileSync(logPath)
+    text = buf.subarray(Math.min(logOffset, buf.length)).toString('utf8')
+  } catch {
+    return undefined
+  }
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+  let reason: string | undefined
+  for (let i = lines.length - 1; i >= 0 && reason === undefined; i--) {
+    reason = parseLoopCompletionSignalLine(lines[i]!)?.reason
+  }
+  reason ??= [...lines].reverse().find((line) => /\bfailed:|^(Error|TypeError)\b/.test(line))
+  reason ??= lines.at(-1)
+  if (reason === undefined) return undefined
+  reason = reason.replace(/^\[agent-loop\]\s*(failed:\s*)?(Error:\s*)?/, '').trim()
+  if (reason.length === 0) return undefined
+  return reason.length > RUN_FAILURE_REASON_MAX
+    ? `${reason.slice(0, RUN_FAILURE_REASON_MAX - 1)}…`
+    : reason
 }
 
 export async function waitForChildExit(child: ChildProcess): Promise<number> {
