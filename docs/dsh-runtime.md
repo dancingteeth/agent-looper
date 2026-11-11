@@ -79,9 +79,11 @@ pnpm exec agent-check dsh
 
 ## Credentials document
 
-`$DSH_HOME/.credentials.yaml` (default `~/.dsh/.credentials.yaml`) must be a **flat** `KEY: "string"` map. Current DSH `credentials-local` rejects a wrapped store (`version` / `refs` / `records`) and YAML integers (`version: 1`). Headless still parses that file even when `DEEPSEEK_API_KEY` is in the environment — quoting `version` is not enough.
+`$DSH_HOME/.credentials.yaml` (default `~/.dsh/.credentials.yaml`) uses DSH **layout v1** since DSH 0.2.1: `version: 1` (unquoted integer), `refs:` holding `KEY: "string"` entries, and DSH-owned `records:` (`dsh web` writes a `client-connection/browser-session` record there). DSH still auto-migrates the pre-release flat `KEY: "string"` map. Headless parses the file even when `DEEPSEEK_API_KEY` is in the environment.
 
-`agent-check dsh` and `agent-loop run` abort **before WORKER** when the document looks wrapped. Flatten it to `DEEPSEEK_API_KEY: "…"`. Do not dump the file. The harness does not rewrite it (`dsh web` may recreate the wrapped schema).
+`agent-check dsh` and `agent-loop run` abort **before WORKER** only when the document would fail DSH boot: a `version` other than unquoted `1` (`version: "1"` fails), non-POSIX or non-string `refs` entries, or a flat map DSH cannot migrate. The scan is structure-only and never echoes values. Do not dump the file. The harness does not rewrite it.
+
+Before agent-looper 0.8.6 the preflight required the flat map and rejected layout v1 — the opposite of what DSH 0.2.1+ needs.
 
 ## Defaults
 

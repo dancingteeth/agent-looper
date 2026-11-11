@@ -11,7 +11,7 @@ import {
   nodeMeetsDshMinimum,
   spawnDshHeadless,
 } from './dshAgent.js'
-import { DSH_CREDENTIALS_FLAT_HINT } from './dshCredentialsStore.js'
+import { DSH_CREDENTIALS_LAYOUT_HINT } from './dshCredentialsStore.js'
 
 describe('dshAgent', () => {
   it('writes a headless patch for model, never-approval, and a matching permission preset', () => {
@@ -54,17 +54,26 @@ describe('dshAgent', () => {
     const versionDump =
       'dsh: plugin tree failed to load: credentials-local: the value for "version" in /Users/me/.dsh/.credentials.yaml must be a string\nTypeError: credentials-local: the value for "version" in /Users/me/.dsh/.credentials.yaml must be a string\n    at parseCredentialsDocument'
     expect(formatDshHeadlessFailure(1, versionDump)).toBe(
-      `DSH headless failed (exit 1): ${DSH_CREDENTIALS_FLAT_HINT}`,
+      `DSH headless failed (exit 1): ${DSH_CREDENTIALS_LAYOUT_HINT}`,
     )
     expect(
       formatDshHeadlessFailure(
         1,
         'credentials-local: the value for "refs" in /Users/me/.dsh/.credentials.yaml must be a string',
       ),
-    ).toBe(`DSH headless failed (exit 1): ${DSH_CREDENTIALS_FLAT_HINT}`)
+    ).toBe(`DSH headless failed (exit 1): ${DSH_CREDENTIALS_LAYOUT_HINT}`)
     expect(
       formatDshHeadlessFailure(1, 'dsh: plugin tree failed to load: EPERM cordis.yml'),
     ).toBe('DSH headless failed (exit 1): dsh: plugin tree failed to load: EPERM cordis.yml')
+  })
+
+  it('collapses DSH layout-v1 credential errors to the layout hint', () => {
+    expect(
+      formatDshHeadlessFailure(
+        1,
+        'Error: credentials-local: /Users/me/.dsh/.credentials.yaml declares version "1"; this build reads version 1',
+      ),
+    ).toBe(`DSH headless failed (exit 1): ${DSH_CREDENTIALS_LAYOUT_HINT}`)
   })
 })
 
