@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   assertLoopCredentials,
+  formatMissingLoopCredentials,
   listMissingLoopCredentials,
   requiredCredentialNeed,
 } from './loopCredentialPreflight.js'
@@ -80,9 +81,21 @@ describe('loopCredentialPreflight', () => {
     ])
   })
 
-  it('does not require env keys for OpenCode / DSH / Codex / Muse', () => {
+  it('requires DEEPSEEK_API_KEY in env for DSH (headless ignores the credentials file)', () => {
+    expect(requiredCredentialNeed('dsh', {})).toBe('DEEPSEEK_API_KEY')
+    expect(requiredCredentialNeed('dsh', { DEEPSEEK_API_KEY: 'sk-x' })).toBeUndefined()
+    const message = formatMissingLoopCredentials(
+      listMissingLoopCredentials({ runtime: 'dsh', reviewRuntime: 'claude', postQualityReview: 'auto' }, {}),
+    )
+    expect(message).toMatch(/worker \(dsh\): DEEPSEEK_API_KEY is not set/)
+    expect(message).toMatch(/does not read ~\/\.dsh\/\.credentials\.yaml/)
+    expect(() =>
+      assertLoopCredentials({ runtime: 'dsh', postQualityReview: false }, { DSH_HOME: '/nonexistent' }),
+    ).toThrow(/DEEPSEEK_API_KEY is not set/)
+  })
+
+  it('does not require env keys for OpenCode / Codex / Muse / Claude', () => {
     expect(requiredCredentialNeed('opencode', {})).toBeUndefined()
-    expect(requiredCredentialNeed('dsh', {})).toBeUndefined()
     expect(requiredCredentialNeed('codex', {})).toBeUndefined()
     expect(requiredCredentialNeed('muse', {})).toBeUndefined()
     expect(requiredCredentialNeed('claude', {})).toBeUndefined()
@@ -93,7 +106,10 @@ describe('loopCredentialPreflight', () => {
     tmpHomes.push(dir)
     const store = path.join(dir, '.credentials.yaml')
     const run = () =>
-      assertLoopCredentials({ runtime: 'dsh', postQualityReview: false }, { DSH_HOME: dir })
+      assertLoopCredentials(
+        { runtime: 'dsh', postQualityReview: false },
+        { DSH_HOME: dir, DEEPSEEK_API_KEY: 'sk-test' },
+      )
     fs.writeFileSync(store, 'version: "1"\nrefs:\n  DEEPSEEK_API_KEY: sk-secret-do-not-leak\n', {
       encoding: 'utf8',
       mode: 0o600,

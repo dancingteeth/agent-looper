@@ -125,7 +125,7 @@ pnpm exec agent-check codex
 pnpm exec agent-loop run .cursor/loops/my-task --runtime codex
 
 # DeepSeek Harness (needs `dsh` on PATH; Node ≥ 22.15)
-export DEEPSEEK_API_KEY=…   # or DSH credentials-local
+export DEEPSEEK_API_KEY=…   # required: DSH headless ignores ~/.dsh/.credentials.yaml
 pnpm exec agent-check dsh
 pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh
 # runtime: docs/dsh-runtime.md — dsh web companion: docs/dsh-plugin.md

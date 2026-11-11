@@ -70,7 +70,7 @@ Full Access on the **web** session does not change the headless worker patch: th
 
 ```bash
 # Node ≥ 22.15 (DSH zlib/zstd). dsh on PATH.
-export DEEPSEEK_API_KEY=…   # or DSH credentials-local / settings
+export DEEPSEEK_API_KEY=…   # required: DSH headless ignores ~/.dsh/.credentials.yaml
 # this checkout:
 node dist/cli/check.js dsh
 # consumer (agent-looper is a dependency):
@@ -80,6 +80,8 @@ pnpm exec agent-check dsh
 ## Credentials document
 
 `$DSH_HOME/.credentials.yaml` (default `~/.dsh/.credentials.yaml`) uses DSH **layout v1** since DSH 0.2.1: `version: 1` (unquoted integer), `refs:` holding `KEY: "string"` entries, and DSH-owned `records:` (`dsh web` writes a `client-connection/browser-session` record there). DSH still auto-migrates the pre-release flat `KEY: "string"` map. Headless parses the file even when `DEEPSEEK_API_KEY` is in the environment.
+
+**The key itself must come from the environment.** DSH 0.2.1 `--profile headless` mounts no credentials service, so a `DEEPSEEK_API_KEY` stored in `refs:` (what the web Models page writes) is invisible to the worker and the run dies with `MISSING_CREDENTIAL` on iteration 1. `agent-loop run` and `agent-check dsh` therefore abort up front unless `DEEPSEEK_API_KEY` is exported (or injected via Doppler).
 
 `agent-check dsh` and `agent-loop run` abort **before WORKER** only when the document would fail DSH boot: a `version` other than unquoted `1` (`version: "1"` fails), non-POSIX or non-string `refs` entries, or a flat map DSH cannot migrate. The scan is structure-only and never echoes values. Do not dump the file. The harness does not rewrite it.
 
