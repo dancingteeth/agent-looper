@@ -85,7 +85,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('site version labels say 0.8.5 current with no stale 0.7.x as current', () => {
+  it('site version labels say 0.8.6 current with no stale 0.7.x as current', () => {
     const versionPaths = [
       'about/index.html',
       'about/index.md',
@@ -96,14 +96,14 @@ describe('landing agent readiness', () => {
     ]
     for (const file of versionPaths) {
       const body = readSite(file)
-      expect(body, file).toContain('0.8.5')
+      expect(body, file).toContain('0.8.6')
       expect(body, file).not.toMatch(/Current npm: \*\*0\.7\./)
     }
     const llms = readSite('llms.txt')
-    expect(llms).toContain('Current npm: **0.8.5**')
+    expect(llms).toContain('Current npm: **0.8.6**')
     expect(llms).toContain('supported line **0.8.x**')
     expect(llms).not.toContain('supported line **0.7.x**')
-    expect(llms).toMatch(/Changelog.*0\.8\.5/)
+    expect(llms).toMatch(/Changelog.*0\.8\.6/)
   })
 
   it('llms.txt follows llmstxt.org v2 and includes when-to-use guidance', () => {
@@ -775,9 +775,9 @@ describe('landing agent readiness', () => {
     const grok47Beat = 'grok-4.7'
     const codexAstraBeat = 'gpt-6-astra'
     const claudeAliasBeat = 'latest-per-family'
-    const dshFlatBeat = 'must be a flat'
+    const dshEnvKeyBeat = 'DEEPSEEK_API_KEY'
     const dshPreflightBeat = 'agent-check dsh'
-    const dshQuoteNotEnoughBeat = 'alone is not enough'
+    const dshLayoutV1Beat = 'layout v1'
 
     const presetsQuestion = faq?.mainEntity?.find(
       (q) => q.name === 'How do worker and judge presets work?',
@@ -800,9 +800,9 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/supported line \*\*0\.7\.x\*\*/i)
     }
 
-    expect(llms).toContain('Current npm: **0.8.5**')
+    expect(llms).toContain('Current npm: **0.8.6**')
     expect(llms).toContain('0.8.x')
-    expect(llms).not.toContain('Current npm: **0.8.4**')
+    expect(llms).not.toContain('Current npm: **0.8.5**')
     expect(llms).not.toContain('Current npm: **0.7.')
     expect(llms).toContain('@dancingteeth/opencode-agent-looper')
     expect(llms).toMatch(/no Cursor default judge/i)
@@ -822,7 +822,9 @@ describe('landing agent readiness', () => {
     expect(llms).toContain(grok47Beat)
     expect(llms).toContain(flash41Slug)
     expect(llms).toContain(dshPreflightBeat)
-    expect(llms).toContain(dshQuoteNotEnoughBeat)
+    expect(llms).toContain(dshEnvKeyBeat)
+    expect(llms).not.toContain('must be a flat')
+    expect(llms).toContain(dshLayoutV1Beat)
     expect(llms).toContain(setupWizardBeat)
     expect(llms).toContain(plantBeat)
     expect(llms).toContain(modelsDevBeat)
@@ -854,7 +856,7 @@ describe('landing agent readiness', () => {
       harnessHtml.match(
         /<article class="harness-card" id="dsh">[\s\S]*?<\/article>/,
       )?.[0] ?? ''
-    expect(dshCard).toContain(dshFlatBeat)
+    expect(dshCard).toContain(dshEnvKeyBeat)
     expect(dshCard).toContain(dshPreflightBeat)
     expect(dshCard).not.toContain('version: "1"')
     expect(dshCard).toContain(flashDefault)
@@ -866,9 +868,9 @@ describe('landing agent readiness', () => {
     expect(harnessMd).toContain(grok47Beat)
     expect(harnessMd).toContain(codexAstraBeat)
     expect(harnessMd).toContain(claudeAliasBeat)
-    expect(harnessMd).toContain(dshFlatBeat)
+    expect(harnessMd).toContain(dshEnvKeyBeat)
     expect(harnessMd).toContain(dshPreflightBeat)
-    expect(harnessMd).toContain(dshQuoteNotEnoughBeat)
+    expect(harnessMd).toContain(dshLayoutV1Beat)
     expect(harnessMd).not.toContain('version: "1"')
   })
 
