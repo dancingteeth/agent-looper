@@ -10,6 +10,21 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
+## 0.8.6 — 2026-11-12
+
+DSH 0.2.1 compatibility, and a failed `agent-loop-prompt` run now shows why it failed.
+
+### Fixes
+
+- **DSH credentials preflight accepts layout v1.** DSH 0.2.1 `credentials-local` requires `version: 1` + `refs:` (what `dsh web` writes) and auto-migrates the old flat map. The 0.6.3 preflight still demanded the flat map, so every DSH loop with a `dsh web` store aborted before WORKER. `agent-check dsh` and `agent-loop run` now reject only what DSH itself refuses: a `version` other than unquoted `1`, non-POSIX or non-string `refs`, or a flat map DSH cannot migrate.
+- **DSH loops require `DEEPSEEK_API_KEY` in the environment.** DSH 0.2.1 `--profile headless` mounts no credentials service, so a key stored in `~/.dsh/.credentials.yaml` never reaches the worker and the run died on iteration 1 with `MISSING_CREDENTIAL`. `agent-loop run` / `agent-loop-batch` / `agent-check dsh` now abort up front with an explanation.
+
+### Prompt TUI
+
+- **Done screen shows the failure reason.** On a failed run, `agent-loop-prompt` prints the `AGENT_LOOP_DONE` reason (or the last `failed:` line) and the `prompt-run.log` path, reading only this run's part of the log. `--plain` prints the same on stderr.
+
+[npm](https://www.npmjs.com/package/@dancingteeth/agent-looper) · [tag](https://github.com/dancingteeth/agent-looper/releases/tag/v0.8.6)
+
 ## 0.8.5 — 2026-11-01
 
 Capable → efficient handoff, after [AgentBaton](https://arxiv.org/abs/2610.35959): start the loop on the strong model, hand off to a cheaper same-runtime model once the harness (not the worker) detects readiness.

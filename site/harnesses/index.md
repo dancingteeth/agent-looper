@@ -43,7 +43,7 @@ DeepSeek Harness CLI — worker is `dsh --profile headless`; `dsh-agent-looper` 
 - Worker: `deepseek-official/deepseek-flash` (4.1 Flash, escalates to `deepseek-official/deepseek-v4-pro`). Previous `deepseek-official/deepseek-v4-flash` stays allowed.
 - Judge (optional): same runtime by default (V4 Pro), override any
 - Run: `pnpm exec agent-loop run .cursor/loops/my-task --runtime dsh --review-gate`
-- `~/.dsh/.credentials.yaml` must be a flat `KEY: "string"` map — a wrapped store (`version` / `refs` / `records`) or YAML integer fails `agent-check dsh` and `agent-loop run` before spawning the worker. Quoting `version` alone is not enough; the harness does not rewrite that file.
+- Export `DEEPSEEK_API_KEY` in the launching shell — DSH 0.2.1 headless ignores the key stored in `~/.dsh/.credentials.yaml`, so `agent-check dsh` and `agent-loop run` abort before spawning the worker without it. The file itself may be DSH layout v1 (`version: 1` + `refs:`, what `dsh web` writes) or the old flat map; the harness does not rewrite that file.
 - DSH companion plugin guard blocks accidental foreground grinds
 
 ### Cline (`--runtime cline-pass` · `cline`)
