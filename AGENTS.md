@@ -34,6 +34,14 @@ Repo-agnostic fix-until-green agent loop (`@dancingteeth/agent-looper`).
 - `templates/` — init scaffolds
 - `.cursor/loops/` — dogfood loops for this repo
 
+## Delivery and CI minutes
+
+Fleet policy: `~/Projects/holy-grind-ops/docs/gitops-deploys.md`, section "Delivery policy and Actions budget" (host SSOT; it wins over this file). In this repo:
+
+- **Push once per finished task.** Commit locally as often as useful, then rebase on `origin/main`, run the full tests and check the exit code, stage files by name, and push once. Every push to `main` runs CI and may deploy.
+- **No PR unless one is required:** release and publish workflows (npm, plugins) and secrets; work the owner asks to see first; or a change in another repo. Everything else goes straight to `main`.
+- **Don't push to see CI.** Run the tests locally.
+
 ## Verify
 
 Prefer measurable `verify.sh` + `VERIFY.skill.md` beside each loop (see `docs/verification-as-skill.md`).
