@@ -474,3 +474,15 @@ export {
   formatScoreboardTelegramLine,
   isAgentSdkVerify,
 } from './loop/loopRunScoreboard.js'
+
+export { parseImprovePlan, parsePlanIndex } from './integrations/improvePlan.js'
+export type { ImprovePlan, PlanCheck, PlanCriterion, PlanIndexRow } from './integrations/improvePlan.js'
+export {
+  buildImproveBundle,
+  improveLoopName,
+  orderPlansForBatch,
+  renderImproveBatch,
+} from './integrations/improveBundle.js'
+export type { ImproveBundle } from './integrations/improveBundle.js'
+export { importImprovePlans } from './integrations/improveImport.js'
+export type { ImportImproveOptions, ImportImproveResult } from './integrations/improveImport.js'

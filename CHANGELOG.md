@@ -10,6 +10,12 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
+## Unreleased
+
+### New
+
+- **`agent-loop-import`: run shadcn/improve plans as loops.** [shadcn/improve](https://github.com/shadcn/improve) writes `plans/NNN-slug.md` specs for cheaper models to execute. `agent-loop-import plans/001-x.md` turns one into a loop bundle: the plan's Done criteria become `verify.sh` checks, plus a scope check against the in-scope file list; criteria without a command go to the judge (`reviewGate` on); STOP conditions park the loop through a worker-written `STOP.md`; `setup.sh` parks it when in-scope files drifted since the plan's `Planned at` commit. Pointing it at `plans/` imports every open plan and writes `improve-batch/loop-batch.json` in dependency order. Mutating and network commands are never copied into `verify.sh`. Guide: [`docs/improve-import.md`](./docs/improve-import.md).
+
 ## 0.8.6 — 2026-11-12
 
 DSH 0.2.1 compatibility, and a failed `agent-loop-prompt` run now shows why it failed.

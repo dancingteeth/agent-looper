@@ -34,6 +34,7 @@ Start here:
 ```bash
 agent-loop-init
 # or: agent-loop-prompt --out .cursor/loops/my-task
+# or: agent-loop-import plans/001-x.md   (shadcn/improve plan → loop; docs/improve-import.md)
 # edit .cursor/agent-loop.repo.json, GOAL.md, loop.json, verify.sh
 export CURSOR_API_KEY=…
 agent-loop run .cursor/loops/my-task --runtime cursor --review-gate

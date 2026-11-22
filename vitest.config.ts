@@ -19,6 +19,7 @@ export default defineConfig({
         'src/cli/check.ts',
         'src/cli/doctor.ts',
         'src/cli/export-run.ts',
+        'src/cli/import.ts',
         'src/cli/review-run.ts',
         'src/cli/review-preview.ts',
         'src/cli/meta-review.ts',

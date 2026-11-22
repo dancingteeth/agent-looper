@@ -19,6 +19,7 @@ pnpm add -D @dancingteeth/agent-looper @cursor/sdk   # example: Cursor worker/ju
 pnpm exec agent-loop-init
 pnpm exec agent-loop-setup    # pick worker + judge runtimes (one-screen wizard)
 # or draft a loop from an idea: pnpm exec agent-loop-prompt --out .cursor/loops/my-task
+# or import a shadcn/improve plan: pnpm exec agent-loop-import plans/001-fix-foo.md
 # edit GOAL.md
 # put the check you keep re-running in verify.sh
 
@@ -426,6 +427,7 @@ Collects latest `review.md*`, `log.ndjson`, `failure-domains.ndjson`, and diff s
 | `agent-loop-review-run` | Post-loop quality review for one bundle |
 | `agent-loop-review-preview` | Preview review risk / prompt |
 | `agent-loop-export-run` | Regenerate `run-report.md` from `log.ndjson` (+ optional `transcript.ndjson`) |
+| `agent-loop-import <plan.md\|plans/>` | Turn [shadcn/improve](https://github.com/shadcn/improve) plans into loop bundles (+ `improve-batch/loop-batch.json` for a plans dir) — [`docs/improve-import.md`](./docs/improve-import.md) |
 
 ## Architecture
 
