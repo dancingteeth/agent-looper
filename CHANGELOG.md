@@ -10,7 +10,7 @@ tags:
 
 Notable changes to `@dancingteeth/agent-looper`. Dates are UTC.
 
-## Unreleased
+## 0.8.7 — 2026-11-22
 
 ### New
 

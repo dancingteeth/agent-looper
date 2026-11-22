@@ -85,7 +85,7 @@ describe('landing agent readiness', () => {
     }
   })
 
-  it('site version labels say 0.8.6 current with no stale 0.7.x as current', () => {
+  it('site version labels say 0.8.7 current with no stale 0.7.x as current', () => {
     const versionPaths = [
       'about/index.html',
       'about/index.md',
@@ -96,14 +96,14 @@ describe('landing agent readiness', () => {
     ]
     for (const file of versionPaths) {
       const body = readSite(file)
-      expect(body, file).toContain('0.8.6')
+      expect(body, file).toContain('0.8.7')
       expect(body, file).not.toMatch(/Current npm: \*\*0\.7\./)
     }
     const llms = readSite('llms.txt')
-    expect(llms).toContain('Current npm: **0.8.6**')
+    expect(llms).toContain('Current npm: **0.8.7**')
     expect(llms).toContain('supported line **0.8.x**')
     expect(llms).not.toContain('supported line **0.7.x**')
-    expect(llms).toMatch(/Changelog.*0\.8\.6/)
+    expect(llms).toMatch(/Changelog.*0\.8\.7/)
   })
 
   it('llms.txt follows llmstxt.org v2 and includes when-to-use guidance', () => {
@@ -330,6 +330,31 @@ describe('landing agent readiness', () => {
 
     expect(html).toContain('tui-answer--report')
     expect(html).toContain('tui-answer--prompt')
+  })
+
+  it('ships the shadcn/improve import FAQ on html, md, JSON-LD, docs and llms.txt', () => {
+    const html = readSite('index.html')
+    const md = readSite('index.md')
+    const question = 'Can Agent Looper run a plan from shadcn/improve?'
+    const faq = jsonLdGraph(html).find(
+      (node) =>
+        typeof node === 'object' &&
+        node !== null &&
+        (node as { '@type'?: string })['@type'] === 'FAQPage',
+    ) as { mainEntity?: Array<{ name?: string; acceptedAnswer?: { text?: string } }> }
+    const answer = faq?.mainEntity?.find((q) => q.name === question)?.acceptedAnswer?.text
+    expect(answer).toContain('agent-loop-import')
+    expect(html).toContain(`<h2>${question}</h2>`)
+    expect(md).toContain(`## ${question}`)
+    for (const surface of [html, md, answer ?? ''] as const) {
+      expect(surface).toContain('pnpm exec agent-loop-import plans/001-your-plan.md')
+      expect(surface).toContain('STOP conditions')
+    }
+    expect(html).toContain('href="https://github.com/shadcn/improve"')
+    for (const file of ['docs/index.html', 'docs/index.md', 'llms.txt']) {
+      expect(readSite(file), file).toContain('docs/improve-import.md')
+    }
+    expect(readSite('llms.txt')).toContain('`agent-loop-import`')
   })
 
   it('ships prompt FAQ with agent + terminal paths, Claude, Muse 1.3, list/billed spend, no version pins', () => {
@@ -800,9 +825,9 @@ describe('landing agent readiness', () => {
       expect(surface).not.toMatch(/supported line \*\*0\.7\.x\*\*/i)
     }
 
-    expect(llms).toContain('Current npm: **0.8.6**')
+    expect(llms).toContain('Current npm: **0.8.7**')
     expect(llms).toContain('0.8.x')
-    expect(llms).not.toContain('Current npm: **0.8.5**')
+    expect(llms).not.toContain('Current npm: **0.8.6**')
     expect(llms).not.toContain('Current npm: **0.7.')
     expect(llms).toContain('@dancingteeth/opencode-agent-looper')
     expect(llms).toMatch(/no Cursor default judge/i)

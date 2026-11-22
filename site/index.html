@@ -136,6 +136,14 @@
           },
           {
             "@type": "Question",
+            "name": "Can Agent Looper run a plan from shadcn/improve?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. shadcn/improve has a strong model audit your repo and write plans/NNN-*.md specs for a cheaper model to execute. Run pnpm exec agent-loop-import plans/001-your-plan.md and the plan becomes a loop: its done criteria become verify.sh checks, plus a check that only the plan's in-scope files changed. Criteria with no command go to the judge. If the worker hits one of the plan's STOP conditions, or the code changed since the plan was written, the loop pauses for you. Point it at plans/ to import every open plan as a batch, in dependency order."
+            }
+          },
+          {
+            "@type": "Question",
             "name": "What do I get when a loop finishes?",
             "acceptedAnswer": {
               "@type": "Answer",
@@ -383,6 +391,15 @@
             </p>
             <p>
               <strong>If you prefer the terminal:</strong> run <code>pnpm exec agent-loop-setup</code> (a one-screen setup wizard) and <code>pnpm exec agent-loop-prompt</code> to generate frozen <code>GOAL.md</code> and <code>verify.sh</code> from your prompt.
+            </p>
+          </article>
+          <article class="tui-answer tui-answer--improve">
+            <h2>Can Agent Looper run a plan from shadcn/improve?</h2>
+            <p>
+              Yes. <a href="https://github.com/shadcn/improve">shadcn/improve</a> has a strong model audit your repo and write <code>plans/NNN-*.md</code> specs for a cheaper model to execute. Run <code>pnpm exec agent-loop-import plans/001-your-plan.md</code> and the plan becomes a loop: its done criteria become <code>verify.sh</code> checks, plus a check that only the plan's in-scope files changed. Criteria with no command go to the judge.
+            </p>
+            <p>
+              If the worker hits one of the plan's STOP conditions, or the code changed since the plan was written, the loop pauses for you. Point it at <code>plans/</code> to import every open plan as a batch, in dependency order. <a href="https://github.com/dancingteeth/agent-looper/blob/main/docs/improve-import.md">How the import works</a>.
             </p>
           </article>
           <article class="tui-answer tui-answer--report">

@@ -42,6 +42,12 @@ Forward loops build a feature and check it. Reverse starts from a red check and 
 - **If you see your coding agent's logo on this page:** describe the feature as a normal prompt and ask your agent to implement it **with Agent Looper**. It sets up the loop and runs until the check is green.
 - **If you prefer the terminal:** run `pnpm exec agent-loop-setup` (a one-screen setup wizard) and `pnpm exec agent-loop-prompt` to generate frozen `GOAL.md` and `verify.sh` from your prompt.
 
+## Can Agent Looper run a plan from shadcn/improve?
+
+Yes. [shadcn/improve](https://github.com/shadcn/improve) has a strong model audit your repo and write `plans/NNN-*.md` specs for a cheaper model to execute. Run `pnpm exec agent-loop-import plans/001-your-plan.md` and the plan becomes a loop: its done criteria become `verify.sh` checks, plus a check that only the plan's in-scope files changed. Criteria with no command go to the judge.
+
+If the worker hits one of the plan's STOP conditions, or the code changed since the plan was written, the loop pauses for you. Point it at `plans/` to import every open plan as a batch, in dependency order. [How the import works](https://github.com/dancingteeth/agent-looper/blob/main/docs/improve-import.md).
+
 ## What do I get when a loop finishes?
 
 A report card instead of a chat dump: how many times `verify.sh` rejected the work, whether a worker hung, what the judge flagged, and your **list** (public API rates, including prompt-cache) vs. **billed** spend so `$0` subscription turns still count toward budget caps. To check a running loop, run `agent-loop watch` or ask your agent to use the `check-running-loops` skill.
@@ -105,7 +111,7 @@ Agent Looper is free and MIT-licensed. If it saves you time:
 - [llms.txt](https://looper.dancingteeth.net/llms.txt)
 - [Harnesses](https://looper.dancingteeth.net/harnesses/)
 - [Developer resources](https://looper.dancingteeth.net/docs/)
-- [Changelog (0.8.6)](https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md)
+- [Changelog (0.8.7)](https://github.com/dancingteeth/agent-looper/blob/main/CHANGELOG.md)
 - [Embed API](https://github.com/dancingteeth/agent-looper/blob/main/docs/embed-api.md)
 - [Security](https://github.com/dancingteeth/agent-looper/blob/main/SECURITY.md)
 - [GitHub](https://github.com/dancingteeth/agent-looper)
